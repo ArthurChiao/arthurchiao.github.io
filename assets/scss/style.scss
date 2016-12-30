@@ -1,0 +1,32 @@
+// Use Compass
+@import "compass"; 
+
+// Reset using Normalize
+@import "normalize";
+
+// Import fonts from Google
+@import url(http://fonts.googleapis.com/css?family=Open+Sans:300,400,800);
+@import url(http://fonts.googleapis.com/css?family=PT+Serif:400,700,400italic,700italic);
+
+// Site configuration
+@import "config"; 
+
+// Modules
+@import "modules/buttons";
+@import "modules/forms"; 
+@import "modules/tables";
+@import "modules/syntax"; 
+
+// Import Partials
+@import "partials/typography";
+@import "partials/mixins";
+@import "partials/grid";
+
+// Mobile up base styles
+@import "breakpoints/mobileup";
+
+// Import media queries add more as you desire
+@media only screen and (min-width: 800px) { @import "breakpoints/800up";} 
+
+// If IE support is needed you can add them here or create another stylesheet for specific IE fixes
+

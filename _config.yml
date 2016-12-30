@@ -1,0 +1,33 @@
+title: ArthurChiao's Blog
+description: ArthurChiao's Blog
+
+url: arthurchiao.github.io
+baseurl: ""
+paginate_path: "blog/page:num/"
+permalink: blog/:title/
+
+markdown: kramdown
+highlighter: rouge
+gems: [jekyll-paginate]
+paginate: 5
+
+navigation:
+ - title: Home
+   url: /index.html
+ - title: Articles
+   url: /articles
+ - title: About
+   url: /about
+ - title: Contact
+   url: /contact
+
+social:
+   github: ArthurChiao
+   linkedin: in/yanan-zhao-7691317b?trk=hp-identity-photo
+   facebook: profile.php?id=100014334455077
+   email: arthurchiao@hotmail.com
+
+google_analytics: "UA-58263416-1"
+
+# development configurations
+host: 0.0.0.0
