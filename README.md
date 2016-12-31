@@ -1,6 +1,6 @@
 My blog repo.
 
-Visit it at [arthurchiao.github.io](arthurchiao.github.io).
+Visit it at https://arthurchiao.github.io
 
 # Theme
 The blog is powered by [jekyll](http://jekyllrb.com/), and theme based on
