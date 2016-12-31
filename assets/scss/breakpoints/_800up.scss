@@ -8,9 +8,9 @@ GLOBAL STYLES
 	z-index: 1;
 
 	&:after {
-		z-index: -1; 
+		z-index: -1;
 		background: white;
-		content: ""; 
+		content: "";
 		display: block;
 		width: 100%;
 		height: 5em;
@@ -22,12 +22,12 @@ GLOBAL STYLES
 		transform: skewY(-2deg);
 		-webkit-transform-origin: bottom left;
 		-ms-transform-origin: bottom left;
-		transform-origin: bottom left; 
+		transform-origin: bottom left;
 	}
 }
 
 .container {
-	@include container(800px); 
+	@include container(1000px);
 	padding: 0;
 }
 
@@ -64,7 +64,7 @@ HEADER STYLING
 		-webkit-transform: translateY(-50%);
 		-ms-transform: translateY(-50%);
 		transform: translateY(-50%);
-		@include container(800px); 
+		@include container(1000px);
 	}
 
 	h1 {
@@ -100,7 +100,7 @@ HEADER STYLING
 
 				&.current {
 					padding-bottom: .25em;
-					border-bottom: 4px solid rgba(255,255,255,.4); 
+					border-bottom: 4px solid rgba(255,255,255,.4);
 				}
 			}
 		}
@@ -119,7 +119,7 @@ MENU STYLING
 	  max-height: none;
 
 		&.closed {
-		  max-height: none; 
+		  max-height: none;
 		}
 
 		ul li a {
@@ -139,13 +139,13 @@ POST STYLING
 
 .post {
 	h1, h2, h3, h4, h5, h6, p, ul, ol, dl, .pageTitle {
-		@include span(9 of 12); 
+		@include span(9 of 12);
 		float: none;
-		margin: 0 auto 2rem; 
+		margin: 0 auto 2rem;
 	}
 
 	h1, .h1, h2, .h2, h3, .h3, h4, .h4, h5, .h5, h6, .h6 {
-		margin: 1rem auto; 
+		margin: 1rem auto;
 	}
 
 	.pageTitle {
@@ -213,7 +213,7 @@ FOOTER STYLES
 
 	.container {
 		padding: 1rem 0;
-		@include container(800px);
+		@include container(1000px);
 	}
 }
 
