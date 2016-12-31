@@ -141,16 +141,93 @@ ovs-appctl: ovs-vswitchd: server returned an error
 ```
 
 In step.4, the submodules will also register their `ovs-appctl` commands that
-could be used to manage respective resources. This is a good place to learn
-those commands.
+could be used to manage respective resources. This is a good place to get
+familiar with those commands.
 
 ### 1.3 bridge run
+```c
+void
+bridge_run(void)
+{
+    /* step.1. init all needed */
+    ovsdb_idl_run(idl);
+    if_notifier_run();
+
+    if (cfg) {
+        dpdk_init(&cfg->other_config);
+    }
+
+    /* init ofproto library.  This only runs once */
+    bridge_init_ofproto(cfg);
+      |
+      |--ofproto_init(); // resiter `ofproto/list` command
+
+    /* step.2. datapath & bridge processing */
+    bridge_run__();
+      |
+      |  /* Let each datapath type do the work that it needs to do. */
+      |--SSET_FOR_EACH (type, &types) {
+      |      ofproto_type_run(type);
+      |
+      |  /* Let each bridge do the work that it needs to do. */
+      |--HMAP_FOR_EACH (br, node, &all_bridges) {
+             ofproto_run(br->ofproto);
+
+    /* step.3. commit to ovsdb if needed */
+    ovsdb_idl_txn_commit(txn);
+}
+```
+
+`ofproto/ofproto-provider.h`:
+
+```c
+/* ofproto class structure, to be defined by each ofproto implementation.
+ *
+ *
+ * Data Structures
+ * ===============
+ *
+ * These functions work primarily with four different kinds of data
+ * structures:
+ *
+ *   - "struct ofproto", which represents an OpenFlow switch (ovs bridge).
+ *                       all flow/port operations are done on the ofproto (bridge)
+ *
+ *   - "struct ofport", which represents a port within an ofproto.
+ *
+ *   - "struct rule", which represents an OpenFlow flow within an ofproto.
+ *
+ *   - "struct ofgroup", which represents an OpenFlow 1.1+ group within an
+ *     ofproto.
+ */
+```
+
+```shell
+# an ofproto instance is an ovs bridge, so to list all bridges, just issue:
+$ ovs-appctl ofproto/list
+br-bond
+br-int
+
+# you can also get the bridges info by querying ovsdb directly:
+$ ovs-vsctl show
+f9c76d49-891c-4670-b2fc-75aabca7a1a6
+    Bridge br-int
+        fail_mode: secure
+        Port br-int
+            Interface br-int
+                type: internal
+    Bridge br-bond
+        Port br-bond
+            Interface br-bond
+                type: internal
+    ovs_version: "2.5.0"
+```
 
 ### 1.4 unixctl server run
 The unixctl server in ovs receives control commands that
 you typed in shell (`ovs-appctl <xxx>`). It is opens a unix socket, and listens
 on it. Typically, the socket file is located at `/var/run/openvswitch/`, and
-one socket file for each bridge (***TODO: i'm not sure yet***):
+one socket file for each bridge:
 
 ```shell
 $ ll /var/run/openvswitch
@@ -193,6 +270,10 @@ netdev_run(void)
     }
 }
 ```
+
+The `rc->class->run(rc->class)` will run into specific implementations, such
+as, on linux machine, it will call into `netdev_linux_run()` in
+ `lib/netdev_linux.c`.
 
 ### 1.6 event loop: wait & block
 
