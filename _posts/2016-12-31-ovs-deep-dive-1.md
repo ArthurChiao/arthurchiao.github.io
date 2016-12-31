@@ -5,8 +5,10 @@ date:   2016-12-31
 ---
 
 <p class="intro"><span class="dropcap">I</span>n this OVS Deep Dive series,
-I will walk through the source code to get familiar with the core design
-and implementations of OVS.
+I will walk through the <a href="https://github.com/openvswitch/ovs">Open vSwtich</a>
+ source code to get familiar with the core designs
+and implementations of OVS. The code is based on
+ <span style="font-weight:bold">ovs 2.6.1</span>.
 </p>
 
 ### OVS Architecture
@@ -44,21 +46,20 @@ int main()
 
     /* step.2. deamon loop */
     while (!exiting) {
-        /* step.2.1. run */
+        /* step.2.1. process control messages from OpenFlow Controller and CLI */
         bridge_run()
           |
           |--dpdk_init()
-          |--bridge_init_ofproto() //only once
+          |--bridge_init_ofproto() // init bridges, only once
           |--bridge_run__()
               |
               |--/* Let each datapath type do the work that it needs to do. */
                  for(datapath types):
                      ofproto_type_run(type)
-              |--/* Let each bridge do the work that it needs to do. */
-                 for(all_bridges):
-                     ofproto_run(bridge)
+              |--for(all_bridges):
+                     ofproto_run(bridge) // handle messages from OpenFlow Controller
 
-        /* receive control message from CLI */
+        /* receive control messages from CLI (ovs-appctl <xxx>) */
         unixctl_server_run(unixctl);
 
         /* Performs periodic work needed by all the various kinds of netdevs */
@@ -70,9 +71,6 @@ int main()
         netdev_wait();
 
         /* step.2.3. block util events arrive */
-        /* Blocks until one or more of the events registered with poll_fd_wait()
-         * occurs, or until the minimum duration registered with poll_timer_wait()
-         * elapses, or not at all if poll_immediate_wake() has been called. */
         poll_block();
     }
 }
@@ -172,6 +170,9 @@ bridge_run(void)
       |  /* Let each bridge do the work that it needs to do. */
       |--HMAP_FOR_EACH (br, node, &all_bridges) {
              ofproto_run(br->ofproto);
+               |
+               |  // handles messages from OpenFlow controller
+               |--connmgr_run(connmgr, handle_openflow)
 
     /* step.3. commit to ovsdb if needed */
     ovsdb_idl_txn_commit(txn);
