@@ -22,3 +22,6 @@ Function/code hotness statistics.
  common case.
 
 `ofproto/connmgr.c`
+
+## event loop implementation
+run - wait - block

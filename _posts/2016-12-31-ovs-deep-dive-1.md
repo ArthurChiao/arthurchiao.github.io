@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "OVS Deep Dive 1"
+title:  "OVS Deep Dive 1: vswitchd"
 date:   2016-12-31
 ---
 
@@ -33,7 +33,7 @@ Three Components of OVS:
 1. Implements mirroring, bonding, and VLANs
 1. Tools: **ovs-ofctl, ovs-appctl**
 
-## 1.1. Entrypoint
+### 1.1. Entrypoint
 Entrypoint of `vswitchd` is in `vswitchd/ovs-vswitchd.c`.
 
 Control flow of `vswitchd`:
@@ -278,5 +278,5 @@ as, on linux machine, it will call into `netdev_linux_run()` in
 
 ### 1.6 event loop: wait & block
 
-# References
+## References
 1. [An OpenVSwitch Introduction From NSRC](https://www.google.com.hk/url?sa=t&rct=j&q=&esrc=s&source=web&cd=8&cad=rja&uact=8&ved=0ahUKEwiy6sCB_pXRAhWKnpQKHblDC2wQFgg-MAc&url=https%3A%2F%2Fnsrc.org%2Fworkshops%2F2014%2Fnznog-sdn%2Fraw-attachment%2Fwiki%2FAgenda%2FOpenVSwitch.pdf&usg=AFQjCNFg9VULvEmHMXQAsuTOE6XLH6WbzQ&sig2=UlVrLltLct2F_xjgnqZiOA)
