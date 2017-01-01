@@ -6,7 +6,7 @@ date:   2017-01-01
 
 <p class="intro"><span class="dropcap">I</span>n this OVS Deep Dive series,
 I will walk through the <a href="https://github.com/openvswitch/ovs">Open vSwtich</a>
- source code to get familiar with the core designs
+ source code to look into the core designs
 and implementations of OVS. The code is based on
  <span style="font-weight:bold">ovs 2.6.1</span>.
 </p>

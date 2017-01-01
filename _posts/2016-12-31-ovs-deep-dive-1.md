@@ -6,7 +6,7 @@ date:   2016-12-31
 
 <p class="intro"><span class="dropcap">I</span>n this OVS Deep Dive series,
 I will walk through the <a href="https://github.com/openvswitch/ovs">Open vSwtich</a>
- source code to get familiar with the core designs
+ source code to look into the core designs
 and implementations of OVS. The code is based on
  <span style="font-weight:bold">ovs 2.6.1</span>.
 </p>
@@ -15,14 +15,29 @@ and implementations of OVS. The code is based on
 <p align="center"><img src="/assets/img/ovs_arch.jpg"></p>
 <p align="center">Fig.1. OVS Architecture (image source NSRC[1])</p>
 
-Three Components of OVS:
+The following diagram shows the very high-level architecture of Open vSwitch
+from a porter's perspective.
 
-* vswitchd
-  * tools: `ovs-appctl`
-* ovsdb
-  * tools: `ovs-vsctl`, `ovs-ofctl`
-* kernel module (datapath)
-  * tools: `ovs-dpctl`
+```shell
++-------------------+
+|    ovs-vswitchd   |<-->ovsdb-server
++-------------------+
+|      ofproto      |<-->OpenFlow controllers
++--------+-+--------+
+| netdev | | ofproto|
++--------+ |provider|
+| netdev | +--------+
+|provider|
++--------+
+```
+
+ovs-vswitchd
+
+  The main Open vSwitch userspace program, in vswitchd/.  It reads the desired
+  Open vSwitch configuration from the ovsdb-server program over an IPC channel
+  and passes this configuration down to the "ofproto" library.  It also passes
+  certain status and statistical information from ofproto back into the
+  database.
 
 ## 1. vswitchd
 1. Core components in the system
@@ -280,3 +295,4 @@ as, on linux machine, it will call into `netdev_linux_run()` in
 
 ## References
 1. [An OpenVSwitch Introduction From NSRC](https://www.google.com.hk/url?sa=t&rct=j&q=&esrc=s&source=web&cd=8&cad=rja&uact=8&ved=0ahUKEwiy6sCB_pXRAhWKnpQKHblDC2wQFgg-MAc&url=https%3A%2F%2Fnsrc.org%2Fworkshops%2F2014%2Fnznog-sdn%2Fraw-attachment%2Fwiki%2FAgenda%2FOpenVSwitch.pdf&usg=AFQjCNFg9VULvEmHMXQAsuTOE6XLH6WbzQ&sig2=UlVrLltLct2F_xjgnqZiOA)
+1. [OVS Doc: Porting Guide](https://github.com/openvswitch/ovs/blob/master/Documentation/topics/porting.rst)
