@@ -362,7 +362,8 @@ th:last-child {
     border-radius:3px;
     padding:20px;
     background:#343642;
-    color:#C1C2C3
+    color:#C1C2C3;
+    font-size: smaller;
 }
 .highlight .hll {
     background-color:#ffc
