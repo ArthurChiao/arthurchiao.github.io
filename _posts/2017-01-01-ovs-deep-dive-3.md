@@ -15,7 +15,8 @@ and implementations of OVS. The code is based on
 <p align="center">Fig.1. OVS Architecture (image source NSRC[1])</p>
 
 ## Datapath
-Datapath is the kernel module of ovs, as seen in the above picture. Apart from
+Datapath is the kernel module of ovs, as seen in the above picture, and it is
+kept as small as possible. Apart from
 the datapath, other components are implemented in userspace, and have little
 dependences with systems. In that sense, porting ovs
 to another OS or platform is perfectly simple (in concept): just porting or
