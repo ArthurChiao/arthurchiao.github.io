@@ -422,7 +422,8 @@ body .intro {
 @media (min-width: 43.75em) {
     body {
         font-size:1em;
-        line-height:1.375
+        line-height:1.375;
+        text-align:justify;
     }
 }
 h1,.h1,h2,.h2,h3,.h3,h4,.h4,h5,.h5,h6,.h6 {
@@ -523,7 +524,7 @@ body {
     overflow-x:hidden
 }
 body p,body ul {
-    margin:0 0 2rem
+    margin:0 0 2rem;
 }
 ::-moz-selection {
     background:#2e8b57;
