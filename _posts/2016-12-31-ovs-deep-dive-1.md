@@ -218,7 +218,7 @@ In `ofproto/ofproto-provider.h`:
 
 ofproto maintains a registered ofproto class array `ofproto_classes`.
 In `ofproto_init()`, the default ofproto class `ofproto_dpif_class` will be
-registered, which is defined in `ofproto/ofproto-dpif.c`:
+registered, which is defined and implemented in `ofproto/ofproto-dpif.c`:
 
 ```c
 const struct ofproto_class ofproto_dpif_class = {
@@ -309,8 +309,6 @@ type_run(const char *type)
 
     /* Check for and handle port changes dpif. */
     process_dpif_port_changes(backer);
-
-    return 0;
 }
 ```
 
@@ -342,8 +340,6 @@ ofproto_run(struct ofproto *p)
     }
 
     connmgr_run(p->connmgr, handle_openflow); // handles openflow messages
-
-    return error;
 }
 ```
 
@@ -363,7 +359,6 @@ run(struct ofproto *ofproto_)
     if (ofproto->ipfix) {
         dpif_ipfix_run(ofproto->ipfix);
     }
-
     if (ofproto->change_seq != new_seq) {
         HMAP_FOR_EACH (ofport, up.hmap_node, &ofproto->up.ports) {
             port_run(ofport);
@@ -383,11 +378,8 @@ run(struct ofproto *ofproto_)
     if (mcast_snooping_run(ofproto->ms)) {
         ofproto->backer->need_revalidate = REV_MCAST_SNOOPING;
     }
-
     if (ofproto->dump_seq != new_dump_seq) {
-        /* Expire OpenFlow flows whose idle_timeout or hard_timeout
-         * has passed. */
-        ovs_mutex_lock(&ofproto_mutex);
+        /* Expire OpenFlow flows whose idle_timeout or hard_timeout has passed. */
         LIST_FOR_EACH_SAFE (rule, next_rule, expirable,
                             &ofproto->up.expirable) {
             rule_expire(rule_dpif_cast(rule), now);
@@ -396,11 +388,9 @@ run(struct ofproto *ofproto_)
         /* All outstanding data in existing flows has been accounted, so it's a
          * good time to do bond rebalancing. */
         if (ofproto->has_bonded_bundles) {
-            HMAP_FOR_EACH (bundle, hmap_node, &ofproto->bundles) {
-                if (bundle->bond) {
+            HMAP_FOR_EACH (bundle, hmap_node, &ofproto->bundles)
+                if (bundle->bond)
                     bond_rebalance(bundle->bond);
-                }
-            }
         }
     }
 }
@@ -411,7 +401,7 @@ run(struct ofproto *ofproto_)
 
 ## 4. unixctl server run
 The unixctl server in ovs receives control commands that
-you typed in shell (`ovs-appctl <xxx>`). It is opens a unix socket, and listens
+you typed in shell (`ovs-appctl <xxx>`). It opens a unix socket, and listens
 on it. Typically, the socket file is located at `/var/run/openvswitch/`, and
 one socket file for each bridge:
 
@@ -461,7 +451,46 @@ The `rc->class->run(rc->class)` will run into specific implementations, such
 as, on linux machine, it will call into `netdev_linux_run()` in
  `lib/netdev_linux.c`.
 
+```c
+static void
+netdev_linux_run(const struct netdev_class *netdev_class OVS_UNUSED)
+{
+    if (netdev_linux_miimon_enabled()) {
+        netdev_linux_miimon_run();
+    }
+
+    sock = netdev_linux_notify_sock();
+
+    do {
+        error = nl_sock_recv(sock, &buf, false); // receive from userspace
+        if (!error) {
+            if (rtnetlink_parse(&buf, &change)) {
+                netdev_linux_update(netdev, &change);
+            }
+        } else if (error == ENOBUFS) {
+            nl_sock_drain(sock);
+
+            shash_init(&device_shash);
+            netdev_get_devices(&netdev_linux_class, &device_shash);
+            SHASH_FOR_EACH (node, &device_shash) {
+                get_flags(netdev_, &flags);
+                netdev_linux_changed(netdev, flags, 0);
+            }
+        }
+    } while (!error);
+}
+
+```
+
+### 5.1 netlink
+Netlink socket family is a Linux kernel interface used for inter-process communication (IPC) between both the kernel and userspace processes, and between different userspace processes, in a way similar to the Unix domain sockets. Similarly to the Unix domain sockets, and unlike INET sockets, Netlink communication cannot traverse host boundaries. However, while the Unix domain sockets use the file system namespace, Netlink processes are addressed by process identifiers (PIDs).
+Netlink is designed and used for transferring miscellaneous networking information between the kernel space and userspace processes.
+
 ## 6. event loop: wait & block
+
+## 7. ingress flow diagram (TODO)
+
+## 8. egress flow diagram (TODO)
 
 ## References
 1. [An OpenVSwitch Introduction From NSRC](https://www.google.com.hk/url?sa=t&rct=j&q=&esrc=s&source=web&cd=8&cad=rja&uact=8&ved=0ahUKEwiy6sCB_pXRAhWKnpQKHblDC2wQFgg-MAc&url=https%3A%2F%2Fnsrc.org%2Fworkshops%2F2014%2Fnznog-sdn%2Fraw-attachment%2Fwiki%2FAgenda%2FOpenVSwitch.pdf&usg=AFQjCNFg9VULvEmHMXQAsuTOE6XLH6WbzQ&sig2=UlVrLltLct2F_xjgnqZiOA)
