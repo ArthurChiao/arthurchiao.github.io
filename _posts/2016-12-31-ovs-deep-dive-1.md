@@ -19,16 +19,16 @@ The following diagram shows the very high-level architecture of Open vSwitch
 from a porter's perspective.
 
 ```shell
-+-------------------+
-|    ovs-vswitchd   |<-->ovsdb-server
-+-------------------+
-|      ofproto      |<-->OpenFlow controllers
-+--------+-+--------+
-| netdev | | ofproto|
-+--------+ |provider|
-| netdev | +--------+
-|provider|
-+--------+
+                       +-------------------+
+                       |    ovs-vswitchd   |<-->ovsdb-server
+                       +-------------------+
+                       |      ofproto      |<-->OpenFlow controllers
+                       +--------+-+--------+
+                       | netdev | | ofproto|
+                       +--------+ |provider|
+                       | netdev | +--------+
+                       |provider|
+                       +--------+
 ```
 
 ovs-vswitchd

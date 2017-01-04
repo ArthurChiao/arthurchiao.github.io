@@ -55,22 +55,8 @@ root     63357 63356  0  2016 ?        01:03:31 ovs-vswitchd unix:/var/run/openv
 The third part is usually called `datapath`, which is a kernel module that
 performs platform-dependent packet forwarding.
 
-Fig.2.2 is another diagram shows the very high-level architecture of
-Open vSwitch, from a porter's perspective[2].
-
-```shell
-        +-------------------+
-        |    ovs-vswitchd   |<-->ovsdb-server
-        +-------------------+
-        |      ofproto      |<-->OpenFlow controllers
-        +--------+-+--------+
-        | netdev | | ofproto|
-        +--------+ |provider|
-        | netdev | +--------+
-        |provider|
-        +--------+
-```
-<p align="center">Fig.2.2. OVS High Level Architecture [2]</p>
+<p align="center"><img src="/assets/img/ovs-deep-dive/ovs_packet_flow.jpg" width="80%" height="80%"></p>
+<p align="center">Fig.2.2. Components and Interfaces of OVS (image source[6])</p>
 
 ## 3. ovs-vswitchd
 The main Open vSwitch userspace program, in vswitchd/.  It reads the desired
@@ -82,7 +68,7 @@ database.
 <p align="center"><img src="/assets/img/ovs-deep-dive/vswitchd_ovsdb_ofproto.png" width="75%" height="75%"></p>
 <p align="center">Fig.3.1. vswitchd: pass messages between ovsdb and ofproto</p>
 
-### 4. ofproto
+## 4. ofproto
   The Open vSwitch library, in ofproto/, that implements an OpenFlow switch.
   It talks to OpenFlow controllers over the network and to switch hardware or
   software through an "ofproto provider", explained further below.
@@ -137,7 +123,7 @@ vSwitch architecture:
 ```
 <p align="center">Fig.4.1. OVS Architecture [2]</p>
 
-### 5. netdev
+## 5. netdev
   The Open vSwitch library, in lib/netdev.c, that abstracts interacting with
   network devices, that is, Ethernet interfaces.  The netdev library is a thin
   layer over "netdev provider" code, explained further below.
@@ -179,3 +165,4 @@ netdev_dpdk_register(void)
 1. [OVS Doc: What Is OVS](https://github.com/openvswitch/ovs/blob/master/Documentation/intro/what-is-ovs.rst)
 1. [OVS Doc: WHY OVS](https://github.com/openvswitch/ovs/blob/master/Documentation/intro/why-ovs.rst)
 1. [YouTube: Introduction to Open vSwitch](https://www.youtube.com/watch?v=rYW7kQRyUvA)
+1. [The Design and Implementation of Open vSwitch](https://www.usenix.org/system/files/conference/nsdi15/nsdi15-paper-pfaff.pdf)
