@@ -881,7 +881,7 @@ dd {
 .posts li h3 {
     margin:0 0 .5em
 }
-@media only screen and (min-width: 1000px) {
+@media only screen and (min-width: 900px) {
     .content {
         padding-top:0;
         position:relative;
@@ -905,7 +905,7 @@ dd {
         transform-origin:bottom left
     }
     .container {
-        max-width:1000px;
+        max-width:900px;
         margin-left:auto;
         margin-right:auto;
         padding:0
@@ -936,7 +936,7 @@ dd {
         -webkit-transform:translateY(-50%);
         -ms-transform:translateY(-50%);
         transform:translateY(-50%);
-        max-width:1000px;
+        max-width:900px;
         margin-left:auto;
         margin-right:auto
     }
@@ -992,7 +992,7 @@ dd {
         display:none
     }
     .post h1,.post h2,.post h3,.post h4,.post h5,.post h6,.post p,.post ul,.post ol,.post dl,.post .pageTitle {
-        width:74.46809%;
+        width:100%;
         float:left;
         margin-right:2.12766%;
         float:none;
@@ -1043,7 +1043,7 @@ dd {
     }
     .footer .container {
         padding:1rem 0;
-        max-width:1000px;
+        max-width:900px;
         margin-left:auto;
         margin-right:auto
     }
