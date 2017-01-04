@@ -24,6 +24,12 @@ Function/code hotness statistics.
 `ofproto/connmgr.c`
 
 ## event loop implementation
+poll() based.
+
 run - wait - block
 
-## 5. netdev
+## netlink
+communication between userspace and kernel.
+
+## unixctl
+vswitchd <---> unix sock <---> cli binary (ovs-vsctl, ovs-ofctl, ovs-appctl, etc)
