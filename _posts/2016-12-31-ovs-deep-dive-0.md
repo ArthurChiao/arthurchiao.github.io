@@ -69,7 +69,7 @@ details of these later.  Let's first see how a packet is processed inside OVS.
 <p align="center"><img src="/assets/img/ovs-deep-dive/ovs_packet_flow.jpg" width="80%" height="80%"></p>
 <p align="center">Fig.3.1. OVS Packet Handling (image source[6])</p>
 
-OVS is an OpenFlow-enabled software switch.
+OVS is an OpenFlow-capable software switch.
 
 An OpenFlow controller is responsible for instructing
 datapath how to handle different types packets, in the form called ***flows***.

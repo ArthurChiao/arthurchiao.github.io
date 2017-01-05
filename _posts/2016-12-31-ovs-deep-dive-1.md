@@ -44,9 +44,9 @@ The following diagram reveals more details:
 Here, the `vswitch` module is further devided into many submodules/libraies:
 
 * `ovs-vswitchd`: `vswitchd` daemon
-* `ofproto`: library which abstracted ovs bridge
+* `ofproto`: library which abstracts ovs bridge
 * `ofproto-provider`: interface to control an specific kind of OpenFlow switch
-* `netdev`: general OVS network device
+* `netdev`: library which abstracts network devices
 * `netdev-provider`: OS- and hardware-specific interface to network devices
 
 We will explain these concepts and data structures.
@@ -86,9 +86,9 @@ The key data structures in vswitchd include `ofproto`, `ofproto-provider`,
 
 ### 2.1 ofproto
 
-ofproto class structure, to be defined by each ofproto (ovs bridge) implementation.
+An ofproto instance is just an OpenFlow switch (bridge).
 
-Data Structures:
+Data Structures (`ofproto/ofproto-provider.h`):
 
   - `struct ofproto`: represents an OpenFlow switch (ovs bridge),
                       all flow/port operations are done on the ofproto
@@ -96,8 +96,57 @@ Data Structures:
   - `struct rule`: represents an OpenFlow flow within an ofproto
   - `struct ofgroup`: represents an OpenFlow 1.1+ group within an ofproto
 
+```c
+/* An OpenFlow switch. */
+struct ofproto {
+    const struct ofproto_class *ofproto_class;
+    char *type;                 /* Datapath type. */
+    char *name;                 /* Datapath name. */
+
+    /* Settings. */
+    uint64_t fallback_dpid;     /* Datapath ID if no better choice found. */
+    uint64_t datapath_id;       /* Datapath ID. */
+
+    /* Datapath. */
+    struct hmap ports;          /* Contains "struct ofport"s. */
+    struct simap ofp_requests;  /* OpenFlow port number requests. */
+    uint16_t max_ports;         /* Max possible OpenFlow port num, plus one. */
+
+    /* Flow tables. */
+    struct oftable *tables;
+
+    /* Rules indexed on their cookie values, in all flow tables. */
+
+    /* List of expirable flows, in all flow tables. */
+
+    /* OpenFlow connections. */
+
+    /* Groups. */
+
+    /* Tunnel TLV mapping table. */
+};
+
+
+/* An OpenFlow port within a "struct ofproto".
+ *
+ * The port's name is netdev_get_name(port->netdev).
+ */
+struct ofport {
+    struct hmap_node hmap_node; /* In struct ofproto's "ports" hmap. */
+    struct ofproto *ofproto;    /* The ofproto that contains this port. */
+    struct netdev *netdev;
+    struct ofputil_phy_port pp;
+    ofp_port_t ofp_port;        /* OpenFlow port number. */
+    uint64_t change_seq;
+    long long int created;      /* Time created, in msec. */
+    int mtu;
+};
+```
 
 ### 2.2 ofproto-provider
+
+**ofproto class structure, to be defined by each ofproto (ovs bridge)
+implementation.**
 
 An **ofproto provider** is what ofproto uses to directly **monitor and control
 an OpenFlow-capable switch**. struct `ofproto_class`, in `ofproto/ofproto-provider.h`,
@@ -109,31 +158,42 @@ A "datapath" is a simple flow table, one that is only required to support
 exact-match flows, that is, flows without wildcards. When a packet arrives on
 a network device, the datapath looks for it in this table.  If there is a
 match, then it performs the associated actions.  If there is no match, the
-datapath passes the packet up to ofproto-dpif, which maintains the full
-OpenFlow flow table.  If the packet matches in this flow table, then
+datapath passes the packet up to `ofproto-dpif`, **which maintains the full
+OpenFlow flow table**.  If the packet matches in this flow table, then
 ofproto-dpif executes its actions and inserts a new entry into the dpif flow
 table.  (Otherwise, ofproto-dpif passes the packet up to ofproto to send the
 packet to the OpenFlow controller, if one is configured.)
 
 The "dpif" library in turn delegates much of its functionality to a "dpif
-provider".  The following diagram shows how dpif providers fit into the Open
-vSwitch architecture:
+provider".  Fig.2.1 shows how dpif providers fit into the Open
+vSwitch architecture.
 
 ### 2.3 netdev
 
-The Open vSwitch library, in lib/netdev.c, that abstracts interacting with
-network devices, that is, Ethernet interfaces.  The netdev library is a thin
+The Open vSwitch library, in `lib/netdev.c`, that **abstracts interacting with
+network devices**, that is, Ethernet interfaces.
+
+Every port on a switch must have a corresponding netdev that must minimally
+support a few operations, such as the ability to read the netdev's MTU.
+The Porting section of the documentation has more information in the
+"Writing a netdev Provider" section.
+
+The netdev library is a thin
 layer over "netdev provider" code, explained further below.
 
 ### 2.4 netdev-provider
 
-A **netdev provider** implements an OS- and hardware-specific interface to
-"network devices", e.g. eth0 on Linux. **Open vSwitch must be able to open
+A **netdev provider** implements an **OS- and hardware-specific interface to
+"network devices"**, e.g. eth0 on Linux. **Open vSwitch must be able to open
 each port on a switch as a netdev**, so you will need to implement a
 "netdev provider" that works with your switch hardware and software.
 
-Specifically, the end of DPDK init process is to register it's netdev provider
-classes:
+For example, the community is experimenting running OVS over DPDK, which
+performs high performance packet processing in userspace. In this solution, the
+kernel module of OVS will be replaced by the counterparts in DPDK.  That means a
+DPDK netdev must be implemented as the **netdev-provider** for this platform. If
+you look at the source code, you will see that's what exactly been doing at
+the end of DPDK init code - register it's netdev provider classes:
 
 ```c
 void
