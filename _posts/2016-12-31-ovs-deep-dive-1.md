@@ -11,12 +11,22 @@ and implementations of OVS. The code is based on
  <span style="font-weight:bold">ovs 2.6.1</span>.
 </p>
 
-## OVS Architecture
+## 1. vswitchd Overview
 <p align="center"><img src="/assets/img/ovs-deep-dive/ovs_arch.jpg" width="80%" height="80%"></p>
 <p align="center">Fig.1. OVS Architecture (image source NSRC[1])</p>
 
-The following diagram shows the very high-level architecture of Open vSwitch
-from a porter's perspective.
+As depicted in Fig.1, `ovs-vswitchd` sits in the key position of OVS, which
+needs to interact with OpenFlow controller, OVSDB, and kernel module.
+
+1. Core components in the system
+  * communicate with **outside world** using `OpenFlow`
+  * communicate with **ovsdb-server** using `OVSDB protocol`
+  * communicate with **kernel** over `netlink`
+  * communicate with **system** through `netdev` abstract interface
+1. Implements mirroring, bonding, and VLANs
+1. CLI Tools: `ovs-ofctl`, `ovs-appctl`
+
+The following diagram reveals more details:
 
 ```shell
                        +-------------------+
@@ -31,25 +41,114 @@ from a porter's perspective.
                        +--------+
 ```
 
-ovs-vswitchd
+Here, the `vswitch` module is further devided into many submodules/libraies:
 
-  The main Open vSwitch userspace program, in vswitchd/.  It reads the desired
-  Open vSwitch configuration from the ovsdb-server program over an IPC channel
-  and passes this configuration down to the "ofproto" library.  It also passes
-  certain status and statistical information from ofproto back into the
-  database.
+* `ovs-vswitchd`: `vswitchd` daemon
+* `ofproto`: library which abstracted ovs bridge
+* `ofproto-provider`: interface to control an specific kind of OpenFlow switch
+* `netdev`: general OVS network device
+* `netdev-provider`: OS- and hardware-specific interface to network devices
 
-1. Core components in the system
-  * communicate with **outside world** using **OpenFlow**
-  * communicate with **ovsdb-server** using **OVSDB protocol**
-  * communicate with **kernel** over **netlink**
-  * communicate with **system** through **netdev** abstract interface
-1. Implements mirroring, bonding, and VLANs
-1. Tools: **ovs-ofctl, ovs-appctl**
+We will explain these concepts and data structures.
 
-## 1. Entrypoint
+## 2. Key Data Structures
+
+```shell
+                          _
+                         |   +-------------------+
+                         |   |    ovs-vswitchd   |<-->ovsdb-server
+                         |   +-------------------+
+                         |   |      ofproto      |<-->OpenFlow controllers
+                         |   +--------+-+--------+  _
+                         |   | netdev | |ofproto-|   |
+               userspace |   +--------+ |  dpif  |   |
+                         |   | netdev | +--------+   |
+                         |   |provider| |  dpif  |   |
+                         |   +---||---+ +--------+   |
+                         |       ||     |  dpif  |   | implementation of
+                         |       ||     |provider|   | ofproto provider
+                         |_      ||     +---||---+   |
+                                 ||         ||       |
+                          _  +---||-----+---||---+   |
+                         |   |          |datapath|   |
+                  kernel |   |          +--------+  _|
+                         |   |                   |
+                         |_  +--------||---------+
+                                      ||
+                                   physical
+                                      NIC
+
+```
+<p align="center">Fig.2.1. OVS Architecture In Detail [2]</p>
+
+The key data structures in vswitchd include `ofproto`, `ofproto-provider`,
+`netdev`, `netdev-provider`, etc. We explain them, respectively.
+
+### 2.1 ofproto
+
+ofproto class structure, to be defined by each ofproto (ovs bridge) implementation.
+
+Data Structures:
+
+  - `struct ofproto`: represents an OpenFlow switch (ovs bridge),
+                      all flow/port operations are done on the ofproto
+  - `struct ofport`: represents a port within an ofproto
+  - `struct rule`: represents an OpenFlow flow within an ofproto
+  - `struct ofgroup`: represents an OpenFlow 1.1+ group within an ofproto
+
+
+### 2.2 ofproto-provider
+
+An **ofproto provider** is what ofproto uses to directly **monitor and control
+an OpenFlow-capable switch**. struct `ofproto_class`, in `ofproto/ofproto-provider.h`,
+defines the interfaces to implement an ofproto provider for new hardware or software.
+
+Open vSwitch has a **built-in ofproto provider** named **ofproto-dpif**, which
+is built on top of a library for manipulating datapaths, called **dpif**.
+A "datapath" is a simple flow table, one that is only required to support
+exact-match flows, that is, flows without wildcards. When a packet arrives on
+a network device, the datapath looks for it in this table.  If there is a
+match, then it performs the associated actions.  If there is no match, the
+datapath passes the packet up to ofproto-dpif, which maintains the full
+OpenFlow flow table.  If the packet matches in this flow table, then
+ofproto-dpif executes its actions and inserts a new entry into the dpif flow
+table.  (Otherwise, ofproto-dpif passes the packet up to ofproto to send the
+packet to the OpenFlow controller, if one is configured.)
+
+The "dpif" library in turn delegates much of its functionality to a "dpif
+provider".  The following diagram shows how dpif providers fit into the Open
+vSwitch architecture:
+
+### 2.3 netdev
+
+The Open vSwitch library, in lib/netdev.c, that abstracts interacting with
+network devices, that is, Ethernet interfaces.  The netdev library is a thin
+layer over "netdev provider" code, explained further below.
+
+### 2.4 netdev-provider
+
+A **netdev provider** implements an OS- and hardware-specific interface to
+"network devices", e.g. eth0 on Linux. **Open vSwitch must be able to open
+each port on a switch as a netdev**, so you will need to implement a
+"netdev provider" that works with your switch hardware and software.
+
+Specifically, the end of DPDK init process is to register it's netdev provider
+classes:
+
+```c
+void
+netdev_dpdk_register(void)
+{
+    netdev_register_provider(&dpdk_class);
+    netdev_register_provider(&dpdk_ring_class);
+    netdev_register_provider(&dpdk_vhost_class);
+    netdev_register_provider(&dpdk_vhost_client_class);
+}
+```
+
+## 3. Call Flows
+
 Entrypoint of `vswitchd` is in `vswitchd/ovs-vswitchd.c`.
-
 Control flow of `vswitchd`:
 
 ```c
@@ -85,6 +184,16 @@ int main()
     }
 }
 ```
+
+## 4. Submodules
+
+## Summary
+1. Implementation terms
+  * `ofproto`: ovs bridge
+  * `ofproto provider`: interface to manage an specific OpenFlow-capable software/hardware switch
+  * `ofproto-dpif` - the built-in ofproto provider implementation in OVS
+  * `dpif` - a library servers for `ofproto-dpif`
+
 
 ## 2. bridge module init
 Let's see what the `bridge_init()` really does:
@@ -187,31 +296,6 @@ bridge_run(void)
     /* step.3. commit to ovsdb if needed */
     ovsdb_idl_txn_commit(txn);
 }
-```
-
-### 3.1. core data structures
-In `ofproto/ofproto-provider.h`:
-
-```c
-/* ofproto class structure, to be defined by each ofproto implementation.
- *
- *
- * Data Structures
- * ===============
- *
- * These functions work primarily with four different kinds of data
- * structures:
- *
- *   - "struct ofproto", which represents an OpenFlow switch (ovs bridge).
- *                       all flow/port operations are done on the ofproto (bridge)
- *
- *   - "struct ofport", which represents a port within an ofproto.
- *
- *   - "struct rule", which represents an OpenFlow flow within an ofproto.
- *
- *   - "struct ofgroup", which represents an OpenFlow 1.1+ group within an
- *     ofproto.
- */
 ```
 
 ### 3.2 preparations before bridges run
@@ -483,8 +567,15 @@ netdev_linux_run(const struct netdev_class *netdev_class OVS_UNUSED)
 ```
 
 ### 5.1 netlink
-Netlink socket family is a Linux kernel interface used for inter-process communication (IPC) between both the kernel and userspace processes, and between different userspace processes, in a way similar to the Unix domain sockets. Similarly to the Unix domain sockets, and unlike INET sockets, Netlink communication cannot traverse host boundaries. However, while the Unix domain sockets use the file system namespace, Netlink processes are addressed by process identifiers (PIDs).
-Netlink is designed and used for transferring miscellaneous networking information between the kernel space and userspace processes.
+Netlink socket family is a Linux kernel interface used for inter-process
+communication (IPC) between both the kernel and userspace processes, and between
+different userspace processes, in a way similar to the Unix domain sockets.
+Similarly to the Unix domain sockets, and unlike INET sockets, Netlink
+communication cannot traverse host boundaries. However, while the Unix domain
+sockets use the file system namespace, Netlink processes are addressed by
+process identifiers (PIDs).  Netlink is designed and used for transferring
+miscellaneous networking information between the kernel space and userspace
+processes.
 
 ## 6. event loop: wait & block
 

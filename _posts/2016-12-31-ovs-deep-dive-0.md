@@ -13,19 +13,26 @@ and implementations of OVS. The code is based on
 
 ## 1. WHY OVS
 The official doc [WHY Open vSwitch](https://github.com/openvswitch/ovs/blob/master/Documentation/intro/why-ovs.rst)
-explains the reason, but is very abstract. I bet you need years of
+describes how OVS emerges and what problems it aims at solving.
+But the explanation is very high-level and abstract. I bet you need years of
 virtualization and networking experiences to understand what it's saying.
 
-Instead, the following materials are highly recommended for new comers to OVS:
+Instead, I highly recommend the following materials to new comers of OVS:
 
-* excellent hands-on video to OVS [Introduction to Open vSwitch](https://www.youtube.com/watch?v=rYW7kQRyUvA)
-* [presentation](https://www.google.com.hk/url?sa=t&rct=j&q=&esrc=s&source=web&cd=8&cad=rja&uact=8&ved=0ahUKEwiy6sCB_pXRAhWKnpQKHblDC2wQFgg-MAc&url=https%3A%2F%2Fnsrc.org%2Fworkshops%2F2014%2Fnznog-sdn%2Fraw-attachment%2Fwiki%2FAgenda%2FOpenVSwitch.pdf&usg=AFQjCNFg9VULvEmHMXQAsuTOE6XLH6WbzQ&sig2=UlVrLltLct2F_xjgnqZiOA)
+* excellent hands-on intro to OVS [Introduction to Open vSwitch (video)](https://www.youtube.com/watch?v=rYW7kQRyUvA)
+* [presentation (PDF)](https://www.google.com.hk/url?sa=t&rct=j&q=&esrc=s&source=web&cd=8&cad=rja&uact=8&ved=0ahUKEwiy6sCB_pXRAhWKnpQKHblDC2wQFgg-MAc&url=https%3A%2F%2Fnsrc.org%2Fworkshops%2F2014%2Fnznog-sdn%2Fraw-attachment%2Fwiki%2FAgenda%2FOpenVSwitch.pdf&usg=AFQjCNFg9VULvEmHMXQAsuTOE6XLH6WbzQ&sig2=UlVrLltLct2F_xjgnqZiOA)
 from NSRC
 
 ## 2. OVS Architecture
 
 <p align="center"><img src="/assets/img/ovs-deep-dive/ovs_arch.jpg" width="80%" height="80%"></p>
 <p align="center">Fig.2.1. OVS Architecture (image source NSRC[1])</p>
+
+In typical deployment environments, OVS is used as the access switch for VMs.
+Such as, in OpenStack compute node, it is used as integration bridge to connect
+all the VMs running on the node. In these environments, OVS manages physical
+NICs at the bottom of it, and being managed by an OpenFlow controller at top of
+it.
 
 As depicted in Fig.2.1, OVS is composed of three components:
 
@@ -39,10 +46,11 @@ As depicted in Fig.2.1, OVS is composed of three components:
   * kernel space module, OVS packet forwarder
   * tools: `ovs-dpctl`
 
-`vswitchd` is the deamon process of OVS, handles control messages from
-`ovs-appctl`. `ovsdb-server` is the database of OVS, which talks
-`ovsdb protocol` through `ovs-vsctl` and `ovs-ofctl`. These are independent
-services after OVS started:
+`vswitchd` is the main deamon process of OVS,
+`ovsdb-server` is the database server of OVS, and `datapath` is a kernel
+module that performs platform-dependent packet
+forwarding. After OVS started, we could see two services: `ovs-vswitchd` and
+`ovsdb-server`:
 
 ```shell
 $ ps -ef | grep ovs
@@ -52,101 +60,87 @@ root     63356     1  0  2016 ?        00:00:00 ovs-vswitchd: monitoring pid 633
 root     63357 63356  0  2016 ?        01:03:31 ovs-vswitchd unix:/var/run/openvswitch/db.sock -vconsole:emer -vsyslog:err -vfile:info --mlockall --no-chdir --log-file=/var/log/openvswitch/ovs-vswitchd.log --pidfile=/var/run/openvswitch/ovs-vswitchd.pid --detach --monitor
 ```
 
-The third part is usually called `datapath`, which is a kernel module that
-performs platform-dependent packet forwarding.
+`ovs-ovswitchd` receives OpenFlow messages from OpenFlow controller, and
+`OVSDB-protocol` format messages from `ovsdb-server`. Communication between
+`ovs-vswitchd` and `datapath` is through `netlink`. We will talk about the
+details of these later.  Let's first see how a packet is processed inside OVS.
 
+## 3. OVS Packet Handling
 <p align="center"><img src="/assets/img/ovs-deep-dive/ovs_packet_flow.jpg" width="80%" height="80%"></p>
-<p align="center">Fig.2.2. Components and Interfaces of OVS (image source[6])</p>
+<p align="center">Fig.3.1. OVS Packet Handling (image source[6])</p>
 
-## 3. ovs-vswitchd
-The main Open vSwitch userspace program, in vswitchd/.  It reads the desired
+OVS is an OpenFlow-enabled software switch.
+
+An OpenFlow controller is responsible for instructing
+datapath how to handle different types packets, in the form called ***flows***.
+A ***flow*** describes how should datapth handle packets of one specific type,
+in the form called ***actions***. Action types include forwarding to another
+port, output, modify vlan tag, etc.
+The process of finding a flow for a packet is called ***flow matching***.
+
+For performance consideration, part of the flows are cached in datapath, and
+the others stored in `vswitchd`.
+
+Fig.3.1 depicts how OVS forwards packets.
+
+A packet enters the OVS datapath module after it is received on a NIC.
+If a flow is matched in datapath for the packet, the datapath simply excutes the
+actions described in the flow.  If not matched, datapath delivers packet to
+`ovs-vswitchd`, and another flow-matching process will be done there. After
+`ovs-vswitchd` determines how the packet should be handled, it passes the packet
+back to the datapath with the desired handling.  Usually, it also tells the
+datapath to cache the flow, for handling similar packets later.
+
+## 4. OVS Components
+In this section, we'll given a quick glance of the three components of OVS.
+Detailed explorations will be done in subsequent articles of this series.
+
+### 4.1. OVS Daemon
+`ovs-vswitchd` is
+the main Open vSwitch userspace program. It reads the desired
 Open vSwitch configuration from the ovsdb-server program over an IPC channel
-and passes this configuration down to the "ofproto" library.  It also passes
-certain status and statistical information from ofproto back into the
+and passes this configuration down to the ovs bridges (implemented as
+a library called `ofproto`).  It also passes
+certain status and statistical information from ovs bridges back into the
 database.
 
 <p align="center"><img src="/assets/img/ovs-deep-dive/vswitchd_ovsdb_ofproto.png" width="75%" height="75%"></p>
-<p align="center">Fig.3.1. vswitchd: pass messages between ovsdb and ofproto</p>
+<p align="center">Fig.4.1. vswitchd: ovs main daemon</p>
 
-## 4. ofproto
-  The Open vSwitch library, in ofproto/, that implements an OpenFlow switch.
-  It talks to OpenFlow controllers over the network and to switch hardware or
-  software through an "ofproto provider", explained further below.
+### 4.2 OVSDB
+Some transient configurations, e.g. flows, are stored in datapaths and vswitchd.
+Persistent configurations are stored in ovsdb, which survives reboot.
 
-An **ofproto provider** is what ofproto uses to directly **monitor and control
-an OpenFlow-capable switch**. struct `ofproto_class`, in `ofproto/ofproto-provider.h`,
-defines the interfaces to implement an ofproto provider for new hardware or software.
+`ovsdb-server` provides RPC itnerfaces to OVSDB. It supports JSON-RPC
+client connections over active or passive TCP/IP or Unix domain sockets.
 
-Open vSwitch has a **built-in ofproto provider** named **ofproto-dpif**, which
-is built on top of a library for manipulating datapaths, called **dpif**.
-A "datapath" is a simple flow table, one that is only required to support
-exact-match flows, that is, flows without wildcards. When a packet arrives on
-a network device, the datapath looks for it in this table.  If there is a
-match, then it performs the associated actions.  If there is no match, the
-datapath passes the packet up to ofproto-dpif, which maintains the full
-OpenFlow flow table.  If the packet matches in this flow table, then
-ofproto-dpif executes its actions and inserts a new entry into the dpif flow
-table.  (Otherwise, ofproto-dpif passes the packet up to ofproto to send the
-packet to the OpenFlow controller, if one is configured.)
+`ovsdb-server` runs either as a backup server, or as an active server. Only
+the active server handles transactions that will change the OVSDB.
 
-The "dpif" library in turn delegates much of its functionality to a "dpif
-provider".  The following diagram shows how dpif providers fit into the Open
-vSwitch architecture:
+### 4.3 Datapath
+Datapath is the main packet forwarding module of OVS, implemented in kernel
+space for high performance. It caches OpenFlow flows, and execute actions
+on received packets which match specific flow(s). If no flow is matched for
+one packet, the packet will be delivered to userspace program `ovs-vswitchd`.
+Usually,
+`ovs-vswitchd` will issue an new flow to datapath which will be used to handle
+subsequent packets of this type. The high performance comes from the fact
+that most packets will match flows successfully in datapath, thus will be
+processed directly in kernel space.
 
-```shell
-    Architecure
+## 5. Implementation
 
-               _
-              |   +-------------------+
-              |   |    ovs-vswitchd   |<-->ovsdb-server
-              |   +-------------------+
-              |   |      ofproto      |<-->OpenFlow controllers
-              |   +--------+-+--------+  _
-              |   | netdev | |ofproto-|   |
-    userspace |   +--------+ |  dpif  |   |
-              |   | netdev | +--------+   |
-              |   |provider| |  dpif  |   |
-              |   +---||---+ +--------+   |
-              |       ||     |  dpif  |   | implementation of
-              |       ||     |provider|   | ofproto provider
-              |_      ||     +---||---+   |
-                      ||         ||       |
-               _  +---||-----+---||---+   |
-              |   |          |datapath|   |
-       kernel |   |          +--------+  _|
-              |   |                   |
-              |_  +--------||---------+
-                           ||
-                        physical
-                           NIC
+### 5.1 vswitchd
+Implementation of `vswitchd` is at `vswitchd/`.
 
-```
-<p align="center">Fig.4.1. OVS Architecture [2]</p>
+Implementation of ovs bridge is at `ofproto/`.
 
-## 5. netdev
-  The Open vSwitch library, in lib/netdev.c, that abstracts interacting with
-  network devices, that is, Ethernet interfaces.  The netdev library is a thin
-  layer over "netdev provider" code, explained further below.
+### 5.2 ovsdb
+Implementation of `OVSDB` is at `ovsdb/`.
 
-A **netdev provider** implements an OS- and hardware-specific interface to
-"network devices", e.g. eth0 on Linux. **Open vSwitch must be able to open
-each port on a switch as a netdev**, so you will need to implement a
-"netdev provider" that works with your switch hardware and software.
-
-Specifically, the end of DPDK init process is to register it's netdev provider
-classes:
-
-```c
-void
-netdev_dpdk_register(void)
-{
-    netdev_register_provider(&dpdk_class);
-    netdev_register_provider(&dpdk_ring_class);
-    netdev_register_provider(&dpdk_vhost_class);
-    netdev_register_provider(&dpdk_vhost_client_class);
-}
-```
-
+### 5.1 datapath
+Implementation of `vswitchd` is at `datapath/`, and `datapath-windows/` for
+windows.
 
 ## Summary
 1. Three components of OVS
@@ -154,10 +148,8 @@ netdev_dpdk_register(void)
   * `ovsdb`
   * `datapath` (kernel module)
 1. Some implementation terms
-  * `ofproto`: ovs bridge
-  * `ofproto provider`: interface to manage an specific OpenFlow-capable software/hardware switch
-  * `ofproto-dpif` - the built-in ofproto provider implementation in OVS
-  * `dpif` - a library servers for `ofproto-dpif`
+  * `ovs-vswitchd`: main OVS daemon
+  * `ovsdb-server`: OVSDB service daemon
 
 ## References
 1. [PDF: An OpenVSwitch Introduction From NSRC](https://www.google.com.hk/url?sa=t&rct=j&q=&esrc=s&source=web&cd=8&cad=rja&uact=8&ved=0ahUKEwiy6sCB_pXRAhWKnpQKHblDC2wQFgg-MAc&url=https%3A%2F%2Fnsrc.org%2Fworkshops%2F2014%2Fnznog-sdn%2Fraw-attachment%2Fwiki%2FAgenda%2FOpenVSwitch.pdf&usg=AFQjCNFg9VULvEmHMXQAsuTOE6XLH6WbzQ&sig2=UlVrLltLct2F_xjgnqZiOA)
