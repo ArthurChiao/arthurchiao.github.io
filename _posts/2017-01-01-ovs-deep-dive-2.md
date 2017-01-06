@@ -11,17 +11,100 @@ and implementations of OVS. The code is based on
  <span style="font-weight:bold">ovs 2.6.1</span>.
 </p>
 
-## OVSDB
-The ovsdb-server program provides RPC interfaces to one or more Open
+## 1. OVSDB Overview
+
+The `ovsdb-server` program provides RPC interfaces to one or more Open
 vSwitch databases (OVSDBs). It supports JSON-RPC client connections over
 active or passive TCP/IP or Unix domain sockets.
-
 Each OVSDB file may be specified on the command line as database.  If
-none is specified, the default is /etc/openvswitch/conf.db.  The database
-files must already have been created and initialized using, for example,
-ovsdb-tool create.
+none is specified, the default is `/etc/openvswitch/conf.db`.
 
-### 1. Entrypoint
+OVSDB holds switch-level configurations:
+
+* bridges, interfaces, tunnel info
+* OVSDB and OpenFlow controller addresses
+
+Configurations is stored on disk and survives reboot.
+
+Custome database with nice properties:
+
+* value constraints
+* weak references
+* garbage collection
+
+Speaks **OVSDB protocol** to manager and `ovs-vswitchd`.
+
+CLI tools:
+
+* `ovs-vsctl`: modifies DB by configuring `ovs-vswitchd`
+* `ovsdb-tool`: DB management, e.g. create/compact/convert DB, show DB logs
+
+## 2. Key Data Structures
+
+* `ovsdb_schema`
+* `ovsdb`
+* `ovsdb_server`
+
+### 2.1 OVSDB
+```c
+/* Database schema. */
+struct ovsdb_schema {
+    char *name;
+    char *version;
+    char *cksum;
+    struct shash tables;        /* Contains "struct ovsdb_table_schema *"s. */
+};
+
+/* Database. */
+struct ovsdb {
+    struct ovsdb_schema *schema;
+    struct ovs_list replicas;   /* Contains "struct ovsdb_replica"s. */
+    struct shash tables;        /* Contains "struct ovsdb_table *"s. */
+
+    /* Triggers. */
+    struct ovs_list triggers;   /* Contains "struct ovsdb_trigger"s. */
+    bool run_triggers;
+};
+```
+
+### 2.2 OVSDB Table
+
+```c
+/* Schema for a database table. */
+struct ovsdb_table_schema {
+    char *name;
+    bool mutable;
+    bool is_root;               /* Part of garbage collection root set? */
+    unsigned int max_rows;      /* Maximum number of rows. */
+    struct shash columns;       /* Contains "struct ovsdb_column *"s. */
+    struct ovsdb_column_set *indexes;
+    size_t n_indexes;
+};
+
+/* Database table. */
+struct ovsdb_table {
+    struct ovsdb_table_schema *schema;
+    struct ovsdb_txn_table *txn_table; /* Only if table is in a transaction. */
+    struct hmap rows;           /* Contains "struct ovsdb_row"s. */
+
+    /* An array of schema->n_indexes hmaps, each of which contains "struct
+     * ovsdb_row"s.  Each of the hmap_nodes in indexes[i] are at index 'i' at
+     * the end of struct ovsdb_row, following the 'fields' member. */
+    struct hmap *indexes;
+};
+
+```
+
+**Open_vSwitch** is the root table and there is always only a single row.
+Fig.2.1 lists the most commonly used ones; a full entity-relationship diagram
+is available in the `ovs-vswitchd.conf.db` man page.
+
+<p align="center"><img src="/assets/img/ovs-deep-dive/ovsdb_tables.jpg" width="45%" height="45%"></p>
+<p align="center">Fig.2.1. ovsdb core tables</p>
+
+## 3. Procedures and Submodules
+
+### 3.1. Entrypoint
 `ovsdb/ovsdb-server.c`:
 
 ```c
@@ -36,16 +119,13 @@ main(int argc, char *argv[])
     unixctl_server_create(unixctl_path, &unixctl);
     unixctl_command_register("exit", "", 0, 0, ovsdb_server_exit, &exiting);
     ...
-    unixctl_command_register("ovsdb-server/sync-status", "",)
 
     /* step.3. enter main loop */
     main_loop();
-      |
       |--while (!*exiting) {
             /* step.3.1 handle control messages from CLI and RPC */
             unixctl_server_run(unixctl);       // handle CLI commands (turn into RPC requests)
             ovsdb_jsonrpc_server_run(jsonrpc); // handle RPC requests
-
             SHASH_FOR_EACH(node, all_dbs) {
                 ovsdb_trigger_run(db->db, time_msec());
             }
@@ -57,22 +137,12 @@ main(int argc, char *argv[])
                 update_remote_status(jsonrpc, remotes, all_dbs);
 
             /* step.3.3 wait events arriving */
-            ovsdb_jsonrpc_server_wait(jsonrpc);
-            unixctl_server_wait(unixctl);
-            SHASH_FOR_EACH(node, all_dbs) {
-                ovsdb_trigger_wait(db->db, time_msec());
-            }
-            if (run_process)
-                process_wait(run_process);
-
-            poll_timer_wait_until(status_timer);
 
             /* step.3.4 block until events arrive */
             poll_block();
         }
 
     /* step.4. clean and exit */
-    ...
 }
 ```
 
@@ -159,5 +229,8 @@ ovsdb_jsonrpc_session_got_request(struct ovsdb_jsonrpc_session *s,
 }
 ```
 
+## Summary
+
 ## References
 1. [ovsdb-server man page](https://manned.org/ovsdb-server/54d37166)
+1. [An OpenVSwitch Introduction From NSRC](https://www.google.com.hk/url?sa=t&rct=j&q=&esrc=s&source=web&cd=8&cad=rja&uact=8&ved=0ahUKEwiy6sCB_pXRAhWKnpQKHblDC2wQFgg-MAc&url=https%3A%2F%2Fnsrc.org%2Fworkshops%2F2014%2Fnznog-sdn%2Fraw-attachment%2Fwiki%2FAgenda%2FOpenVSwitch.pdf&usg=AFQjCNFg9VULvEmHMXQAsuTOE6XLH6WbzQ&sig2=UlVrLltLct2F_xjgnqZiOA)

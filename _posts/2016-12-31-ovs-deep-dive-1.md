@@ -41,7 +41,7 @@ The following diagram reveals more details:
                        +--------+
 ```
 
-Here, the `vswitch` module is further devided into many submodules/libraies:
+Here, the `vswitch` module is further devided into submodules/libraies:
 
 * `ovs-vswitchd`: `vswitchd` daemon
 * `ofproto`: library which abstracts ovs bridge
@@ -49,7 +49,7 @@ Here, the `vswitch` module is further devided into many submodules/libraies:
 * `netdev`: library which abstracts network devices
 * `netdev-provider`: OS- and hardware-specific interface to network devices
 
-We will explain these concepts and data structures.
+We explain these concepts and data structures in following sections.
 
 ## 2. Key Data Structures
 
@@ -79,13 +79,14 @@ We will explain these concepts and data structures.
                                       NIC
 
 ```
-<p align="center">Fig.2.1. OVS Architecture In Detail [2]</p>
+<p align="center">Fig.2.1. OVS Internal Architecture [2]</p>
 
-The key data structures in vswitchd include `ofproto`, `ofproto-provider`,
+The key data structures in OVS include `ofproto`, `ofproto-provider`,
 `netdev`, `netdev-provider`, etc. We explain them, respectively.
 
 ### 2.1 ofproto
 
+`struct ofproto` abstracts OpenFlow switches.
 An ofproto instance is just an OpenFlow switch (bridge).
 
 Data Structures (`ofproto/ofproto-provider.h`):
@@ -208,8 +209,35 @@ netdev_dpdk_register(void)
 
 ## 3. Call Flows
 
+<p align="center"><img src="/assets/img/ovs-deep-dive/vswitch_flow_diagram.jpg" width="35%" height="35%"></p>
+<p align="center">Fig.3.1 vswitchd flow diagram</p>
+
 Entrypoint of `vswitchd` is in `vswitchd/ovs-vswitchd.c`.
-Control flow of `vswitchd`:
+Logical control diagram of `ovs-vswitchd` is depicted in Fig.3.1.
+
+At the start, it initializes the bridge module, which is implemented in
+`vswitchd/bridge.c`. The bridge module will retrieve some configuration
+parameters from ovsdb.
+
+Then, `ovs-vswitchd` enters the main loop. In the first iteration of this loop,
+it initializes some libraries, include DPDK (if configured), and the most
+important, `ofproto` library. Note that these resources only init once.
+
+Then, each datapath will do its work by running `ofproto_type_run()`, which will
+call into the specific `type_run()` implementation of that datapath type.
+
+Then, each bridge will do its work by running `ofproto_run()`, which will call
+into the specific `run()` implementation of ofproto class.
+
+Then, `ovs-vswitchd` will handle IPC (JSON-RPC) messages, which comes from
+command line (`ovs-appctl`) and `ovsdb-server`.
+
+Then, `netdev_run()` is called to process all the various kinds of netdevs.
+
+After all the above work is done, the brige, unixctl server, and netdev modules
+will enter blocking state until new signals trigger.
+
+Corresponding psudo-code is shown below:
 
 ```c
 int main()
@@ -245,17 +273,11 @@ int main()
 }
 ```
 
-## 4. Submodules
+We explain some of the most important procedures in the following.
 
-## Summary
-1. Implementation terms
-  * `ofproto`: ovs bridge
-  * `ofproto provider`: interface to manage an specific OpenFlow-capable software/hardware switch
-  * `ofproto-dpif` - the built-in ofproto provider implementation in OVS
-  * `dpif` - a library servers for `ofproto-dpif`
+## 4. Procedures and Submodules
 
-
-## 2. bridge module init
+### 4.1. bridge module init
 Let's see what the `bridge_init()` really does:
 
 ```c
@@ -286,18 +308,19 @@ bridge_init(const char *remote)
 }
 ```
 
-***idl*** is short for **Interface Definition Language**.
+`ovs-vswitchd` first creates a connection to `ovsdb-server` using a module
+called ***OVSDB IDL***.
+***IDL*** is short for **Interface Definition Language**.
 The OVSDB IDL maintains an in-memory replica of a database. It issues RPC
 requests to an OVSDB database server and parses the responses, converting
 raw JSON into data structures that are easier for clients to digest.
 There is more explanations about OVSDB IDL in `ovsdb-idl.h`.
 
-`ovsdb_idl_create()` creates and returns a connection to database 'remote',
-the connection will maintain an in-memory replica of the remote database.
-
+`unixctl_command_register()` will register a single unixctl command, which
+allow controlling `ovs-vswitchd` over CLI. Each submodule 
+calls this method to register its subcommands and expose them to the outside.
 As we mentioned in the beginning, the command line tool to interact with
-vswitchd is `ovs-appctl`, so you could verify the commands registered in
-step.2:
+vswitchd is `ovs-appctl`, so you could verify the those registered commands:
 
 ```shell
 $ ovs-appctl --version
@@ -306,62 +329,35 @@ Compiled Mar 18 2016 15:00:11
 
 $ ovs-appctl bridge/dump-flows br-int
 duration=850872s, n_packets=2828, n_bytes=181182, priority=3,in_port=1,dl_vlan=1003,actions=mod_vlan_vid:1003,NORMAL
-duration=868485s, n_packets=107181, n_bytes=114634557, priority=2,in_port=1,actions=drop
 duration=868485s, n_packets=3886, n_bytes=222426, priority=1,actions=NORMAL
 table_id=23, duration=1019439s, n_packets=0, n_bytes=0, ,actions=drop
-table_id=254, duration=1019881s, n_packets=0, n_bytes=0, priority=0,reg0=0x3,actions=drop
 
 $ ovs-appctl qos/show br-int
 QoS not configured on br-int
 ovs-appctl: ovs-vswitchd: server returned an error
 ```
 
-In step.4, the submodules will also register their `ovs-appctl` commands that
-could be used to manage respective resources. This is a good place to get
-familiar with those commands.
+At the end of `bridge_init()`, some vswitchd submodules are initialized,
+including **LACP, BOND, CFM, BDF, NUMA, STP, LLDP, RSTP**, and `inotifiers`.
 
-## 3. bridge run
+The internal structure of `ovs-vswitchd` is shown in Fig.4.1.
+
+<p align="center"><img src="/assets/img/ovs-deep-dive/vswitchd_2.png" width="65%" height="65%"></p>
+<p align="center">Fig.4.1 vswitchd internal modules</p>
+
+### 4.2. ofproto library init
+
+ofproto maintains a registered ofproto class array `ofproto_classes`, in
+`ofproto/ofproto.c`:
+
 ```c
-void
-bridge_run(void)
-{
-    /* step.1. init all needed */
-    ovsdb_idl_run(idl); // handle RPC; sync with remote OVSDB
-    if_notifier_run(); // TODO: not sure what's doing here
-
-    if (cfg)
-        dpdk_init(&cfg->other_config);
-
-    /* init ofproto library.  This only runs once */
-    bridge_init_ofproto(cfg);
-      |
-      |--ofproto_init(); // resiter `ofproto/list` command
-           |
-           |--ofproto_class_register(&ofproto_dpif_class) // register default ofproto class
-           |--for (ofproto classes):
-                ofproto_classes[i]->init() // for ofproto_dpif_class, this will call the init() method in ofproto-dpif.c
-
-    /* step.2. datapath & bridge processing */
-    bridge_run__();
-      |
-      |--FOR_EACH (type, &types) /* Let each datapath type do the work that it needs to do. */
-      |    ofproto_type_run(type);
-      |
-      |--FOR_EACH (br, &all_bridges) /* Let each bridge do the work that it needs to do. */
-           ofproto_run(br->ofproto);
-               |
-               |--ofproto_class->run()
-               |--connmgr_run(connmgr, handle_openflow) // handles messages from OpenFlow controller
-
-    /* step.3. commit to ovsdb if needed */
-    ovsdb_idl_txn_commit(txn);
-}
+288 /* All registered ofproto classes, in probe order. */
+289 static const struct ofproto_class **ofproto_classes;
+290 static size_t n_ofproto_classes;
+291 static size_t allocated_ofproto_classes;
 ```
 
-### 3.2 preparations before bridges run
-
-ofproto maintains a registered ofproto class array `ofproto_classes`.
-In `ofproto_init()`, the default ofproto class `ofproto_dpif_class` will be
+In `ofproto_init()`, the built in ofproto class `ofproto_dpif_class` will be
 registered, which is defined and implemented in `ofproto/ofproto-dpif.c`:
 
 ```c
@@ -406,6 +402,8 @@ init(const struct shash *iface_hints)
 }
 ```
 
+Let's test one:
+
 ```shell
 # an ofproto instance is an ovs bridge, so to list all bridges, just issue:
 $ ovs-appctl ofproto/list
@@ -427,11 +425,21 @@ f9c76d49-891c-4670-b2fc-75aabca7a1a6
     ovs_version: "2.5.0"
 ```
 
-### 3.3. datapath and bridge processing
+Note that `ofproto` library only inits once.
 
-#### 3.3.1 datapath processing
-For `dpif`, `ofproto_type_run(type)` will call into `type_run()` defined
-in `ofproto/ofproto_dpif.c`.
+### 4.3. Datapath Processing
+
+<p style="color: red; font-weight:bold">TODO: this section needs to refine</p>
+
+After `ofproto` library is correctly initialized (which means all datapath
+types that will be used later have been registered), vswitchd will loop over
+the datapath types and let the datapath handle all the things it needs to,
+such as, process port changes in this datapath, handle upcall (sending
+mis-matched packets to OpenFlow controller). Datapath finishes these
+logics by implementing the callback `type_run()`.
+
+For `ofproto-dpif` - the built in datapath type, the `type_run()` is implemented
+in `ofproto/ofproto_dpif.c`:
 
 ```c
 static int
@@ -456,8 +464,12 @@ type_run(const char *type)
 }
 ```
 
-#### 3.3.2 bridge processing
-`ofproto_run()` is defined in `vswitch/bridge.c`:
+### 4.4. Bridge Processing
+
+<p style="color: red; font-weight:bold">TODO: this section needs to refine</p>
+
+In each loop, vswitchd also let each bridge handle all its affairs in
+`ofproto_run()`.  `ofproto_run()` is defined in `vswitch/bridge.c`:
 
 ```c
 int
@@ -487,8 +499,10 @@ ofproto_run(struct ofproto *p)
 }
 ```
 
-For `dpif`, the `p->ofproto_class->run(p)` calls into `run()` in
-`ofproto/ofproto-dpif.c`:
+In the above, the bridge first calls the `run()` method of this ofproto class,
+to let the ofproto class handle all its class-specific affairs. Then it proceeds
+to the handling of port changes and OpenFlow messages.  
+For `dpif`, the `run()` method is implemented in `ofproto/ofproto-dpif.c`:
 
 ```c
 static int
@@ -541,35 +555,83 @@ run(struct ofproto *ofproto_)
 
 ```
 
-### 3.4 commit ovsdb changes
+### 4.5 Sum Up: bridge_run()
 
-## 4. unixctl server run
-The unixctl server in ovs receives control commands that
-you typed in shell (`ovs-appctl <xxx>`). It opens a unix socket, and listens
-on it. Typically, the socket file is located at `/var/run/openvswitch/`, and
-one socket file for each bridge:
+```c
+void
+bridge_run(void)
+{
+    /* step.1. init all needed */
+    ovsdb_idl_run(idl); // handle RPC; sync with remote OVSDB
+    if_notifier_run(); // TODO: not sure what's doing here
 
-```shell
-$ ll /var/run/openvswitch
-total 8.0K
-drwxr-xr-x  2 root root  220 Dec 19 16:56 ./
-drwxr-xr-x 35 root root 1.1K Dec 21 16:58 ../
-srwxr-x---  1 root root    0 Dec 19 16:56 br-bond.mgmt=
-srwxr-x---  1 root root    0 Dec 19 16:56 br-bond.snoop=
-srwxr-x---  1 root root    0 Dec 19 16:56 br-int.mgmt=
-srwxr-x---  1 root root    0 Dec 19 16:56 br-int.snoop=
-srwxr-x---  1 root root    0 Dec 19 16:56 db.sock=
-srwxr-x---  1 root root    0 Dec 19 16:56 ovsdb-server.63347.ctl=
--rw-r--r--  1 root root    6 Dec 19 16:56 ovsdb-server.pid
-srwxr-x---  1 root root    0 Dec 19 16:56 ovs-vswitchd.63357.ctl=
--rw-r--r--  1 root root    6 Dec 19 16:56 ovs-vswitchd.pid
+    if (cfg)
+        dpdk_init(&cfg->other_config);
+
+    /* init ofproto library.  This only runs once */
+    bridge_init_ofproto(cfg);
+      |
+      |--ofproto_init(); // resiter `ofproto/list` command
+           |
+           |--ofproto_class_register(&ofproto_dpif_class) // register default ofproto class
+           |--for (ofproto classes):
+                ofproto_classes[i]->init() // for ofproto_dpif_class, this will call the init() method in ofproto-dpif.c
+
+    /* step.2. datapath & bridge processing */
+    bridge_run__();
+      |
+      |--FOR_EACH (type, &types) /* Let each datapath type do the work that it needs to do. */
+      |    ofproto_type_run(type);
+      |
+      |--FOR_EACH (br, &all_bridges) /* Let each bridge do the work that it needs to do. */
+           ofproto_run(br->ofproto);
+               |
+               |--ofproto_class->run()
+               |--connmgr_run(connmgr, handle_openflow) // handles messages from OpenFlow controller
+
+    /* step.3. commit to ovsdb if needed */
+    ovsdb_idl_txn_commit(txn);
+}
 ```
 
+### 4.6 Unixctl IPC Handling
+In each loop of `ovs-vswitchd`, `unixctl_server_run()` will be called once.
+In this method, the unixctl server first accepts connctions from IPC clients,
+then processes requests from each connection.
 
-## 5. netdev run
-Here the `netdev` is a general wrapper, which has different implementations on
-different platforms, e.g. BSD, linux, DPDK. These implementations are in
-`lib/netdev_xxx.c`.
+```c
+void
+unixctl_server_run(struct unixctl_server *server)
+{
+    // accept connections
+    for (i = 0; i < 10; i++) {
+        error = pstream_accept(server->listener, &stream);
+        if (!error) {
+            conn->rpc = jsonrpc_open(stream);
+        } else if (error == EAGAIN) {
+            break;
+    }
+
+    // process requests from each connection
+    LIST_FOR_EACH_SAFE (conn, next, node, &server->conns) {
+        run_connection(conn);
+          |
+          |--jsonrpc_run()
+          |    |--stream_send()
+          |--jsonrpc_recv(conn_rpc, &msg)
+               |--assert(msg.type == JSONRPC_REQUEST)
+               |--process_command(conn, msg) // format the received text to desired output
+                    |--registerd unixctl command callback
+    }
+}
+```
+
+<p style="color: red; font-weight:bold">TODO: add an example</p>
+
+### 4.7. netdev run
+In `netdev_run()`, vswitchd **loops over all the network devices, and updates
+the `netdev` information of any of them changed** (e.g. mtu, src/dst mac).
+The netdev processing in each loop is as follows:
 
 ```c
 /* Performs periodic work needed by all the various kinds of netdevs.
@@ -578,43 +640,87 @@ different platforms, e.g. BSD, linux, DPDK. These implementations are in
  * main poll loop. */
 void
 netdev_run(void)
-    OVS_EXCLUDED(netdev_mutex)
 {
     netdev_initialize();
 
     struct netdev_registered_class *rc;
     CMAP_FOR_EACH (rc, cmap_node, &netdev_classes) {
-        if (rc->class->run) {
+        if (rc->class->run)
             rc->class->run(rc->class);
-        }
     }
 }
 ```
 
-The `rc->class->run(rc->class)` will run into specific implementations, such
-as, on linux machine, it will call into `netdev_linux_run()` in
- `lib/netdev_linux.c`.
+`struct netdev` is a generic abstraction of network devices, defined in
+`lib/netdev-provider.h`:
+
+```c
+/* A network device (e.g. an Ethernet device).
+ *
+ * Network device implementations may read these members but should not modify
+ * them. */
+struct netdev {
+    char *name;                         /* Name of network device. */
+    struct netdev_class *netdev_class; /* Functions to control this device. */
+    ...
+    int n_txq;
+    int n_rxq;
+    int ref_cnt;                        /* Times this devices was opened. */
+    struct shash_node *node;            /* Pointer to element in global map. */
+};
+```
+
+Each specific type of network device needs to implement the methods in `struct
+netdev_class`, e.g. there are implementations for BSD, linux, DPDK. These
+implementations are in `lib/netdev_xxx.c`.
+
+```c
+struct netdev_class {
+    const char *type; /* Type of netdevs in this class, e.g. "system", "tap", "gre", etc. */
+    bool is_pmd;      /* If 'true' then this netdev should be polled by PMD threads. */
+
+    /* ## Top-Level Functions ## */
+    int (*init)(void);
+    void (*run)(const struct netdev_class *netdev_class);
+    void (*wait)(const struct netdev_class *netdev_class);
+
+    /* ## netdev Functions ## */
+    int (*construct)(struct netdev *);
+    void (*destruct)(struct netdev *);
+
+    ...
+
+    int (*rxq_recv)(struct netdev_rxq *rx, struct dp_packet_batch *batch);
+    void (*rxq_wait)(struct netdev_rxq *rx);
+};
+```
+
+`rc->class->run(rc->class)` will run into specific implementations, for linux
+`netdev`s, it will call into `netdev_linux_run()` in `lib/netdev_linux.c`. And
+what it does in the callback is **detecting linux network device changes through
+netlink, e.g. mtc, src/dst mac changes, and updates these changes to
+corresponding `netdev`**:
 
 ```c
 static void
 netdev_linux_run(const struct netdev_class *netdev_class OVS_UNUSED)
 {
-    if (netdev_linux_miimon_enabled()) {
+    if (netdev_linux_miimon_enabled())
         netdev_linux_miimon_run();
-    }
 
+    /* Returns a NETLINK_ROUTE socket listening for RTNLGRP_LINK,
+     * RTNLGRP_IPV4_IFADDR and RTNLGRP_IPV6_IFADDR changes */
     sock = netdev_linux_notify_sock();
 
     do {
-        error = nl_sock_recv(sock, &buf, false); // receive from userspace
+        error = nl_sock_recv(sock, &buf, false); // receive from kernel space
         if (!error) {
             if (rtnetlink_parse(&buf, &change)) {
                 netdev_linux_update(netdev, &change);
+                  |  // update netdev changes, e.g. mtu, src/dst mac, etc
+                  |- netdev_linux_changed(netdev, flags, 0);
             }
         } else if (error == ENOBUFS) {
-            nl_sock_drain(sock);
-
-            shash_init(&device_shash);
             netdev_get_devices(&netdev_linux_class, &device_shash);
             SHASH_FOR_EACH (node, &device_shash) {
                 get_flags(netdev_, &flags);
@@ -623,26 +729,43 @@ netdev_linux_run(const struct netdev_class *netdev_class OVS_UNUSED)
         }
     } while (!error);
 }
-
 ```
 
-### 5.1 netlink
-Netlink socket family is a Linux kernel interface used for inter-process
-communication (IPC) between both the kernel and userspace processes, and between
-different userspace processes, in a way similar to the Unix domain sockets.
-Similarly to the Unix domain sockets, and unlike INET sockets, Netlink
-communication cannot traverse host boundaries. However, while the Unix domain
-sockets use the file system namespace, Netlink processes are addressed by
+Netlink socket family is a Linux kernel interface used for **IPC
+between both the kernel and userspace processes, and between different userspace
+processes**. Similarly to the Unix domain sockets, and unlike INET sockets,
+Netlink communication cannot traverse host boundaries. However, while the Unix
+domain sockets use the file system namespace, Netlink processes are addressed by
 process identifiers (PIDs).  Netlink is designed and used for transferring
 miscellaneous networking information between the kernel space and userspace
-processes.
+processes[3].
 
-## 6. event loop: wait & block
+## Summary
+1. `ovs-vswitchd` flow diagram
 
-## 7. ingress flow diagram (TODO)
+    <p align="center"><img src="/assets/img/ovs-deep-dive/vswitch_flow_diagram.jpg" width="35%" height="35%"></p>
+    <p align="center">Fig.3.1 vswitchd flow diagram</p>
 
-## 8. egress flow diagram (TODO)
+1. `ovs-vswitchd` iteraction with other modules
+
+    <p align="center"><img src="/assets/img/ovs-deep-dive/vswitchd_2.png" width="65%" height="65%"></p>
+    <p align="center">Fig.4.1 vswitchd internal modules</p>
+
+1. Implementation terms
+  * `ofproto`: ovs bridge
+  * `ofproto provider`: interface to manage an specific OpenFlow-capable software/hardware switch
+  * `ofproto-dpif` - the built-in ofproto provider implementation in OVS
+  * `dpif` - a library servers for `ofproto-dpif`
+  * `netdev` - generic abstraction of network devices
+  * `netdev-provider` - interface to OS- and platform-specific network devices
+
+## 5. event loop: wait & block
+
+## 6. ingress flow diagram (TODO)
+
+## 7. egress flow diagram (TODO)
 
 ## References
 1. [An OpenVSwitch Introduction From NSRC](https://www.google.com.hk/url?sa=t&rct=j&q=&esrc=s&source=web&cd=8&cad=rja&uact=8&ved=0ahUKEwiy6sCB_pXRAhWKnpQKHblDC2wQFgg-MAc&url=https%3A%2F%2Fnsrc.org%2Fworkshops%2F2014%2Fnznog-sdn%2Fraw-attachment%2Fwiki%2FAgenda%2FOpenVSwitch.pdf&usg=AFQjCNFg9VULvEmHMXQAsuTOE6XLH6WbzQ&sig2=UlVrLltLct2F_xjgnqZiOA)
 1. [OVS Doc: Porting Guide](https://github.com/openvswitch/ovs/blob/master/Documentation/topics/porting.rst)
+1. [Wikipedia: netlink](https://en.wikipedia.org/wiki/Netlink)
