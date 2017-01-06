@@ -2,6 +2,8 @@
 layout: post
 title:  "OVS Deep Dive 2: OVSDB"
 date:   2017-01-01
+categories: technical
+tags: OVS
 ---
 
 <p class="intro"><span class="dropcap">I</span>n this OVS Deep Dive series,

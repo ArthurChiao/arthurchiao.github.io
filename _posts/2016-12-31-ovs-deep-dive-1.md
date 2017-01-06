@@ -2,6 +2,8 @@
 layout: post
 title:  "OVS Deep Dive 1: vswitchd"
 date:   2016-12-31
+categories: technical
+tags: OVS
 ---
 
 <p class="intro"><span class="dropcap">I</span>n this OVS Deep Dive series,
