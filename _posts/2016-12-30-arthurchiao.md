@@ -1,6 +1,7 @@
 ---
 layout: post
 title:  "This Is ArthurChiao"
+comments: true
 date:   2016-12-30
 ---
 

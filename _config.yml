@@ -27,6 +27,14 @@ social:
    facebook: profile.php?id=100014334455077
    email: arthurchiao@hotmail.com
 
+defaults:
+  -
+    scope:
+      path: ""
+      type: "pages"
+    values:
+      comments: false
+
 google_analytics: "UA-58263416-1"
 
 # development configurations
