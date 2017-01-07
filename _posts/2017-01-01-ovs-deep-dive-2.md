@@ -15,13 +15,13 @@ and implementations of OVS. The code is based on
 
 ## 1. OVSDB Overview
 
-The `ovsdb-server` program provides RPC interfaces to one or more Open
+`ovsdb-server` provides RPC interfaces to one or more Open
 vSwitch databases (OVSDBs). It supports JSON-RPC client connections over
 active or passive TCP/IP or Unix domain sockets.
 Each OVSDB file may be specified on the command line as database.  If
 none is specified, the default is `/etc/openvswitch/conf.db`.
 
-OVSDB holds switch-level configurations:
+OVSDB holds **switch-level** configurations:
 
 * bridges, interfaces, tunnel info
 * OVSDB and OpenFlow controller addresses
@@ -34,18 +34,20 @@ Custome database with nice properties:
 * weak references
 * garbage collection
 
-Speaks **OVSDB protocol** to manager and `ovs-vswitchd`.
-
-CLI tools:
+Speaks **OVSDB protocol** to manager and `ovs-vswitchd`. CLI tools:
 
 * `ovs-vsctl`: modifies DB by configuring `ovs-vswitchd`
 * `ovsdb-tool`: DB management, e.g. create/compact/convert DB, show DB logs
 
 ## 2. Key Data Structures
 
+In this section we will have a glance at some key data structures in ovsdb.
+
 * `ovsdb_schema`
 * `ovsdb`
 * `ovsdb_server`
+* `ovsdb_table_schema`
+* `ovsdb_table`
 
 ### 2.1 OVSDB
 ```c
@@ -104,9 +106,32 @@ is available in the `ovs-vswitchd.conf.db` man page.
 <p align="center"><img src="/assets/img/ovs-deep-dive/ovsdb_tables.jpg" width="45%" height="45%"></p>
 <p align="center">Fig.2.1. ovsdb core tables</p>
 
-## 3. Procedures and Submodules
+To list the contents of table `Port`:
 
-### 3.1. Entrypoint
+```shell
+$ ovs-vsctl list Port
+_uuid               : 47c10988-3fe7-4100-9cd6-733068658d2f
+bond_fake_iface     : false
+fake_bridge         : false
+interfaces          : [1ac53111-f844-4d78-be6c-82edfb4c485e]
+lacp                : []
+mac                 : []
+name                : "br0"
+other_config        : {}
+rstp_statistics     : {}
+rstp_status         : {}
+statistics          : {}
+status              : {}
+tag                 : []
+vlan_mode           : []
+
+...
+```
+
+## 3. Flow Diagram
+
+<p style="color: red; font-weight:bold">TODO: needs a flow diagram here</p>
+
 `ovsdb/ovsdb-server.c`:
 
 ```c
@@ -128,19 +153,19 @@ main(int argc, char *argv[])
             /* step.3.1 handle control messages from CLI and RPC */
             unixctl_server_run(unixctl);       // handle CLI commands (turn into RPC requests)
             ovsdb_jsonrpc_server_run(jsonrpc); // handle RPC requests
-            SHASH_FOR_EACH(node, all_dbs) {
-                ovsdb_trigger_run(db->db, time_msec());
-            }
-            if (run_process)
-                process_run();
 
-            /* step.3.2 update Manager status(es) every 2.5 seconds */
+            /* step.3.2 ovsdb session execute */
+            SHASH_FOR_EACH(node, all_dbs) {
+                ovsdb_trigger_run(db->db, time_msec()); // execute session, commit changes
+            }
+
+            /* step.3.3 update Manager status(es) every 2.5 seconds */
             if (time_msec() >= status_timer)
                 update_remote_status(jsonrpc, remotes, all_dbs);
 
-            /* step.3.3 wait events arriving */
+            /* step.3.4 wait events arriving */
 
-            /* step.3.4 block until events arrive */
+            /* step.3.5 block until events arrive */
             poll_block();
         }
 
@@ -148,9 +173,50 @@ main(int argc, char *argv[])
 }
 ```
 
-### 2. handle CLI commands
-unixctl server receives control messages from CLI through unix socket. The
-typical socket is located at `/var/run/openvswitch/`, with the name
+## 4. Procedures and Submodules
+
+### 4.1 Create OVSDB
+
+For each configured ovsdb file, `ovsdb-server` creates a `struct ovsdb`
+instance. This is done in `open_db()`.
+
+Then, it reconfigures `ovsdb-server`'s
+**remotes** by calling `reconfigure_remotes()`. A **remote** is an **active or passive
+stream connection method**, e.g. "pssl:" or "tcp:1.2.3.4".
+
+In the end, it calls to the following method to re-allocate and add new remotes:
+
+```c
+static struct ovsdb_jsonrpc_remote *
+ovsdb_jsonrpc_server_add_remote(struct ovsdb_jsonrpc_server *svr,
+                                const char *name,
+                                const struct ovsdb_jsonrpc_options *options)
+{
+    jsonrpc_pstream_open(name, &listener, options->dscp);
+
+    remote = xmalloc(sizeof *remote);
+    remote->server = svr;
+    remote->listener = listener;
+    ovs_list_init(&remote->sessions);
+
+    ovsdb_jsonrpc_session_create(remote, jsonrpc_session_open(name, true),
+                                      svr->read_only || remote->read_only);
+    return remote;
+}
+```
+
+**Register IPC Methods**
+
+After OVSDB is created, `ovsdb-server` will register its CLI subcommands to
+unixctl server. These subcommands could be executed with `ovsdb-server`.
+
+### 4.2 Handle IPC Messages
+
+In the while loop of `ovs-vswitchd`, `unixctl_server_run()` and
+`ovsdb_jsonrpc_server_run()` are called.
+
+unixctl server receives messages from unix IPC socket, which is
+located at `/var/run/openvswitch/` by default, with the name
 `ovsdb-server.<pid>.ctl`. It then converts the message into a RCP request,
 which will be handled by the jsonrpc server later.
 
@@ -167,13 +233,10 @@ unixctl_server_run(struct unixctl_server *server)
           |--jsonrpc_run()
           |    |--jsonrpc_send()
           |--jsonrpc_recv()
-          |--process_command(conn, msg)
+          |--process_command(conn, msg) // format output text
     }
 }
-
 ```
-
-### 3. handle RPC requests
 
 ```c
 void
@@ -190,7 +253,6 @@ ovsdb_jsonrpc_server_run(struct ovsdb_jsonrpc_server *svr)
           |
           |--LIST_FOR_EACH_SAFE (s, next, node, &remote->sessions)
                 ovsdb_jsonrpc_session_run(s);
-                  |
                   |--jsonrpc_sesion_recv()
                      msg->type:
                        case: ovsdb_jsonrpc_session_got_request(s, msg);
@@ -209,8 +271,6 @@ static void
 ovsdb_jsonrpc_session_got_request(struct ovsdb_jsonrpc_session *s,
                                   struct jsonrpc_msg *request)
 {
-    struct jsonrpc_msg *reply;
-
     switch(request->method) {
     case "transact"            if (!reply) reply = execute_transaction(s, db, request);
     case "monitor"             if (!reply) reply = ovsdb_jsonrpc_monitor_create();
@@ -230,6 +290,26 @@ ovsdb_jsonrpc_session_got_request(struct ovsdb_jsonrpc_session *s,
     }
 }
 ```
+
+### 4.3 Execute OVSDB Session
+
+```c
+void
+ovsdb_trigger_run(struct ovsdb *db, long long int now)
+{
+    LIST_FOR_EACH_SAFE (t, next, node, &db->triggers) {
+        if (run_triggers || now - t->created >= t->timeout_msec) {
+            ovsdb_trigger_try(t, now);
+              |--ovsdb_execute(t->db, t->session, t->request, ...)
+                  |--ovsdb_txn_create()
+                  |--parse and execute operations
+                  |--ovsdb_txn_commit()
+        }
+    }
+}
+```
+
+## 5. OVSDB Session/Transaction Example (TODO)
 
 ## Summary
 
