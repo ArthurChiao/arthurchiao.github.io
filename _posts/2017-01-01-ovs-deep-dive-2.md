@@ -130,7 +130,8 @@ vlan_mode           : []
 
 ## 3. Flow Diagram
 
-<p style="color: red; font-weight:bold">TODO: needs a flow diagram here</p>
+<p align="center"><img src="/assets/img/ovs-deep-dive/ovsdb_flow_diagram.jpg" width="25%" height="25%"></p>
+<p align="center">Fig.3.1. ovsdb flow diagram</p>
 
 `ovsdb/ovsdb-server.c`:
 

@@ -58,3 +58,68 @@ srwxr-x---  1 root root    0 Dec 19 16:56 ovs-vswitchd.63357.ctl=
 
 ## CLI tools
 in `lib/`.
+
+
+### route changes
+
+```c
+ * Device Change Notification
+ * ==========================
+ *
+ * Minimally, implementations are required to report changes to netdev flags,
+ * features, ethernet address or carrier through connectivity_seq. Changes to
+
+/* Whenever the route-table change number is incremented,
+ * netdev_vport_route_changed() should be called to update
+ * the corresponding tunnel interface status. */
+static void
+netdev_vport_route_changed(void)
+{
+    struct netdev **vports;
+    size_t i, n_vports;
+
+    vports = netdev_get_vports(&n_vports);
+    for (i = 0; i < n_vports; i++) {
+        struct netdev *netdev_ = vports[i];
+        struct netdev_vport *netdev = netdev_vport_cast(netdev_);
+
+        ovs_mutex_lock(&netdev->mutex);
+        /* Finds all tunnel vports. */
+        if (ipv6_addr_is_set(&netdev->tnl_cfg.ipv6_dst)) {
+            if (tunnel_check_status_change__(netdev)) {
+                netdev_change_seq_changed(netdev_);
+            }
+        }
+        ovs_mutex_unlock(&netdev->mutex);
+
+        netdev_close(netdev_);
+    }
+
+    free(vports);
+}
+
+```
+
+***What's the relationship of netdev provider and dpif provider?***
+
+## RX Process
+
+```c
+dpif_netdev_run()
+  |--for (rxq)
+       dp_netdev_process_rxq_port()
+         |--netdev_rxq_recv()
+              |--rx->netdev->netdev_class->rxq_recv(rx, batch)
+                   |  //implementation specific
+                   |--netdev_linux_rxq_recv_sock()
+                   |--netdev_linux_rxq_recv_tap()
+                   |--netdev_linux_rxq_recv()
+                   |
+                   |--netdev_dummy_rxq_recv()
+                   |
+                   |--netdev_bsd_rxq_recv()
+                   |
+                   |--netdev_dpdk_rxq_recv()
+                   |--netdev_dpdk_vhost_rxq_recv()
+```
+
