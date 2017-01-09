@@ -21,7 +21,7 @@ however, the default connection fashion has been changed to OVS patch port.
 <p align="center"><img src="/assets/img/ovs-deep-dive/ovs-compute-node.png" width="80%" height="80%"></p>
 <p align="center">Fig.1.1. Network On OpenStack Compute Node[1])</p>
 
-According to some materials[2,3], the reason of switchding from
+According to some materials[2,3][6][7], the reason of switching from
 linux veth pair to OVS patch port is for performance consideration. Apart from
 this, at least for OpenStack, the patch port brings another great benefit:
 traffic of instances (VMs) will not get down during OVS neutron agent restart -
@@ -46,7 +46,7 @@ We need to get familir with following data structures before moving on:
 
 ### 2.1. `dpif` and `dpif_class`
 
-`dpif` is short for **datapth interface**, and is defined in
+`dpif` is an abbreviaion of **datapth interface**, and is defined in
 `lib/dpif-provider.h`. Each implementation of a datapath interface needs to
 define the callbacks in `dpif_class`. The two structures are shown below:
 
@@ -88,7 +88,7 @@ struct dpif_class {
 };
 ```
 <p align="center"><img src="/assets/img/ovs-deep-dive/dpif_providers.png" width="75%" height="75%"></p>
-<p align="center">Fig.2.1 dpif providers (TODO: use dashed box for interfaces)</p>
+<p align="center">Fig.2.1 dpif providers</p>
 
 **All types of `dpif` classes:**
 
@@ -271,7 +271,7 @@ from patch port to the peer or other ports.
 
 ### 3.3 Patch Port Performance
 
-As has been pointed out in [2][3], there is great performance boost in OpenStack
+As has been pointed out in [2][3][6][7], there is great performance boost in OpenStack
 compute node when replacing linux veth pair with OVS patch port for connections
 between `br-int` and `br-phy`. Then, the question is: where the performance
 increase comes from?
@@ -292,3 +292,5 @@ bridge".
 3. [datasheet: Kilo vs Liberty - OVS Agent restart outage](https://docs.google.com/spreadsheets/d/1ZGra_MszBlL0fNsFqd4nOvh1PsgWu58-GxEeh1m1BPw/edit#gid=1328396036)
 4. [patch: Graceful OVS Agent Restart](https://bugs.launchpad.net/openstack-manuals/+bug/1487250)
 5. [discuss: Restarting neutron openvswitch agent causes network hiccup by throwing away all flows](https://bugs.launchpad.net/neutron/+bug/1383674)
+6. [Switching Performance - Chaining OVS bridges](http://www.opencloudblog.com/?p=386)
+7. [Switching Performance – Connecting Linux Network Namespaces](http://www.opencloudblog.com/?p=96)
