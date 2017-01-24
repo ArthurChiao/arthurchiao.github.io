@@ -12,11 +12,11 @@ and implementations of OVS. The code is based on
 </p>
 
 ## 1. Datapath
-Traditionally, datapath is the kernel module of ovs, and it is
-kept as small as possible. Apart from
-the datapath, other components are implemented in userspace, and have little
-dependences with the underlying systems. That means, porting ovs
-to another OS or platform is simple (in concept): just porting or
+Datapath is the forwarding plane of OVS. Initially, it is implemented as a
+kernel module, and kept as small as possible. Apart from the datapath,
+other components are implemented in userspace, and have little dependences with
+the underlying systems. That means, porting ovs to another OS or platform is
+simple (in concept): just porting or
 re-implement the
 kernel part to the target OS or platform. As an example of this, ovs-dpdk is
 just an effort to run OVS over Intel [DPDK](dpdk.org). For those who do, there
@@ -29,6 +29,10 @@ you could choose from: **kernel datapath and userspace datapath**.
 
 <p align="center"><img src="/assets/img/ovs-deep-dive/dpif_providers.png" width="75%" height="75%"></p>
 <p align="center">Fig.1.1 Two Types of Datapaths</p>
+
+Reference [5], which discusses OVS hardware offloading, reveals even more
+datapath types (enterprise solution). In this article, we only focus on kernel
+datapath and userspace datapath, which are provided in stock openvswitch.
 
 ### 1.1 Kernel Datapath
 
@@ -175,7 +179,7 @@ This time, TCP conncection will be established right away:
 <p align="center">Fig.1.5 TCP Connection Establishment: TX offload diabled in A and B</p>
 
 **Why does Userspace Datapath not support TX offloading?** As far as I could
-figure out[4], Userspace Datapath is highly optimized which
+figure out[4,5], Userspace Datapath is highly optimized which
 conflicts with TX offloading. Some optimizations have to be sacrificed if
 supporting TX offloading. However, the benefits is not obvious, or [even
 worse](https://mail.openvswitch.org/pipermail/ovs-dev/2016-August/322058.html).
@@ -300,6 +304,7 @@ struct vport {
 
 ## References
 1. [OVS Doc: Open vSwitch Datapath Development Guide](https://github.com/openvswitch/ovs/blob/master/Documentation/topics/datapath.rst)
-1. [OVS Doc: Porting Guide](https://github.com/openvswitch/ovs/blob/master/Documentation/topics/porting.rst)
-1. [ovs bridge breaking TCP between two virtio net devices when checksum offload on](https://bugs.launchpad.net/ubuntu/+source/openvswitch/+bug/1629053)
-1. [netdev-dpdk: Enable Rx checksum offloading	feature on DPDK physical ports](https://mail.openvswitch.org/pipermail/ovs-dev/2016-August/322058.html)
+2. [OVS Doc: Porting Guide](https://github.com/openvswitch/ovs/blob/master/Documentation/topics/porting.rst)
+3. [ovs bridge breaking TCP between two virtio net devices when checksum offload on](https://bugs.launchpad.net/ubuntu/+source/openvswitch/+bug/1629053)
+4. [netdev-dpdk: Enable Rx checksum offloading	feature on DPDK physical ports](https://mail.openvswitch.org/pipermail/ovs-dev/2016-August/322058.html)
+5. [OVS Hardware Offload Discuss Panel](http://openvswitch.org/support/ovscon2016/7/1450-stringer.pdf)
