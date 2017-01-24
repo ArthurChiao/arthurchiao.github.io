@@ -7,16 +7,16 @@ title: About ArthurChiao
 
 * Software Developer
 
-## Work For
+### Work For
 
 1. Ericsson (2014-2016)
 1. Ctrip (2016-)
 
 ### Focus & Interests
 
-* Networking
-* Cloud
-* SDN
+* Networking, SDN
+* Cloud, Virtualization
+* Distributed System
 * Multimedia Processing
 
 ### Open Source Contributions
