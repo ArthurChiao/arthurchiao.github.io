@@ -7,8 +7,19 @@ title: About ArthurChiao
 
 * Software Developer
 
-### Focus
+## Work For
+
+1. Ericsson (2014-2016)
+1. Ctrip (2016-)
+
+### Focus & Interests
 
 * Networking
+* Cloud
+* SDN
+* Multimedia Processing
 
-* Cloud Computing
+### Open Source Contributions
+
+* [owncloud/client](https://github.com/owncloud/client)
+* [x265](https://bitbucket.org/multicoreware/x265/wiki/Home)
