@@ -23,16 +23,16 @@ just an effort to run OVS over Intel [DPDK](dpdk.org). For those who do, there
 is an official [porting guide](https://github.com/openvswitch/ovs/blob/master/Documentation/topics/porting.rst)
 for porting OVS to other platforms.
 
-In fact, in recent versions of OVS, there are already two type of datapath that
-you could choose from: **kernel datapath and userspace datapath** (i'm not sure
-since which version, but according to my tests, 2.3+ support this).
+In fact, in recent versions (I'm not sure since which version, but according to
+my tests, 2.3+ support this) of OVS, there are already two type of datapath that
+you could choose from: **kernel datapath and userspace datapath**.
 
 <p align="center"><img src="/assets/img/ovs-deep-dive/dpif_providers.png" width="75%" height="75%"></p>
 <p align="center">Fig.1.1 Two Types of Datapaths</p>
 
 ### 1.1 Kernel Datapath
 
-This is the default datapath type. It needs a kernel module called
+This is the default datapath type. It needs a kernel module
 `openvswitch.ko` to be loaded:
 
 ```shell
@@ -44,48 +44,47 @@ If it is not loaded, you need to install it manually:
 
 ```shell
 $ find / -name openvswitch.ko
-<path>/openvswitch.ko
+/usr/lib/modules/3.10.0-514.2.2.el7.x86_64/kernel/net/openvswitch/openvswitch.ko
 
 $ modprobe openvswitch.ko
-$ insmod <path>/openvswitch.ko
+$ insmod /usr/lib/modules/3.10.0-514.2.2.el7.x86_64/kernel/net/openvswitch/openvswitch.ko
 $ lsmod | grep openvswitch
 ```
 
 Creating an OVS bridge:
 
 ```shell
-$ ovs-vsctl add-br br-test
+$ ovs-vsctl add-br br0
 
 $ ovs-vsctl show
 05daf6f1-da58-4e01-8530-f6ec0d51b4e1
-    Bridge br-test
-        Port br-test
-            Interface br-test
+    Bridge br0
+        Port br0
+            Interface br0
                 type: internal
-    ovs_version: "2.5.0"
 ```
 
 ### 1.2 Userspace Datapath
 
 Userspace datapath differs from the traditional datapath in that its packet forwarding and processing
-are done in userspace. Among those, netdev-dpdk is one of the most popular
-implementations.
+are done in userspace. Among those, **netdev-dpdk** is one of the implementations, which is
+supported since OVS 2.4 (but still marked as 'experimental').
 
 Commands for creating an OVS bridge using userspace datapath:
 
 ```shell
-$ ovs-vsctl add-br br-test -- set Bridge br-test datapath_type=netdev
+$ ovs-vsctl add-br br0 -- set Bridge br0 datapath_type=netdev
 ```
 
-As shown, you must specify the `datapath_type` to be `netdev` when creating a
+Note that you must specify the `datapath_type` to be `netdev` when creating a
 bridge, otherwise you will get an error like ***ovs-vsctl: Error detected while
-setting up 'br-test'***.
+setting up 'br0'***.
 
-## 1.3 Datapath and TX Offloading
+### 1.3 Datapath and TX Offloading
 
 For performance considerations, instances (VMs, containers, etc) often offload
 the checksum job (TCP, UDP checksums, etc) to physical NICs. You could check
-the offload flags of interface with `ethtool`:
+the offload settings with `ethtool`:
 
 ```shell
 $ ethtool -k eth0
@@ -113,51 +112,79 @@ busy-poll: off [fixed]
 hw-tc-offload: off [fixed]
 ```
 
-In typical deployments, instances connect its virtual device (NIC) to OVS bridge through 
-veth pair, and OVS also manages one or more physical NICs:
+In typical deployments, instances connect its virtual devices (vNICs) to OVS
+bridge through veth pair, and OVS also manages one or more physical NICs:
 
-```
-(VM) tap <---> veth -- OVS -- phy_NIC
-```
+<p align="center"><img src="/assets/img/ovs-deep-dive/ovs-instances-attached.jpg" width="45%" height="45%"></p>
+<p align="center">Fig.1.2 OVS Deployment</p>
 
-When the TX offload is enabled on the VM's tap device (usual case), OVS will pass
-packets to physical NIC for checksum calculations, the passing is done through
-the kernel module. So in this scenario, everything goes ok.
+When TX offload is enabled on instance's tap devices (default setting), OVS will
+utilize physical NICs for checksum calculating for each packet sent out from
+instance, and this is handled by the kernel module `openvswitch.ko`.
 
-A Problem occurs when the OVS bridge uses Userspace Datapath. I'm not sure
-if all userspace datapath implementations do not support TX offloading, but
-according to my tests, at least OVS 2.3+ Userspace datapath
-does not support. The phenomenon of this is that two instances connected with
-OVS could not establish TCP connection, but `ping` and `UDP` connections are OK.
+**A problem occurs when TX offloading is enabled while OVS bridge uses Userspace
+Datapath: Userspace Datapath does not support TX offloading**, but what's
+more tricky is that OVS doesn't complaining or report any errors in log for
+this configuration.
+I'm not sure if all
+userspace datapath implementations do not support TX offloading, but according
+to my tests, at least OVS 2.3~2.7 Userspace datapath does not support. The
+phenomenon of this problem is that **instances connected with OVS could not establish
+TCP connection**, while L3 (e.g `ping`) and `UDP`
+connections are OK.
 
-`tcpdump -vv -i <tap of dst instance>`, we could find that the first TCP packets
-arrives destination instance B, but is detected as `TCP checksum` error, and discarded by
-B. This is because the source instance A enables TCP offloading,
+Let's see an example: ssh from instance A to instance B, where A and B
+connect to the same OVS bridge and the bridge uses Userspace datapath.
+
+With `tcpdump -vv -i tap_b`, we could see that the first TCP packet
+arrives instance B, but is marked as `TCP checksum` error and discarded by
+B. This is because A enables TCP TX offloading,
 so the packet is sent to OVS with faked TCP checksum; while OVS with Userspace
-Datapath do not do TCP checksum, so the packet is sent out (or just forwarded to)
-with wrong checksum; on receiving this packet, B detects
-that the TCP checksum is incorrect, then discards it directly.
-Thus the TCP connection could never be established.
+Datapath does not do TCP checksum, the packet is sent out (or just forwarded to
+B)
+with wrong checksum; on receiving this packet, B calculates the TCP checksum
+itself and
+finds that the TCP checksum field in packet is incorrect, then discards it directly.
+This is shown in Fig.1.3.
 
-If we turn off the TCP TX offload on A, we could see that the first
-TCP packet is correctly received by B; and then, an ACK packet
-is sent from B to A. However, A discards the ACK packet because of
-the same reason: TCP checksum incorrect.
+<p align="center"><img src="/assets/img/ovs-deep-dive/tcp_conn_1.png" width="60%" height="60%"></p>
+<p align="center">Fig.1.3 TCP Connection Establishment: TX offload enabled on A and B</p>
 
-Further, turn off TCP TX offload in B. Then TCP conncection will be established
-right away.
+If we turn off TCP TX offload on A:
 
-Why does Userspace Datapath does not support TX offloading? As far as I could
-figure out[4], it's because Userspace Datapath is highly optimized which
-conflicts with TX offloading. Some optimizations have to be turned off for
+```shell
+$ ethtool -K eth0 tx off
+```
+
+the first TCP packet will be correctly received by B; then, an ACK packet
+is sent from B to A. On receiving, A discards this ACK packet because of
+the same reason: TCP checksum incorrect, as shown in Fig.1.3.
+
+<p align="center"><img src="/assets/img/ovs-deep-dive/tcp_conn_2.png" width="60%" height="60%"></p>
+<p align="center">Fig.1.4 TCP Connection Establishment: TX offload enabled B</p>
+
+Further, turn off TX offload in B:
+
+```shell
+$ ethtool -K eth0 tx off
+```
+
+This time, TCP conncection will be established right away:
+
+<p align="center"><img src="/assets/img/ovs-deep-dive/tcp_conn_3.png" width="60%" height="60%"></p>
+<p align="center">Fig.1.5 TCP Connection Establishment: TX offload diabled in A and B</p>
+
+**Why does Userspace Datapath not support TX offloading?** As far as I could
+figure out[4], Userspace Datapath is highly optimized which
+conflicts with TX offloading. Some optimizations have to be sacrificed if
 supporting TX offloading. However, the benefits is not obvious, or [even
 worse](https://mail.openvswitch.org/pipermail/ovs-dev/2016-August/322058.html).
-TX offloading could achieves ~10% perfomance increase, so it is enabled by
-default.
+RX offloading could achieve ~10% perfomance increase, so in Userspace Datapth,
+RX offloading is enabled by default, but TX offloading is not supported.
 
 In summary, **if deploy OVS with DPDK enabled, you have to turn off TX offload
-flags in your instances** in which case the instance itself will take care of
-the checksum calculating.
+flags in your instances**. In this case, instances themselves will take care
+of the checksum calculating.
 
 ### Official Doc
 The Open vSwitch kernel module allows flexible userspace control over
