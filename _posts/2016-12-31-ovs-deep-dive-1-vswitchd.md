@@ -83,8 +83,26 @@ We explain these concepts and data structures in following sections.
 ```
 <p align="center">Fig.2.1. OVS Internal Architecture [2]</p>
 
-The key data structures in OVS include `ofproto`, `ofproto-provider`,
-`netdev`, `netdev-provider`, etc. We explain them, respectively.
+An OVS bridges manages two types of resources:
+
+* the forwarding plane it controls (`datapath`)
+* the (physical and virtual) network devices attached to it (`netdev`)
+
+Key data structures: 
+
+* OVS bridge implementation
+
+  `ofproto`, `ofproto-provider`
+
+* for `datapath` management
+
+  `dpif`, `dpif-provider`
+
+* for network devices management
+  
+  `netdev`, `netdev-provider`
+  
+We explain them, respectively.
 
 ### 2.1 ofproto
 
@@ -148,6 +166,9 @@ struct ofport {
 
 ### 2.2 ofproto-provider
 
+<p align="center"><img src="/assets/img/ovs-deep-dive/ofproto_providers.png"></p>
+<p align="center">Fig.2.1. OVS Providers</p>
+
 **ofproto class structure, to be defined by each ofproto (ovs bridge)
 implementation.**
 
@@ -173,23 +194,60 @@ vSwitch architecture.
 
 ### 2.3 netdev
 
-The Open vSwitch library, in `lib/netdev.c`, that **abstracts interacting with
+The Open vSwitch library, defined in `lib/netdev-provider.h`, implemented in
+`lib/netdev.c`, that **abstracts interacting with
 network devices**, that is, Ethernet interfaces.
 
 Every port on a switch must have a corresponding netdev that must minimally
-support a few operations, such as the ability to read the netdev's MTU.
-The Porting section of the documentation has more information in the
-"Writing a netdev Provider" section.
+support a few operations, such as the ability to read the netdev's MTU, get the
+number of RX and TX queues.
 
 The netdev library is a thin
 layer over "netdev provider" code, explained further below.
 
 ### 2.4 netdev-provider
 
+<p align="center"><img src="/assets/img/ovs-deep-dive/netdev_providers.png"></p>
+<p align="center">Fig.2.2. netdev providers</p>
+
 A **netdev provider** implements an **OS- and hardware-specific interface to
-"network devices"**, e.g. eth0 on Linux. **Open vSwitch must be able to open
+"network devices"**, e.g. and ethernet device. **Open vSwitch must be able to open
 each port on a switch as a netdev**, so you will need to implement a
 "netdev provider" that works with your switch hardware and software.
+
+Fig.2.2 depicts the `netdev` and `netdev providers` in OVS. The detailed
+`netdev` provider types are listed below:
+
+**All types of `netdev` classes**:
+
+* linux netdev (`lib/netdev-linux.c`, for linux platform)
+  - `system` - `netdev_linux_class`
+  - `tap` - `netdev_tap_class`
+  - `internal` - `netdev_internal_class`
+* bsd netdev (`lib/netdev-bsd.c`, for bsd platform)
+  - `system` - `netdev_bsd_class`
+  - `tap` - `netdev_tap_class`
+* windows netdev (for windows platform)
+  - `system` - `netdev_windows_class`
+  - `internal` - `netdev_internal_class`
+* dummy netdev (`lib/netdev-dummy.c`)
+  - `dummy` - `dummy_class`
+  - `dummy-internal` - `dummy_internal_class`
+  - `dummy-pmd` - `dummy_pmd_class`
+* vport netdev (`lib/netdev-vport.c`, a vport holds a reference to a port in
+  datapath, the latter could be opened with `netdev_open()`)
+  - tunnel class:
+    - `geneve`
+    - `gre`
+    - `vxlan`
+    - `lisp`
+    - `stt`
+  - `patch` - `patch_class`
+* dpdk netdev
+  - `dpdk_class`
+  - `dpdk_ring_class`
+  - `dpdk_vhost_class`
+  - `dpdk_vhost_client_class`
 
 For example, the community is experimenting running OVS over DPDK, which
 performs high performance packet processing in userspace. In this solution, the
@@ -208,6 +266,9 @@ netdev_dpdk_register(void)
     netdev_register_provider(&dpdk_vhost_client_class);
 }
 ```
+
+The Porting section of the documentation has more information in the
+"Writing a netdev Provider" section.
 
 ## 3. Call Flows
 

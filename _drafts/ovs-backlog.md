@@ -123,3 +123,90 @@ dpif_netdev_run()
                    |--netdev_dpdk_vhost_rxq_recv()
 ```
 
+
+## 2. Data Structures
+
+We need to get familir with following data structures before moving on:
+
+* `dpif` - OVS datapath interface, wraps over `dpif_class`
+* `dpif_class` - base `dpif provider` structure
+* `netdev_class` - base netdev provider structure
+* `vport_class` - a kind of netdev provider (implementation)
+
+### 2.1. `dpif` and `dpif_class`
+
+`dpif` is an abbreviaion of **datapth interface**, and is defined in
+`lib/dpif-provider.h`. Each implementation of a datapath interface needs to
+define the callbacks in `dpif_class`. The two structures are shown below:
+
+```c
+/* Open vSwitch datapath interface.
+ *
+ * This structure should be treated as opaque by dpif implementations. */
+struct dpif {
+    const struct dpif_class *dpif_class;
+    char *base_name;
+    char *full_name;
+    uint8_t netflow_engine_type;
+    uint8_t netflow_engine_id;
+};
+
+/* Datapath interface class structure, to be defined by each implementation of
+ * a datapath interface. */
+struct dpif_class {
+    /* Type of dpif in this class, e.g. "system", "netdev", etc.
+     *
+     * One of the providers should supply a "system" type, since this is
+     * the type assumed if no type is specified when opening a dpif. */
+    const char *type;
+
+    int (*init)(void);
+    int (*open)(const struct dpif_class *dpif_class, const char *name, bool create, struct dpif **dpifp);
+
+    ...
+
+    bool (*run)(struct dpif *dpif); /* Performs periodic work needed by 'dpif', if any is necessary. */
+    void (*wait)(struct dpif *dpif);
+    int (*port_add)(struct dpif *dpif, struct netdev *netdev, odp_port_t *port_no);
+    int (*port_poll)(const struct dpif *dpif, char **devnamep);
+    struct dpif_flow_dump *(*flow_dump_create)(const struct dpif *dpif, bool terse);
+
+    /* Polls for an upcall from 'dpif' for an upcall handler. */
+    int (*recv)(struct dpif *dpif, uint32_t handler_id,
+                struct dpif_upcall *upcall, struct ofpbuf *buf);
+};
+```
+<p align="center"><img src="/assets/img/ovs-deep-dive/dpif_providers.png" width="75%" height="75%"></p>
+<p align="center">Fig.2.1 dpif providers</p>
+
+**All types of `dpif` classes:**
+
+* `system`
+  - default `dpif` type
+* `netdev`
+  - `dpif_netdev_class`
+  - implemented in `lib/dpif-netdev.c`
+* `netlink`
+  - `dpif_netlink_class`
+  - implemented in `lib/dpif-netlink.c`
+
+calls `dpif_init()` to init the classes.
+
+
+The biggest user of this construct might be libpcap. Issuing a high-level
+filter command like `tcpdump -i em1 port 22` passes through the libpcap
+internal compiler that generates a structure that can eventually be loaded
+via SO_ATTACH_FILTER to the kernel. `tcpdump -i em1 port 22 -ddd`
+displays what is being placed into this structure[8].
+
+`tcpdump` uses `libpcap` for packet capturing, and `libpcap` translates user
+specified high-level filter commands (e.g. `tcpdump -i eth0 'icmp'`) into BPF code.
+BPF[8] works with kernel stack. So if your
+packet does not go through kernel network stack, you could not get any packets
+captured. When a packet goes through a patch port, is is just forwared between
+OVS datapath ports (to be specific, the `patch_class` vport type), and the
+packet will not go through kernel stack, so tcpdump is out-of-work.
+
+BPF allows a user-space program to attach a filter onto any socket and
+allow or disallow certain types of data to come through the socket. 
+
