@@ -239,16 +239,16 @@ importantly, since `internal port` is L3-accessible from outside and
 socket-based (thus kernel stack based), it could be
 used as virtual NIC, for VM or containers.
 
-As containers have their own network namespace, we could not connect the vNIC
-(eth0 in container) of a container to OVS directly. The typical way to connect
-to OVS is through veth pair: create a veth pair and connect one end with
-container, and the other end with OVS.
+As containers have their own network namespaces, we could not connect container
+to OVS directly, the latter works in the default namespace. The typical way to
+solve this is to create a veth pair: move one end to container, and the other
+ end attached to OVS.
 
 <p align="center"><img src="/assets/img/ovs-deep-dive/container_default_connection.png"></p>
 <p align="center">Fig.4.1 Connect to OVS via veth pair</p>
 
-This is simple and straitforward in concept, but will suffer some performance
-issues, as a veth pair is added between container and OVS. Could container
+This is simple and straitforward in concept, but will suffer from performance
+issues. Could container
 be connected to OVS directly? The answer is yes! We will use `internal port` to
 accomplish this.
 

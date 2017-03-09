@@ -4,13 +4,6 @@ title:  "OVS Deep Dive 5: Datapath and TX Offloading"
 date:   2017-03-08
 ---
 
-<p class="intro"><span class="dropcap">I</span>n this OVS Deep Dive series,
-I will walk through the <a href="https://github.com/openvswitch/ovs">Open vSwtich</a>
- source code to look into the core designs
-and implementations of OVS. The code is based on
- <span style="font-weight:bold">ovs 2.6.1</span>.
-</p>
-
 ## 1. TX Offloading
 
 For performance considerations, instances (VMs, containers, etc) often offload
@@ -43,10 +36,10 @@ busy-poll: off [fixed]
 hw-tc-offload: off [fixed]
 ```
 
-In typical deployments, instances connect its virtual devices (vNICs) to OVS
-bridge through veth pair, and OVS also manages one or more physical NICs:
+Fig.1.1 is a deployment graph, OVS manages both physical ports (NICs) and
+virtual ports (vNIC) of VMs.
 
-<p align="center"><img src="/assets/img/ovs-deep-dive/ovs-instances-attached.jpg" width="45%" height="45%"></p>
+<p align="center"><img src="/assets/img/ovs-deep-dive/ovs-instances-attached.jpg" width="50%" height="50%"></p>
 <p align="center">Fig.1.1 OVS Deployment</p>
 
 When TX offload is enabled on instance's tap devices (default setting), OVS will
@@ -112,7 +105,7 @@ TCP checksum and finds that the TCP checksum field in packet is incorrect, then
 discards it directly.  A retransmits the packet after timeout (1 second), but
 the packet still get dropped by B. This process is depicted in Fig.2.1.
 
-<p align="center"><img src="/assets/img/ovs-deep-dive/tcp_conn_1.png" width="60%" height="60%"></p>
+<p align="center"><img src="/assets/img/ovs-deep-dive/tcp_conn_1.png" width="70%" height="70%"></p>
 <p align="center">Fig.2.1 TCP Connection Establishment: TX offload enabled on A and B</p>
 
 ---
@@ -153,7 +146,7 @@ the first TCP packet would be correctly received by B; then, an **SYNC+ACK** pac
 is sent from B to A. On receiving, A discards this ACK packet because of
 the same reason: TCP checksum incorrect, as shown in Fig.2.2.
 
-<p align="center"><img src="/assets/img/ovs-deep-dive/tcp_conn_2.png" width="60%" height="60%"></p>
+<p align="center"><img src="/assets/img/ovs-deep-dive/tcp_conn_2.png" width="70%" height="70%"></p>
 <p align="center">Fig.2.2 TCP Connection Establishment: TX offload enabled B</p>
 
 ---
@@ -166,7 +159,7 @@ root@instance-B: ethtool -K eth0 tx off
 
 This time, TCP conncection will be established right away:
 
-<p align="center"><img src="/assets/img/ovs-deep-dive/tcp_conn_3.png" width="60%" height="60%"></p>
+<p align="center"><img src="/assets/img/ovs-deep-dive/tcp_conn_3.png" width="70%" height="70%"></p>
 <p align="center">Fig.2.3 TCP Connection Establishment: TX offload diabled in A and B</p>
 
 ## 3. Conclusion
