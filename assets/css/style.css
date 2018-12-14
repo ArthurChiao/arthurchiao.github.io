@@ -145,9 +145,7 @@ code,kbd,pre,samp {
     font-size:1em;
     background-color: rgba(0,0,0,0.04);
     border-radius: 3px;
-    padding-top: 0.2px;
-    padding-bottom: 0.2px;
-    font-size: 85%;
+    font-size: 90%;
     font-family: Consolas, "Liberation Mono", Menlo, Courier, monospace;
 }
 form {
@@ -366,7 +364,7 @@ th:last-child {
     -moz-border-radius:3px;
     -webkit-border-radius:3px;
     border-radius:3px;
-    padding:16px;
+    padding:8px;
     background:#343642;
     color:#C1C2C3;
     font-size: smaller;
@@ -731,7 +729,8 @@ dd {
 }
 .post .highlight {
     clear:both;
-    margin-bottom:2rem
+    margin-top:0.5rem;
+    margin-bottom:0.5rem
 }
 .post .dropcap {
     color:#2e8b57;

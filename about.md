@@ -16,7 +16,7 @@ title: About ArthurChiao
 
 * Networking, SDN
 * Cloud, Virtualization
-* Distributed System
+* Storage: Ceph, Distributed File System
 * Multimedia Processing
 
 ### Open Source Contributions
