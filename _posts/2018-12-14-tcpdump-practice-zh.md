@@ -34,7 +34,7 @@ CONTAINER ID    IMAGE        COMMAND         CREATED        STATUS          PORT
 $ sudo docker exec -it ctn-1 sh
 ```
 
-登录到容器里面，查看容器网络信息：
+查看容器网络信息：
 
 ```shell
 / # ifconfig
