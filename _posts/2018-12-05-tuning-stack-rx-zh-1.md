@@ -29,17 +29,17 @@ categories: linux network stack monitoring tuning
 
 ----
 
-这篇文章的姊妹篇 [Monitoring and Tuning the Linux Networking Stack: Receiving Data](https://blog.packagecloud.io/eng/2017/02/06/monitoring-tuning-linux-networking-stack-sending-data/)。
+这篇文章的姊妹篇 [Monitoring and Tuning the Linux Networking Stack: Sending Data](https://blog.packagecloud.io/eng/2017/02/06/monitoring-tuning-linux-networking-stack-sending-data/)。
 
 这篇文章的图文注释版 [the Illustrated Guide to Monitoring and Tuning the Linux Networking Stack: Receiving Data](https://blog.packagecloud.io/eng/2016/10/11/monitoring-tuning-linux-networking-stack-receiving-data-illustrated/)。
 
 ### 写给不想读长文的人（TL; DR）
 
-本文章介绍了Linux内核是如何收包的，包是怎样从网络栈到用户空间程序的，以及如何监
-控和调优这条路径上的各个网络栈组件。
+本文章介绍了Linux内核是如何**收包**（receive packets）的，包是怎样从网络栈到
+用户空间程序的，以及如何**监控**（monitoring）和**调优**（tuning）这一路径上的各个网络栈组件。
 
-想对Linux网络栈进行调优或监控，必须对其正在发生什么有一个深入的理解，
-而这离不开读内核源码。希望这篇文章可以给那些正准备投身于此的人提供一份参考。
+想对Linux网络栈进行监控或调优，必须对其正在发生什么有一个深入的理解，
+而这离不开读内核源码。希望本文可以给那些正准备投身于此的人提供一份参考。
 
 ### 特别鸣谢
 
@@ -77,7 +77,7 @@ categories: linux network stack monitoring tuning
 
 ## 2 收包过程俯瞰
 
-本文将使用Intel I350网卡，`igb`设备驱动，网卡的data sheet这里可以下载[PDF](http://www.intel.com/content/dam/www/public/us/en/documents/datasheets/ethernet-controller-i350-datasheet.pdf)（警告：文件很大），我们以此为参考。
+本文将拿**Intel I350**网卡的`igb`驱动作为参考，网卡的data sheet这里可以下载[PDF](http://www.intel.com/content/dam/www/public/us/en/documents/datasheets/ethernet-controller-i350-datasheet.pdf)（警告：文件很大）。
 
 从比较高的层次看，一个数据包从被网卡接收直到进入socket的接收队列的整个过程如下：
 
