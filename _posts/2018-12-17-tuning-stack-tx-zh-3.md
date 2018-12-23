@@ -583,10 +583,10 @@ return err;
 
 `udp_sendmsg`通过调用`udp_send_skb`函数将skb送到下一网络层，在本例中是IP协议层。 这个函数做了一些重要的事情：
 
-1. 向skb添加UDP标头
+1. 向skb添加UDP头
 1. 处理校验和：软件校验和，硬件校验和或无校验和（如果禁用）
 1. 调用`ip_send_skb`将skb发送到IP协议层
-1. 增加发送成功或失败的统计计数器
+1. 更新发送成功或失败的统计计数器
 
 让我们来看看。首先，创建UDP头：
 
@@ -611,7 +611,7 @@ static int udp_send_skb(struct sk_buff *skb, struct flowi4 *fl4)
 1. 接下来，如果socket校验和选项被关闭（`setsockopt`带`SO_NO_CHECK`参数），它将被标记为校
    验和关闭
 1. 接下来，如果硬件支持UDP校验和，则将调用`udp4_hwcsum`来设置它。请注意，如果数
-   据包是分段的，内核将在软件中生成校验和 你可以在
+   据包是分段的，内核将在软件中生成校验和，你可以在
    [udp4_hwcsum](https://github.com/torvalds/linux/blob/v3.13/net/ipv4/udp.c#L720-L763)
    的源代码中看到这一点
 1. 最后，通过调用`udp_csum`生成软件校验和
@@ -663,9 +663,9 @@ send:
   return err;
 ```
 
-如果`ip_send_skb`成功，`OUTDATAGRAMS`统计将递增。 如果IP协议层报告错误，则
-`SNDBUFERRORS`会递增，但仅当错误是`ENOBUFS`（内核缺少内存）并且错误队列没有启用
-时才会递增。
+如果`ip_send_skb`成功，将更新`OUTDATAGRAMS`统计。如果IP协议层报告错误，并且错误
+是`ENOBUFS`（内核缺少内存）而且错误queue（`inet->recverr`）没有启用，则更新
+`SNDBUFERRORS`。
 
 在继续讨论IP协议层之前，让我们先看看如何在Linux内核中监视和调优UDP协议层。
 
@@ -732,9 +732,9 @@ $ cat /proc/net/udp
 
 打印这些计数的代码在[net/ipv4/udp.c](https://github.com/torvalds/linux/blob/master/net/ipv4/udp.c#L2396-L2431)。
 
-### 5.4 调优：Socket send queue memory
+### 5.4 调优：socket发送队列内存大小
 
-发送队列（也叫写队列）的最大值可以通过设置`net.core.wmem_max sysctl`进行修改。
+发送队列（也叫“写队列”）的最大值可以通过设置`net.core.wmem_max sysctl`进行修改。
 
 ```shell
 $ sudo sysctl -w net.core.wmem_max=8388608
@@ -748,11 +748,11 @@ $ sudo sysctl -w net.core.wmem_max=8388608
 $ sudo sysctl -w net.core.wmem_default=8388608
 ```
 
-你还可以通过从应用程序调用`setsockopt`并传递`SO_SNDBUF`来设置
-`sk->sk_write_queue`的大小。通过`setsockopt`设置的最大值是`net.core.wmem_max`。
+也可以通过从应用程序调用`setsockopt`并传递`SO_SNDBUF`来设置`sk->sk_write_queue`
+。通过`setsockopt`设置的最大值是`net.core.wmem_max`。
 
-但是，也可以通过`setsockopt`并传递`SO_SNDBUFFORCE`来覆盖`net.core.wmem_max`
-限制，这需要`CAP_NET_ADMIN`权限。
+不过，可以通过`setsockopt`并传递`SO_SNDBUFFORCE`来覆盖`net.core.wmem_max`限制，
+这需要`CAP_NET_ADMIN`权限。
 
 每次调用`__ip_append_data`分配skb时，`sk->sk_wmem_alloc`都会递增。正如我们所看到
 的，UDP数据报传输速度很快，通常不会在发送队列中花费太多时间。
