@@ -298,6 +298,34 @@ example.com.            15814   IN      A       93.184.216.34
 很多软件在运行之后，会在宿主机上添加`tc`或`iptables`规则，例如OpenStack，K8S等等
 。因此遇到这种随机延迟问题，首先可以查看机器上是否有`tc`或`iptables`规则。
 
+### 4.5 DNS反向查询不稳定
+
+线上遇到过这样一个问题：从一台机器ping一个内网域名，每个ping包看起来都会卡5～30s
+不等，但是CTL-C关闭ping之后，打印出来的统计信息里，既没有丢包，ping的延迟也很低
+（毫秒级），这就很奇怪。接下来：
+
+1. `dig <URL>`，很快，毫秒级，说明DNS查询没有问题
+1. `dig`能看到域名对应的IP，直接ping这个IP，发现是没有卡顿的
+1. 仍然ping域名，用tcpdump抓包，`tcpdump -i eth0 host <URL> and icmp`，发现ping
+   包都是立即响应的，印证了统计信息里，ping延迟很低的事实
+
+根据以上信息，说明ping卡顿的问题出在这台机器，而且应该就是ping程序本身在做什么耗
+时的操作。继续：
+
+1. 仍然ping域名，同时，用`ltrace -p <PID>`跟踪ping进程，发现卡在一个叫
+   `gethostbyaddr()`的函数
+1. 查阅文档，发现这个函数是根据IP反向查询hostname，需要和DNS交互
+
+到这里，基本确定了是DNS服务器反向查询的问题，我们用另外几个命令行工具验证一下，
+以下三个命令都是根据IP反查hostname：
+
+1. `nslookup <IP>`
+1. `host <IP>`
+1. `dig -x <IP>`
+
+果然，以上三个命令都会卡住。修改`/etc/resolv.conf`，换一个DNS服务器之后，问题
+消失了。接下来，就去查DNS服务器的问题吧。
+
 1. [TOP 10 DNS Servers](https://whatsabyte.com/internet/best-public-dns-servers/)，
 2. [`tc` drop packet example](https://stackoverflow.com/questions/614795/simulate-delayed-and-dropped-packets-on-linux)
 3. [`docker run` parameter: `--privileged`](https://docs.docker.com/engine/reference/commandline/run/#options)
