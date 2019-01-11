@@ -862,10 +862,6 @@ dd {
 .pagination .previous {
     float:right
 }
-.posts li {
-    margin-bottom:4rem;
-    position:relative
-}
 .posts li:before {
     content:"";
     position:absolute;
