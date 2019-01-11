@@ -16,6 +16,8 @@ navigation:
    url: /index.html
  - title: Articles
    url: /articles
+ - title: Articles (中文)
+   url: /articles-zh
  - title: About
    url: /about
 
