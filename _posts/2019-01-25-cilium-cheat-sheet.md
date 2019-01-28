@@ -55,7 +55,7 @@ CLI list of version `1.3.2`:
 | `cilium kvstore get    ` | Retrieve a key |
 | `cilium kvstore set    ` | Set a key and value |
 | **`cilium map` subcommands**  |  |
-| `cilium map get   ` | Display BPF map information |
+| `cilium map get  <name> [flags] ` | Display BPF map information |
 | `cilium map list  ` | List all open BPF maps |
 | **`cilium metrics` subcommands**  |  |
 | `cilium metrics list` | List all metrics |
@@ -523,13 +523,25 @@ cilium_ep_config_12041   1             0            true
 ...
 ```
 
+Display BPF map information:
+
 ```shell
-$ cilium map get
+$ cilium map get cilium_ipcache
+Key                      Value   State   Error
+10.15.38.236/32          104     sync
+10.15.43.62/32           44531   sync
+::/0                     2       sync
+10.0.2.15/32             1       sync
+10.15.86.181/32          4       sync
+f00d::a0f:0:0:2aa4/128   44531   sync
+f00d::a0f:0:0:326c/128   10514   sync
+10.15.71.253/32          44531   sync
+fc00::10ca:1/128         1       sync
 ```
 
 ## 10 `cilium metrics`
 
-Access metric status.
+Access metric status. Including much of statistics metrics:
 
 ```shell
 $ cilium metrics list
@@ -565,6 +577,22 @@ Flags:
   -t, --type []string         Filter by event types [agent capture debug drop l7 trace]
   -v, --verbose               Enable verbose output
 ```
+
+Monitor all BPF notifications and events:
+
+```shell
+$ cilium monitor
+Listening for events on 2 CPUs with 64x4096 of shared memory
+Press Ctrl-C to quit
+<- host flow 0x6154a2bb identity 2->0 state new ifindex 0: 192.168.99.100:8443
+-> 10.15.38.236:36598 tcp ACK
+-> endpoint 34542 flow 0x6154a2bb identity 2->104 state reply ifindex lxcc2615b8d08d2: 10.96.0.1:443 -> 10.15.38.236:36598 tcp ACK
+<- endpoint 34542 flow 0x30ce3dbd identity 104->0 state new ifindex 0: 10.15.38.236:36598 -> 10.96.0.1:443 tcp ACK
+-> stack flow 0x30ce3dbd identity 104->2 state established ifindex 0: 10.15.38.236:36598 -> 192.168.99.100:8443 tcp ACK
+<- host flow 0x43caa648 identity 2->0 state new ifindex 0: 192.168.99.100:8443
+```
+
+Monitor packet drops:
 
 ```shell
 $ cilium monitor --type drop
