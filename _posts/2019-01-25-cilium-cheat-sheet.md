@@ -467,10 +467,15 @@ Change endpoint configurations:
 $ cilium endpoint config <endpoint ID> DropNotification=false TraceNotification=false
 ```
 
-Check endpoint logs:
+Check `cilium-health`'s (with endpoint ID `59709` in this example) logs:
 
 ```shell
-$ cilium endpoint log <endpoint id> [flags]
+$ cilium endpoint log 59709
+Timestamp              Status   State                   Message
+2019-01-29T10:33:29Z   OK       ready                   Successfully regenerated endpoint program (Reason: datapath ipcache)
+2019-01-29T10:33:29Z   OK       ready                   Completed endpoint regeneration with no pending regeneration requests
+2019-01-29T10:33:28Z   OK       regenerating            Regenerating endpoint: datapath ipcache
+2019-01-29T10:33:28Z   OK       waiting-to-regenerate   Triggering endpoint regeneration due to datapath ipcache
 ```
 
 Other commands:
@@ -641,15 +646,7 @@ Available Commands:
 
 Manage services & loadbalancers.
 
-```shell
-$ cilium service [command]
-
-Available Commands:
-  delete      Delete a service
-  get         Display service information
-  list        List services
-  update      Update a service
-```
+List all services:
 
 ```shell
 # cilium service list
@@ -661,22 +658,62 @@ ID   Frontend               Backend
 4    10.102.163.245:80      1 => 10.15.49.158:9090
 ```
 
+Get service `6`:
+
+```shell
+$ cilium service get 6 -o json
+{
+  "spec": {
+    "backend-addresses": [
+      {
+        "ip": "",
+        "port": 6443
+      }
+    ],
+    "frontend-address": {
+      "ip": "10.32.0.1",
+      "port": 443,
+      "protocol": "TCP"
+    },
+    "id": 1
+  },
+  "status": {
+    "realized": {
+      "backend-addresses": [
+        {
+          "ip": "",
+          "port": 6443
+        }
+      ],
+      "frontend-address": {
+        "ip": "10.32.0.1",
+        "port": 443,
+        "protocol": "TCP"
+      },
+      "id": 1
+    }
+  }
+}
+```
+
 ## 16 `cilium status`
 
 Display status of daemon.
 
 ```shell
-$ cilium status [flags]
-
-Flags:
-      --all-addresses     Show all allocated addresses, not just count
-      --all-controllers   Show all controllers, not just failing
-      --all-health        Show all health status, not just failing
-      --all-nodes         Show all nodes, not just localhost
-      --all-redirects     Show all redirects
-      --brief             Only print a one-line status message
-  -o, --output string     json| jsonpath='{}'
-      --verbose           Equivalent to --all-addresses --all-controllers --all-nodes --all-health
+$ cilium status
+KVStore:                Ok   etcd: 1/1 connected: https://<IP>:2379 - 3.2.22 (Leader)
+ContainerRuntime:       Ok   docker daemon: OK
+Kubernetes:             Ok   1.13 (v1.13.2) [linux/amd64]
+Kubernetes APIs:        ["core/v1::Node", "core/v1::Namespace", "CustomResourceDefinition", "cilium/v2::CiliumNetworkPolicy", "networking.k8s.io/v1::NetworkPolicy", "core/v1::Service", "core/v1::Endpoint", "core/v1::Pods"]
+Cilium:                 Ok   OK
+NodeMonitor:            Disabled
+Cilium health daemon:   Ok
+IPv4 address pool:      4/65535 allocated
+IPv6 address pool:      3/65535 allocated
+Controller Status:      27/27 healthy
+Proxy Status:           OK, ip 10.94.0.1, port-range 10000-20000
+Cluster health:   1/1 reachable   (2019-01-29T10:17:04Z)
 ```
 
 ## 17 `cilium version`
