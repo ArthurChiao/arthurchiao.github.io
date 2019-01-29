@@ -3,7 +3,7 @@ layout: post
 title:  "[译]简明x86汇编指南"
 date:   2017-08-14
 last_modified: 2017-08-25
-
+categories: assembly
 ---
 
 Translated from [CS216, University of Virginia](http://www.cs.virginia.edu/~evans/cs216/guides/x86.html).

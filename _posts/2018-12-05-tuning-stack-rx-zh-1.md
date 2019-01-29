@@ -3,7 +3,7 @@ layout: post
 title:  "[译] Linux网络栈监控和调优：接收数据 1"
 date:   2018-12-05
 author: ArthurChiao
-categories: linux network stack monitoring tuning
+categories: network-stack monitoring tuning
 ---
 
 ### 译者序

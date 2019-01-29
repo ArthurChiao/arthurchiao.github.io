@@ -2,6 +2,7 @@
 layout: post
 title:  "OVS Deep Dive 5: Datapath and TX Offloading"
 date:   2017-03-08
+categories: OVS
 ---
 
 ## 1. TX Offloading

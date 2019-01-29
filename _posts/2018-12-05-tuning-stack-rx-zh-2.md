@@ -3,7 +3,7 @@ layout: post
 title:  "[译] Linux网络栈监控和调优：接收数据 2"
 date:   2018-12-05
 author: ArthurChiao
-categories: eBPF tracing bcc
+categories: network-stack monitoring tuning
 ---
 
 ## 4 软中断（SoftIRQ）

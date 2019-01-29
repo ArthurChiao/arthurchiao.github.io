@@ -2,6 +2,7 @@
 layout: post
 title:  "Monitoring Ceph Object Storage"
 date:   2018-10-08
+categories: ceph monitoring
 ---
 
 Ceph is a widely-used distributed file system which supports **object storage, block storage, and distributed file system (Ceph FS)**.

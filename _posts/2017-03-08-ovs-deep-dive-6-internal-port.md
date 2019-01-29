@@ -2,6 +2,7 @@
 layout: post
 title:  "OVS Deep Dive 6: Internal Port"
 date:   2017-03-08
+categories: OVS
 ---
 
 This post makes an exploration into OVS `internal port`.

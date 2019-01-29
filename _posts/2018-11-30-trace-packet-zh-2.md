@@ -3,7 +3,7 @@ layout: post
 title:  "[译] 网络包内核路径跟踪：2 Perf"
 date:   2018-11-30
 author: ArthurChiao
-categories: tcpdump eBPF perf tracepoint
+categories: eBPF perf tracepoint
 ---
 
 译者按：本文翻译自一篇英文博客[Tracing a packet's journey using Linux tracepoints, perf and eBPF](https://blog.yadutaf.fr/2017/07/28/tracing-a-packet-journey-using-linux-tracepoints-perf-ebpf/)。由于原文篇幅较长，我将其分成了三篇，并添加了适当的标题。

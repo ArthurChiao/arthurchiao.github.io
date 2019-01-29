@@ -3,7 +3,7 @@ layout: post
 title:  "[译] Linux网络栈监控和调优：发送数据 3"
 date:   2018-12-17
 author: ArthurChiao
-categories: linux network stack monitoring tuning
+categories: network-stack monitoring tuning
 ---
 
 ## 5 UDP协议层

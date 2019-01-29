@@ -2,6 +2,7 @@
 layout: post
 title:  "Ceph: Basic Access Control and Rate Limit with Nginx"
 date:   2018-11-05
+categories: ceph
 ---
 
 In [previous]({% link _posts/2018-10-08-monitoring-ceph-obj-storage.md %}) article, we

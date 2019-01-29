@@ -18,6 +18,8 @@ navigation:
    url: /articles
  - title: Articles (中文)
    url: /articles-zh
+ - title: Categories
+   url: /categories
  - title: About
    url: /about
 

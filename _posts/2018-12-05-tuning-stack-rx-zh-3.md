@@ -3,7 +3,7 @@ layout: post
 title:  "[译] Linux网络栈监控和调优：接收数据 3"
 date:   2018-12-05
 author: ArthurChiao
-categories: eBPF tracing bcc
+categories: network-stack monitoring tuning
 ---
 
 ## 9 从`netif_receive_skb`进入协议栈

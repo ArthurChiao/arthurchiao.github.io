@@ -3,7 +3,7 @@ layout: post
 title:  "Building Ceph From Source"
 date:   2018-11-27
 author: ArthurChiao
-categories: ceph build compile
+categories: ceph
 ---
 
 Ceph is complex, so is compiling and building it from source.

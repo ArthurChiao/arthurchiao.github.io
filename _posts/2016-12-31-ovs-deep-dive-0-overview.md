@@ -2,8 +2,7 @@
 layout: post
 title:  "OVS Deep Dive 0: Overview"
 date:   2016-12-31
-categories: technical
-tags: OVS
+categories: OVS
 ---
 
 <p class="intro"><span class="dropcap">I</span>n this OVS Deep Dive series,

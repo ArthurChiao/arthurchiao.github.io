@@ -2,6 +2,7 @@
 layout: post
 title:  "Using Ceph RBD Client"
 date:   2018-10-30
+categories: ceph
 ---
 
 Using ceph rbd client is quite simple, with just three steps:
