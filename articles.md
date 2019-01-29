@@ -10,7 +10,7 @@ title: Articles
       {% unless post.url contains "-zh" %}
         <li>
           <span class="date">{{ post.date | date: "%Y-%m-%d" }}</span>
-          <h4><a href="{{ post.url }}">{{ post.title }}</a></h4>
+          <a href="{{ post.url }}">{{ post.title }}</a>
         </li>
       {% endunless %}
     {% endfor %}
