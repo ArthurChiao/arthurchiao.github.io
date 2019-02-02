@@ -45,7 +45,10 @@ b,strong {
     font-weight:bold
 }
 blockquote {
-    margin:0
+    line-height:1.25;
+    color: #6a737d;
+    margin:0;
+    padding:0
 }
 dfn {
     font-style:italic
@@ -494,10 +497,6 @@ h4,.h4 {
     h4,.h4 {
         line-height:1.22222222
     }
-}
-blockquote {
-    line-height:1.25;
-    padding:0
 }
 @media (min-width: 43.75em) {
     blockquote {
