@@ -11,6 +11,12 @@ categories: strace system-call
 ](https://blog.packagecloud.io/eng/2016/02/29/how-does-strace-work/)
 。**如果能看懂英文，我建议你阅读原文，或者和本文对照看。**
 
+阅读本文之前，强烈建议先阅读这篇之前的文章：
+
+1. [(译) Linux系统调用权威指南]({% link _posts/2019-01-30-system-call-definitive-guide-zh.md %})
+
+其中包含了本文所需的部分预备知识。
+
 以下是译文。
 
 ----
@@ -239,3 +245,10 @@ tracer 就可以查看 tracee 的状态，打印寄存器的值、时间戳等�
 
 我建议你也看一看你最喜欢的调试器的源码，看它是如何基于 `ptrace`
 来完成检查程序状态、修改寄存器和内存等工作的。
+
+## 7 我们的相关文章
+
+如果对本文感兴趣，那么你可能对我们的以下文章也感兴趣：
+
+1. [(译) Linux系统调用权威指南]({% link _posts/2019-01-30-system-call-definitive-guide-zh.md %})
+1. [(译) ltrace 是如何工作的]({% link _posts/2019-02-07-how-does-ltrace-work-zh.md %})

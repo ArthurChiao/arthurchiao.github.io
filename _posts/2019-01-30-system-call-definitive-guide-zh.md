@@ -1036,3 +1036,10 @@ Linux内核的系统调用基础架构相当复杂。有多种方式可以发起
 wrapper，或者尝试 vDSO 提供的 `__kernel_vsyscall`。
 
 保持关注本博客，我们将来会真对单个系统调用及其实现进行研究。
+
+## 10 我们的相关文章
+
+如果对本文感兴趣，那么你可能对我们的以下文章也感兴趣：
+
+1. [(译) strace 是如何工作的]({% link _posts/2019-02-02-how-does-strace-work-zh.md %})
+1. [(译) ltrace 是如何工作的]({% link _posts/2019-02-07-how-does-ltrace-work-zh.md %})
