@@ -122,7 +122,7 @@ ICMP IN 10.15.0.1 0:0 related expires=277424 RxPackets=1 RxBytes=74 TxPackets=0 
 
 ### 1.3 `cilium bpf endpoint`
 
-`IP + Port` defines an endpoint.
+An endpoint is a namespaced network interface that will be applied policies on.
 
 List all local endpoint entries:
 
@@ -259,10 +259,6 @@ Connected:        yes
 
 1.3.2 34ff2fb1d 2019-01-09T02:16:31+01:00 go version go1.10.3 linux/amd64
 
-#### Kernel version
-
-4.15.0
-
 #### Cilium status
 
 KVStore:                Ok   etcd: 1/1 connected: http://127.0.0.1:31079 - 3.3.2 (Leader)
@@ -303,31 +299,17 @@ cluster-id:0
 ENDPOINT   POLICY (ingress)   POLICY (egress)   IDENTITY   LABELS (source:key[=value])                       IPv6                 IPv4            STATUS
            ENFORCEMENT        ENFORCEMENT
 10916      Disabled           Disabled          44531      k8s:class=deathstar                               f00d::a0f:0:0:2aa4   10.15.43.62     ready
-                                                           k8s:io.cilium.k8s.policy.cluster=default
-                                                           k8s:io.cilium.k8s.policy.serviceaccount=default
-                                                           k8s:io.kubernetes.pod.namespace=default
                                                            k8s:org=empire
 12041      Disabled           Disabled          104        k8s:io.cilium.k8s.policy.cluster=default          f00d::a0f:0:0:2f09   10.15.35.129    ready
-                                                           k8s:io.cilium.k8s.policy.serviceaccount=coredns
-                                                           k8s:io.kubernetes.pod.namespace=kube-system
                                                            k8s:k8s-app=kube-dns
 
 #### BPF Policy Get 10916
 
 DIRECTION   LABELS (source:key[=value])                              PORT/PROTO   PROXY PORT   BYTES   PACKETS
 Ingress     reserved:host                                            ANY          NONE         0       0
-Ingress     reserved:world                                           ANY          NONE         0       0
-Ingress     reserved:unmanaged                                       ANY          NONE         0       0
-Ingress     reserved:health                                          ANY          NONE         0       0
-Ingress     reserved:init                                            ANY          NONE         0       0
 Ingress     k8s:app=etcd                                             ANY          NONE         0       0
-            k8s:etcd_cluster=cilium-etcd
-            k8s:io.cilium.k8s.policy.cluster=default
-            k8s:io.cilium.k8s.policy.serviceaccount=default
 Egress      reserved:host                                            ANY          NONE         4998    51
 ...
-
-#### BPF CT List 10916
 
 #### Endpoint Get 10916
 
@@ -347,17 +329,12 @@ Egress      reserved:host                                            ANY        
     "status": {
       "controllers": [
         {
-          "configuration": {
-            "error-retry": true,
-            "interval": "5m0s"
-          },
           "name": "resolve-identity-10916",
           "status": {
             "last-failure-timestamp": "0001-01-01T00:00:00.000Z",
             "last-success-timestamp": "2019-01-25T08:28:55.761Z",
             "success-count": 295
           },
-          "uuid": "e58f4aea-1fad-11e9-8de4-0800277bc14c"
         },
      "external-identifiers": {
        "container-id": "7ba580c3b49c53ba03e72b32a182150",
@@ -368,20 +345,14 @@ Egress      reserved:host                                            ANY        
        "id": 44531,
        "labels": [
          "k8s:io.cilium.k8s.policy.cluster=default",
-         "k8s:class=deathstar",
-         "k8s:org=empire",
-         "k8s:io.kubernetes.pod.namespace=default",
-         "k8s:io.cilium.k8s.policy.serviceaccount=default"
        ],
       },
       "networking": {
         "addressing": [
           {
             "ipv4": "10.15.43.62",
-            "ipv6": "f00d::a0f:0:0:2aa4"
           }
         ],
-        "host-mac": "ea:eb:5c:f4:2e:97",
         "interface-index": 20,
         "interface-name": "lxc692d4fb6516a",
   "policy": {
@@ -390,18 +361,6 @@ Egress      reserved:host                                            ANY        
       "allowed-egress-identities": [
         101,
         44531,
-        14512,
-        10514,
-        5,
-        102,
-        5290,
-        1,
-        106,
-        3,
-        100,
-        2,
-        103,
-        104,
         4
       ],
 
@@ -418,9 +377,6 @@ Timestamp              Status    State                   Message
 2019-01-24T07:58:58Z   OK        ready                   Successfully regenerated endpoint program (Reason: one or more identities created or deleted)
 2019-01-24T07:58:58Z   OK        ready                   Completed endpoint regeneration with no pending regeneration requests
 2019-01-24T07:58:58Z   OK        regenerating            Regenerating endpoint: one or more identities created or deleted
-2019-01-24T07:58:58Z   OK        waiting-to-regenerate   Successfully regenerated endpoint program (Reason: updated security labels)
-2019-01-24T07:58:58Z   Warning   waiting-to-regenerate   Skipped invalid state transition to ready due to: Completed endpoint regeneration with no pending regen
-eration requests
 2019-01-24T07:58:55Z   OK        waiting-to-regenerate   Triggering regeneration due to new identity
 2019-01-24T07:58:55Z   OK        ready                   Set identity for this endpoint
 2019-01-24T07:58:55Z   OK        waiting-for-identity    Endpoint creation
@@ -429,11 +385,13 @@ eration requests
 
 ID      LABELS
 44531   k8s:class=deathstar
-        k8s:io.cilium.k8s.policy.cluster=default
-        k8s:io.cilium.k8s.policy.serviceaccount=default
         k8s:io.kubernetes.pod.namespace=default
         k8s:org=empire
 ```
+
+The output is a markdown file, which could be used when reporting a bug on the
+github [issue tracker](https://github.com/cilium/cilium/issues), or sending to
+the Cilium develop team [3].
 
 ## 6 `cilium endpoint`
 
@@ -728,3 +686,4 @@ Daemon: 1.3.2 34ff2fb1d 2019-01-09T02:16:31+01:00 go version go1.10.3 linux/amd6
 
 1. [Cilium: github](https://github.com/cilium/cilium)
 2. [Cilium: getting started with minikube](https://cilium.readthedocs.io/en/stable/gettingstarted/minikube/)
+3. [Cilium: Trouble Shooting](https://cilium.readthedocs.io/en/v1.4/troubleshooting/)
