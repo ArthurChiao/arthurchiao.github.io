@@ -1,6 +1,6 @@
 ---
 layout: default
-title: About ArthurChiao
+title: Categories
 ---
 
 <div id="archives">

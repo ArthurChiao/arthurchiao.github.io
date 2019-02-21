@@ -1,6 +1,6 @@
 ---
 layout: default
-title: Articles
+title: Articles (cn-zh)
 ---
 
 <div id="articles">
