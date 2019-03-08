@@ -705,9 +705,6 @@ dd {
     margin:0 auto;
     display:block
 }
-.post img {
-    margin-bottom:2rem
-}
 .post .highlight {
     clear:both;
     margin-top:0.5rem;
