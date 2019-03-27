@@ -32,14 +32,15 @@ Architecture](https://www.digitalocean.com/community/tutorials/a-deep-dive-into-
 
 ### 前言
 
-防火墙是保障服务器和基础设施安全的重要工具。在 Linux 生态系统中，`iptables` 是一
-个被广泛使用的防火墙工具，它基于内核的包过滤框架 `netfilter`。对不了解这些系统的
-用户和管理员来说，创建可靠的防火墙策略可能让人望而生畏，这不仅源于它挑战性的语法
-，还因为框架的几个部分相互交织。
+防火墙是保护服务器和基础设施安全的重要工具。在 Linux 生态系统中，`iptables` 是使
+用很广泛的防火墙工具之一，它基于内核的包过滤框架（packet filtering framework）
+`netfilter`。如果管理员或用户不了解这些系统的架构，那可能就无法创建出可靠的防火
+墙策略，一方面是因为 iptables 的语法颇有挑战性，另外一方面是 netfilter 框架内部
+相互交织而变得错综复杂。
 
 本文将带领读者深入理解 `iptables` 框架，让那些需要创建防火墙策略的用户对它有一个
 更全面的认识。我们会讨论 iptables 是如何与 netfilter 交互的，几个组件是如何组织
-成一个全面的过滤和 mangling（碾压，乱砍）系统的。
+成**一个全面的过滤和矫正系统**（a comprehensive filtering and mangling system）的。
 
 ## 1 IPTables 和 Netfilter 是什么？
 
@@ -47,13 +48,13 @@ Linux 上最常用的防火墙工具是 iptables。iptables 与协议栈内有�
 互来完成工作。这些内核 hook 构成了 netfilter 框架。
 
 每个进入网络系统的包（接收或发送）在经过协议栈时都会触发这些 hook，程序
-可以通过注册 hook 函数在一些关键路径上处理网络流量。iptables 相关的内核模块在这
-些 hook 点注册了处理函数，因此可以通过配置 iptables 规则来使得网络流量符合防火墙
-规则。
+可以通过**注册 hook 函数**的方式在一些关键路径上处理网络流量。iptables 相关的内核模
+块在这些 hook 点注册了处理函数，因此可以通过配置 iptables 规则来使得网络流量符合
+防火墙规则。
 
 ## 2. Netfilter Hooks
 
-netfilter 提供了 5 个 hook 点。包经过协议栈时会触发内核模块注册在这里的处理函数
+netfilter 提供了 5 个 hook 点。包经过协议栈时会触发**内核模块注册在这里的处理函数**
 。触发哪个 hook 取决于包的方向（是发送还是接收）、包的目的地址、以及包在上一个
 hook 点是被丢弃还是拒绝等等。
 
@@ -67,19 +68,20 @@ hook 点是被丢弃还是拒绝等等。
 * `NF_IP_POST_ROUTING`: 本机产生的准备发送的包或者转发的包，在经过路由判断之后，
   将触发此 hook
 
-内核模块在 hook 点注册处理函数时必须提供一个优先级，以使得 hook触发之后，能按照
-优先级高低调用处理函数。这使得多个模块（或者同一内核模块的多个实例）可以在同一
-hook 点注册，并且有确定的处理顺序。内核模块会依次被调用，每次返回一个结果给
-netfilter 框架，提示该对这个包做什么。
+**注册处理函数时必须提供优先级**，以便 hook 触发时能按照
+优先级高低调用处理函数。这使得**多个模块（或者同一内核模块的多个实例）可以在同一
+hook 点注册，并且有确定的处理顺序**。内核模块会依次被调用，每次返回一个结果给
+netfilter 框架，提示该对这个包做什么操作。
 
 ## 3 IPTables 表和链（Tables and Chains）
 
-iptables 使用 table 来组织规则，按照规则类型分为不同 table。例如，如果规
-则是处理网络地址转换的，那会放到 `nat` table；如果规则是判断是否允许包继续
-向前，那它可能会被加到 `filter` table 里面。
+iptables 使用 table 来组织规则，根据**用来做什么类型的判断**（the type of
+decisions they are used to make）标准，将规则分为不同table。例如，如果规则是处理
+网络地址转换的，那会放到 `nat` table；如果是判断是否允许包继续向前，那可能会放到
+`filter` table。
 
-在每个 table 内部，规则被进一步组织成 chain，内置的 chain 是由内置的 hook 触发的
-。chain 基本决定规则何时被匹配。
+在每个 table 内部，规则被进一步组织成 chain，**内置的 chain 是由内置的 hook 触发
+的**。chain 基本上能决定（basically determin）规则**何时**被匹配。
 
 下面可以看出，内置的 chain 名字和 netfilter hook 名字是一一对应的：
 
@@ -89,24 +91,26 @@ iptables 使用 table 来组织规则，按照规则类型分为不同 table。�
 * `OUTPUT`: 由 `NF_IP_LOCAL_OUT` hook 触发
 * `POSTROUTING`: 由 `NF_IP_POST_ROUTING` hook 触发
 
-chain 使管理员可以控制在包路径的什么地方应用策略。因为每个 table 有多个 chain，
-一个 table 可以在处理过程中的多个地方施加影响。特定类型的规则只在协议栈的特定点
-有意义，因此并不是每个 table 都会在内核的每个 hook 注册 chain。
+chain 使管理员可以控制在**包的传输路径上哪个点**（where in a packet's delivery
+path）应用策略。因为每个 table 有多个 chain，因此一个 table 可以在处理过程中的多
+个地方施加影响。**特定类型的规则只在协议栈的特定点有意义，因此并不是每个table 都
+会在内核的每个 hook 注册 chain**。
 
 内核一共只有 5 个 netfilter hook，因此不同 table 的 chain 最终都是注册到这几个点
 。例如，有三个 table 有 `PRETOUTING` chain。当这些 chain 注册到对应的
 `NF_IP_PRE_ROUTING` hook 点时，它们需要指定优先级，应该依次调用哪个 table 的
-`PRETOUTING` chain，优先级从高到低。我们很快会看到 chain 的优先级问题。
+`PRETOUTING` chain，优先级从高到低。我们一会就会看到 chain 的优先级问题。
 
 ## 4. table 种类
 
-我们先来看一看 iptables 提供的 table 类型。这些 table 是按规则类型区分的。
+先来看看 iptables 提供的 table 类型。这些 table 是按规则类型区分的。
 
 ### 4.1 Filter Table
 
-`filter` table 是 iptables 最常用的 table 之一，用于**判断是否允许一个包通过**。
+`filter` table 是最常用的 table 之一，用于**判断是否允许一个包通过**。
 
-在防火墙领域，这通常称作“过滤”包。这个 table 提供了防火墙的一些常见功能。
+在防火墙领域，这通常称作“过滤”包（"filtering" packets）。这个 table 提供了防火墙
+的一些常见功能。
 
 ### 4.2 NAT Table
 
@@ -117,12 +121,13 @@ chain 使管理员可以控制在包路径的什么地方应用策略。因为�
 
 ### 4.3 Mangle Table
 
-`mangle` table 用于**修改包的 IP 头**。
+`mangle` （修正）table 用于**修改包的 IP 头**。
 
 例如，可以修改包的 TTL，增加或减少包可以经过的跳数。
 
-这个 table 还可以**对包做内核内部的“标记”**（mark），后续的 table或工具处理的时
-候可以用到这些标记。标记不会修改包本身，只是在包的内核表示上做标记。
+这个 table 还可以对包打**只在内核内有效的**“标记”（internal kernel "mark"），后
+续的 table 或工具处理的时候可以用到这些标记。标记不会修改包本身，只是在包的内核
+表示上做标记。
 
 ### 4.4 Raw Table
 
@@ -143,7 +148,7 @@ SELinux 安全上下文的系统处理包的行为。这些标记可以基于单
 
 前面已经分别讨论了 table 和 chain，接下来看每个 table 里各有哪些 chain。另外，我
 们还将讨论注册到同一 hook 的不同 chain 的优先级问题。例如，如果三个 table 都有
-`PRETOUTING` chain，那应该按照什么顺序调用他们呢？
+`PRETOUTING` chain，那应该按照什么顺序调用它们呢？
 
 下面的表格展示了 table 和 chain 的关系。横向是 table， 纵向是 chain，Y 表示 这个
 table 里面有这个 chain。例如，第二行表示 `raw` table 有`PRETOUTING` 和 `OUTPUT` 两
@@ -182,10 +187,10 @@ table 的）chain 被调用的顺序。
 * 收到的、目的是其他主机的包：`PRETOUTING` -> `FORWARD` -> `POSTROUTING`
 * 本地产生的包：`OUTPUT` -> `POSTROUTING`
 
-综合前面讨论的 table 顺序问题，我们可以看到对于一个收到的、目的是本机的包：首先
-依次经过 `PRETOUTING` chain 上面的 `raw`、`mangle`、`nat` table；然后依次经过
-`INPUT` chain 的 `mangle`、`filter`、`security`、`nat` table，然后才会到达本机的
-某个 socket。
+**综合前面讨论的 table 顺序问题，我们可以看到对于一个收到的、目的是本机的包**：
+首先依次经过 `PRETOUTING` chain 上面的 `raw`、`mangle`、`nat` table；然后依次经
+过`INPUT` chain 的 `mangle`、`filter`、`security`、`nat` table，然后才会到达本机
+的某个 socket。
 
 ## 6 IPTables 规则
 
@@ -197,10 +202,10 @@ table 的）chain 被调用的顺序。
 规则的匹配部分指定了一些条件，包必须满足这些条件才会和相应的将要执行的动作（“
 target”）进行关联。
 
-匹配系统非常灵活，还可以通过 iptables
-extension大大扩展其功能。规则可以匹配协议类型、目的或源地址、目的或源端口、目的
-或源网段、接收或发送的接口（网卡）、协议头、连接状态等等条件。这些综合起来，能够
-组合成非常复杂的规则来区分不同的网络流量。
+匹配系统非常灵活，还可以通过 iptables extension大大扩展其功能。规则可以匹配**协
+议类型、目的或源地址、目的或源端口、目的或源网段、接收或发送的接口（网卡）、协议
+头、连接状态**等等条件。这些综合起来，能够组合成非常复杂的规则来区分不同的网络流
+量。
 
 ### 6.2 目标
 
