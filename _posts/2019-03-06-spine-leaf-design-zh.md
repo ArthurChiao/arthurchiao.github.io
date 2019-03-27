@@ -57,7 +57,7 @@ L2）以 pod 形式做了隔离**的计算、网络和存储资源，现在都�
 图3 所示
 。
 
-<p align="center"><img src="/assets/img/spine-leaf-design/2-using-vPC.PNG" width="60%" height="60%"></p>
+<p align="center"><img src="/assets/img/spine-leaf-design/3-extended-L3-domain.PNG" width="60%" height="60%"></p>
 <p align="center">图 3 扩展的 L3 域的数据中心设计</p>
 
 随着 L2 segment（二层网络段，例如 VLAN 划分的二层网络，译者注）被扩展到所有 pod
@@ -136,7 +136,9 @@ overlay 虚拟化带来的好处包括：
   户的 MAC 和 IP 地址可以重叠（overlapping）。overlay 的封装使得租户地址空间和
   underlay 地址空间的管理分开。
 
-本文档将介绍 Cisco 过去几年、当前、以及不远的将来应该会提供的几种 Spine-and-Leaf 架构设计，这些设计都是为了解决现代虚拟化数据中心中 fabric 面临的需求：
+本文档将介绍 Cisco 过去几年和当前提供的、以及不远的将来应该会提供的几种
+Spine-and-Leaf 架构设计，这些设计都是为了解决现代虚拟化数据中心中 fabric 面临的
+需求：
 
 * Cisco® FabricPath spine-and-leaf network
 * Cisco VXLAN flood-and-learn spine-and-leaf network
