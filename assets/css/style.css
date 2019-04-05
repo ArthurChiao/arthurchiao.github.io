@@ -453,12 +453,12 @@ h1,.h1 {
 }
 @media (min-width: 56.25em) {
     h1,.h1 {
-        font-size:3em;
+        font-size:2.75em;
         line-height:1.05
     }
 }
 h2,.h2 {
-    font-size:1.625em;
+    font-size:1.7em;
     line-height:1.15384615
 }
 @media (min-width: 43.75em) {
@@ -474,7 +474,7 @@ h2,.h2 {
     }
 }
 h3,.h3 {
-    font-size:1.375em;
+    font-size:1.4em;
     line-height:1.13636364
 }
 @media (min-width: 43.75em) {
@@ -490,7 +490,7 @@ h3,.h3 {
     }
 }
 h4,.h4 {
-    font-size:1.125em;
+    font-size:1.25em;
     line-height:1.11111111
 }
 @media (min-width: 43.75em) {
@@ -502,6 +502,10 @@ h4,.h4 {
     blockquote {
         line-height:1.45833333
     }
+}
+h5,.h5 {
+    font-size:1.1em;
+    line-height:1.11111111
 }
 .clearfix {
     zoom:1
