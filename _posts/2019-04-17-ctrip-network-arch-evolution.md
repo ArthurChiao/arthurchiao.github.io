@@ -2,7 +2,7 @@
 layout: post
 title:  "Ctrip Network Architecture Evolution in the Cloud Computing Era"
 date:   2019-04-17
-categories: network architecture datacenter
+categories: network datacenter cilium
 ---
 
 ### Preface
@@ -525,10 +525,11 @@ we should be able to support global deployment, which means provisioning
 resources outside mainland China.
 
 Building overseas private cloud is not practical, as the designing and building
-process will take too much time. So we chose to purchase public cloud
-resources, and integrate them to our private cloud infra, turning CDOS into
-a hybrid cloud platform. CDOS API will abstract out all vendor-specific details,
-and provide a unified API to our internal customers/systems.
+process will take too much time. So we chose to purchase public cloud resources,
+deploy and manage our own K8S clusters (rather than using vendor-managed clusters,
+e.g. AWS EKS [10]) and integrate them to our private cloud infra, turning CDOS
+into a hybrid cloud platform. CDOS API will abstract out all vendor-specific
+details, and provide a unified API to our internal customers/systems.
 
 This work involves networking solutions on public cloud platforms.
 
@@ -662,7 +663,7 @@ Here is a brief comparison according to my understanding and experiment.
 
 * K8S-native L4-L7 security policy support
 * High performance network policy enforcement
-* Theoretical complexity: BPF O(1) vs iptables O(n)
+* Theoretical complexity: BPF O(1) vs iptables O(n) [11]
 * High performance forwarding plane (veth pair, IPVLAN)
 * Dual stack support (IPv4/IPv6)
 * Support run over flannel (Cilium only handles network policy)
@@ -697,11 +698,13 @@ the fun!
 ## References
 
 1. [OpenStack Doc: Networking Concepts](https://docs.openstack.org/neutron/rocky/admin/intro-os-networking.html)
-1. [Cisco Data Center Spine-and-Leaf Architecture: Design Overview](https://www.cisco.com/c/en/us/products/collateral/switches/nexus-7000-series-switches/white-paper-c11-737022.pdf)
-1. [ovs-vswitchd: Fix high cpu utilization when acquire idle lock fails](https://mail.openvswitch.org/pipermail/ovs-dev/2014-October/290600.html)
-1. [openvswitch port mirroring only mirrors egress traffic](https://bugs.launchpad.net/cloud-archive/+bug/1639273)
-1. [Lyft CNI plugin](https://github.com/lyft/cni-ipvlan-vpc-k8s)
-1. [Netflix: run container at scale](https://www.slideshare.net/aspyker/container-world-2018)
-1. [Cilium Project](https://cilium.io/)
-1. [Cilium Cheat Sheet](https://arthurchiao.github.io/blog/cilium-cheat-sheet/)
-1. [Cilium Code Walk Through: CNI Create Network](https://arthurchiao.github.io/blog/cilium-code-walk-through-create-network/)
+2. [Cisco Data Center Spine-and-Leaf Architecture: Design Overview](https://www.cisco.com/c/en/us/products/collateral/switches/nexus-7000-series-switches/white-paper-c11-737022.pdf)
+3. [ovs-vswitchd: Fix high cpu utilization when acquire idle lock fails](https://mail.openvswitch.org/pipermail/ovs-dev/2014-October/290600.html)
+4. [openvswitch port mirroring only mirrors egress traffic](https://bugs.launchpad.net/cloud-archive/+bug/1639273)
+5. [Lyft CNI plugin](https://github.com/lyft/cni-ipvlan-vpc-k8s)
+6. [Netflix: run container at scale](https://www.slideshare.net/aspyker/container-world-2018)
+7. [Cilium Project](https://cilium.io/)
+8. [Cilium Cheat Sheet](https://arthurchiao.github.io/blog/cilium-cheat-sheet/)
+9. [Cilium Code Walk Through: CNI Create Network](https://arthurchiao.github.io/blog/cilium-code-walk-through-create-network/)
+10. [Amazon EKS - Managed Kubernetes Service](https://aws.amazon.com/eks/)
+11. [Cilium: API Aware Networking & Network Security for Microservices using BPF & XDP](https://www.slideshare.net/ThomasGraf5/cilium-bringing-the-bpf-revolution-to-kubernetes-networking-and-security)
