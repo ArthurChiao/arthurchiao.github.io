@@ -12,11 +12,11 @@ categories: cilium ebpf
 software.  It provides transparent network connectivity, L3-L7 security, and
 loadbalancing between application workloads [1].
 
-This post serves as a cheat sheet of cilium `1.4.3` CLIs. Note that command set varies
-among different cilium releases, you should run `cilium -h` to get the full
-list of your installed version.
+This post serves as a cheat sheet of cilium `1.5.0` CLIs. Note that command set
+varies among different cilium releases, you should run `cilium -h` to get the
+full list of your installed version.
 
-CLI list of version `1.4.3`:
+CLI list:
 
 | Command | Used For |
 |:--------|:--------|
@@ -27,8 +27,10 @@ CLI list of version `1.4.3`:
 | `cilium bpf ipcache  [list|get      ]`  | Manage the IPCache mappings for IP/CIDR <-> Identity |
 | `cilium bpf lb       [list          ]`  | Load-balancing configuration |
 | `cilium bpf metrics  [list          ]`  | BPF datapath traffic metrics |
+| `cilium bpf nat      [flush|list    ]`  | NAT mapping tables |
 | `cilium bpf policy   [add|delete|get]`  | Manage policy related BPF maps |
 | `cilium bpf proxy    [list|flush    ]`  | Proxy configuration |
+| `cilium bpf sha      [list|flush    ]`  | Manage compiled BPF template objects |
 | `cilium bpf tunnel   [list          ]`  | Tunnel endpoint map |
 | [cleanup Subcommands](#chap_2)  |  |
 | `cilium cleanup  `  | Reset the agent state |
@@ -47,41 +49,48 @@ CLI list of version `1.4.3`:
 | `cilium endpoint list      ` | List all endpoints |
 | `cilium endpoint log       ` | View endpoint status log |
 | `cilium endpoint regenerate` | Force regeneration of endpoint program |
-| [identity Subcommands](#chap_7)  |  |
+| [fqdn Subcommands](#chap_7)  | Manage fqdn proxy |
+| `cilium fqdn [flags]` |  |
+| `cilium fqdn cache [list|clean] [flags]` | |
+| [help Subcommands](#chap_8)  | Help about any command |
+| `cilium help [command] [flags]` |  |
+| [identity Subcommands](#chap_9)  |  |
 | `cilium identity get ` | Retrieve information about an identity |
 | `cilium identity list` | List identities |
-| [kvstore Subcommands](#chap_8)  |  |
+| [kvstore Subcommands](#chap_10)  |  |
 | `cilium kvstore delete ` | Delete a key |
 | `cilium kvstore get    ` | Retrieve a key |
 | `cilium kvstore set    ` | Set a key and value |
-| [map Subcommands](#chap_9)  |  |
+| [map Subcommands](#chap_11)  |  |
 | `cilium map get  <name> [flags] ` | Display BPF map information |
 | `cilium map list  ` | List all open BPF maps |
-| [metrics Subcommands](#chap_10)  |  |
+| [metrics Subcommands](#chap_12)  |  |
 | `cilium metrics list` | List all metrics |
-| [monitor subcommands](#chap_11)  | Monitor notifications and events emitted by the BPF programs |
+| [monitor subcommands](#chap_13)  | Monitor notifications and events emitted by the BPF programs |
 | `cilium monitor [flags] ` | Includes 1. Dropped packets; 2. Captured packet traces; 3. Debugging information |
-| [node subcommands](#chap_12)  |  |
+| [node subcommands](#chap_14)  |  |
 | `cilium node list` | List nodes |
-| [Policy Subcommands](#chap_13)  |  |
+| [Policy Subcommands](#chap_15)  |  |
 | `cilium policy delete    ` | Delete policy rules |
 | `cilium policy get       ` | Display policy node information |
 | `cilium policy import    ` | Import security policy in JSON format |
 | `cilium policy trace     ` | Trace a policy decision |
 | `cilium policy validate  ` | Validate a policy |
 | `cilium policy wait      ` | Wait for all endpoints to have updated to a given policy revision |
-| [Prefilter Subcommands](#chap_14)  | Manage XDP CIDR filters |
+| [Prefilter Subcommands](#chap_16)  | Manage XDP CIDR filters |
 | `cilium prefilter delete ` | Delete CIDR filters |
 | `cilium prefilter list   ` | List CIDR filters |
 | `cilium prefilter update ` | Update CIDR filters |
-| [service subcommands](#chap_15)  | Manage services & loadbalancers |
+| [Preflight Subcommands](#chap_17)  | cilium upgrade helper |
+| `cilium preflight ` | |
+| [service subcommands](#chap_18)  | Manage services & loadbalancers |
 | `cilium service delete   ` | Delete a service |
 | `cilium service get      ` | Display service information |
 | `cilium service list     ` | List services |
 | `cilium service update   ` | Update a service |
-| [status subcommands](#chap_16)  | Display status of daemon |
+| [status subcommands](#chap_19)  | Display status of daemon |
 | `cilium status [flags]` | |
-| [version subcommands](#chap_17)  |  |
+| [version subcommands](#chap_20)  |  |
 | `cilium version [flags]` | |
 
 For each subcommand, `cilium [subcommand] -h` will print the detailed usage,
@@ -170,7 +179,9 @@ Success                       Egress      226488    69418245
 Success                       Unknown     207163    20200009
 ```
 
-### 1.7 `cilium bpf policy`
+### 1.7 `cilium bpf nat`
+
+### 1.8 `cilium bpf policy`
 
 Mange policy related BPF maps.
 
@@ -188,10 +199,6 @@ Ingress     reserved:world                                                 ANY  
 Ingress     reserved:health                                                ANY          NONE         0         0
 Ingress     k8s:io.cilium.k8s.policy.cluster=default                       ANY          NONE         0         0
 
-/sys/fs/bpf/tc/globals/cilium_policy_2160:
-
-/sys/fs/bpf/tc/globals/cilium_policy_2161:
-
 $ cilium bpf policy get --all -n
 /sys/fs/bpf/tc/globals/cilium_policy_2159:
 
@@ -202,7 +209,7 @@ Ingress     104        ANY          NONE         0         0
 Ingress     105        ANY          NONE         0         0
 ```
 
-### 1.8 `cilium bpf proxy`
+### 1.9 `cilium bpf proxy`
 
 Proxy configuration.
 
@@ -212,7 +219,21 @@ $ cilium bpf proxy list
 $ cilium bpf proxy flush
 ```
 
-### 1.9 `cilium bpf tunnel`
+### 1.10 `cilium bpf sha`
+
+```shell
+Datapath SHA                               Endpoint(s)
+677ceeb764aab1432e220cf66d304d1feedab281   1104
+                                           1270
+                                           1422
+                                           1460
+                                           1984
+                                           2030
+                                           256
+                                           2751
+```
+
+### 1.11 `cilium bpf tunnel`
 
 ```shell
 $ cilium bpf tunnel list
@@ -425,7 +446,15 @@ $ cilium endpoint get/health/labels/regenerate
 
 <a id="chap_7"></a>
 
-## 7 `cilium identity`
+## 7 `cilium help`
+
+<a id="chap_8"></a>
+
+## 8 `cilium help`
+
+<a id="chap_9"></a>
+
+## 9 `cilium identity`
 
 cilium identity get/list
 
@@ -447,15 +476,15 @@ ID      LABELS
 Note that the first 5 identities are all `reserved` ones, you will see them in
 some ingress/egress rules.
 
-<a id="chap_8"></a>
+<a id="chap_10"></a>
 
-## 8 `cilium kvstore`
+## 10 `cilium kvstore`
 
-cilium kvstore get/set/delete
+cilium kvstore get/set/delete.
 
-<a id="chap_9"></a>
+<a id="chap_11"></a>
 
-## 9 `cilium map`
+## 11 `cilium map`
 
 Access BPF maps.
 
@@ -487,9 +516,9 @@ Key Value State   Error
 0 SKIP_POLICY_INGRESS,SKIP_POLICY_EGRESS,0004,0008,0010,...,40000000,80000000,, 0, 0, 0.0.0.0, ::, 0, 0, 00:00:00:00:00:00   sync
 ```
 
-<a id="chap_10"></a>
+<a id="chap_12"></a>
 
-## 10 `cilium metrics`
+## 12 `cilium metrics`
 
 Access metric status. Including much of statistics metrics:
 
@@ -505,9 +534,9 @@ cilium_datapath_conntrack_gc_duration_seconds       family="ipv4" protocol="TCP"
 cilium_datapath_conntrack_gc_duration_seconds       family="ipv4" protocol="non-TCP" status="completed"        1.898584
 ```
 
-<a id="chap_11"></a>
+<a id="chap_13"></a>
 
-## 11 `cilium monitor`
+## 13 `cilium monitor`
 
 The monitor displays notifications and events emitted by the BPF
 programs attached to endpoints and devices. This includes:
@@ -556,9 +585,9 @@ $ cilium monitor --to 3991
 -> endpoint 3991 flow 0x3ed38d3c identity 1->4 state established ifindex cilium_health: 192.168.0.1:58476 -> 192.168.0.121:4240 tcp ACK
 ```
 
-<a id="chap_12"></a>
+<a id="chap_14"></a>
 
-## 12 `cilium node`
+## 14 `cilium node`
 
 ```shell
 $ cilium node list
@@ -566,9 +595,9 @@ Name       IPv4 Address   Endpoint CIDR   IPv6 Address   Endpoint CIDR
 minikube   10.0.2.15      10.15.0.0/16    <nil>          f00d::a0f:0:0:0/112
 ```
 
-<a id="chap_13"></a>
+<a id="chap_15"></a>
 
-## 13 `cilium policy`
+## 15 `cilium policy`
 
 Manage security policies.
 
@@ -621,9 +650,9 @@ $ cilium policy get
 
 ```
 
-<a id="chap_14"></a>
+<a id="chap_16"></a>
 
-## 14 `cilium prefilter`
+## 16 `cilium prefilter`
 
 ```shell
 # cilium prefilter -h
@@ -638,9 +667,13 @@ Available Commands:
   update      Update CIDR filters
 ```
 
+<a id="chap_17"></a>
+
+## 17 `cilium preflight`
+
 <a id="chap_15"></a>
 
-## 15 `cilium service`
+## 18 `cilium service`
 
 Manage services & loadbalancers.
 
@@ -694,11 +727,29 @@ $ cilium service get 6 -o json
 }
 ```
 
-<a id="chap_16"></a>
+<a id="chap_19"></a>
 
-## 16 `cilium status`
+## 19 `cilium status`
 
 Display status of daemon.
+
+```shell
+Usage:
+  cilium status [flags]
+
+Flags:
+      --all-addresses     Show all allocated addresses, not just count
+      --all-controllers   Show all controllers, not just failing
+      --all-health        Show all health status, not just failing
+      --all-nodes         Show all nodes, not just localhost
+      --all-redirects     Show all redirects
+      --brief             Only print a one-line status message
+  -h, --help              help for status
+  -o, --output string     json| jsonpath='{}'
+      --verbose           Equivalent to --all-addresses --all-controllers --all-nodes --all-health
+```
+
+Cilium status overview:
 
 ```shell
 $ cilium status
@@ -716,14 +767,64 @@ Proxy Status:           OK, ip 10.94.0.1, port-range 10000-20000
 Cluster health:   1/1 reachable   (2019-01-29T10:17:04Z)
 ```
 
-<a id="chap_17"></a>
+Show all controllers (sync tasks) instead of summary:
 
-## 17 `cilium version`
+```shell
+$ cilium status --all-controllers
+...
+Controller Status:      40/40 healthy
+  Name                                        Last success     Last error   Count   Message
+  cilium-health-ep                            16s ago          never        0       no error
+  dns-garbage-collector-job                   33s ago          never        0       no error
+  ipcache-bpf-garbage-collection              1m33s ago        never        0       no error
+  kvstore-etcd-session-renew                  never            never        0       no error
+  kvstore-sync-store-cilium/state/nodes/v1    21s ago          never        0       no error
+  lxcmap-bpf-host-sync                        3s ago           never        0       no error
+  metricsmap-bpf-prom-sync                    6s ago           never        0       no error
+  propagating local node change to kv-store   124h50m26s ago   never        0       no error
+  resolve-identity-0                          34s ago          never        0       no error
+  resolve-identity-2751                       4m6s ago         never        0       no error
+  sync-IPv4-identity-mapping (0)              28s ago          never        0       no error
+  sync-IPv4-identity-mapping (1104)           4m1s ago         never        0       no error
+  sync-IPv4-identity-mapping (2751)           4m1s ago         never        0       no error
+  sync-cnp-policy-status (v2 default/rule1)   124h18m48s ago   never        0       no error
+  sync-lb-maps-with-k8s-services              124h50m35s ago   never        0       no error
+  sync-policymap-1104                         33s ago          never        0       no error
+  sync-policymap-2751                         33s ago          never        0       no error
+  sync-to-k8s-ciliumendpoint (1104)           6s ago           never        0       no error
+  sync-to-k8s-ciliumendpoint (2751)           11s ago          never        0       no error
+  template-dir-watcher                        never            never        0       no error
+  ...
+```
+
+Show all allocated IP addresses instead of summary:
+
+```shell
+$ cilium status --all-addresses
+...
+IPv4 address pool:      10/255 allocated from 192.168.0.0/24
+Allocated addresses:
+  192.168.0.1 (router)
+  192.168.0.128 (default/tiefighter)
+  192.168.0.133 (health)
+  192.168.0.155 (default/deathstar-6fb5694d48-69jpx)
+  192.168.0.16 (cilium-monitoring/prometheus-f8454f7d6-cgl27 [restored])
+  192.168.0.2 (kube-system/coredns-67688d6ffc-6dj5h [restored])
+  192.168.0.210 (default/deathstar-6fb5694d48-sv9zg)
+  192.168.0.217 (loopback)
+  192.168.0.249 (default/xwing)
+  192.168.0.34 (kube-system/cilium-operator-76f66dfd68-g6gr2)
+  ...
+```
+
+<a id="chap_20"></a>
+
+## 20 `cilium version`
 
 ```shell
 $ cilium version
-Client: 1.4.3 31d8e0219 2019-04-05T11:28:50+02:00 go version go1.11.1 linux/amd64
-Daemon: 1.4.3 31d8e0219 2019-04-05T11:28:50+02:00 go version go1.11.1 linux/amd64
+Client: 1.5.0 e47b37c3a 2019-04-25T22:20:13-05:00 go version go1.12.1 linux/amd64
+Daemon: 1.5.0 e47b37c3a 2019-04-25T22:20:13-05:00 go version go1.12.1 linux/amd64
 ```
 
 ## References
