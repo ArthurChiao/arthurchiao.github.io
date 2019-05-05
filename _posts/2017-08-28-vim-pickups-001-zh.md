@@ -1,7 +1,8 @@
 ---
-layout: post
-title:  "Vim Pickups 001"
-date:   2017-08-28
+layout    : post
+title     : "Vim Pickups 001"
+date      : 2017-08-28
+lastupdate: 2017-08-28
 ---
 
 今日有闲，整理点vim小技巧。本文所列命令都是基于VIM MAN page (运行`man vim`)，

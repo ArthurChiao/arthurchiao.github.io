@@ -1,8 +1,8 @@
 ---
-layout: post
-title:  "[译] 简明x86汇编指南"
-date:   2017-08-14
-last_modified: 2017-08-25
+layout    : post
+title     : "[译] 简明 x86 汇编指南"
+date      : 2017-08-14
+lastupdate: 2019-05-05
 categories: assembly
 ---
 

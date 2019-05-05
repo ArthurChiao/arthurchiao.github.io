@@ -1,8 +1,8 @@
 ---
-layout: post
-title:  "DNS问题分析示例"
-date:   2018-12-16
-author: ArthurChiao
+layout    : post
+title     : "DNS 问题分析示例"
+date      : 2018-12-16
+lastupdate: 2019-05-05
 categories: dns nameserver
 ---
 

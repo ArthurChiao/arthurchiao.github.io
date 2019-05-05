@@ -1,7 +1,8 @@
 ---
-layout: post
-title:  "Ctrip Network Architecture Evolution in the Cloud Computing Era"
-date:   2019-04-17
+layout    : post
+title     : "Ctrip Network Architecture Evolution in the Cloud Computing Era"
+date      : 2019-04-17
+lastupdate: 2019-05-05
 categories: network datacenter cilium
 ---
 
@@ -16,9 +17,9 @@ ease of reading as a post, and slightly updated to correct some inaccuracies.
 
 ### About Me
 
-I'm currently a senior achitect at Ctrip cloud, and leading the network &
-storage development team. My main focus is on **network virtualization** and
-**distributed storage**.
+I'm a senior achitect at Ctrip cloud, currently lead the network & storage
+development team, focusing on **network virtualization** and **distributed
+storage**.
 
 ----
 
@@ -676,16 +677,16 @@ Here is a brief comparison according to my understanding and experiment.
 **Latest kernel (4.8+ at least, 4.14+ better) needed**. lots of companies'
 PROD environments run kernels older than this.
 
-**Not enough user stories & best practices yet**. Everyone say Cilium is
-brilliant, but no one claim they have been widely used in their large scale
-PROD environments.
+**Not enough user stories & best practices yet**. Everyone says Cilium is
+brilliant, but no one has claimed they have deployed Cilium at large scale in
+their **PROD** environments.
 
-**High dev & ops costs**. Compared with iptables-based solutions, e.g. Calico.
-Big companies usually have customization needs because all of reasons, e.g.
+**High dev & ops costs**. Compared with iptables-based solutions, e.g. Calico,
+big companies usually have customization needs because all of reasons, e.g.
 compatibility with old systems to not break the business. The development
 would need a gentle understanding with kernel stack: you should be familir
 with kernel data structures, know the packet traversing path, have a
-considerable experience with C programming - as BPF code is written in C.
+considerable experience with C programming - BPF code is written in C.
 
 Trouble shooting and debugging. You should equipped yourself with Cilium trouble
 shooting skills, which are different from iptables-based solutions. While in

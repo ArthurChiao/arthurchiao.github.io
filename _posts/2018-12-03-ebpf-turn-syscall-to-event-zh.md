@@ -1,8 +1,9 @@
 ---
-layout: post
-title:  "[译] eBPF内核探测：如何将任意系统调用转换成事件"
-date:   2018-12-03
-author: ArthurChiao
+layout    : post
+title     : "[译] eBPF 内核探测：如何将任意系统调用转换成事件"
+date      : 2018-12-03
+lastupdate: 2019-05-05
+author    : ArthurChiao
 categories: eBPF tracing bcc
 ---
 
