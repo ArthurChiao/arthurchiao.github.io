@@ -2,28 +2,31 @@
 layout    : post
 title     : "[译] 简明 x86 汇编指南"
 date      : 2017-08-14
-lastupdate: 2019-05-05
+lastupdate: 2019-05-08
 categories: assembly
 ---
 
+### 译者序
+
 Translated from [CS216, University of Virginia](http://www.cs.virginia.edu/~evans/cs216/guides/x86.html).
 
-一份非常好的x86汇编教程，国外CS课程所用资料，篇幅简短，逻辑清晰，合适作为
-入门参考。以原理为主，有两个例子帮助理解。其开始提到使用
-MicroSoft MASM和VisualStudio，但非必须, 事实上如果你有Linux更好。
+一份非常好的 x86 汇编教程，国外 CS 课程所用资料，篇幅简短，逻辑清晰，合适作为入
+门参考。以原理为主，有两个例子帮助理解。其开始提到使用 MicroSoft MASM 和 Visual
+Studio，但非必须, 事实上如果你有 Linux 更好。
 
 
-**本文根据原文内容意译，并非逐词逐句翻译，如需了解更多，推荐阅读**[原文](http://www.cs.virginia.edu/~evans/cs216/guides/x86.html).
+**本文根据原文内容意译，而非逐词逐句翻译，如需了解更多，推荐阅读**[原文
+](http://www.cs.virginia.edu/~evans/cs216/guides/x86.html).
 
 ---
 
 内容：**寄存器, 内存和寻址, 指令, 函数调用约定（Calling Convention）**
 
-本文介绍**32bit x86汇编**基础，覆盖其中虽小但很有用的一部分。
-有多种汇编语言可以生成x86机器代码。我们在CS216课程中使用的是MASM（
-Microsoft Macro Assembler）。MASM使用标准Intel语法。
+本文介绍 **32bit x86 汇编**基础，覆盖其中虽小但很有用的一部分。
+有多种汇编语言可以生成 x86 机器代码。我们在 CS216 课程中使用的是 MASM（
+Microsoft Macro Assembler）。MASM 使用标准 Intel 语法。
 
-整套x86指令集庞大而复杂（Intel x86指令集手册超过2900页），本文不会全部覆盖。
+整套 x86 指令集庞大而复杂（Intel x86 指令集手册超过 2900 页），本文不会全部覆盖。
 
 ## 1. 参考资料
 
@@ -36,56 +39,57 @@ Microsoft Macro Assembler）。MASM使用标准Intel语法。
 <p align="center"><img src="/assets/img/x86-asm-guide/x86-registers.png" width="50%" height="50%"></p>
 <p align="center">Fig 2.1 x86 registers</p>
 
-现代x86处理器有8个32 bit寄存器，如图1所示。寄存器名字是早期计算机历史上流传下来的。例如，
-EAX表示Accumulator，因为它用作算术运算的累加器，ECX表示Counter，用来存储循环
-变量（计数）。大部分寄存器的名字已经失去了原来的意义，但有两个是例外：栈指针寄存
-器（Stack Pointer）ESP和基址寄存器（ Base Pointer）EBP。
+现代 x86 处理器有 8 个 32 bit 寄存器，如图 1 所示。寄存器名字是早期计算机历史上
+流传下来的。例如，EAX 表示 Accumulator，因为它用作算术运算的累加器，ECX 表示
+Counter，用来存储循环变量（计数）。大部分寄存器的名字已经失去了原来的意义，但有
+两个是例外：栈指针寄存器（Stack Pointer）ESP 和基址寄存器（ Base Pointer）EBP。
 
-对于`EAX`, `EBX`, `ECX`, `EDX`四个寄存器，可以再将32bit划分成多个子寄存器，每个
-子寄存器有专门的名字。例如`EAX`的高16bit叫`AX`（去掉E, E大概表示**Extended**）,
-低8bit叫`AL` (**Low**）, 8-16bit叫`AH` （**High**）。如图1所示。
+对于 `EAX`, `EBX`, `ECX`, `EDX` 四个寄存器，可以再将 32bit 划分成多个子寄存器，
+每个子寄存器有专门的名字。例如 `EAX` 的高 16bit 叫 `AX`（去掉 E, E 大概表示
+**Extended**）,低 8bit 叫 `AL` (**Low**）, 8-16bit 叫 `AH` （**High**）。如图 1
+所示。
 
-在汇编语言中，这些寄存器的名字是**大小写无关**的，既可以用`EAX`，也可以写`eax`。
+在汇编语言中，这些寄存器的名字是**大小写无关**的，既可以用 `EAX`，也可以写 `eax`。
 
 ## 3. 内存和寻址模式
 
 ### 3.1 声明静态数据区
 
-`.DATA`声明静态数据区。
+`.DATA` 声明静态数据区。
 
 数据类型修饰原语：
 
-* **DB**: Byte,        1 Byte
-* **DW**: Word,        2 Bytes
-* **DD**: Double Word, 4 Bytes
+* `DB`: Byte,        1 Byte（`DB` 的 `D` 可能表示 Data）
+* `DW`: Word,        2 Bytes
+* `DD`: Double Word, 4 Bytes
 
 例子：
 
 ```
 .DATA
-var     DB 64    ; 声明一个byte值, referred to as location var, containing the value 64.
-var2    DB ?     ; 声明一个未初始化byte值, referred to as location var2.
-        DB 10    ; 声明一个没有label的byte值, containing the value 10. Its location is var2 + 1.
-X       DW ?     ; 声明一个2-byte未初始化值, referred to as location X.
-Y       DD 30000 ; 声明一个4-byte值, referred to as location Y, initialized to 30000.
+var     DB 64    ; 声明一个 byte 值, referred to as location var, containing the value 64.
+var2    DB ?     ; 声明一个未初始化 byte 值, referred to as location var2.
+        DB 10    ; 声明一个没有 label 的 byte 值, containing the value 10. Its location is var2 + 1.
+X       DW ?     ; 声明一个 2-byte 未初始化值, referred to as location X.
+Y       DD 30000 ; 声明一个 4-byte 值, referred to as location Y, initialized to 30000.
 ```
 
 和高级语言不同，**在汇编中只有一维数组**，只有没有二维和多维数组。一维数组其实就
-是内存中的有空连续区域。另外，`DUP`和字符串常量也是声明数组的两种方法。
+是内存中的一块连续区域。另外，`DUP` 和字符串常量也是声明数组的两种方法。
 
 例子：
 
 ```
-Z       DD 1, 2, 3      ; 声明3个 4-byte values, 初始化为 1, 2, and 3. The value of location Z + 8 will be 3.
-bytes   DB 10 DUP(?)    ; 声明10个 uninitialized bytes starting at location bytes.
-arr     DD 100 DUP(0)   ; 声明100个 4-byte words starting at location arr, all initialized to 0
+Z       DD 1, 2, 3      ; 声明 3 个 4-byte values, 初始化为 1, 2, and 3. The value of location Z + 8 will be 3.
+bytes   DB 10 DUP(?)    ; 声明 10 个 uninitialized bytes starting at location bytes.
+arr     DD 100 DUP(0)   ; 声明 100 个 4-byte words starting at location arr, all initialized to 0
 str     DB 'hello',0    ; 声明 6 bytes starting at the address str, 初始化为 hello and the null (0) byte.
 ```
 
 ### 3.2 内存寻址 (Addressing Memory)
 
-有多个指令可以用于内存寻址，我们先看使用`MOV`的例子。MOV将在内存和寄存器之间移动
-数据，接受两个参数：第一个参数是目的地，第二个是源。
+有多个指令可以用于内存寻址，我们先看使用 `MOV` 的例子。`MOV` 将在内存和寄存器之
+间移动数据，接受两个参数：第一个参数是目的地，第二个是源。
 
 合法寻址的例子：
 
@@ -145,27 +149,27 @@ mov DWORD PTR [ebx], 2  ; Move the 32-bit integer representation of 2 into the 4
 
 **这是最重要的部分。**
 
-子过程（函数）调用需要遵守一套共同的**调用约定**（***Calling Convention***）。**
-调用约定是一个协议，规定了如何调用以及如何从过程返回**。例如，给定一组calling
+子过程（函数）调用需要遵守一套共同的**调用约定**（***Calling Convention***）。
+**调用约定是一个协议，规定了如何调用以及如何从过程返回**。例如，给定一组 calling
 convention rules，程序员无需查看子函数的定义就可以确定如何将参数传给它。进一步地
-，给定一组calling convention rules，高级语言编译器只要遵循这些rules，就可以使得
-汇编函数和高级语言函数互相调用。
+，给定一组 calling convention rules，高级语言编译器只要遵循这些 rules，就可以使
+得汇编函数和高级语言函数互相调用。
 
-Calling conventions有多种。我们这里介绍使用最广泛的一种：**C语言调用约定**（***C
-Language Calling Convention***）。遵循这个约定，可以使汇编代码安全地被C/C++调用
-，也可以从汇编代码调用C函数库。
+Calling conventions 有多种。我们这里介绍使用最广泛的一种：**C 语言调用约定**（C
+Language Calling Convention）。遵循这个约定，可以使汇编代码安全地被 C/C++ 调用
+，也可以从汇编代码调用 C 函数库。
 
-C调用约定:
+C 调用约定:
 
-* 强烈依赖**硬件栈**的支持(hardwared-supported stack)
-* 基于`push`, `pop`, `call`, `ret`指令
+* 强烈依赖**硬件栈**的支持 (hardwared-supported stack)
+* 基于 `push`, `pop`, `call`, `ret` 指令
 * 子过程**参数通过栈传递**: 寄存器保存在栈上，子过程用到的局部变量也放在栈上
 
 在大部分处理器上实现的大部分高级过程式语言，都使用与此相似的调用惯例。
 
 调用惯例分为两部分。第一部分用于 **调用方**（***caller***），第二部分用于**被调
 用方**（***callee***）。需要强调的是，错误地使用这些规则将导致**栈被破坏**，程序
-很快出错；因此在你自己的子过程中实现calling convention时需要格外仔细。
+很快出错；因此在你自己的子过程中实现 calling convention 时需要格外仔细。
 
 <p align="center"><img src="/assets/img/x86-asm-guide/stack-convention.png" width="60%" height="60%"></p>
 <p align="center">Fig 5.1 Stack during Subroutine Call</p>
@@ -182,22 +186,22 @@ C调用约定:
 
 1. **将需要传给子过程的参数入栈**（push onto stack)
 
-    参数按**逆序**push入栈（最后一个参数先入栈）。由于栈是向下生长的，第一个参数
+    参数按**逆序** push 入栈（最后一个参数先入栈）。由于栈是向下生长的，第一个参数
     会被存储在最低地址（**这个特性使得变长参数列表成为可能**）。
 
-1. **使用`call`指令，调用子过程(函数）**
+1. **使用 `call` 指令，调用子过程(函数）**
 
-    `call`先将返回地址push到栈上，然后开始执行子过程代码。子过程代码需要遵
-    守的callee rules。
+    `call` 先将返回地址 push 到栈上，然后开始执行子过程代码。子过程代码需要遵
+    守的 callee rules。
 
-子过程返回后（`call`执行结束之后），被调用方会将返回值放到`EAX`寄存器，调用方可
-以从中读取。为恢复机器状态，调用方需要做：
+子过程返回后（`call` 执行结束之后），被调用方会将返回值放到 `EAX` 寄存器，调用方
+可以从中读取。为恢复机器状态，调用方需要做：
 
 1. **从栈上删除传递的参数**
 
     栈恢复到准备发起调用之前的状态。
 
-1. **恢复由调用方保存的寄存器**（`EAX`, `ECX`, `EDX`）——从栈上pop出来
+1. **恢复由调用方保存的寄存器**（`EAX`, `ECX`, `EDX`）—— 从栈上 pop 出来
 
     调用方可以认为，除这三个之外，其他寄存器的值没有被修改过。
 
@@ -215,7 +219,7 @@ add esp, 12
 
 ### 5.2 被调用方规则 (Callee Rules)
 
-1. **将寄存器`EBP`的值入栈，然后copy `ESP` to `EBP`**
+1. **将寄存器 `EBP` 的值入栈，然后 copy `ESP` to `EBP`**
 
    ```
    push ebp
@@ -226,20 +230,20 @@ add esp, 12
 
     栈自顶向下生长，故随着变量的分配，栈顶指针不断减小。
 
-1. **保存应有被调用方保存（`callee-saved`）的寄存器** —— 将他们压入栈。包括`EBX`,
+1. **保存应有被调用方保存（`callee-saved`）的寄存器** —— 将他们压入栈。包括 `EBX`,
    `EDI`, `ESI`
 
 以上工作完成，就可以执行子过程的代码了。当子过程返回后，必须做以下工作：
 
-1. **将返回值保存在`EAX`**
+1. **将返回值保存在 `EAX`**
 
-1. **恢复应由被调用方保存的寄存器**(`EDI`, `ESI`) —— 从栈上pop出来
+1. **恢复应由被调用方保存的寄存器**(`EDI`, `ESI`) —— 从栈上 pop 出来
 
 1. **释放局部变量**
 
-1. **恢复调用方base pointer `EBP` —— 从栈上pop出来**
+1. **恢复调用方 base pointer `EBP` —— 从栈上 pop 出来**
 
-1. **最后，执行`ret`，返回给调用方(caller)**
+1. **最后，执行 `ret`，返回给调用方 (caller)**
 
 #### 例子
 
