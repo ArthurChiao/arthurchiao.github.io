@@ -98,4 +98,11 @@ new debugging code without recompiling the kernel.
 
 ### Fast Datapath (XDP)
 
+1. **Facebook, [Open-sourcing Katran, a scalable network load
+   balancer](https://code.fb.com/open-source/open-sourcing-katran-a-scalable-network-load-balancer/),
+   fb.com, 2019+**
+
+    Facebook's L4 LB, based on XDP and eBPF. Some talks mentioned that
+    this is **`10x` faster** than their first generation LVS-based L4 LB.
+
 ### Security Computation (seccomp)
