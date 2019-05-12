@@ -6,6 +6,8 @@ lastupdate: 2019-05-06
 categories: bpf ebpf
 ---
 
+Awesome BPF resources that I've ever read (and would like to read many times).
+
 ## 1 Introduction & Overview
 
 1. **Elena Zannoni, [New (and Exciting!) Developments in Linux
@@ -106,3 +108,12 @@ new debugging code without recompiling the kernel.
     this is **`10x` faster** than their first generation LVS-based L4 LB.
 
 ### Security Computation (seccomp)
+
+## 5 Similar Reading Lists
+
+1. [Dive into BPF: a list of reading material](https://qmonnet.github.io/whirl-offload/2016/09/01/dive-into-bpf/)
+
+    It was later after I started this list that I found this similar purpose
+    post. It's great, however, I think it's more than extensive for me, e.g.
+    including resouces of many unstable, experimenting, or even toy projects.
+    Pick up your own pieces from it.
