@@ -1,6 +1,6 @@
 ---
 layout    : post
-title     : "Cilium Source Code Walk Through: CIDR Init"
+title     : "Cilium Code Walk Through: CIDR Init"
 date      : 2019-05-13
 lastupdate: 2019-05-13
 categories: cilium
