@@ -534,7 +534,7 @@ body {
     overflow-x:hidden
 }
 body p,body ul {
-    margin:0 0 2rem;
+    margin:0 0 0.25rem;
 }
 ::-moz-selection {
     background:#2e8b57;
@@ -980,10 +980,13 @@ dd {
         float:left;
         margin-right:2.12766%;
         float:none;
-        margin:0 auto 1rem
+        margin:0.75rem auto 0.25rem
     }
     .post h1,.post .h1,.post h2,.post .h2,.post h3,.post .h3,.post h4,.post .h4,.post h5,.post .h5,.post h6,.post .h6 {
         margin:1rem auto
+    }
+    .post ol p, .post ul p {
+        margin:0
     }
     .post .pageTitle {
         margin:2rem auto 1em
