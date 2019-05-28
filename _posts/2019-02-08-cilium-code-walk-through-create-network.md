@@ -2,6 +2,7 @@
 layout: post
 title:  "Cilium Code Walk Through: CNI Create Network"
 date:   2019-02-08
+lastupdate: 2019-05-28
 categories: cilium ebpf
 ---
 
@@ -17,9 +18,33 @@ network for the container. This includes, but not limited to:
 1. create endpoint (cilium concept, namespaced interface to apply policy on)
 1. generate, compile, link and inject BPF code into kernel
 
+```shell
+cmdAdd                                  // plugins/cilium-cni/cilium-cni.go
+  |-loadNetConf(args.StdinData)         // plugins/cilium-cni/cilium-cni.go
+  |-RemoveIfFromNetNSIfExists
+  |-SetupVeth or IPVLAN
+  |-IPAMAllocate                        // plugins/cilium-cni/cilium-cni.go
+  | |-PostIPAM                          // api/v1/client/ipam/i_p_a_m_client.go
+  |   /\
+  |   ||
+  |   \/
+  |   ServeHTTP                         // api/v1/server/restapi/ipam/post_ip_a_m.go
+  |     |-Handler.Handle()              // api/v1/server/restapi/ipam/post_ip_a_m.go
+  |       |- Handle()                   // daemon/ipam.go
+  |         |-AllocateNext              // pkg/ipam/allocator.go
+  |           |-AllocateNextFamily      // pkg/ipam/allocator.go
+  |             |-allocateNextFamily    // pkg/ipam/allocator.go
+  |               |-AllocateNext        // k8s.io/kubernetes/pkg/registry/core/service/ipallocator
+  |                 |-AllocateNext      // k8s.io/kubernetes/pkg/registry/core/service/allocator/bimap.go
+  |-SetupVeth                           // plugins/cilium-cni/cilium-cni.go
+  |-prepareIP                           //
+  |-configureIface                      //
+  |-EndpointCreate
+```
+
 ## 0 High Level Overview
 
-Cilium code in this article bases on version `1.3.2`. To focous on the main
+Cilium code in this article bases on version `1.5.1`. To focous on the main
 aspects, we will omit lots of unrelated lines (e.g. error handling, stats,
 varaible declerations) in functions below. You should refer to the [source
 code](https://github.com/cilium/cilium) in case you want to check more
@@ -54,15 +79,14 @@ The cilium CNI plugin is implemented in a single file
 `plugins/cilium-cni/cilium-cni.go`.
 
 When kubelet calls the plugin to add network for a container, `cmdAdd()`
-function will be invoked. The skeleton code is as follows:
+method will be invoked. The skeleton code is as follows:
 
 ```go
 func cmdAdd(args *skel.CmdArgs) (err error) {
-	// load data from stdin, TODO: what data?
 	n, cniVer := loadNetConf(args.StdinData)
 
 	// init variables
-	c := client.NewDefaultClientWithTimeout(defaults.ClientConnectTimeout) // cilium client
+	c := client.NewDefaultClientWithTimeout() // cilium client
 	ep := &models.EndpointChangeRequest{}
 
 	// create link: veth pair, IPVLAN, etc
@@ -267,19 +291,18 @@ Let's see them.
 Start from `plugin/cilium-cni/cilium-cni.go`:
 
 ```go
-	ipam := c.IPAMAllocate("")
+	podName := cniArgs.K8S_POD_NAMESPACE + "/" + cniArgs.K8S_POD_NAME
+	ipam := c.IPAMAllocate("", podName)
 ```
 
 where `c` is an instance of cilium client.
 
-`IPAMAllocate()` takes address family as parameter; if not specified, it will
-create both an IPv4 and an IPv6 address. Each of them will be saved at the
-following fields:
+`IPAMAllocate()` takes two parameters: `address family` and `owner`; if address
+family not specified, it will create both an IPv4 and an IPv6 address. Each of
+them will be saved at the following fields:
 
 * `ipam.Address.IPV4`
 * `ipam.Address.IPV6`
-
-Let's move to this function.
 
 ### 3.2 Cilium Client: `IPAMAllocate()`
 
@@ -287,19 +310,20 @@ Let's move to this function.
 
 ```go
 // IPAMAllocate allocates an IP address out of address family specific pool.
-func (c *Client) IPAMAllocate(family string) (*models.IPAMResponse, error) {
+func (c *Client) IPAMAllocate(family, owner string) (*models.IPAMResponse, error) {
 	params := ipam.NewPostIPAMParams().WithTimeout(api.ClientTimeout)
 
-	if family != "" {
+	if family != ""
 		params.SetFamily(&family)
-	}
+	if owner != ""
+		params.SetOwner(&owner)
 
-	resp := c.IPAM.PostIPAM(params)
+	resp, err := c.IPAM.PostIPAM(params)
 	return resp.Payload, nil
 }
 ```
 
-where, the client structure is defined in `pkt/client/ipam.go`:
+where, the client structure is defined in `pkt/client/client.go`:
 
 ```go
 type Client struct {
@@ -307,7 +331,7 @@ type Client struct {
 }
 ```
 
-where in turn, the client API structure is defined in
+the client API `clientapi.Cilium` is further defined in 
 `api/v1/client/cilium_client.go`:
 
 ```go
@@ -316,7 +340,7 @@ type Cilium struct {
 	Daemon *daemon.Client
 
 	Endpoint *endpoint.Client
-	IPAM *ipam.Client              // point to "api/v1/client/ipam"
+	IPAM *ipam.Client              // implemented in "api/v1/client/ipam"
 	Metrics *metrics.Client
 	Policy *policy.Client
 	Prefilter *prefilter.Client
@@ -345,8 +369,7 @@ func (a *Client) PostIPAM(params *PostIPAMParams) (*PostIPAMCreated, error) {
 }
 ```
 
-This will send out the request with `POST` method, `/ipam` URI and many
-other HTTP parameters.
+This will `POST` the request to `/ipam` route on the server side.
 
 ### 3.4 IPAM API Server
 
@@ -371,8 +394,8 @@ func (o *PostIPAM) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 }
 ```
 
-As can be seen, the real processing logic is done in `o.Handler.Handle()`
-method. This method is implemented in daemon code.
+The real processing is done in `o.Handler.Handle()`
+method. This method is implemented in the daemon code.
 
 ### 3.5 IPAM HTTP Handler
 
@@ -388,15 +411,16 @@ func (h *postIPAM) Handle(params ipamapi.PostIPAMParams) middleware.Responder {
 
 	ipv4, ipv6 := h.daemon.ipam.AllocateNext(params.Family)
 
-	resp.Address.IPV4 = ipv4.String()
-	resp.Address.IPV6 = ipv6.String()
+	if ipv4 != nil
+		resp.Address.IPV4 = ipv4.String()
+	if ipv6 != nil
+		resp.Address.IPV6 = ipv6.String()
 
 	return ipamapi.NewPostIPAMCreated().WithPayload(resp)
 }
 ```
 
-where `h.daemon.ipam` is actually a CIDR range, initialized as:
-
+where `h.daemon.ipam` is actually a CIDR range, initialized in
 `pkg/ipam/ipam.go`:
 
 ```go
@@ -409,13 +433,10 @@ func NewIPAM(nodeAddressing datapath.NodeAddressing, c Configuration) *IPAM {
 		config:         c,
 	}
 
-	if c.EnableIPv6 {
+	if c.EnableIPv6
 		ipam.IPv6Allocator = ipallocator.NewCIDRRange(nodeAddressing.IPv6().AllocationCIDR().IPNet)
-	}
-
-	if c.EnableIPv4 {
+	if c.EnableIPv4
 		ipam.IPv4Allocator = ipallocator.NewCIDRRange(nodeAddressing.IPv4().AllocationCIDR().IPNet)
-	}
 
 	return ipam
 }
@@ -460,7 +481,7 @@ func allocateNextFamily(family Family, allocator *ipallocator.Range) (ip net.IP,
 }
 ```
 
-After several layers of calls, the execution comes to
+After several layers of function calls, the execution eventually comes to
 `allocator.AllocateNext()`, where `AllocateNext()` is an interface defined in
 `k8s.io/kubernetes/pkg/registry/core/service/ipallocator`.
 
