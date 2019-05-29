@@ -144,11 +144,11 @@ pre {
     overflow:auto
 }
 code,kbd,pre,samp {
-    font-family:monospace, monospace;
-    font-size:1em;
+    font-family: SFMono-Regular,Consolas,"Liberation Mono",Menlo,Courier,monospace;
     border-radius: 3px;
-    font-size: 90%;
-    font-family: Consolas, "Liberation Mono", Menlo, Courier, monospace;
+    font-size: 85%;
+    margin: 0;
+    padding: .2em .4em;
 }
 form {
     margin:0
@@ -440,7 +440,7 @@ body .intro {
 }
 h1,.h1,h2,.h2,h3,.h3,h4,.h4,h5,.h5,h6,.h6 {
     margin:.5rem 0 1.5rem;
-    font-family:"Open Sans",Helvetica,Arial,sans-serif
+    font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol";
 }
 h1,.h1 {
     font-size:2em;
@@ -527,10 +527,9 @@ html {
     box-sizing:inherit
 }
 body {
-    font-family:"PT Serif",Georgia,Times,serif;
+    font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol";
+    font-size: 16px;
     line-height:1.50;
-    font-size:100%;
-    color:#111;
     overflow-x:hidden
 }
 body p,body ul {
