@@ -1,6 +1,6 @@
 ---
 layout    : post
-title     : "Cilium Code Walk Through: CIDR Init"
+title     : "Cilium Code Walk Through: Agent CIDR Init"
 date      : 2019-05-13
 lastupdate: 2019-05-13
 categories: cilium

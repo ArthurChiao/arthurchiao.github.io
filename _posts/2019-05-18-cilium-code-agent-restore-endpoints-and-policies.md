@@ -1,6 +1,6 @@
 ---
 layout    : post
-title     : "Cilium Code Walk Through: Restore Endpoints And Identities On Restart"
+title     : "Cilium Code Walk Through: Agent Restore Endpoints And Identities"
 date      : 2019-05-18
 lastupdate: 2019-05-18
 categories: cilium
