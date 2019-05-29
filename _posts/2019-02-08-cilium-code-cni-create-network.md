@@ -19,27 +19,54 @@ network for the container. This includes, but not limited to:
 1. generate, compile, link and inject BPF code into kernel
 
 ```shell
-cmdAdd                                  // plugins/cilium-cni/cilium-cni.go
-  |-loadNetConf(args.StdinData)         // plugins/cilium-cni/cilium-cni.go
+cmdAdd                                            // plugins/cilium-cni/cilium-cni.go
+  |-loadNetConf(args.StdinData)                   // plugins/cilium-cni/cilium-cni.go
   |-RemoveIfFromNetNSIfExists
   |-SetupVeth or IPVLAN
-  |-IPAMAllocate                        // plugins/cilium-cni/cilium-cni.go
-  | |-PostIPAM                          // api/v1/client/ipam/i_p_a_m_client.go
+  |-IPAMAllocate                                  // plugins/cilium-cni/cilium-cni.go
+  | |-PostIPAM                                    // api/v1/client/ipam/i_p_a_m_client.go
   |   /\
   |   ||
   |   \/
-  |   ServeHTTP                         // api/v1/server/restapi/ipam/post_ip_a_m.go
-  |     |-Handler.Handle()              // api/v1/server/restapi/ipam/post_ip_a_m.go
-  |       |- Handle()                   // daemon/ipam.go
-  |         |-AllocateNext              // pkg/ipam/allocator.go
-  |           |-AllocateNextFamily      // pkg/ipam/allocator.go
-  |             |-allocateNextFamily    // pkg/ipam/allocator.go
-  |               |-AllocateNext        // k8s.io/kubernetes/pkg/registry/core/service/ipallocator
-  |                 |-AllocateNext      // k8s.io/kubernetes/pkg/registry/core/service/allocator/bimap.go
-  |-SetupVeth                           // plugins/cilium-cni/cilium-cni.go
-  |-prepareIP                           //
-  |-configureIface                      //
+  |   ServeHTTP                                    // api/v1/server/restapi/ipam/post_ip_a_m.go
+  |     |-Handler.Handle()                         // api/v1/server/restapi/ipam/post_ip_a_m.go
+  |       |- Handle()                              // daemon/ipam.go
+  |         |-AllocateNext                         // pkg/ipam/allocator.go
+  |           |-AllocateNextFamily                 // pkg/ipam/allocator.go
+  |             |-allocateNextFamily               // pkg/ipam/allocator.go
+  |               |-AllocateNext                   // k8s.io/kubernetes/pkg/registry/core/service/ipallocator
+  |                 |-AllocateNext                 // k8s.io/kubernetes/pkg/registry/core/service/allocator/bimap.go
+  |-SetupVeth                                      // plugins/cilium-cni/cilium-cni.go
+  |-prepareIP                                      //
+  |-configureIface                                 //
+  | |-addIPConfigToLink
+  |   |-netlink.AddrAdd
+  |   |-netlink.RouteAdd
   |-EndpointCreate
+    |-PutEndpointID
+      /\
+      ||
+      \/
+      ServeHTTP                                     // api/server/restapi/endpint/put_endpoint_id.go
+        |-Handler.Handle()                          // api/server/restapi/endpint/put_endpoint_id.go
+          |- Handle()                               // daemon/endpoint.go
+            |-createEndpoint                        // daemon/endpoint.go
+              |-NewEndpointFromChangeModel
+              |-endpointmanager.AddEndpoint
+              |-Regenerate                          // pkg/endpoint/policy.go
+                |-regenerate                        // pkg/endpoint/policy.go
+                  |-regenerateBPF                   // pkg/endpoint/bpf.go
+                    |-runPreCompilationSteps
+                    | |-regeneratePolicy
+                    | |-writeHeaderfile
+                    |-realizeBPFState
+                      |-CompileAndLoad              // pkt/datapath/loader/loader.go
+                        |-compileAndLoad            // pkt/datapath/loader/loader.go
+                          |-compileDatapath         // pkt/datapath/loader/loader.go
+                          | |-compile               // pkt/datapath/loader/compile.go
+                          |   |-compileAndLink      // pkt/datapath/loader/compile.go
+                          |-reloadDatapath          // pkt/datapath/loader/loader.go
+                            |-replaceDatapath       // pkt/datapath/loader/netlink.go
 ```
 
 ## 0 High Level Overview
@@ -705,14 +732,11 @@ func configureIface(ipam *models.IPAMResponse, ifName string, state *CmdState) (
 container), then calls `addIPConfigToLink` to do the real jobs:
 
 ```go
-func addIPConfigToLink(ip addressing.CiliumIP, routes []route.Route, link netlink.Link, ifName string) error {
+func addIPConfigToLink(...) error {
 	addr := &netlink.Addr{IPNet: ip.EndpointPrefix()}
 	netlink.AddrAdd(link, addr)
 
-	// Sort provided routes to make sure we apply any more specific
-	// routes first which may be used as nexthops in wider routes
 	sort.Sort(route.ByMask(routes))
-
 	for _, r := range routes {
 		rt := &netlink.Route{
 			LinkIndex: link.Attrs().Index,
@@ -726,7 +750,6 @@ func addIPConfigToLink(ip addressing.CiliumIP, routes []route.Route, link netlin
 		} else {
 			rt.Gw = *r.Nexthop
 		}
-
 		netlink.RouteAdd(rt)
 	}
 }
@@ -875,35 +898,33 @@ defined in the same file. This method attempts to create the endpoint
 corresponding to the change request that was specified.
 
 ```go
-func (d *Daemon) createEndpoint(ctx context.Context, epTemplate *models.EndpointChangeRequest) (*endpoint.Endpoint, error) {
+func (d *Daemon) createEndpoint(ctx context.Context, epTemplate *models.EndpointChangeRequest) (*endpoint.Endpoint, int, error) {
+	ep, err := endpoint.NewEndpointFromChangeModel(epTemplate)
+
+	if oldEp := endpointmanager.LookupCiliumID(ep.ID); oldEp != nil
+		return fmt.Errorf("endpoint ID %d already exists", ep.ID)
+	if oldEp = endpointmanager.LookupContainerID(ep.ContainerID); oldEp != nil
+		return fmt.Errorf("endpoint for container %s already exists", ep.ContainerID)
+
+	addLabels := labels.NewLabelsFromModel(epTemplate.Labels)
+	infoLabels := []string{}
+	identityLabels, info := fetchK8sLabels(ep)
+	addLabels.MergeLabels(identityLabels)
+	infoLabels.MergeLabels(info)
 
 	endpointmanager.AddEndpoint(d, ep, "Create endpoint from API PUT")
-	ep.UpdateLabels(d, addLabels, infoLabels, true)
+	ep.UpdateLabels(ctx, d, addLabels, infoLabels, true)
+
+	// Now that we have ep.ID we can pin the map from this point. This
+	// also has to happen before the first build took place.
+	ep.PinDatapathMap()
 
 	if build {
-		// Do not synchronously regenerate the endpoint when first creating it.
-		// We have custom logic later for waiting for specific checkpoints to be
-		// reached upon regeneration later (checking for when BPF programs have
-		// been compiled), as opposed to waiting for the entire regeneration to
-		// be complete (including proxies being configured). This is done to
-		// avoid a chicken-and-egg problem with L7 policies are imported which
-		// select the endpoint being generated, as when such policies are
-		// imported, regeneration blocks on waiting for proxies to be
-		// configured. When Cilium is used with Istio, though, the proxy is
-		// started as a sidecar, and is not launched yet when this specific code
-		// is executed; if we waited for regeneration to be complete, including
-		// proxy configuration, this code would effectively deadlock addition
-		// of endpoints.
 		ep.Regenerate(d, &endpoint.ExternalRegenerationMetadata{
-			Reason: "Initial build on endpoint creation",
+			Reason:        "Initial build on endpoint creation",
+			ParentContext: ctx,
 		})
 	}
-
-	// Wait for any successful BPF regeneration, which is indicated by any
-	// positive policy revision (>0). As long as at least one BPF
-	// regeneration is successful, the endpoint has network connectivity
-	// so we can return from the creation API call.
-	revCh := ep.WaitForPolicyRevision(ctx, 1)
 }
 ```
 

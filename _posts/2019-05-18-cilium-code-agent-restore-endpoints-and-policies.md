@@ -19,10 +19,10 @@ runDaemon                                       // daemon/daemon_main.go
   | |-restoreOldEndpoints                       // daemon/state.go
   |   |-FilterEPDir                             // pkg/endpoint/endpoint.go
   |   |-readEPsFromDirNames                     // daemon/state.go
-  |     |-FindEPConfigCHeader                   // pkg/endpoint/endpoint.go
-  |     |-ParseEndpoint                         // pkg/endpoint/endpoint.go
-  |     | |-SetStateLocked(StateRestoring)      // pkg/endpoint/endpoint.go
-  |     |-allocateIPsLocked                     // daemon/state.go
+  |   | |-FindEPConfigCHeader                   // pkg/endpoint/endpoint.go
+  |   | |-ParseEndpoint                         // pkg/endpoint/endpoint.go
+  |   | | |-SetStateLocked(StateRestoring)      // pkg/endpoint/endpoint.go
+  |   |-allocateIPsLocked                       // daemon/state.go
   |-regenerateRestoredEndpoints                 // daemon/state.go
     |-AllocateIdentity                          // daemon/state.go
     |-SetIdentity                               // daemon/state.go
@@ -34,7 +34,7 @@ Major steps:
 1. Restore endpoint Info: `restoreOldEndpoints`
     1. Read endpoint info from local files: `readEPsFromDirNames`
     1. Parse endpoint info: `ParseEndpoint`
-    1. Restore endpoint IP address: `allocateIPsLocked`
+    1. Reserve the endpoint's IP address from IPAM: `allocateIPsLocked`
 1. Re-generate BPF rules: `regenerateRestoredEndpoints`
     1. Allocate identity for endpoints (policy based on identies, not on endpoints): `AllocateIdentity`
     1. Regenerate BPF rules for endpoints: `Regenerate`
@@ -99,7 +99,7 @@ func (d *Daemon) restoreOldEndpoints(dir string, clean bool) (*endpointRestoreSt
 			state.toClean = append(state.toClean, ep)
 			continue
 
-		d.allocateIPsLocked(ep) // restore IP address for endpoint
+		d.allocateIPsLocked(ep) // reserve ep's IP from IPAM
 		if !option.Config.KeepConfig {
 			alwaysEnforce := policy.GetPolicyEnabled() == option.AlwaysEnforce
 			ep.SetDesiredIngressPolicyEnabledLocked(alwaysEnforce)
@@ -187,7 +187,13 @@ func ParseEndpoint(strEp string) (*Endpoint, error) {
 }
 ```
 
-## 3 Restore (allocate) IP
+## 3 Reserve (re-allocate) IP
+
+On agent restart, IPAM state is reset, which leads to all IP addresses in IPAM
+are available, including those being used by running containers on this host.
+From the previous step, agent has recovered the IP address the endpoint is using
+from files, now it has to reserve, or re-allocate, those IP addresses from IPAM
+to prevent them being allocated out again.
 
 `daemon/state.go`: `allocateIPsLocked`.
 
