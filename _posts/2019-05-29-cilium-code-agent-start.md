@@ -19,7 +19,8 @@ runDaemon                                       // daemon/daemon_main.go
   |   | | |-SetStateLocked(StateRestoring)      // pkg/endpoint/endpoint.go
   |   |-allocateIPsLocked                       // daemon/state.go
   |-EnableConntrackGC
-  |-initK8sSubsystem
+  |-initK8sSubsystem                            // daemon/k8s_watcher.go
+  | |-EnableK8sWatcher                          // daemon/k8s_watcher.go
   |-kvstore.Setup
   |-regenerateRestoredEndpoints                 // daemon/state.go
   | |-AllocateIdentity                          // daemon/state.go
@@ -65,7 +66,101 @@ func runDaemon() {
 }
 ```
 
-## IPAM State Restoration
+## 2 New Daemon
+
+See [Cilium Code Walk Through: Agent CIDR Init]({% link _posts/2019-05-13-cilium-code-agent-cidr-init.md %}).
+
+## 3 Enable Conntrack GW
+
+## 4 Init K8S Subsystem
+
+```go
+// initK8sSubsystem returns a channel for which it will be closed when all
+// caches essential for daemon are synchronized.
+func (d *Daemon) initK8sSubsystem() <-chan struct{} {
+	d.EnableK8sWatcher(option.Config.K8sWatcherQueueSize)
+
+	cachesSynced := make(chan struct{})
+	go func() {
+		// Waiting until all pre-existing resources related to policy have been received
+		// We don't wait for nodes synchronization nor ingresses.
+		d.waitForCacheSync(
+			k8sAPIGroupServiceV1Core,
+			k8sAPIGroupEndpointV1Core,
+			k8sAPIGroupCiliumV2,
+			k8sAPIGroupNetworkingV1Core,
+			k8sAPIGroupNamespaceV1Core,
+			k8sAPIGroupPodV1Core,
+		)
+		close(cachesSynced)
+	}()
+
+	return cachesSynced
+}
+```
+
+Watch following K8S resources:
+
+1. Service
+1. Endpoint
+1. Ingress
+1. CNP (Cilium Network Policy)
+1. Pod
+1. Node
+1. Namespace
+
+```go
+// EnableK8sWatcher watches for policy, services and endpoint changes on the Kubernetes
+// api server defined in the receiver's daemon k8sClient.
+// queueSize specifies the queue length used to serialize k8s events.
+func (d *Daemon) EnableK8sWatcher(queueSize uint) error {
+	policyController := k8s.NewInformer(&networkingv1.NetworkPolicy{})
+	go policyController.Run(wait.NeverStop)
+
+	svcController := k8s.NewInformer(&v1.Service{})
+	go svcController.Run(wait.NeverStop)
+
+	endpointController := k8s.NewInformer(&v1.Endpoints{})
+	go endpointController.Run(wait.NeverStop)
+
+	if option.Config.IsLBEnabled() {
+		ingressController := k8s.NewInformer(&v1beta1.Ingress{},
+		go ingressController.Run(wait.NeverStop)
+	}
+
+	ciliumV2Controller := k8s.NewInformerWithStore(&cilium_v2.CiliumNetworkPolicy{})
+	go ciliumV2Controller.Run(wait.NeverStop)
+
+	go func() {
+		podController := k8s.NewInformer(&v1.Pod{})
+		go podController.Run(isConnected)
+	}()
+	go func() {
+		nodeController := k8s.NewInformer(&v1.Node{})
+		go nodeController.Run()
+	}()
+
+	namespaceController := k8s.NewInformer(&v1.Namespace{},
+	go namespaceController.Run(wait.NeverStop)
+}
+```
+
+Handlers are registered (as `NewInformer()`'s parameters, not shown in the above
+code snippet because of the limited space) for each resource's
+*create/update/delete* event, thus whenever the resource is changed, the
+corresponding handlers will be invoked.
+
+## 5 Re-regenerate Restored Endpoints
+
+See [Cilium Code Walk Through: Agent Restore Endpoints And Identities]({% link _posts/2019-05-18-cilium-code-agent-restore-endpoints-and-policies.md %}).
+
+## 6 Init cilium-health
+
+See [Cilium Code Walk Through: Cilium Health]({% link _posts/2019-05-19-cilium-code-cilium-health.md %}).
+
+## 7 Misc
+
+### IPAM State Restoration
 
 IPAM manages IP address allocation, in short, it tracks two states:
 
