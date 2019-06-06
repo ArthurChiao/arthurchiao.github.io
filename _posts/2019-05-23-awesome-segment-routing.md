@@ -2,7 +2,7 @@
 layout    : post
 title     : "Awesome Segment Routing Resources"
 date      : 2019-05-23
-lastupdate: 2019-05-23
+lastupdate: 2019-06-06
 categories: segment-routing
 ---
 
@@ -13,7 +13,7 @@ categories: segment-routing
 
     Chapter from ***Segment Routing for Cisco ASR 920 Series Aggregation Services Routers***.
 
-Chinese articles:
+### Chinese Resources
 
 1. **[一文读懂网络界新贵 Segment Routing 技术化繁为简的奥秘
    ](http://net.yesky.com/148/703613148.shtml), 2018**
@@ -37,6 +37,11 @@ Chinese articles:
     * 无状态：中间机场无需知道行李从哪来到哪去，只需根据标签转发
     * 集中控制：机场代码由航空系统集中分配和维护（SR 世界里路径标签也是集中计算
       和下发的）
+
+1. 苏远超，**[分段路由（Segment Routing）大规模 SDN 部署必备技术](http://m.mp.huandengpai.com/apps/player/pai/70463)**, 2016
+
+    Cisco 面向客户和合作伙伴的培训视频，主讲人也是 ***Segment Routing Part I***
+    中文版译者之一。
 
 ## 2 Deep Dive
 
