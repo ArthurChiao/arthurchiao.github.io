@@ -2,9 +2,40 @@
 layout    : post
 title     : "Cilium Code Walk Through: Cilium Operator"
 date      : 2019-05-30
-lastupdate: 2019-05-30
+lastupdate: 2019-06-19
 categories: cilium
 ---
+
+There are two components in Cilium which has the *operator* word in their name:
+
+1. Cilium etcd operator
+1. Cilium operator
+
+Cilium etcd operator is a [**Kubernetes operator**](https://coreos.com/operators/) [2]
+implementation, which creates and maintains Cilium's builtin etcd cluster
+(if using internal etcd mode).
+
+Cilium operator, although also named "operator", actually has nothing to do
+with **Kubernetes operator**. What is Cilium operator? 
+According to [official doc](https://docs.cilium.io/en/v1.5/concepts/#cilium-operator) [1]:
+
+> The Cilium Operator is responsible for managing duties in the cluster which
+> should logically be handled once for the entire cluster, rather than once for
+> each node in the cluster. Its design helps with scale limitations in large
+> kubernetes clusters (>1000 nodes). The responsibilities of Cilium operator
+> include:
+>
+> * Synchronizing kubernetes services with etcd for Cluster Mesh
+> * Synchronizing node resources with etcd
+> * Ensuring that DNS pods are managed by Cilium
+> * Garbage-collection of Cilium Endpoints resources
+
+In short, it is **an optional component, aimed at performance optimization
+of Cilium in large kubernetes clusters**.
+
+This post walks through the latter one.
+
+## 0 Call Flow
 
 Code based on `1.5.1`.
 
@@ -14,13 +45,13 @@ runOperator                                                 // operator/main.go
   |-kvstore.Setup
   |-k8s.Init
   |-startSynchronizingServices                              // operator/k8s_service_sync.go
-  | |-JoinSharedStore                                       // pkg/kvstore/store/store.go
-  | | |-listAndStartWatcher                                 // pkg/kvstore/store/store.go
-  | |   |-watcher                                           // pkg/kvstore/store/store.go
-  | |     |-start                                           // pkg/kvstore/allocator/cache.go
-  | |       |-ListAndWatch                                  // pkg/kvstore/events.go
-  | |         |-ListAndWatch                                // pkg/kvstore/etcd.go
-  | |           |-Watch                                     // pkg/kvstore/etcd.go
+  | |-go JoinSharedStore()                                  // pkg/kvstore/store/store.go
+  | |    |-listAndStartWatcher                              // pkg/kvstore/store/store.go
+  | |      |-watcher                                        // pkg/kvstore/store/store.go
+  | |        |-start                                        // pkg/kvstore/allocator/cache.go
+  | |          |-ListAndWatch                               // pkg/kvstore/events.go
+  | |            |-ListAndWatch                             // pkg/kvstore/etcd.go
+  | |              |-Watch                                  // pkg/kvstore/etcd.go
   | |-k8s.NewInformer(v1.Service).Run
   | |-k8s.NewInformer(v1.Endpoint).Run
   | |-k8sServiceHandler                                     // operator/k8s_service_sync.go
@@ -225,3 +256,8 @@ func (e *etcdClient) Watch(w *Watcher) {
 	}
 }
 ```
+
+## References
+
+1. [Cilium Doc v1.5: Cilium Operator](https://docs.cilium.io/en/v1.5/concepts/#cilium-operator)
+2. [Kubernetes Operator](https://coreos.com/operators/)
