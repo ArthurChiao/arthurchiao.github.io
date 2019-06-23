@@ -1,36 +1,39 @@
 ---
 layout: post
-title:  "[译] Linux网络栈监控和调优：接收数据 2"
+title:  "[译] Linux 网络栈监控和调优：接收数据 2"
 date:   2018-12-05
+lastupdate: 2019-06-25
 author: ArthurChiao
 categories: network-stack monitoring tuning
 ---
 
 ## 4 软中断（SoftIRQ）
 
-在查看网络栈之前，让我们先开个小差，看下内核里一个叫SoftIRQ的东西。
+在查看网络栈之前，让我们先开个小差，看下内核里一个叫 SoftIRQ 的东西。
 
 ### 4.1 软中断是什么
 
-内核的软中断系统是一种在硬中断处理上下文（驱动中）之外执行代码机制。硬件中断处理
-函数执行的时候，会屏蔽部分或全部的（新的）硬中断。中断被屏蔽的时间越长，丢失事件
-的可能性也就越大。所以，所有耗时的操作都应该从硬中断处理逻辑中剥离出来，硬中断因
-此能尽可能快的执行，然后再重新打开硬中断。
+内核的软中断系统是一种**在硬中断处理上下文（驱动中）之外执行代码**的机制。**硬中
+断处理函数（handler）执行时，会屏蔽部分或全部（新的）硬中断**。中断被屏蔽的时间
+越长，丢失事件的可能性也就越大。所以，**所有耗时的操作都应该从硬中断处理逻辑中剥
+离出来**，硬中断因此能尽可能快地执行，然后再重新打开硬中断。
 
-内核中也有其他机制将耗时操作转移出去，不过对于网络栈，我们接下来只看软中断。
+内核中也有其他机制将耗时操作转移出去，不过对于网络栈，我们接下来只看软中断这种方
+式。
 
-可以把软中断系统想象成一系列内核线程（每个CPU一个），这些线程执行针对不同事件注
-册好的处理函数（handler）。如果你执行过top命令，可能会注意到ksoftirqd/0这个内核
-线程，其表示这个软中断线程跑在CPU 0上面。
+可以把软中断系统想象成一系列**内核线程**（每个 CPU 一个），这些线程执行针对不同
+事件注册的处理函数（handler）。如果你执行过 `top` 命令，可能会注意到
+`ksoftirqd/0`这个内核线程，其表示这个软中断线程跑在 CPU 0 上。
 
-内核子系统（比如网络）能通过open_softirq函数注册软中断处理函数。接下来我们会看到
-网络系统是如何注册它的处理函数的。现在，我们先来学习一下软中断是如何工作的。
+内核子系统（比如网络）能通过 `open_softirq` 函数注册软中断处理函数。接下来我们会看到
+网络系统是如何注册它的处理函数的。现在先来学习一下软中断是如何工作的。
 
 ### 4.2 `ksoftirqd`
 
-软中断对分担硬中断的工作如此重要，因此软中断线程在内核启动的很早阶段就spawn出来了。
+软中断对分担硬中断的工作量非常重要，因此软中断线程在内核启动的很早阶段就 `spawn` 出来了。
 
-[`kernel/softirq.c`](https://github.com/torvalds/linux/blob/v3.13/kernel/softirq.c#L743-L758) 展示了ksoftirqd系统是如何初始化的：
+[`kernel/softirq.c`](https://github.com/torvalds/linux/blob/v3.13/kernel/softirq.c#L743-L758)
+展示了 `ksoftirqd` 系统是如何初始化的：
 
 ```c
 static struct smp_hotplug_thread softirq_threads = {
@@ -51,28 +54,29 @@ static __init int spawn_ksoftirqd(void)
 early_initcall(spawn_ksoftirqd);
 ```
 
-看到注册了两个回调函数: `ksoftirqd_should_run`和`run_ksoftirqd`。这两个函数都会从
+看到注册了两个回调函数: `ksoftirqd_should_run` 和 `run_ksoftirqd`。这两个函数都会从
 [`kernel/smpboot.c`](https://github.com/torvalds/linux/blob/v3.13/kernel/smpboot.c#L94-L163)
 里调用，作为事件处理循环的一部分。
 
-`kernel/smpboot.c`里面的代码首先调用`ksoftirqd_should_run`判断是否有pending的软
-中断，如果有，就执行`run_ksoftirqd`，后者做一些bookeeping工作，然后调用
+`kernel/smpboot.c` 里面的代码首先调用 `ksoftirqd_should_run` 判断是否有 pending 的软
+中断，如果有，就执行 `run_ksoftirqd`，后者做一些 bookeeping 工作，然后调用
 `__do_softirq`。
 
 ### 4.3 `__do_softirq`
 
-`__do_softirq`做的几件事情：
+`__do_softirq` 做的几件事情：
 
-* 判断哪个softirq被pending
-* 计算softirq时间，用于统计
-* 更新softirq执行相关的统计数据
-* 执行pending softirq的处理函数
+* 判断哪个 softirq 被 pending
+* 计算 softirq 时间，用于统计
+* 更新 softirq 执行相关的统计数据
+* 执行 pending softirq 的处理函数
 
-查看CPU利用率时，`si`字段对应的就是softirq，度量（从硬中断转移过来的）软中断的CPU使用量。
+**查看 CPU 利用率时，`si` 字段对应的就是 softirq**，度量（从硬中断转移过来的）软
+中断的 CPU 使用量。
 
 ### 4.4 监控
 
-软中断的信息可以从 `/proc/softirqs`读取：
+软中断的信息可以从 `/proc/softirqs` 读取：
 
 ```shell
 $ cat /proc/softirqs
@@ -91,40 +95,40 @@ BLOCK_IOPOLL:          0          0          0          0
 
 监控这些数据可以得到软中断的执行频率信息。
 
-例如，`NET_RX`一行显示的是软中断在CPU间的分布。如果分布非常不均匀，那某一列的值
-就会远大于其他列，这预示着下面要介绍的Receive Packet Steering / Receive Flow
-Steering可能会派上用场。在监控这个数据的时候也要注意：不要太相信这个数值，NET_RX
-太高并不一定都是网卡触发的，下面会介绍到，其他地方也有可能触发之。
+例如，`NET_RX` 一行显示的是软中断在 CPU 间的分布。如果分布非常不均匀，那某一列的
+值就会远大于其他列，这预示着下面要介绍的 Receive Packet Steering / Receive Flow
+Steering 可能会派上用场。但也要注意：不要太相信这个数值，`NET_RX` 太高并不一定都
+是网卡触发的，下面会看到其他地方也有可能触发之。
 
-当调整其他网络配置时，也留意下这个指标的变动。
+调整其他网络配置时，可以留意下这个指标的变动。
 
 现在，让我们进入网络栈部分，跟踪一个包是如何被接收的。
 
-## 5 Linux网络设备子系统
+## 5 Linux 网络设备子系统
 
-我们已经知道了网络驱动和软中断是如何工作的，接下来看Linux网络设备子系统是如何初始化的。
-然后我们就可以从一个包到达网卡开始跟踪它的整个路径。
+我们已经知道了网络驱动和软中断是如何工作的，接下来看 Linux 网络设备子系统是如何
+初始化的。然后我们就可以从一个包到达网卡开始跟踪它的整个路径。
 
 ### 5.1 网络设备子系统的初始化
 
-网络设备(netdev)的初始化在`net_dev_init`，里面有些东西很有意思。
+网络设备（netdev）的初始化在 `net_dev_init`，里面有些东西很有意思。
 
-#### `struct softnet_data`实例初始化
+#### `struct softnet_data` 实例初始化
 
-`net_dev_init`为每个CPU创建一个`struct softnet_data`实例。这些实例包含一些重要指
-针，指向处理网络数据的相关一些信息：
+`net_dev_init` 为每个 CPU 创建一个 `struct softnet_data` 实例。这些实例包含一些
+指向重要信息的指针：
 
-* 需要注册到这个CPU的NAPI实例列表
-* 数据处理backlog
+* 需要注册到这个 CPU 的 NAPI 实例列表
+* 数据处理 backlog
 * 处理权重
-* receive offload实例列表
-* receive packet steering设置
+* receive offload 实例列表
+* receive packet steering 设置
 
 接下来随着逐步进入网络栈，我们会一一查看这些功能。
 
-#### SoftIRQ Handler初始化
+#### SoftIRQ Handler 初始化
 
-`net_dev_init`分别为接收和发送数据注册了一个软中断处理函数。
+`net_dev_init` 分别为接收和发送数据注册了一个软中断处理函数。
 
 ```c
 static int __init net_dev_init(void)
@@ -138,21 +142,22 @@ static int __init net_dev_init(void)
 }
 ```
 
-后面会看到驱动的中断处理函数是如何触发`net_rx_action`这个为`NET_RX_SOFTIRQ`软中断注册的处理函数的。
+后面会看到驱动的中断处理函数是如何触发 `net_rx_action` 这个为 `NET_RX_SOFTIRQ`
+软中断注册的处理函数的。
 
 ### 5.2 数据来了
 
 终于，网络数据来了！
 
-如果RX队列有足够的描述符（descriptors），包会通过DMA写到RAM。设备然后发起对应于
-它的中断（或者在MSI-X的场景，中断和包达到的RX队列绑定）。
+如果 RX 队列有足够的描述符（descriptors），包会通过 DMA 写到 RAM。设备然后发起对应于
+它的中断（或者在 MSI-X 的场景，中断和包达到的 RX 队列绑定）。
 
 #### 5.2.1 中断处理函数
 
 一般来说，中断处理函数应该将尽可能多的处理逻辑移出（到软中断），这至关重要，因为
 发起一个中断后，其他的中断就会被屏蔽。
 
-我们来看一下MSI-X中断处理函数的代码，它展示了中断处理函数是如何尽量简单的。
+我们来看一下 MSI-X 中断处理函数的代码，它展示了中断处理函数是如何尽量简单的。
 
 [igb_main.c](https://github.com/torvalds/linux/blob/v3.13/drivers/net/ethernet/intel/igb/igb_main.c#L2038-L2059)：
 
@@ -170,31 +175,31 @@ static irqreturn_t igb_msix_ring(int irq, void *data)
 }
 ```
 
-这个中断处理函数非常简短，只做了2个很快的操作，然后就返回了。
+这个中断处理函数非常简短，只做了 2 个很快的操作就返回了。
 
-首先，它调用`igb_write_itr` 更新一个硬件寄存器。对这个例子，这个寄存器是记录硬件
+首先，它调用 `igb_write_itr` 更新一个硬件寄存器。对这个例子，这个寄存器是记录硬件
 中断频率的。
 
-这个寄存器和一个叫"Interrupt Throttling"（也叫"Interrupt Coalescing"）的硬件特性
-相关，这个特性可以平滑传送到CPU的中断数量。我们接下来会看到，ethtool是怎么样提供
-了一个机制用于调整IRQ触发频率的。
+这个寄存器和一个叫 "Interrupt Throttling"（也叫 "Interrupt Coalescing"）的硬件特性
+相关，这个特性可以平滑传送到 CPU 的中断数量。我们接下来会看到，ethtool 是怎么样提供
+了一个机制用于调整 IRQ 触发频率的。
 
-第二，napi_schedule 触发，如果NAPI的处理循环还没开始的话，这会唤醒它。注意，这个
+第二，`napi_schedule` 触发，如果 NAPI 的处理循环还没开始的话，这会唤醒它。注意，这个
 处理循环是在软中断中执行的，而不是硬中断。
 
-这段代码展示了硬中断尽量简短为何如此重要；为我们接下来理解多核CPU的接收逻辑很有
+这段代码展示了硬中断尽量简短为何如此重要；为我们接下来理解多核 CPU 的接收逻辑很有
 帮助。
 
 #### 5.2.2 NAPI 和 `napi_schedule`
 
-接下来看从硬件中断中调用的`napi_schedule`是如何工作的。
+接下来看从硬件中断中调用的 `napi_schedule` 是如何工作的。
 
-注意，NAPI存在的意义是无需硬件中断通知可以收包了，就可以接收网络数据。前面提到，
-NAPI的轮询循环（poll loop）是受硬件中断触发而跑起来的。换句话说，NAPI功能启用了
+注意，NAPI 存在的意义是无需硬件中断通知可以收包了，就可以接收网络数据。前面提到，
+NAPI 的轮询循环（poll loop）是受硬件中断触发而跑起来的。换句话说，NAPI 功能启用了
 ，但是默认是没有工作的，直到第一个包到达的时候，网卡触发的一个硬件将它唤醒。后面
-会看到，也还有其他的情况，NAPI功能也会被关闭，直到下一个硬中断再次将它唤起。
+会看到，也还有其他的情况，NAPI 功能也会被关闭，直到下一个硬中断再次将它唤起。
 
-`napi_schedule`只是一个简单的封装，内层调用`__napi_schedule`。
+`napi_schedule` 只是一个简单的封装，内层调用 `__napi_schedule`。
 [net/core/dev.c](https://github.com/torvalds/linux/blob/v3.13/net/core/dev.c#L4154-L4168):
 
 ```c
@@ -215,7 +220,7 @@ void __napi_schedule(struct napi_struct *n)
 EXPORT_SYMBOL(__napi_schedule);
 ```
 
- `__get_cpu_var`用于获取属于这个CPU的`structure softnet_data`实例。
+`__get_cpu_var` 用于获取属于这个 CPU 的`structure softnet_data`实例。
 
 `____napi_schedule`, [net/core/dev.c](https://github.com/torvalds/linux/blob/v3.13/net/core/dev.c#L4154-L4168):
 
@@ -231,28 +236,28 @@ static inline void ____napi_schedule(struct softnet_data *sd,
 
 这段代码了做了两个重要的事情：
 
-1. 将（从驱动的中断函数中传来的）`napi_struct`实例，添加到poll list，后者attach到这个CPU上的`softnet_data`
-1. `__raise_softirq_irqoff`触发一个`NET_RX_SOFTIRQ`类型软中断。这会触发执行
+1. 将（从驱动的中断函数中传来的）`napi_struct` 实例，添加到 poll list，后者 attach 到这个 CPU 上的`softnet_data`
+1. `__raise_softirq_irqoff` 触发一个 `NET_RX_SOFTIRQ` 类型软中断。这会触发执行
    `net_rx_action`（如果没有正在执行），后者是网络设备初始化的时候注册的
 
-接下来会看到，软中断处理函数`net_rx_action`会调用NAPI的poll函数来收包。
+接下来会看到，软中断处理函数 `net_rx_action` 会调用 NAPI 的 poll 函数来收包。
 
-#### 5.2.3 关于CPU和网络数据处理的一点笔记
+#### 5.2.3 关于 CPU 和网络数据处理的一点笔记
 
 注意到目前为止，我们从硬中断处理函数中转移到软中断处理函数的逻辑，都是使用的本
-CPU实例。
+CPU 实例。
 
-驱动的硬中断处理函数做的事情很少，但软中断将会在和硬中断相同的CPU上执行。这就是
-为什么给每个CPU一个特定的硬中断非常重要：这个CPU不仅处理这个硬中断，而且通过NAPI
-处理接下来的软中断来收包。
+驱动的硬中断处理函数做的事情很少，但软中断将会在和硬中断相同的 CPU 上执行。这就
+是为什么给每个 CPU 一个特定的硬中断非常重要：这个 CPU 不仅处理这个硬中断，而且通
+过 NAPI 处理接下来的软中断来收包。
 
-后面我们会看到，Receive Packet Steering可以将软中断分给其他CPU。
+后面我们会看到，Receive Packet Steering 可以将软中断分给其他 CPU。
 
 #### 5.2.4 监控网络数据到达
 
 ##### 硬中断请求
 
-注意：监控硬件中断拿不到关于网络包处理的健康状况的全景图，一些驱动在NAPI运行的
+注意：监控硬件中断拿不到关于网络包处理的健康状况的全景图，一些驱动在 NAPI 运行的
 时候会关闭硬中断。这只是你整个监控方案的一个重要部分。
 
 读取硬中断统计：
@@ -273,24 +278,24 @@ $ cat /proc/interrupts
  LOC: 2913290785 1585321306 1495872829 1803524526  Local timer interrupts
 ```
 
-可以看到有多少包进来、硬件中断频率，RX队列被哪个CPU处理等信息。这里只能看到硬中
-断数量，不能看出实际多少数据被接收或处理，因为一些驱动在NAPI收包时会关闭硬中断。
-进一步，使用Interrupt Coalescing时也会影响这个统计。监控这个指标能帮你判断出你设
-置的Interrupt Coalescing是不是在工作。
+可以看到有多少包进来、硬件中断频率，RX 队列被哪个 CPU 处理等信息。这里只能看到硬中
+断数量，不能看出实际多少数据被接收或处理，因为一些驱动在 NAPI 收包时会关闭硬中断。
+进一步，使用 Interrupt Coalescing 时也会影响这个统计。监控这个指标能帮你判断出你设
+置的 Interrupt Coalescing 是不是在工作。
 
-为了使监控更加完整，需要同时监控`/proc/softirqs` (前面提到)和`/proc`。
+为了使监控更加完整，需要同时监控 `/proc/softirqs` (前面提到)和 `/proc`。
 
 #### 5.2.5 数据接收调优
 
 ##### 中断合并（Interrupt coalescing）
 
-中断合并会将多个中断事件放到一起，到达一定的阈值之后才向CPU发起中断请求。
+中断合并会将多个中断事件放到一起，到达一定的阈值之后才向 CPU 发起中断请求。
 
-这可以防止中断风暴，提升吞吐。减少中断数量能使吞吐更高，但延迟也变大，CPU使用量
+这可以防止中断风暴，提升吞吐。减少中断数量能使吞吐更高，但延迟也变大，CPU 使用量
 下降；中断数量过多则相反。
 
-历史上，早期的igb、e1000版本，以及其他的都包含一个叫InterruptThrottleRate参数，
-最近的版本已经被ethtool可配置的参数取代。
+历史上，早期的 igb、e1000 版本，以及其他的都包含一个叫 InterruptThrottleRate 参数，
+最近的版本已经被 ethtool 可配置的参数取代。
 
 ```shell
 $ sudo ethtool -c eth0
@@ -303,23 +308,23 @@ pkt-rate-high: 0
 ...
 ```
 
-ethtool提供了用于中断合并相关的通用的接口。但切记，不是所有的设备都支持完整的配
-置。你需要查看你的驱动文档或代码来确定哪些支持，哪些不支持。ethtool的文档说的：“
+ethtool 提供了用于中断合并相关的通用的接口。但切记，不是所有的设备都支持完整的配
+置。你需要查看你的驱动文档或代码来确定哪些支持，哪些不支持。ethtool 的文档说的：“
 驱动没有实现的接口将会被静默忽略”。
 
 某些驱动支持一个有趣的特性“自适应 RX/TX 硬中断合并”。这个特性一般是在硬件实现的
-。驱动通常需要做一些额外的工作来告诉网卡需要打开这个特性（前面的igb驱动代码里有
+。驱动通常需要做一些额外的工作来告诉网卡需要打开这个特性（前面的 igb 驱动代码里有
 涉及）。
 
-自适应RX/TX硬中断合并带来的效果是：带宽比较低时降低延迟，带宽比较高时提升吞吐。
+自适应 RX/TX 硬中断合并带来的效果是：带宽比较低时降低延迟，带宽比较高时提升吞吐。
 
-用`ethtool -C`打开自适应RX IRQ合并：
+用 `ethtool -C` 打开自适应 RX IRQ 合并：
 
 ```shell
 $ sudo ethtool -C eth0 adaptive-rx on
 ```
 
-还可以用`ethtool -C`更改其他配置。常用的包括：
+还可以用 `ethtool -C` 更改其他配置。常用的包括：
 
 * `rx-usecs`: How many usecs to delay an RX interrupt after a packet arrives.
 * `rx-frames`: Maximum number of data frames to receive before an RX interrupt.
@@ -329,7 +334,8 @@ $ sudo ethtool -C eth0 adaptive-rx on
 请注意你的硬件可能只支持以上列表的一个子集，具体请参考相应的驱动说明或源码。
 
 不幸的是，通常并没有一个很好的文档来说明这些选项，最全的文档很可能是头文件。查看
-[include/uapi/linux/ethtool.h](https://github.com/torvalds/linux/blob/v3.13/include/uapi/linux/ethtool.h#L184-L255) ethtool每个每个选项的解释。
+[include/uapi/linux/ethtool.h](https://github.com/torvalds/linux/blob/v3.13/include/uapi/linux/ethtool.h#L184-L255)
+ethtool 每个每个选项的解释。
 
 注意：虽然硬中断合并看起来是个不错的优化项，但要你的网络栈的其他一些相应
 部分也要针对性的调整。只合并硬中断很可能并不会带来多少收益。
@@ -356,15 +362,17 @@ $ sudo bash -c 'echo 1 > /proc/irq/8/smp_affinity'
 
 ### 5.3 网络数据处理：开始
 
-一旦软中断代码判断出有softirq处于pending状态，就会开始处理，执行`net_rx_action`，网络数据处理就此开始。
+一旦软中断代码判断出有 softirq 处于 pending 状态，就会开始处理，执行
+`net_rx_action`，网络数据处理就此开始。
 
-我们来看一下`net_rx_action` 的循环部分，理解它是如何工作的。哪个部分可以调优，哪个可以被监控。
+我们来看一下 `net_rx_action` 的循环部分，理解它是如何工作的。哪个部分可以调优，
+哪个可以被监控。
 
-#### 5.3.1 `net_rx_action`处理循环
+#### 5.3.1 `net_rx_action` 处理循环
 
-`net_rx_action`从包所在的内存开始处理，包是被设备通过DMA直接送到内存的。
+`net_rx_action` 从包所在的内存开始处理，包是被设备通过 DMA 直接送到内存的。
 
-函数遍历本CPU队列的NAPI实例列表，依次出队，操作它。
+函数遍历本 CPU 队列的 NAPI 实例列表，依次出队，操作它。
 
 处理逻辑考虑任务量（work）和执行时间两个因素：
 
@@ -386,24 +394,24 @@ while (!list_empty(&sd->poll_list)) {
       goto softnet_break;
 ```
 
-这里可以看到内核是如何防止处理数据包过程霸占整个CPU的，其中budget是该CPU的所有
-NAPI实例的总预算。
+这里可以看到内核是如何防止处理数据包过程霸占整个 CPU 的，其中 budget 是该 CPU 的
+所有 NAPI 实例的总预算。
 
-这也是多队列网卡应该精心调整IRQ Affinity的原因。回忆前面讲的，处理硬中断的CPU接
-下来会处理相应的软中断，进而执行上面包含budget的这段逻辑。
+这也是多队列网卡应该精心调整 IRQ Affinity 的原因。回忆前面讲的，处理硬中断的 CPU
+接下来会处理相应的软中断，进而执行上面包含 budget 的这段逻辑。
 
-多网卡多队列可能会出现这样的情况：多个NAPI实例注册到同一个CPU上。每个CPU上的所有
-NAPI实例共享一份budget。
+多网卡多队列可能会出现这样的情况：多个 NAPI 实例注册到同一个 CPU 上。每个 CPU 上
+的所有 NAPI 实例共享一份 budget。
 
-如果你没有足够的CPU来分散网卡硬中断，可以考虑增加`net_rx_action`允许每个CPU处理
-更多包。增加budget可以增加CPU使用量（`top`等命令看到的`sitime`或`si`部分），
-但可以减少延迟，因为数据处理更加及时。
+如果没有足够的 CPU 来分散网卡硬中断，可以考虑增加 `net_rx_action` 允许每个 CPU
+处理更多包。增加 budget 可以增加 CPU 使用量（`top` 等命令看到的 `sitime` 或 `si`
+部分），但可以减少延迟，因为数据处理更加及时。
 
 Note: the CPU will still be bounded by a time limit of 2 jiffies, regardless of the assigned budget.
 
-#### 5.3.2 NAPI poll function and weight
+#### 5.3.2 NAPI poll 函数及权重
 
-回忆前面，网络设备驱动使用`netif_napi_add`注册poll方法，`igb`驱动有如下
+回忆前面，网络设备驱动使用 `netif_napi_add` 注册 poll 方法，`igb` 驱动有如下
 代码片段：
 
 ```c
@@ -411,8 +419,8 @@ Note: the CPU will still be bounded by a time limit of 2 jiffies, regardless of 
   netif_napi_add(adapter->netdev, &q_vector->napi, igb_poll, 64);
 ```
 
-这注册了一个NAPI实例，hardcode 64的权重。我们来看在`net_rx_action`处理循环中这个
-值是如何使用的。
+这注册了一个 NAPI 实例，hardcode 64 的权重。我们来看在 `net_rx_action` 处理循环
+中这个值是如何使用的。
 [net/core/dev.c](https://github.com/torvalds/linux/blob/v3.13/net/core/dev.c#L4322-L4338):
 
 ```c
@@ -429,30 +437,30 @@ WARN_ON_ONCE(work > weight);
 budget -= work;
 ```
 
-其中的`n`是`struct napi`的实例。其中的`poll`指向`igb_poll`。`poll()`返回处理的数
-据帧数量，budget会减去这个值。
+其中的 `n` 是 `struct napi` 的实例。其中的 `poll` 指向 `igb_poll`。`poll()` 返回
+处理的数据帧数量，budget 会减去这个值。
 
-所以，假设你的驱动使用weight值64（Linux 3.13.0 的所有驱动都是hardcode这个值）
-，设置budget默认值300，那你的系统将在如下条件之一停止数据处理：
+所以，假设驱动使用 weight 值 64（Linux 3.13.0 的所有驱动都是 hardcode 这个值）
+，设置 budget 默认值 300，那系统将在如下条件之一停止数据处理：
 
-1. `igb_poll`函数被调用了最多5次（如果没有数据需要处理，那次数就会很少）
-2. 时间经过了至少2个jiffies
+1. `igb_poll` 函数被调用了最多 5 次（如果没有数据需要处理，那次数就会很少）
+2. 时间经过了至少 2 个 jiffies
 
-#### 5.3.3 NAPI和设备驱动的合约
+#### 5.3.3 NAPI 和设备驱动的合约（contract）
 
-NAPI子系统和设备驱动之间的合约，最重要的一点是关闭NAPI的条件。具体如下：
+NAPI 子系统和设备驱动之间的合约，最重要的一点是关闭 NAPI 的条件。具体如下：
 
-1. 如果驱动的`poll`方法用完了它的全部weight（默认hardcode 64），那它**不要更改**NAPI
-   状态。接下来`net_rx_action` loop会做的
-2. 如果驱动的`poll`方法没有用完全部weight，那它**必须关闭**NAPI。下次有硬件中断触
-   发，驱动的硬件处理函数调用`napi_schedule`时，NAPI会被重新打开
+1. 如果驱动的 `poll` 方法用完了它的全部 weight（默认 hardcode 64），那
+   它**不要更改** NAPI 状态。接下来 `net_rx_action` loop 会做的
+2. 如果驱动的 `poll` 方法没有用完全部 weight，那它**必须关闭** NAPI。下次有硬件
+   中断触发，驱动的硬件处理函数调用 `napi_schedule` 时，NAPI 会被重新打开
 
-接下来先看`net_rx_action`如何处理合约的第一部分，然后看`poll`方法如何处理第二部
-分。
+接下来先看 `net_rx_action` 如何处理合约的第一部分，然后看 `poll` 方法如何处理第
+二部分。
 
 #### 5.3.4 Finishing the `net_rx_action` loop
 
-`net_rx_action`循环的基础部分，处理NAPI合约的第一部分。
+`net_rx_action` 循环的最后一部分代码处理前面提到的 **NAPI 合约的第一部分**。
 [net/core/dev.c](https://github.com/torvalds/linux/blob/v3.13/net/core/dev.c#L4342-L4363):
 
 ```c
@@ -480,23 +488,23 @@ if (unlikely(work == weight)) {
 }
 ```
 
-如果全部`work`都用完了，`net_rx_action`会有两种情况需要处理：
+如果全部 `work` 都用完了，`net_rx_action` 会面临两种情况：
 
-1. 网络设备需要关闭（例如，用户敲了`ifconfig eth0 down`命令）
-2. 如果设备不需要关闭，那检查是否有GRO（后面会介绍）列表。如果时钟tick rate `>=
-   1000`，所有最近被更新的GRO network flow都会被flush。将这个NAPI实例移到list末
-   尾，这个循环下次再进入时，处理的就是下一个NAPI实例
+1. 网络设备需要关闭（例如，用户敲了 `ifconfig eth0 down` 命令）
+2. 如果设备不需要关闭，那检查是否有 GRO（后面会介绍）列表。如果时钟 tick rate
+   `>= 1000`，所有最近被更新的 GRO network flow 都会被 flush。将这个 NAPI 实例移
+   到 list 末尾，这个循环下次再进入时，处理的就是下一个 NAPI 实例
 
-这就是包处理循环如何唤醒驱动注册的`poll`方法进行包处理的过程。接下来会看到，
-`poll`方法会收割网络数据，发送到上层栈进行处理。
+这就是包处理循环如何唤醒驱动注册的 `poll` 方法进行包处理的过程。接下来会看到，
+`poll` 方法会收割网络数据，发送到上层栈进行处理。
 
-#### 5.3.5 到达limit时退出循环
+#### 5.3.5 到达 limit 时退出循环
 
-`net_rx_action`下列条件之一退出循环：
+`net_rx_action` 下列条件之一退出循环：
 
-1. 这个CPU上注册的poll列表已经没有NAPI实例需要处理(`!list_empty(&sd->poll_list)`)
-2. 剩余的`budget <= 0`
-3. 已经满足2个jiffies的时间限制
+1. 这个 CPU 上注册的 poll 列表已经没有 NAPI 实例需要处理(`!list_empty(&sd->poll_list)`)
+2. 剩余的 `budget <= 0`
+3. 已经满足 2 个 jiffies 的时间限制
 
 代码：
 
@@ -509,7 +517,7 @@ if (unlikely(budget <= 0 || time_after_eq(jiffies, time_limit)))
   goto softnet_break;
 ```
 
-如果跟踪`softnet_break`，会发现很有意思的东西：
+如果跟踪 `softnet_break`，会发现很有意思的东西：
 
 From net/core/dev.c:
 
@@ -520,28 +528,28 @@ softnet_break:
   goto out;
 ```
 
-`softnet_data`实例更新统计信息，软中断的`NET_RX_SOFTIRQ`被关闭。
+`softnet_data` 实例更新统计信息，软中断的 `NET_RX_SOFTIRQ` 被关闭。
 
-`time_squeeze`字段记录的是满足如下条件的次数：`net_rx_action`有很多`work`要做但
-是bugdget用完了，或者work还没做完但时间限制到了。这对理解网络处理的瓶颈至关重要
-。我们后面会看到如何监控这个值。关闭`NET_RX_SOFTIRQ`是为了释放CPU时间给其他任务
+`time_squeeze` 字段记录的是满足如下条件的次数：`net_rx_action` 有很多 `work` 要做但
+是 budget 用完了，或者 work 还没做完但时间限制到了。这对理解网络处理的瓶颈至关重要
+。我们后面会看到如何监控这个值。关闭 `NET_RX_SOFTIRQ` 是为了释放 CPU 时间给其他任务
 用。这行代码是有意义的，因为只有我们有更多工作要做（还没做完）的时候才会执行到这里，
-我们主动让出CPU，不想独占太久。
+我们主动让出 CPU，不想独占太久。
 
-然后执行到了`out`标签所在的代码。另外一种条件也会跳转到`out`标签：所有NAPI实例都
-处理完了，换言之，budget数量大于网络包数量，所有驱动都已经关闭NAPI，没有什么事情
-需要`net_rx_action`做了。
+然后执行到了 `out` 标签所在的代码。另外还有一种条件也会跳转到 `out` 标签：所有
+NAPI 实例都处理完了，换言之，budget 数量大于网络包数量，所有驱动都已经关闭 NAPI
+，没有什么事情需要 `net_rx_action` 做了。
 
-`out`代码段在从`net_rx_action`返回之前做了一件重要的事情：调用
-`net_rps_action_and_irq_enable`。Receive Packet Steering功能打开的时候，这个函数
-有重要作用：唤醒其他CPU处理网络包。
+`out` 代码段在从 `net_rx_action` 返回之前做了一件重要的事情：调用
+`net_rps_action_and_irq_enable`。Receive Packet Steering 功能打开时这个函数
+有重要作用：唤醒其他 CPU 处理网络包。
 
-我们后面会看到RPS是如何工作的。现在，让我们看看怎样监控`net_rx_action`处理循环的
-健康状态，以及进入NAPI `poll`的内部，这样才能更好的理解网络栈。
+我们后面会看到 RPS 是如何工作的。现在先看看怎样监控 `net_rx_action` 处理循环的
+健康状态，以及进入 NAPI `poll` 的内部，这样才能更好的理解网络栈。
 
 #### 3.5.6 NAPI `poll`
 
-回忆前文，驱动程序会分配一段内存用于DMA，将数据包写到内存。就像这段内存是由驱动
+回忆前文，驱动程序会分配一段内存用于 DMA，将数据包写到内存。就像这段内存是由驱动
 程序分配的一样，驱动程序也负责解绑（unmap）这些内存，读取数据，将数据送到网络栈
 。
 
@@ -589,20 +597,22 @@ static int igb_poll(struct napi_struct *napi, int budget)
 
 几件有意思的事情：
 
-* 如果内核[DCA](https://lwn.net/Articles/247493/)（Direct Cache Access）功能打开了，CPU缓存是热的，对RX ring的访问会
-  命中CPU cache。更多DCA信息见本文“Extra”部分。
-* 然后执行`igb_clean_rx_irq`，这里做的事情非常多，我们后面看
-* 然后执行`clean_complete`，判断是否仍然有work可以做。如果有，就返回budget（回忆
-  ，这里是hardcode 64）。在之前我们已经看到，`net_rx_action`会将这个NAPI实例移动
-  到poll列表的末尾
-* 如果所有`work`都已经完成，驱动通过调用`napi_complete`关闭NAPI，并通过调用
-  `igb_ring_irq_enable`重新进入可中断状态。下次中断到来的时候回重新打开NAPI
+* 如果内核 [DCA](https://lwn.net/Articles/247493/)（Direct Cache Access）功能打
+  开了，CPU 缓存是热的，对 RX ring 的访问会命中 CPU cache。更多 DCA 信息见本文 “
+  Extra” 部分
+* 然后执行 `igb_clean_rx_irq`，这里做的事情非常多，我们后面看
+* 然后执行 `clean_complete`，判断是否仍然有 work 可以做。如果有，就返回 budget（
+  回忆，这里是 hardcode 64）。在之前我们已经看到，`net_rx_action` 会将这个 NAPI
+  实例移动到 poll 列表的末尾
+* 如果所有 `work` 都已经完成，驱动通过调用 `napi_complete` 关闭 NAPI，并通过调用
+  `igb_ring_irq_enable` 重新进入可中断状态。下次中断到来的时候回重新打开 NAPI
 
-我们来看`igb_clean_rx_irq`如何将网络数据送到网络栈。
+我们来看 `igb_clean_rx_irq` 如何将网络数据送到网络栈。
 
 ##### `igb_clean_rx_irq`
 
-`igb_clean_rx_irq`方法是一个循环，每次处理一个包，直到budget用完，或者没有数据需要处理了。
+`igb_clean_rx_irq` 方法是一个循环，每次处理一个包，直到 budget 用完，或者没有数
+据需要处理了。
 
 做的几件重要事情：
 

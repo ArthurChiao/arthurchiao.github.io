@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "[译] Linux网络栈监控和调优：接收数据 3"
+title:  "[译] Linux 网络栈监控和调优：接收数据 3"
 date:   2018-12-05
 author: ArthurChiao
 categories: network-stack monitoring tuning
