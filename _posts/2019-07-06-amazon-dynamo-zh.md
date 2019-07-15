@@ -8,9 +8,12 @@ categories: dynamo file-system paper
 
 ### 译者序
 
-本文翻译自 2007 年 Amazon 的经典论文：**Dynamo: Amazon's Highly Available
-Key-value Store**
+本文翻译自 2007 年 Amazon 的分布式存储经典论文：**Dynamo: Amazon's Highly
+Available Key-value Store**
 ([PDF](https://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf))。
+
+标题直译为：**《Dynamo：Amazon 的高可用键值仓库（存储）》**。
+
 对排版做了一些调整，以更适合 web 阅读。
 
 Dynamo 是 Amazon 的高可用分布式键值存储（key/value storage）系统。这篇论文发表
