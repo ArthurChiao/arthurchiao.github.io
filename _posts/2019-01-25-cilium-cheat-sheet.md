@@ -2,7 +2,7 @@
 layout    : post
 title     : "Cilium Cheat Sheet"
 date      : 2019-01-25
-lastupdate: 2019-05-05
+lastupdate: 2019-07-18
 author    : ArthurChiao
 categories: cilium ebpf
 ---
@@ -128,6 +128,8 @@ TCP IN 10.15.0.1 8080:48346 expires=277345 RxPackets=5 RxBytes=458 TxPackets=5 T
 ICMP IN 10.15.0.1 0:0 related expires=277435 RxPackets=1 RxBytes=74 TxPackets=0 TxBytes=0 Flags=10 RevNAT=0 SourceSecurityID=2
 ```
 
+Beneath the surface, it retrieves CT info from `/sys/fs/bpf/tc/globals/<ct file>`.
+
 ### 1.3 `cilium bpf endpoint`
 
 An endpoint is a namespaced network interface that will be applied policies on.
@@ -142,6 +144,23 @@ IP ADDRESS           LOCAL ENDPOINT INFO
 10.15.237.131        id=60459 ifindex=18  mac=AA:E2:2B:D5:AD:41 nodemac=0A:DB:58:35:CB:41
 ```
 
+Column meanings:
+
+* `IP ADDRESS`: IP address of the endpoint
+* `LOCAL ENDPOINT INFO`
+    * `id`: endpoint ID
+    * `ifindex`: corresponding container's network interface index (host side)
+    * `mac`: container side MAC address of veth pair (or other type)
+    * `nodemac`: host side MAC address of veth pair (or other type)
+
+Let's get endpoint `12908`'s veth pair on host:
+
+```shell
+$ ip link | grep -B 1 -i "62:05:3A:4E:A7:4B"
+22: lxce37f4e5d98ad@if21: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT qlen 1000
+    link/ether 62:05:3a:4e:a7:4b brd ff:ff:ff:ff:ff:ff link-netnsid 9
+```
+
 Delete local endpoint entries:
 
 ```shell
@@ -150,9 +169,38 @@ $ cilium bpf endpoint delete
 
 ### 1.4 `cilium bpf ipcache`
 
+ipcache is a **key-value store**, maps endpoint's IP to endpoint metadata.
+
 ```shell
-$ cilium bpf ipcache get
 $ cilium bpf ipcache list
+No entries found.
+
+Note that for Linux kernel versions between 4.11 and 4.15 inclusive, the native
+LPM map type used for implementing the IPCache does not provide the ability to
+walk / dump the entries, so on these kernel versions this tool will never
+return any entries, even if entries exist in the map. You may instead run:
+    cilium map get cilium_ipcache
+
+$ cilium map get cilium_ipcache
+Key               Value               State   Error
+10.50.191.164/32   43640 0 0.0.0.0     sync
+10.50.127.5/32     23488 0 10.50.8.52   sync
+10.50.178.1/32     1 0 10.50.8.44       sync
+10.50.191.97/32    0 0 0.0.0.0         sync
+```
+
+Column meanings:
+
+* `Key`: endpoint IP
+* `Value`:
+    * identity ID
+    * TODO: not known to me
+    * endpoint's host IP (`0.0.0.0` means local host)
+* `State`: is in sync state or not
+* `Error`: error message
+
+```
+$ cilium bpf ipcache get
 ```
 
 ### 1.5 `cilium bpf lb`
@@ -181,6 +229,16 @@ Success                       Unknown     207163    20200009
 ```
 
 ### 1.7 `cilium bpf nat`
+
+```shell
+$ cilium bpf nat list
+```
+
+It will retrieve NAT info from `/sys/fs/bpf/tc/globals/cilium_snat_v4_external`.
+
+```
+$ cilium bpf nat flush
+```
 
 ### 1.8 `cilium bpf policy`
 
@@ -223,13 +281,10 @@ $ cilium bpf proxy flush
 ### 1.10 `cilium bpf sha`
 
 ```shell
+$ cilium bpf sha
 Datapath SHA                               Endpoint(s)
 677ceeb764aab1432e220cf66d304d1feedab281   1104
                                            1270
-                                           1422
-                                           1460
-                                           1984
-                                           2030
                                            256
                                            2751
 ```
@@ -307,7 +362,7 @@ Connected:        yes
 KVStore:                Ok   etcd: 1/1 connected: http://127.0.0.1:31079 - 3.3.2 (Leader)
 ContainerRuntime:       Ok   docker daemon: OK
 Kubernetes:             Ok   1.13 (v1.13.2) [linux/amd64]
-Kubernetes APIs:        ["networking.k8s.io/v1::NetworkPolicy", "CustomResourceDefinition", "cilium/v2::CiliumNetworkPolicy"]
+Kubernetes APIs:        ["networking.k8s.io/v1::NetworkPolicy", "cilium/v2::CiliumNetworkPolicy"]
 Cilium:                 Ok   OK
 NodeMonitor:            Disabled
 Cilium health daemon:   Ok
@@ -328,16 +383,16 @@ cluster-id:0
 
 #### Endpoint list
 
-ENDPOINT   POLICY (ingress)   POLICY (egress)   IDENTITY   LABELS (source:key[=value])                       IPv6                 IPv4            STATUS
+ENDPOINT   POLICY (ingress)   POLICY (egress)   IDENTITY   LABELS (source:key[=value])  IPv4            STATUS
            ENFORCEMENT        ENFORCEMENT
-10916      Disabled           Disabled          44531      k8s:class=deathstar                               f00d::a0f:0:0:2aa4   10.15.43.62     ready
+10916      Disabled           Disabled          44531      k8s:class=deathstar          10.15.43.62     ready
                                                            k8s:org=empire
 
 #### BPF Policy Get 10916
 
-DIRECTION   LABELS (source:key[=value])                              PORT/PROTO   PROXY PORT   BYTES   PACKETS
-Ingress     k8s:app=etcd                                             ANY          NONE         0       0
-Egress      reserved:host                                            ANY          NONE         4998    51
+DIRECTION   LABELS (source:key[=value])     PORT/PROTO   PROXY PORT   BYTES   PACKETS
+Ingress     k8s:app=etcd                    ANY          NONE         0       0
+Egress      reserved:host                   ANY          NONE         4998    51
 
 #### Endpoint Get 10916
 
@@ -366,7 +421,7 @@ Egress      reserved:host                                            ANY        
         },
      "external-identifiers": {
        "container-id": "7ba580c3b49c53ba03e72b32a182150",
-       "container-name": "k8s_POD_deathstar-6fb5694d48-ttln2_default_e395bf0b-77bc14c_0",
+       "container-name": "k8s_POD_deathstar-6fb8-ttln2_default_e3b-77bc14c_0",
        "pod-name": "default/deathstar-6fb5694d48-ttln2"
      },
      "identity": {
@@ -402,6 +457,12 @@ The output is a markdown file, which could be used when reporting a bug on the
 github [issue tracker](https://github.com/cilium/cilium/issues), or sending to
 the Cilium develop team [3].
 
+Write to file:
+
+```shell
+$ cilium debuginfo -f debuginfo.md
+```
+
 <a id="chap_6"></a>
 
 ## 6 `cilium endpoint`
@@ -418,9 +479,6 @@ ENDPOINT   POLICY (ingress)   POLICY (egress)   IDENTITY   LABELS (source:key[=v
                                                            k8s:io.cilium.k8s.policy.serviceaccount=coredns
                                                            k8s:k8s-app=kube-dns
 ```
-
-Note that, the endpoint with `identity=4` is the built in `cilium-health`
-service, which has the unique label `reserved:health`.
 
 Change endpoint configurations:
 
@@ -449,10 +507,6 @@ $ cilium endpoint get/health/labels/regenerate
 
 ## 7 `cilium help`
 
-<a id="chap_8"></a>
-
-## 8 `cilium help`
-
 <a id="chap_9"></a>
 
 ## 9 `cilium identity`
@@ -464,7 +518,6 @@ $ cilium identity list
 ID      LABELS
 1       reserved:host
 2       reserved:world
-3       reserved:unmanaged
 4       reserved:health
 5       reserved:init
 100     k8s:io.cilium.k8s.policy.cluster=default
@@ -482,6 +535,10 @@ some ingress/egress rules.
 ## 10 `cilium kvstore`
 
 cilium kvstore get/set/delete.
+
+```shell
+$ cilium  kvstore get --recursive <key>
+```
 
 <a id="chap_11"></a>
 
@@ -502,7 +559,7 @@ cilium_ep_config_12041   1             0            true
 ...
 ```
 
-Display BPF map information:
+Dump map content:
 
 ```shell
 $ cilium map get cilium_ipcache
@@ -521,7 +578,7 @@ Key Value State   Error
 
 ## 12 `cilium metrics`
 
-Access metric status. Including much of statistics metrics:
+Access cilium's (Prometheus) metrics:
 
 ```shell
 $ cilium metrics list
@@ -577,7 +634,7 @@ Monitor packet drops:
 $ cilium monitor --type drop
 ```
 
-Check all traffic to endpoint 3991 (192.168.0.121 in the below output):
+Check all traffic to endpoint `3991` (192.168.0.121 in the below output):
 
 ```shell
 $ cilium monitor --to 3991
