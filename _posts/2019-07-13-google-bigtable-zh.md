@@ -350,13 +350,10 @@ tablet 和 `METADATA` 内其他 tablet 不同之处在于：它**永远不会分
 `128MB` = `2^17 * 1KB`，即 `METADATA` table 可以指向 `2^17` 个 user table，每个
 user table 同样是 `128MB` 的话，就有 `2^17 * 2^17 = 2^34`个 tablets，译者注）。
 如果每个 tablet 128 MB 大小，那总数据量就高达 `2^61` 字节（`128MB = 2^27 Byte`，
-`2^34 * 2^27 = 2^61`）。
+`2^34 * 2^27 = 2^61`，即 **`2000PB`**）。
 
 > With a modest limit of 128 MB METADATA tablets, our three-level location
-> scheme is sufficient to address 234 tablets (or 261 bytes in 128 MB tablets).
-
-
-（ 128MB = 2^17 * 1KB）
+> scheme is sufficient to address 234 tablets (or 2^61 bytes in 128 MB tablets).
 
 #### 客户端
 
