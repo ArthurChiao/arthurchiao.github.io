@@ -12,18 +12,19 @@
     height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <!-- End Google Tag Manager (noscript) -->
 
-   {% include header.html %}
+  {% include header.html %}
 
-   <div class="content">
-      <div class="container">
-         {{ content }}
+  <div class="content">
+      <!-- <div class="container"> -->
+      <div class="markdown-body">
+          {{ content }}
 
-         {% include disqus.html %}
+          {% include disqus.html %}
       </div>
-   </div><!-- end .content -->
+  </div><!-- end .content -->
 
-   {% include footer.html %}
-   {% include scripts.html %}
+  {% include footer.html %}
+  {% include scripts.html %}
 
 </body>
 
