@@ -1,9 +1,9 @@
 ---
 layout    : post
-title     : "OVS Unicast Flooding Under Distributed L2 Gateway"
+title     : "OVS Unknown Unicast Flooding Under Distributed L2 Gateway"
 date      : 2019-10-13
 lastupdate: 2019-10-13
-categories: ovs flooding spine-leaf
+categories: ovs unicast-flooding spine-leaf
 ---
 
 ## TL; DR
