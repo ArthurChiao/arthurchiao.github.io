@@ -1,6 +1,6 @@
 ---
 layout    : post
-title     : "Behind the TCP Handshakes in Modern Networking Infrastructures"
+title     : "Beneath the TCP Handshakes in Modern Networking Infrastructures"
 date      : 2019-10-11
 lastupdate: 2019-10-11
 categories: tcp handshake service-mesh istio
@@ -19,7 +19,14 @@ networking infrastructure, modern networking falicities in these platforms make
 TCP related problems even more complicated. In traditional views, those problems
 may look fairly weired.
 
-This article will show two of such scenarios.
+This article will show two of such scenarios. What's your ideas when seeing
+below two pictures?
+
+<p align="center"><img src="/assets/img/tcp-handshake-in-modern-network-infra/1-1.png" width="30%" height="30%"></p>
+<p align="center">Problematic TCP stream of scenario 1</p>
+
+<p align="center"><img src="/assets/img/tcp-handshake-in-modern-network-infra/2-1.png" width="30%" height="30%"></p>
+<p align="center">Problematic TCP stream of scenario 2</p>
 
 # 1. Scenario 1
 
@@ -27,7 +34,8 @@ This article will show two of such scenarios.
 
 Client initiated a connection to server, server immediately acked
 (SYN+ACK), but client reset this packet on receiving it, and kept waiting
-for next SYN+ACK from server.
+for next SYN+ACK from server. After many times of restransmit and reset, the
+connection finally timed out.
 
 ## 1.2 Capture
 
@@ -60,6 +68,11 @@ Let's try to understand what's happend in depth:
 5. `#5`: server acked `#4` (still SYN+ACK)
 6. `#6`: client rejected again (`#5`, SYN+ACK)
 
+The time sequence of this TCP stream is re-depicted here:
+
+<p align="center"><img src="/assets/img/tcp-handshake-in-modern-network-infra/1-1.png" width="30%" height="30%"></p>
+<p align="center">Fig. 1.1 The problematic TCP stream</p>
+
 At first look, this seems fairly strange, because server acked client's request,
 while client immediately reset this packet on receiving, then kept waiting for next
 SYN+ACK from server (instead of closing this connecting attempt). It
@@ -85,8 +98,8 @@ First of all, we are in a Cilium powered K8S cluster.
 Cilium will generate BPF rules to load balance the traffics to this VIP
 to all its backend Pods. The normal traffic path looks like Fig 1.1:
 
-<p align="center"><img src="/assets/img/tcp-handshake-in-modern-network-infra/1-1.png" width="70%" height="70%"></p>
-<p align="center">Fig. 1.1 Normal data flow between client and server instances</p>
+<p align="center"><img src="/assets/img/tcp-handshake-in-modern-network-infra/1-2.png" width="70%" height="70%"></p>
+<p align="center">Fig. 1.2 Normal data flow between client and server instances</p>
 
 1. @Client: client sends traffic to server `VIP`
 2. @ClientHost: Cilium does DNAT, change VIP to one of its `PodIP` (backend
@@ -103,8 +116,8 @@ to all its backend Pods. The normal traffic path looks like Fig 1.1:
 The problem arises when **client and server are on the same host**, in which
 case, **step 6 is not implemented by Cilium**, as shown in Fig 1.2:
 
-<p align="center"><img src="/assets/img/tcp-handshake-in-modern-network-infra/1-2.png" width="45%" height="45%"></p>
-<p align="center">Fig. 1.2 Data flow when client and server are on the same host</p>
+<p align="center"><img src="/assets/img/tcp-handshake-in-modern-network-infra/1-3.png" width="45%" height="45%"></p>
+<p align="center">Fig. 1.3 Data flow when client and server are on the same host</p>
 
 We have reported this problem and it is confirmed a bug, see [this
 issue](https://github.com/cilium/cilium/issues/9285) for more details.
@@ -139,12 +152,17 @@ Again, it's worth to think about this before proceed on.
 5. `#5`: server acked `#4`
 6. `#6`: server reset this connection right after `#5`
 
+The time sequence of this TCP stream is re-depicted here:
+
+<p align="center"><img src="/assets/img/tcp-handshake-in-modern-network-infra/2-1.png" width="30%" height="30%"></p>
+<p align="center">Fig. 2.1 Time sequence of the problematic TCP stream</p>
+
 ## 2.4 Root Cause
 
 Client sees a topology like Fig 2.1:
 
-<p align="center"><img src="/assets/img/tcp-handshake-in-modern-network-infra/2-1.png" width="55%" height="55%"></p>
-<p align="center">Fig. 2.1 Client view of the two sides</p>
+<p align="center"><img src="/assets/img/tcp-handshake-in-modern-network-infra/2-2.png" width="40%" height="40%"></p>
+<p align="center">Fig. 2.2 Client view of the two sides</p>
 
 It initiated an connection, which got accepted by server succesfully, namely,
 the 3-way handshake finished withouth any error. But on transmitting data,
@@ -175,8 +193,8 @@ server directly, but **split into 2 separate connections**:
 Those two connections are independently handshaked, thus even if the latter
 failed, the former could still be succesful.
 
-<p align="center"><img src="/assets/img/tcp-handshake-in-modern-network-infra/2-2.png" width="55%" height="55%"></p>
-<p align="center">Fig. 2.2 Actual view of the two sides: a middleman sits between client and server</p>
+<p align="center"><img src="/assets/img/tcp-handshake-in-modern-network-infra/2-3.png" width="55%" height="55%"></p>
+<p align="center">Fig. 2.3 Actual view of the two sides: a middleman sits between client and server</p>
 
 This is what exactly happened: server failed to start due to some internal
 errors, but the connection between client and sidecar was established. When
@@ -185,8 +203,8 @@ forwarded this to (the failed) server, and got rejected. It then realized that
 the backend service was not available, so closed (RST) the connection between
 itself and the client.
 
-<p align="center"><img src="/assets/img/tcp-handshake-in-modern-network-infra/2-3.png" width="55%" height="55%"></p>
-<p align="center">Fig. 2.3 Connection between sidecar and server not established</p>
+<p align="center"><img src="/assets/img/tcp-handshake-in-modern-network-infra/2-4.png" width="55%" height="55%"></p>
+<p align="center">Fig. 2.4 Connection between sidecar and server not established</p>
 
 # 3. Closing Remarks
 
