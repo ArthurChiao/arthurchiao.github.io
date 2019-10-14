@@ -17,7 +17,7 @@ O'Reilly, 2017）时的读书笔记。原书很短，只有 90 页不到，但�
 
 BGP 原本是用于服务供应商（service provider）网络的，并不适用于数据中心，因此进入
 到数据中心的 BGP 是经过改造的。本文介绍的就是**数据中心中的** BGP（BGP in the
-data center），这与传统BGP 还是有很大不同的。
+data center），这与传统 BGP 还是有很大不同的。
 
 以下是笔记内容。
 
@@ -97,7 +97,7 @@ BGP（Border Gateway Protocol）：**边界网关协议**。
 
 过去的几十年里，连接到互联网（公网）的系统通过 BGP 发现彼此（find one another）
 。但是，它也可以用在数据中心内部。现代数据中心中使用最广泛的路由协议就是 BGP。
-BGP是标准协议，有很多免费和开源（free and open source，这里 “free” 作者应该是指“免
+BGP 是标准协议，有很多免费和开源（free and open source，这里 “free” 作者应该是指“免
 费”，而不是“自由软件”的“自由”）的软件实现。
 
 
@@ -169,8 +169,8 @@ functionality）都集中在 Leaf 上**。
 
 扩展方式：**scale-out**（水平扩展）。
 
-**最大服务器数量**（无阻塞架构下）：`n * m / 2`，其中 `n`是一个 Leaf 节点的端口
-数量，`m` 是一个Spine 节点的端口数量。
+**最大服务器数量**（无阻塞架构下）：`n * m / 2`，其中 `n` 是一个 Leaf 节点的端口
+数量，`m` 是一个 Spine 节点的端口数量。
 
 典型带宽，分为接入（leaf-server）和互连（leaf-spine）：
 
@@ -440,7 +440,7 @@ ASN 有两个版本：老版用 2 个字节表示，新版用 4 个字节表示�
 ：每个节点不知道其他节点的物理链路状态（physical link state），因此无法判断一条
 路由是真的不通了（节点挂掉）还是通过其他路径还是可达的。
 
-当一个节点挂到后，其他节点陆续撤回（withdraw）可达路由时，导致网络内大量的 BGP消
+当一个节点挂到后，其他节点陆续撤回（withdraw）可达路由时，导致网络内大量的 BGP 消
 息。这个问题称为 path hunting。
 
 <p align="center"><img src="/assets/img/bgp-in-data-center/2-1.PNG" width="60%" height="60%"></p>
@@ -467,7 +467,7 @@ ASN 有两个版本：老版用 2 个字节表示，新版用 4 个字节表示�
 ）。还是拿图 2-1 为例，如果 R2 和 R3 通过直连的服务器总共收集到了 `10.1.1.2/32 ~
 10.1.1.250/32` 的可达消息。如果 R2 和 R3 做路由聚合，那只需要向 R1 通告一条
 `10.1.1.0/24` 可达消息，而不用通告 250 次，每次一个 IP。在这种情况下，如果 R2-R4
-链路挂了，那 R1 仍然认为`10.1.1.0/24` 到 R4 仍然是可达的，因为可以通过`R1-R3-R4`
+链路挂了，那 R1 仍然认为 `10.1.1.0/24` 到 R4 仍然是可达的，因为可以通过 `R1-R3-R4`
 ，但实际上有些 IP 是只能通过 R2-R4 才通的。也即路由聚合在这种情况下带来了问题。
 
 <a name="chap_2.4"></a>
@@ -640,7 +640,7 @@ are patterns）。
 
 `neighbor peer-group ISL`
 
-> 在 FRR中，定义配置模板。
+> 在 FRR 中，定义配置模板。
 
 `neighbor ISL remote-as 65500`
 
@@ -793,7 +793,7 @@ resitribute <protocol> route-map <route-map-name>
 
 * `static`：通告（announce）静态配置的路由
 * `connected`：通告和接口地址（interface address）相关联的路由
-* `kernel`：只适用于 Linux。通过路由套件（FRRouting、bird、quagga等）配置的路由
+* `kernel`：只适用于 Linux。通过路由套件（FRRouting、bird、quagga 等）配置的路由
   ，或通过 iproute2 等工具直接配置在内核的路由
 * `ospf`：通过 OSPF 学习到的路由
 * `bgp`：通过 BGP 学习到的路由
@@ -863,7 +863,7 @@ ACCEPT_DC_LOCAL(prefix)
 Arista 等等都支持 `route-maps`。[BIRD]()软件走的更远，支持一种简单的领域特定语言
 （DSL）。
 
-`route-maps`格式：
+`route-maps` 格式：
 
 ```shell
 route-map NAME (permit|deny) [sequence_number]
@@ -1044,7 +1044,7 @@ router bgp 65500
 
 BGP 基于 TCP/IP 协议，因此需要一个 IP 地址才能建立连接。
 
-**在没有为（本地）接口分配IP 地址的情况下，如何确定远端节点的地址呢**？要回答这
+**在没有为（本地）接口分配 IP 地址的情况下，如何确定远端节点的地址呢**？要回答这
 个问题，需要理解一个稍微有点冷门的 RFC 协议，以及 IPv6 提供的无状态配置工具（
 stateless configuration tools）。同时，这也涉及到了路由问题的核心（real heart of
 routing）。
@@ -1174,7 +1174,7 @@ with an IPv6 nexthop）。
 
 原理上来说这其实很好理解，因为二层网络中下一跳 IP 只是用来获
 取对端的 MAC 地址（IPv4 ARP，IPV6 ND）。因此只要有同一接口上的任意一个地址（不管
-是 IPv4 还是 IPv6），就可以获取到对端MAC，然后就可以将包发送到下一跳。
+是 IPv4 还是 IPv6），就可以获取到对端 MAC，然后就可以将包发送到下一跳。
 
 #### 基于 RFC 5549 实现转发
 
@@ -1184,14 +1184,14 @@ BGP 网络自动初始化过程：
 <p align="center">图 4-1 BGP unnumbered packet timeline sequence</p>
 
 在 FRRouting 中，BGP 会将最优路由发送到一个叫**路由信息数据库**（Routing
-Information Base，RIB）的进程（在FRRouting 中这个进程是 zebra）。
+Information Base，RIB）的进程（在 FRRouting 中这个进程是 zebra）。
 
 > RIB 存储所有协议类型的路由，如果到同一路由有多条路径，RIB 会选择距离最短的一条
 > 。
 
 我们假设收到一条路由通告，路由为 `10.1.1.0/24`。通过消息中的 NEXTHOP 可以拿到对
-端的 MAC 地址。接下来RIB 会在路由表里将下一跳设为一个保留的（或看起来非法的）
-IPv4 地址 169.254.0.1，然后在 ARP表里将这个 IP 地址对应的 MAC 地址设为对端接口的
+端的 MAC 地址。接下来 RIB 会在路由表里将下一跳设为一个保留的（或看起来非法的）
+IPv4 地址 169.254.0.1，然后在 ARP 表里将这个 IP 地址对应的 MAC 地址设为对端接口的
 MAC 地址。
 
 ```shell
@@ -1536,7 +1536,7 @@ neighbor server default-originate
 
 其中，
 
-* `neighbor server route-map ACCEPT_ONLY_ANYCAST in` 实现了：从 server 来的路由通告，只接受 `ANYCAST_VIP`里面有的 anycast IP
+* `neighbor server route-map ACCEPT_ONLY_ANYCAST in` 实现了：从 server 来的路由通告，只接受 `ANYCAST_VIP` 里面有的 anycast IP
 * `neighbor server route-map ADVERTISE_DEFONLY out` 实现了：只对 server 通告默认路由
 
 <a name="chap_6.3"></a>

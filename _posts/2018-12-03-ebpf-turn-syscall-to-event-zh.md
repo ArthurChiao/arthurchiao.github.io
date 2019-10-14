@@ -7,7 +7,7 @@ author    : ArthurChiao
 categories: eBPF tracing bcc
 ---
 
-译者按：本文翻译自2016年的一篇英文博客 [How to turn any syscall into an event: Introducing eBPF Kernel probes](https://blog.yadutaf.fr/2016/03/30/turn-any-syscall-into-event-introducing-ebpf-kernel-probes/)。**如果能看懂英文，我建议你阅读原文，或者和本文对照看。**
+译者按：本文翻译自 2016 年的一篇英文博客 [How to turn any syscall into an event: Introducing eBPF Kernel probes](https://blog.yadutaf.fr/2016/03/30/turn-any-syscall-into-event-introducing-ebpf-kernel-probes/)。**如果能看懂英文，我建议你阅读原文，或者和本文对照看。**
 
 ----
 
@@ -15,7 +15,7 @@ categories: eBPF tracing bcc
 
 Linux `4.4+` 支持 `eBPF`。基于 `eBPF` 可以将任何**内核函数调用**转换成**可带任何
 数据**的**用户空间事件**。`bcc` 作为一个更上层的工具使这个过程更加方便。内核探测
-代码用C 写，数据处理代码用 Python。
+代码用 C 写，数据处理代码用 Python。
 
 如果你对 eBPF 或 Linux tracing 不是太熟悉，建议你阅读全文。本文循序渐进，并介绍
 了我在上手 bcc/eBPF 时遇到的一些坑，这会节省你大量的时间。
@@ -33,7 +33,7 @@ Linux `4.4+` 支持 `eBPF`。基于 `eBPF` 可以将任何**内核函数调用**
 我们能做的更好吗？
 
 当希望一个程序能对系统变化做出反应时，通常有 2 种可能的方式。一种是程序主动去轮
-询，检查系统变化；另一种，如果系统支持事件通知的话，让它主动通知程序。**使用push
+询，检查系统变化；另一种，如果系统支持事件通知的话，让它主动通知程序。**使用 push
 还是 pull 取决于具体的问题**。通常的经验是，如果事件频率相对于事件处理时间来说比
 较低，那 push 模型比较合适；**如果事件频率很高，就采用 pull 模型**，否则系统变得
 不稳定。例如，通常的网络驱动会等待网卡事件，而 dpdk 这样的框架会主动 poll 网卡，
@@ -44,8 +44,8 @@ Linux `4.4+` 支持 `eBPF`。基于 `eBPF` 可以将任何**内核函数调用**
 * **操作系统**：“嗨，容器管理服务，我刚给一个容器创建了一个 socket，你需要更新你的状态吗？”
 * **容器管理服务**：“喔，谢谢你的通知，我需要更新。”
 
-虽然 Linux 有大量的函数接口用于事件处理，其中包括3个用于文件事件的，但**并没有专
-门用于 socket 事件的**。你能获取路由表事件、邻居表（2层转发表）事件，conntrack
+虽然 Linux 有大量的函数接口用于事件处理，其中包括 3 个用于文件事件的，但**并没有专
+门用于 socket 事件的**。你能获取路由表事件、邻居表（2 层转发表）事件，conntrack
 事件，接口（网络设备）变动事件，但就是没有 socket 事件。非要说有的话也行，但它深
 深地隐藏在一个 Netlink 接口中。
 
@@ -59,7 +59,7 @@ Linux `4.4+` 支持 `eBPF`。基于 `eBPF` 可以将任何**内核函数调用**
 载到运行中的内核**。但**出于安全考虑，一些生产系统禁止动态模块加载**，例如我研究
 eBPF 时所用的系统就不允许。
 
-**另一种方式是给内核打补丁来触发事件，可能会基于Netlink**。这种方式不太方便，内
+**另一种方式是给内核打补丁来触发事件，可能会基于 Netlink**。这种方式不太方便，内
 核 hacking 有副作用，例如新引入的特性也许有毒，而且会增加维护成本。
 
 从 Linux 3.15 开始，**将任何可跟踪的内核函数** ***安全地*** **转换成事件，很可能
@@ -69,7 +69,7 @@ virtual machines）执行代码，这里也不例外。事实上，Linux 内部�
 Filter），缩写 BPF。从名字就可以看出，它最开始是为 BSD 防火墙开发的。**它只有两
 个寄存器，只允许前向跳转，这意味着你不能用它实现循环**（如果非要说行也可以：如果
 你知道最大的循环次数，那可以手动做循环展开）。这样设计是为了**保证程序会在有限步骤
-内结束**，而不会让操作系统卡住。你可能在考虑，我已经有iptables做防火墙了，要这个有
+内结束**，而不会让操作系统卡住。你可能在考虑，我已经有 iptables 做防火墙了，要这个有
 什么用？（作为一个例子，）它是 CloudFlare 的防 DDOS 攻击工具
 [AntiDDos](https://blog.cloudflare.com/bpf-the-forgotten-bytecode/)的基础。
 
@@ -271,8 +271,8 @@ nc-5024  [000] d... 25821.166286: : Listening on 7f000001 4242 with 1 pending co
 
 这里 IP 是用 16 进制打印的，没有转换成适合人读的格式。
 
-注：你可能会有疑问，为什么 **`ntohs` 和 `ntohl` 并不是受信任的**，却可以在BPF里
-被调用。这是因为他们是定义在`.h`文件中的内联函数，在写作本文期间，修了一个与此相
+注：你可能会有疑问，为什么 **`ntohs` 和 `ntohl` 并不是受信任的**，却可以在 BPF 里
+被调用。这是因为他们是定义在`.h` 文件中的内联函数，在写作本文期间，修了一个与此相
 关的小[bug](https://github.com/iovisor/bcc/pull/453)。
 
 接下来，我们想获取相关的容器（container）。对于网络，这意味着我们要获得网络命名
@@ -397,6 +397,6 @@ Listening on 7f000001 6588 with 1 pending connections in container 4026531957
 感谢 bcc team 的支持，现在它已经是一个正式工具。
 
 想更深入的了解这个 topic，建议阅读 Brendan Gregg 的博客，尤其是关于 eBPF 的 maps
-和statistics 的[这一篇
+和 statistics 的[这一篇
 ](http://www.brendangregg.com/blog/2015-05-15/ebpf-one-small-step.html)。Brendan
 Gregg 是这个项目的主要贡献者之一。

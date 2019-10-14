@@ -26,13 +26,13 @@ Cloud Computing Era***](% link _posts/2019-04-17-ctrip-network-arch-evolution.md
 给业内同行，尤其是那些设计和维护同等规模网络的团队提供一些参考。
 
 本文将首先简单介绍携程的云平台，然后依次介绍我们经历过的几代网络模型：从传统的基
-于VLAN 的二层网络，到基于 SDN的大二层网络，再到容器和混合云场景下的网络，最后是
+于 VLAN 的二层网络，到基于 SDN 的大二层网络，再到容器和混合云场景下的网络，最后是
 cloud native 时代的一些探索。
 
 ## 0 携程云平台简介
 
 携程 Cloud 团队成立于 2013 年左右，最初是基于 OpenStack 做私有云，后来又开发了自
-己的 baremetal（BM）系统，集成到 OpenStack，最近几年又陆续落地了Mesos 和 K8S 平
+己的 baremetal（BM）系统，集成到 OpenStack，最近几年又陆续落地了 Mesos 和 K8S 平
 台，并接入了公有云。目前，我们已经将所有 cloud 服务打造成一个 **CDOS —
 携程数据中心操作系统**的混合云平台，统一管理我们在私有云和公有云上的计算、网络
 、存储资源。
@@ -57,11 +57,11 @@ UCloud 等供应商，给应用部门提供虚拟机和容器。所有这些资�
 随着网络规模的扩大，这种架构的不足逐渐显现出来。因此，在 2016 年自研了基于 SDN
 的大二层网络来解决面临的问题，其中硬件架构换成了 Spine-Leaf。
 
-2017年，我们开始在私有云和公有云上落地容器平台。在私有云上，对 SDN 方案进行了扩
+2017 年，我们开始在私有云和公有云上落地容器平台。在私有云上，对 SDN 方案进行了扩
 展和优化，接入了 Mesos 和 K8S 平台，单套网络方案同时管理了虚拟机、应用物理机和容
 器网络。公有云上也设计了自己的网络方案，打通了混合云。
 
-最后是 2019年，针对 Cloud Native 时代面临的一些新挑战，我们在调研一些新方案。
+最后是 2019 年，针对 Cloud Native 时代面临的一些新挑战，我们在调研一些新方案。
 
 ## 1 基于 VLAN 的二层网络
 
@@ -142,7 +142,7 @@ UCloud 等供应商，给应用部门提供虚拟机和容器。所有这些资�
 图中的两个实例属于不同网段，这些标数字的（虚拟和物理）设备连接起来，就是**两个跨
 网段的实例之间**通信的路径：`inst1` 出来的包经 `br-int` 到达 `br-bond`，再经物理
 网卡出宿主机，然后到达交换机，最后到达路由器（网关）；路由转发之后，包再经类似路
-径回到 `inst2`，总共是18跳。
+径回到 `inst2`，总共是 18 跳。
 
 作为对比，图 6 是原生的 OpenStack ***provider network*** 模型。
 
@@ -235,7 +235,7 @@ Spine-Leaf 是 full-mesh 连接，它可以带来如下几个好处：
 #### SDN: 控制平面和数据平面
 
 数据平面基于 VxLAN，控制平面基于 MP-BGP EVPN 协议，在设备之间同步控制平面信息。
-网关是分布式的，每个 leaf 节点都是网关。VxLAN 和MP-BGP EVPN 都是 RFC 标准协议，
+网关是分布式的，每个 leaf 节点都是网关。VxLAN 和 MP-BGP EVPN 都是 RFC 标准协议，
 更多信息参考 [2]。
 
 VxLAN 的封装和解封装都在 leaf 完成，leaf 以下是 VLAN 网络，以上是 VxLAN 网络。
@@ -255,7 +255,7 @@ Neutron 的主要改造：
 1. 添加了 ML2 和 L3 两个 plugin 与 CNC 集成
 2. 设计了新的 port 状态机，因为原来的 port 只对 underlay 进行了建模，我们现在有
    underlay 和 overlay 两个平面
-3. 添加了一下新的API，用于和 CNC 交互
+3. 添加了一下新的 API，用于和 CNC 交互
 4. 扩展了一些表结构等等
 
 图 8 就是我们对 neutron port 状态的一个监控。如果一个 IP（port）不通，我们很容易
@@ -273,7 +273,7 @@ Neutron 的主要改造：
 
 1. 以 leaf 为边界，leaf 以下是 underlay，走 VLAN；上面 overlay，走 VxLAN
 2. underlay 由 neutron、OVS 和 neutron OVS agent 控制；overlay 是 CNC 控制
-3. Neutron 和 CNC之间通过 plugin 集成
+3. Neutron 和 CNC 之间通过 plugin 集成
 
 ### 2.4 创建实例涉及的网络配置流程
 
@@ -292,13 +292,13 @@ Neutron 的主要改造：
    的 DB
 4. 计算节点：port 信息从 neutron server 返回给 nova-compute
 4. 计算节点：nova-compute 拿到 port 信息，为实例创建虚拟网卡，配置 IP 地址等参数
-   ，并将其 attach到 OVS
+   ，并将其 attach 到 OVS
 5. 计算节点：ovs agent 检测到新的 device 后，就会为这个 device 配置 OVS，添加
    flow 等，**这时候 underlay 就通了**，它会将 underlay 状态上报给 neutron
    server
 6. 计算节点：nova-compute 做完网络配置后，会发送一个 update port 消息给 neutron
    server，其中带着 `host_id` 信息，表示这个 port 现在在哪台计算节点上
-7. Neutron Server: 请求会通过 postcommit 发给CNC
+7. Neutron Server: 请求会通过 postcommit 发给 CNC
 8. CNC：CNC 根据 `host_id` 找到这台计算节点所连接的 leaf 的端口，然后向这些端口
    动态下发配置，**这时候 overlay 就通了**，最后将 overlay 状态上报给 neutron
    server
@@ -370,9 +370,9 @@ Neutron、CNC、OVS、Neutron-OVS-Agent 等待，然后开发一个针对 Neutro
 ##### Neutron 改动
 
 首先是增加了一些新的 API。比如，原来的 neutron 是按 network id 分配 IP，我们给
-network 添加了 label 属性，相同 label 的 network 我们认为是无差别的。这样，CNI申
+network 添加了 label 属性，相同 label 的 network 我们认为是无差别的。这样，CNI 申
 请 IP 的时候，只需要说**“我需要一个 'prod-env' 网段的 IP”**，neutron 就会从打了“
-prod-env” label 的 network 中任选一个还没用完的，从中分一个IP。这样既将外部系统
+prod-env” label 的 network 中任选一个还没用完的，从中分一个 IP。这样既将外部系统
 与 OpenStack 细节解耦，又提高了可扩展性，因为一个 label 可以对应任意多个 network
 。
 
@@ -415,7 +415,7 @@ bug，后来发现这几个问题在社区也是有记录的：
 
 其流程不再详细介绍。这里重点介绍一下容器漂移时 IP 是如何保持不变的。
 
-如图 11 所示，保持 IP 不变的关键是：CNI 插件能够根据容器的labels 推导出 port
+如图 11 所示，保持 IP 不变的关键是：CNI 插件能够根据容器的 labels 推导出 port
 name，然后拿 name 去 neutron 里获取 port 详细信息。port name 是唯一的，这个是我
 们改过的，原生的 OpenStack 并不唯一。
 
@@ -449,7 +449,7 @@ name，然后拿 name 去 neutron 里获取 port 详细信息。port name 是唯
 <p align="center">Fig 12. Layered view of the future network architecture</p>
 
 首先会有 underlay 和 overlay 两个平面。underlay 部署各种基础设施，包括 Openstack
-控制器、计算节点、SDN 控制器等，以及各种需要运行在underlay的物理设备；
+控制器、计算节点、SDN 控制器等，以及各种需要运行在 underlay 的物理设备；
 在 overlay 创建 VPC，在 VPC 里部署虚拟机、应用物理机实例等。
 
 在 VPC 内创建 K8S 集群，单个 K8S 集群只会属于一个 VPC，所有跨 K8S 集群的访问都走
@@ -479,7 +479,7 @@ K8S 集群（非厂商托管方案，例如 AWS EKS [10]）。
 <p align="center">Fig 13. K8S network solution on public cloud vendor (AWS)</p>
 
 首先，起 EC2 实例作为 K8S node，我们自己开发一个 CNI 插件，动态向 EC2 插拔 ENI，
-并把 ENI 作为网卡给容器使用。这一部分借鉴了 Lyft和 Netflix 在 AWS 上经验 [5, 6]。
+并把 ENI 作为网卡给容器使用。这一部分借鉴了 Lyft 和 Netflix 在 AWS 上经验 [5, 6]。
 
 在 VPC 内，有一个全局的 IPAM，管理整个 K8S 集群的网络资源，角色和私有云中的
 neutron 类似。它会调用 AWS API 实现网络资源的申请、释放和管理。
@@ -505,7 +505,7 @@ neutron 类似。它会调用 AWS API 实现网络资源的申请、释放和管
 以上就是我们在私有云和混合云场景下的网络方案演进。目前的方案可以支持
 业务未来一段的发展，但也有一些新的挑战。
 
-首先，中心式的 IPAM 逐渐成为性能瓶颈。做过 OpenStack 的同学应该很清楚，neutron不
+首先，中心式的 IPAM 逐渐成为性能瓶颈。做过 OpenStack 的同学应该很清楚，neutron 不
 是为性能设计的，而是为发布频率很低、性能要求不高的虚拟机设计的。没有优化过的话，
 一次 neutron API 调用百毫秒级是很正常的，高负载的时候更慢。另外，中心式的 IPAM
 也不符合容器网络的设计哲学。Cloud native 方案都倾向于 local IPAM（去中心化），即
@@ -518,7 +518,7 @@ neutron 类似。它会调用 AWS API 实现网络资源的申请、释放和管
 本身以及硬件的限制。
 
 另外，近年来安全受到越来越高度重视，我们有越来越强的 3-7 层主机防火墙需求。目前
-基于OVS 的方案与主流的 K8S 方案差异很大，导致很多 K8S 原生功能用不了。
+基于 OVS 的方案与主流的 K8S 方案差异很大，导致很多 K8S 原生功能用不了。
 
 针对以上问题和需求，我们进行了一些新方案的调研，包括 Calico，Cilium 等等。Calico
 大家应该已经比较熟悉了，这里介绍下 Cilium。
@@ -530,7 +530,7 @@ Cilium [7]是近两年新出现的网络方案，它使用了很多内核新技�
 
 Cilium 的核心功能依赖 BPF/eBPF，这是内核里的一个沙盒虚拟机。应用程序可以通过
 BPF 动态的向内核注入程序来完成很多高级功能，例如系统调用跟踪、性能分析、网络拦截
-等等。Cilium 基于 BPF做网络的连通和安全，提供 3-7 层的安策略。
+等等。Cilium 基于 BPF 做网络的连通和安全，提供 3-7 层的安策略。
 
 Cilium 组件：
 
@@ -559,7 +559,7 @@ CIDR 的第一个 IP 作为网关，配置在 `cilium_host` 上。对于每个�
 会承担创建 veth pair、配置 IP、生成 BPF 规则 等工作。
 
 同宿主机内部的容器之间的连通性靠内核协议栈二层转发和 BPF 程序。比如 `inst1` 到
-`isnt2`，包首先从 `eth0` 经协议栈到达 `lxc11`，中间再经过BPF 规则到达 `lxc22`，
+`isnt2`，包首先从 `eth0` 经协议栈到达 `lxc11`，中间再经过 BPF 规则到达 `lxc22`，
 然后再经协议栈转发到达 `inst2` 的 `eth0`。
 
 以传统的网络观念来看，`lxc11` 到 `lxc22` 这一跳非常怪，因为没有既没有 OVS 或
@@ -583,7 +583,7 @@ offload 到硬件加速。一般来说，软件 VxLAN 的方式性能较差，�
 BGP 方案性能更好，而且 IP 可路由，但需要底层网络支持。这种方案需要在每个
 node 上起一个 BGP agent 来和外部网络交换路由，涉及 BGP agent 的选型、AS（自治系
 统）的设计等额外工作。如果是内网，一般就是 BGP agent 与硬件网络做 peering；如果
-是在 AWS 之类的公有云上，还可以调用厂商提供的BGP API。
+是在 AWS 之类的公有云上，还可以调用厂商提供的 BGP API。
 
 ### 4.4 优劣势比较（Pros & Cons）
 

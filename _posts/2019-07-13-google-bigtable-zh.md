@@ -92,8 +92,8 @@ Bigtable **不理解数据的内容**（将数据视为 uninterpreted strings）
 * `anchor:` 开头的列：存储引用了这个页面的 anchor（HTML 锚点）的文本（text of
   the anchors that reference this page）
 
-图中可以看出，CNN 主页被 Sports Illustrated（`cnnsi.com`）和MY-look 主页（
-`my.look.ca`）引用了，因此会有`anchor:cnnsi.com` 和`anchor:my.look.ca` 两列，其
+图中可以看出，CNN 主页被 Sports Illustrated（`cnnsi.com`）和 MY-look 主页（
+`my.look.ca`）引用了，因此会有 `anchor:cnnsi.com` 和 `anchor:my.look.ca` 两列，其
 中每列一个版本；`contents:` 列有三个版本，时间戳分别为 `t3`、`t5` 和 `t6`。
 
 ### 2.1 行（Row）
@@ -133,7 +133,7 @@ ranges）是很高效的**，通常情况下只需要和很少的几台机器通
 但另一方面，每个 table 的**列数量并没有限制**。
 
 **列键的格式**：`family:qualifier`，其中 `family` 必须为可打印的（printable）字
-符串，但`qualifier`（修饰符）可以为任意字符串。例如，Webtable 中有一个 colum
+符串，但 `qualifier`（修饰符）可以为任意字符串。例如，Webtable 中有一个 colum
 family 是**语言（language）**，用来标记每个网页分别是用什么语言写的。在这个
 column family 中我们只用了一个列键，其中存储的是每种语言的 ID。
 Webtable 中的另一个 column family 是 anchor，在这个 family 中每一个列键都表示一
@@ -263,9 +263,9 @@ Chubby 提供了一个包含**目录和小文件**的命名空间（namespace）
 
 **Chubby 客户端库维护了一份这些文件的一致性缓存**（consistent caching）。每个
 Chubby 客户端都会和 Chubby 服务维持一个 session。当一个客户端的租约（lease）到期
-并且无法续约（renew）时，这个session 就失效了。**session 失效后会失去它之前的锁
+并且无法续约（renew）时，这个 session 就失效了。**session 失效后会失去它之前的锁
 和打开的文件句柄**（handle）。Chubby 客户端还可以在 Chubby 文件和目录上注册回调
-函数，当文件/目录有变化或者session 过期时，就会收到通知。
+函数，当文件/目录有变化或者 session 过期时，就会收到通知。
 
 Bigtable 使用 Chubby 完成很多不同类型的工作：
 
@@ -275,9 +275,9 @@ Bigtable 使用 Chubby 完成很多不同类型的工作：
 1. 存储 Bigtable schema 信息（每个 table 的 column family 信息）
 1. 存储访问控制列表
 
-**如果 Chubby 服务不可用超过一段时间，Bigtable 也将变得不可用**。我们近期对 14个
+**如果 Chubby 服务不可用超过一段时间，Bigtable 也将变得不可用**。我们近期对 14 个
 Bigtable 集群（总共依赖 11 个 Chubby 集群）的测量显示，由于 Chubby 不可用（网络
-或Chubby 本身问题引起的） 导致的 Bigtable 不可用时间（数据在 Bigtable中但无法访
+或 Chubby 本身问题引起的） 导致的 Bigtable 不可用时间（数据在 Bigtable 中但无法访
 问）百分比平均为 `0.0047%`，受影响最大的那个集群为 `0.0326%`。
 
 ## 5 实现
@@ -348,7 +348,7 @@ tablet 和 `METADATA` 内其他 tablet 不同之处在于：它**永远不会分
 `METADATA` 的**每行数据在内存中大约占 1KB**。如果将 `METADATA` tablet 限制在
 `128MB` 这样一个中等大小，这种三级位置方案就可以存储高达 `2^34` 个 tablets（
 `128MB` = `2^17 * 1KB`，即 `METADATA` table 可以指向 `2^17` 个 user table，每个
-user table 同样是 `128MB` 的话，就有 `2^17 * 2^17 = 2^34`个 tablets，译者注）。
+user table 同样是 `128MB` 的话，就有 `2^17 * 2^17 = 2^34` 个 tablets，译者注）。
 如果每个 tablet 128 MB 大小，那总数据量就高达 `2^61` 字节（`128MB = 2^27 Byte`，
 `2^34 * 2^27 = 2^61`，即 **`2000PB`**）。
 
@@ -380,7 +380,7 @@ prefetch）的方式继续减少这里的开销：**每次从 `METADATA` table �
 
 master 会跟踪活着的 tablet server 以及当前 tablet 和 tablet server 的分配关系，
 其中包括哪些 tablet 是还没有被分配出去的。当一个 tablet 还没有分配出去，并且找到
-了一个有空闲资源的 tablet server，master就会向这个 server **发送一个 tablet 加载
+了一个有空闲资源的 tablet server，master 就会向这个 server **发送一个 tablet 加载
 请求**（load request），将这个 tablet 分配给它。
 
 Bigtable **使用 Chubby 跟踪 tablet servers**。当一个 tablet server 启动后，它会
@@ -457,7 +457,7 @@ master 能够跟踪这些变化，因为除了 tablet 分裂之外，其他流�
 tablet server 将新的 tablet 信息记录到 `METADATA` table，然后提交这次分裂。提交
 后，master 会收到通知。如果通知丢失（由于 tablet server 或 master 挂掉），master
 会在它下次要求一个 tablet server 加载 tablets 时发现。这个 tablet server 会将这
-次分裂信息通知给 master，因为它在 `METADATA` table 中发现的 tablets项只覆盖
+次分裂信息通知给 master，因为它在 `METADATA` table 中发现的 tablets 项只覆盖
 master 要求它加载的 tablets 的了一部分。
 
 ### 5.3 为 tablet 提供服务（Tablet Serving）
@@ -493,7 +493,7 @@ tablet server **将 SSTable 索引读到内存，然后应用 redo 点之后提�
 
 一次合法的写操作会记录到 commit log。为了提高小文件写入的吞吐，我们使用了**批量
 提交**（group commit）技术 [13, 16]。**写操作被提交后，它的内容（数据）就会/才会
-插入到memtable**。
+插入到 memtable**。
 
 #### 读操作
 
@@ -631,7 +631,7 @@ locality group 内指定要**对 SSTable 创建 Bloom 过滤器** [7]，通过�
 提交）优化的有效性，因为每个组（group）都会很小。
 
 因此，为了克服以上问题，我们为**每个 tablet server 维护一个 commit log**，将属于
-这个tablet server 的不同的 tablet 操作都写入这同一个物理上的 log 文件 [18, 20]。
+这个 tablet server 的不同的 tablet 操作都写入这同一个物理上的 log 文件 [18, 20]。
 
 #### 恢复过程变复杂
 
@@ -747,7 +747,7 @@ row key was hashed modulo R），因此写操作可以在整个测试期间都�
 `random read`（随机读）与随机写类似。
 
 `scan`（扫描）和顺序读类似，但利用了 Bigtable 提供的**扫描给定行范围内的所有值**
-的 API。使用这个 API 可以减少 RPC 的次数，因为一次 RPC 就可以从 tablet server取
+的 API。使用这个 API 可以减少 RPC 的次数，因为一次 RPC 就可以从 tablet server 取
 到大量的值。
 
 `random read (mem)` 和顺序读类似，但测试数据的 locality group 标记为驻留内存型（
@@ -767,10 +767,10 @@ in-memory），因此会从 tablet server 的内存而不是 GFS 读取。在这
 
 **随机读比其他的操作都要慢一个数量级**甚至更多。
 
-**每次随机读都需要将 64KB 的SSTable block 从 GFS 通过网络传输到 tablet server，
+**每次随机读都需要将 64KB 的 SSTable block 从 GFS 通过网络传输到 tablet server，
 而其中仅仅包含了一个 1000 字节的值**。**tablet server 每秒大约 1200 次读操作，折
 算约为 `75 MB/s` 从 GFS 读数据。**考虑到网络栈、SSTable 解析、Bigtable 代码等开
-销，这个带宽足以使 tablet server 的CPU 达到饱和了，也足以使机器的网络链路饱和了
+销，这个带宽足以使 tablet server 的 CPU 达到饱和了，也足以使机器的网络链路饱和了
 （75 MB/s = 600 Mbps，系统总共 1Gbps 带宽）。大部分这种访问类型的 Bigtable 应用
 会**将 block size 设置的更小**，一般设为 8 KB。
 
@@ -783,7 +783,7 @@ in-memory），因此会从 tablet server 的内存而不是 GFS 读取。在这
 写最后都是到了同一个 commit log。
 
 顺序读的性能远好于随机读，因为每个从 GFS **预取**（prefetch）的 64KB SSTable
-block都存储到了 blcok 缓存，下一次 64 读请求就会用到。
+block 都存储到了 blcok 缓存，下一次 64 读请求就会用到。
 
 扫描的性能更好，因为客户端的一次 RPC 请求就可以从 tablet server 拿到大量的值，因
 此 RPC 开销被平摊了。
@@ -795,7 +795,7 @@ block都存储到了 blcok 缓存，下一次 64 读请求就会用到。
 例如，当 tablet server 数量增加到 500 倍时，`random read (mem)` 增长了几乎 300
 倍。这是因为这个基准测试的性能瓶颈在 tablet server 的 CPU。
 
-但是，**性能并没有线性增长**。对于大部分基准测试，在tablet server 从 1 增加到
+但是，**性能并没有线性增长**。对于大部分基准测试，在 tablet server 从 1 增加到
 500 的过程中，单台 server 的吞吐量都有一个明显的下降（图 6 左边的表）。这个下降
 是**由不同 server 配置导致的负载不均衡引起的，大部分情况下是由于机器上的其他进程
 在竞争 CPU 和网络资源**。
@@ -868,7 +868,7 @@ session 按照时间顺序（chronologically）是连续的。这个 table 压�
 
 ### 8.2 Google Earth
 
-Google 提供了地球高精度卫星图服务给用户，可以通过基于网页的Google Maps 接口（
+Google 提供了地球高精度卫星图服务给用户，可以通过基于网页的 Google Maps 接口（
 maps.google.com）或客户端软件 Google Earth（earth.google.com）访问。这些产品允许
 用户在任何分辨率的卫星图上游走，停留、查看和标注。
 
@@ -876,7 +876,7 @@ maps.google.com）或客户端软件 Google Earth（earth.google.com）访问。
 使用一个表来存储原始图像。预处理过程会将图像进行清洗和合并（clean and
 consolidate），变成可以提供服务的数据。这个表存储了大约 70 TB 的数据，因此是放在
 磁盘上的。另外这些图像都已经高效地压缩过了，因此 Bigtable 的压缩是关闭的。表的每
-一行代表一个 geographic segment（地理位置）。行名的设计使得地理上相邻的segment
+一行代表一个 geographic segment（地理位置）。行名的设计使得地理上相邻的 segment
 在存储的时候也是相邻的。另外，这个表还包含一个 column family，用来跟踪每个
 segment 的数据来源（sources of data for each segment）。这个 column family 有大
 量的列：基本上每个原始数据图像（raw data image）都有一列。因为每个 segment 都是
@@ -970,7 +970,7 @@ secondary indices），因此我们计划通过添加一个特殊的机制来满
 1. 提交 Bigtable mutation 时 GFS 写很慢
 1. `METADATA` tablets 不可用时访问 `METADATA` 表时被卡住（stuck）
 
-监控的另一个例子是每个 Bigtable 集群都注册到了Chubby。这使得我们可以跟踪所有的集
+监控的另一个例子是每个 Bigtable 集群都注册到了 Chubby。这使得我们可以跟踪所有的集
 群，看到集群有多大，各自运行的是什么版本，接收到的流量有多大，是否有异常的大延迟
 等等。
 

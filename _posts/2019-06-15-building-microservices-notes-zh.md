@@ -333,7 +333,7 @@ Shared model 和 hidden model 使得服务间不依赖内部细节，实现了�
 
 ### 业务功能（Business Capabilities）
 
-设计一个 bounded context 首先应该考虑的不是**共享什么数据**，而是这个bounded
+设计一个 bounded context 首先应该考虑的不是**共享什么数据**，而是这个 bounded
 context **能为域内的其他服务提供什么功能（capability）**。如果一上来就考虑数据模
 型，很容易设计出缺乏活力的（anemic）、基于 CRUD （增删查改）的服务。
 
@@ -631,7 +631,7 @@ DRY 落实到实现层面就是将公用的部分抽象成库，但注意，这�
 保持系统解耦的建议：
 
 1. 不要通过数据库集成
-1. 理解 REST 和 RPC 的区别，推荐先从基于 REST 的request/response 模式开始做起
+1. 理解 REST 和 RPC 的区别，推荐先从基于 REST 的 request/response 模式开始做起
 1. 优先考虑**舞蹈编排模式**（Prefer choreography over orchestration）
 1. 避免不兼容更新，理解版本化的必要，理解健壮性定理、tolerant reader 模式
 

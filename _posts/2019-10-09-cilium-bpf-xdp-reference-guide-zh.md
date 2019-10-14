@@ -37,7 +37,7 @@ BPF**（classic BPF, cBPF），cBPF 现在基本已经废弃了。很多人知�
 滤的，但现今这个指令集已经足够通用和灵活，因此现在 BPF 也有很多网络之外的使用案例，
 下文中会列出一些使用 BPF 的项目。
 
-**Cilium 在它的 datapath 中重度使用了 BPF 技术**，更多信息请参考Cilium 的
+**Cilium 在它的 datapath 中重度使用了 BPF 技术**，更多信息请参考 Cilium 的
 [datapath 架构](https://docs.cilium.io/en/v1.6/architecture/#datapath)
 文档。本文的目标是提供一份 BPF 参考指南，以帮助读者理解 BPF 本身、BPF 网络相关的
 使用方式（包括利用 `tc` 和 XDP 加载 BPF 程序），以及协助开发 Cilium 的 BPF 模板。
@@ -124,7 +124,7 @@ BPF 是一个通用目的 RISC 指令集，其**最初的设计目标**是：用
 将这些指令下放到内核中可以带来如下好处：
 
 * **无需在内核/用户空间切换**就可以实现内核的可编程。例如，Cilium 这种和网络相关
-  的 BPF程序能直接在内核中实现灵活的容器策略、负载均衡等功能，而无需将包送先
+  的 BPF 程序能直接在内核中实现灵活的容器策略、负载均衡等功能，而无需将包送先
   到用户空间，处理之后再送回内核。需要在 **BPF 程序之间或内核/用户空间之间共享状
   态**时，可以使用 BPF map。
 * **可编程 datapath** 具有很大的灵活性，因此程序能**在编译时将不需要的特性禁用掉，
@@ -189,7 +189,7 @@ BPF 相关的辅助函数（从 `BPF_CALL_0()` 到 `BPF_CALL_5()` 函数）也�
 `r1` - `r5` 寄存器是 **scratch registers**，意思是说，如果要在多次辅助函数调用之
 间重用这些寄存器内的值，那 BPF 程序需要负责将这些值临时转储（spill）到 BPF 栈上
 ，或者保存到被调用方（callee）保存的寄存器中。**Spilling**（倒出/泼出/溅出/涌出）
-的意思是这些寄存器内的变量被移到了BPF 栈中。相反的操作，即将变量从 BPF 栈移回寄
+的意思是这些寄存器内的变量被移到了 BPF 栈中。相反的操作，即将变量从 BPF 栈移回寄
 存器，称为 **filling**（填充）。**spilling/filling 的原因是寄存器数量有限**。
 
 BPF 程序开始执行时，**`r1` 寄存器中存放的是程序的上下文**（context）。上下文就是
@@ -368,7 +368,7 @@ buffer）的 `pointer/size` 参数对，辅助函数可以从这个位置读取�
 
 可用的 BPF 辅助函数很多，并且还在不断增加，例如，写作本文时，tc BPF 程序可以使用
 38 种不同的 BPF 辅助函数。对于一个给定的 BPF 程序类型，内核的 `struct
-bpf_verifier_ops` 包含了`get_func_proto` 回调函数，这个函数提供了从某个特定的
+bpf_verifier_ops` 包含了 `get_func_proto` 回调函数，这个函数提供了从某个特定的
 `enum bpf_func_id` 到一个可用的辅助函数的映射。
 
 <a name="bpf_maps"></a>
@@ -564,7 +564,7 @@ body），稍后在最后一通 JIT 处理（final JIT pass）中再修改镜像
 
 <p align="center"><img src="/assets/img/cilium-bpf-xdp-guide/bpf_jit.png" width="60%" height="60%"></p>
 
-64 位的 `x86_64`、`arm64`、`ppc64`、`s390x`、`mips64`、`sparc64`和 32 位的 `arm`
+64 位的 `x86_64`、`arm64`、`ppc64`、`s390x`、`mips64`、`sparc64` 和 32 位的 `arm`
 、`x86_32` 架构都内置了 in-kernel eBPF JIT 编译器，它们的功能都是一样的，可
 以用如下方式打开：
 
@@ -629,7 +629,7 @@ unprivileged users）的 JIT 编译做一些额外的加固工作。这些额外
 面。但与完全切换到解释器相比，这些性能损失还是比较小的。
 
 当前，启用加固会在 JIT 编译时**盲化**（blind）BPF 程序中用户提供的所有 32 位和
-64位常量，以防御 **JIT spraying（喷射）攻击**，这些攻击会将原生操作码（native
+64 位常量，以防御 **JIT spraying（喷射）攻击**，这些攻击会将原生操作码（native
 opcodes）作为立即数（immediate values）注入到内核。这种攻击有效是因为：**立即数
 驻留在可执行内核内存（executable kernel memory）中**，因此某些内核 bug 可能会触
 发一个跳转动作，如果跳转到立即数的开始位置，就会把它们当做原生指令开始执行。
@@ -709,7 +709,7 @@ $ echo 1 > /proc/sys/net/core/bpf_jit_harden
 特权用户使用 `bpf(2)` 系统调用，可以通过 `sysctl` 命令修改。
 比较特殊的一点是，这个配置项特意设计为**“一次性开关”**（one-time kill switch），
 这意味着一旦将它设为 `1`，就没有办法再改为 `0` 了，除非重启内核。一旦设置为 `1`
-之后，只有初始命名空间中有 `CAP_SYS_ADMIN` 特权的进程才可以调用`bpf(2)` 系统调用
+之后，只有初始命名空间中有 `CAP_SYS_ADMIN` 特权的进程才可以调用 `bpf(2)` 系统调用
 。 Cilium 启动后也会将这个配置项设为 1：
 
 ```shell
@@ -726,7 +726,7 @@ BPF 网络程序，尤其是 tc 和 XDP BPF 程序在内核中都有一个 offlo
 样就可以直接在网卡上执行 BPF 程序。
 
 当前，Netronome 公司的 `nfp` 驱动支持通过 JIT 编译器 offload BPF，它会将 BPF 指令
-翻译成网卡实现的指令集。另外，它还支持将 BPF maps offload 到网卡，因此offloaded
+翻译成网卡实现的指令集。另外，它还支持将 BPF maps offload 到网卡，因此 offloaded
 BPF 程序可以执行 map 查找、更新和删除操作。
 
 <a name="toolchain"></a>
@@ -819,7 +819,7 @@ Registered Targets:
 BPF 程序可以在大端节点上编译，在小端节点上运行，或者相反，因此对于**交叉编译**，
 引入了两个新目标 `bpfeb` 和 `bpfel`。注意前端也需要以相应的大小端方式运行。
 
-在不存在大小端混用的场景下，建议使用 `bpf` target。例如，在`x86_64` 平台上（小端
+在不存在大小端混用的场景下，建议使用 `bpf` target。例如，在 `x86_64` 平台上（小端
 ），指定 `bpf` 和 `bpfel` 会产生相同的结果，因此触发编译的脚本不需要感知到大小端
 。
 
@@ -850,9 +850,9 @@ $ ip link set dev em1 xdp obj xdp-example.o
 ```
 
 > 以上命令将一个 XDP 程序 attach 到一个网络设备，这需要 Linux 4.11 内核中支持
-> XDP的设备，或者 4.12+ 版本的内核。
+> XDP 的设备，或者 4.12+ 版本的内核。
 
-LLVM（>= 3.9） 使用**正式的 BPF 机器值**（machine value），即 `EM_BPF`（十进制`247`
+LLVM（>= 3.9） 使用**正式的 BPF 机器值**（machine value），即 `EM_BPF`（十进制 `247`
 ，十六进制 `0xf7`），来**生成对象文件**。在这个例子中，程序是用 `bpf` target 在
 `x86_64` 平台上编译的，因此下面显示的大小端标识是 `LSB` (和 `MSB` 相反)：
 
@@ -918,7 +918,7 @@ xdp_drop:
 `llvm-objdump` 工具可以用编译的 C 源码对汇编输出添加注解（annotate ）。这里的例
 子过于简单，没有几行 C 代码；但注意上面的 `0` 和 `1` 行号，它们直接对应到内核的校
 验器日志（见下面的输出）。这意味着假如 BPF 程序被校验器拒绝了，`llvm-objdump` 可
-以帮助你将 BPF指令关联到原始的 C 代码，对于分析来说非常有用。
+以帮助你将 BPF 指令关联到原始的 C 代码，对于分析来说非常有用。
 
 ```shell
 $ ip link set dev em1 xdp obj xdp-example.o verb
@@ -981,7 +981,7 @@ BPF 使用了一个高度简化的版本，称为 **BTF** (BPF Type Format)。�
 这样的话，就可以用键和值对 BPF map 打一些注解（annotation）存储到 BTF 数据中，这
 样下次 dump map 时，除了 map 内的数据外还会打印出相关的类型信息。这对内省（
 introspection）、调试和格式良好的打印都很有帮助。注意，BTF 是一种通用的调试数据
-格式，因此任何从 DWARF转换成的 BTF 数据都可以被加载（例如，内核 vmlinux DWARF 数
+格式，因此任何从 DWARF 转换成的 BTF 数据都可以被加载（例如，内核 vmlinux DWARF 数
 据可以转换成 BTF 然后加载）。后者对于未来 BPF 的跟踪尤其有用。
 
 将 DWARF 格式的调试信息转换成 BTF 格式需要用到 `elfutils` (>= 0.173) 工具。
@@ -1184,7 +1184,7 @@ cal:
 
 使用 32 位子寄存器可能会减小（最终生成的代码中）**类型扩展指令**（type extension
 instruction）的数量。另外，它对 32 位架构的内核 eBPF JIT 编译器也有所帮助，因为
-原来这些编译器都是用 32 位模拟 64 位 eBPF 寄存器，其中使用了很多 32位指令来操作
+原来这些编译器都是用 32 位模拟 64 位 eBPF 寄存器，其中使用了很多 32 位指令来操作
 高 32 bit。即使写 32 位子寄存器的操作仍然需要对高 32 位清零，但只要确保从 32 位
 子寄存器的读操作只会读取低 32 位，那只要 JIT 编译器已经知道某个寄存器的定义只有
 子寄存器读操作，那对高 32 位的操作指令就可以避免。
@@ -1253,7 +1253,7 @@ char __license[] __section("license") = "GPL";
 `bpf_probe_read()` 。
 
 其余的 section 名字都是和特定的 BPF 程序代码相关的，例如，下面经过修改之后的代码
-包含两个程序 section：`ingress` 和 `egress`。这个非常简单的示例展示了不同section
+包含两个程序 section：`ingress` 和 `egress`。这个非常简单的示例展示了不同 section
 （这里是 `ingress` 和 `egress`）之间可以共享 BPF map 和常规的静态内联辅助函数（
 例如 `account_data()`）。
 
@@ -1344,9 +1344,9 @@ include 了内核头文件、标准 C 头文件和一个特定的 iproute2 头�
 是 iproute2 模型**。
 
 这个例子还展示了 BPF 辅助函数是如何映射到 C 代码以及如何被使用的。这里首先定义了
-一个宏`BPF_FUNC`，接受一个函数名 `NAME` 以及其他的任意参数。然后用这个宏声明了一
+一个宏 `BPF_FUNC`，接受一个函数名 `NAME` 以及其他的任意参数。然后用这个宏声明了一
 个 `NAME` 为 `map_lookup_elem` 的函数，经过宏展开后会变成
-`BPF_FUNC_map_lookup_elem` 枚举值，后者以辅助函数的形式定义在`uapi/linux/bpf.h`
+`BPF_FUNC_map_lookup_elem` 枚举值，后者以辅助函数的形式定义在 `uapi/linux/bpf.h`
 。当随后这个程序被加载到内核时，校验器会检查传入的参数是否是期望的类型，如果是，
 就将辅助函数调用重新指向（re-points）某个真正的函数调用。另外，
 `map_lookup_elem()` 还展示了 map 是如何传递给 BPF 辅助函数的。这里，`maps`
@@ -1360,7 +1360,7 @@ BPF 原子加指令，即 `BPF_STX | BPF_XADD | BPF_W`（for word sizes）。
 着 tc 会将这个 map 作为一个节点（node）钉（pin）到 BPF 伪文件系统。默认情况下，
 这个变量 `acc_map` 将被钉到 `/sys/fs/bpf/tc/globals/acc_map`。
 
-* **如果指定的是`PIN_GLOBAL_NS`，那 map 会被放到 `/sys/fs/bpf/tc/globals/`**。
+* **如果指定的是 `PIN_GLOBAL_NS`，那 map 会被放到 `/sys/fs/bpf/tc/globals/`**。
   `globals` 是一个跨对象文件的全局命名空间。
 * 如果指定的是 `PIN_OBJECT_NS`，tc 将会为对象文件创建一个它的本地目录（local to
   the object file）。例如，只要指定了 `PIN_OBJECT_NS`，不同的 C 文件都可以像上
@@ -1372,7 +1372,7 @@ BPF 原子加指令，即 `BPF_STX | BPF_XADD | BPF_W`（for word sizes）。
 
 因此，在加载 `ingress` 程序时，tc 会先查找这个 map 在 BPF 文件系统中是否存在，不
 存在就创建一个。创建成功后，map 会被钉（pin）到 BPF 文件系统，因此当 `egress` 程
-序通过tc 加载之后，它就会发现这个 map 存在了，接下来会复用这个 map 而不是再创建
+序通过 tc 加载之后，它就会发现这个 map 存在了，接下来会复用这个 map 而不是再创建
 一个新的。在 map 存在的情况下，加载器还会确保 map 的属性（properties）是匹配的，
 例如 key/value 大小等等。
 
@@ -1525,7 +1525,7 @@ LLVM 后端中的某个问题会导致内置的 `memcmp()` 有某些边界场景
     }
 ```
 
-另外一种实现循环的方式是：用一个 `BPF_MAP_TYPE_PERCPU_ARRAY` map 作为本地scratch
+另外一种实现循环的方式是：用一个 `BPF_MAP_TYPE_PERCPU_ARRAY` map 作为本地 scratch
 space（存储空间），然后用尾调用的方式调用函数自身。虽然这种方式更加动态，但目前
 最大只支持 32 层嵌套调用。
 
@@ -1682,7 +1682,7 @@ LLVM 6.0 以后支持 BPF 内联汇编，在某些场景下可能会用到。下
 没有实际意义）展示了一个 64 位原子加操作。
 
 由于文档不足，要获取更多信息和例子，目前可能只能参考 LLVM 源码中的
-`lib/Target/BPF/BPFInstrInfo.td` 以及`test/CodeGen/BPF/`。测试代码：
+`lib/Target/BPF/BPFInstrInfo.td` 以及 `test/CodeGen/BPF/`。测试代码：
 
 ```c
 #include <linux/bpf.h>
@@ -1922,7 +1922,7 @@ if (ip4->protocol == IPPROTO_TCP) {
 
 **很多前端工具，例如 bcc、perf、iproute2，都可以将 BPF 程序加载到内核**。Linux
 内核源码树中还提供了一个用户空间库 `tools/lib/bpf/`，目前主要是 perf 在使用，用
-于加载 BPF程序到内核，这个库的开发也主要是由 perf 在驱动。但这个库是通用的，并非
+于加载 BPF 程序到内核，这个库的开发也主要是由 perf 在驱动。但这个库是通用的，并非
 只能被 perf 使用。bcc 是一个 BPF 工具套件，里面提供了很多有用的 BPF 程序，主要用
 于跟踪（tracing）；这些程序通过一个专门的 Python 接口加载，Python 代码中内嵌了
 BPF C 代码。
@@ -2024,13 +2024,13 @@ XDP 总共支持三种工作模式（operation mode），这三种模式 `iprout
     `xdpdrv` 表示 **native XDP**（原生 XDP）, 意味着 BPF 程序**直接在驱动的接收路
     径上运行**，理论上这是软件层最早可以处理包的位置（the earliest possible
     point）。这是**常规/传统的 XDP 模式，需要驱动实现对 XDP 的支持**，目前 Linux
-    内核中主流的10G/40G 网卡都已经支持。
+    内核中主流的 10G/40G 网卡都已经支持。
 
 * `xdpgeneric`
 
     `xdpgeneric` 表示 **generic XDP**（通用 XDP），用于给那些还没有原生支持 XDP
     的驱动进行试验性测试。generic XDP hook 位于内核协议栈的主接收路径（main
-    receive path）上，接受的是`skb` 格式的包，但由于 **这些 hook 位于 ingress 路
+    receive path）上，接受的是 `skb` 格式的包，但由于 **这些 hook 位于 ingress 路
     径的很后面**（a much later point），因此与 native XDP 相比性能有明显下降。因
     此，`xdpgeneric` 大部分情况下只能用于试验目的，很少用于生产环境。
 
@@ -2149,9 +2149,9 @@ $ tc filter add dev em1 ingress bpf da obj prog.o
 
 第一步创建了一个 `clsact` qdisc (Linux 排队规则，Linux **queueing discipline**)。
 
-**`clsact`是一个 dummy qdisc，和 `ingress` qdisc 类似，可以持有（hold）分类器和
+**`clsact` 是一个 dummy qdisc，和 `ingress` qdisc 类似，可以持有（hold）分类器和
 动作（classifier and actions），但不执行真正的排队（queueing）**。后面 attach
-`bpf`分类器需要用到它。`clsact` qdisc 提供了两个特殊的 hook：`ingress` and
+`bpf` 分类器需要用到它。`clsact` qdisc 提供了两个特殊的 hook：`ingress` and
 `egress`，分类器可以 attach 到这两个 hook 点。这两个 hook 都位于 datapath 的
 关键收发路径上，设备 `em1` 的每个包都会经过这两个点。这两个 hook 分别会被下面的内
 核函数调用：
@@ -2207,7 +2207,7 @@ filter protocol all pref 49152 bpf handle 0x1 prog.o:[egress] direct-action id 2
 tc 可以 attach 多个 BPF 程序，并提供了其他的一些分类器，这些分类器可以 chain 到
 一起使用。但是，attach 单个 BPF 程序已经完全足够了，因为有了 `da` 模式，所有的包
 操作都可以放到同一个程序中，这意味着 BPF 程序自身将会返回 tc action verdict，例
-如`TC_ACT_OK`、`TC_ACT_SHOT` 等等。出于最佳性能和灵活性考虑，这（`da` 模式）是推
+如 `TC_ACT_OK`、`TC_ACT_SHOT` 等等。出于最佳性能和灵活性考虑，这（`da` 模式）是推
 荐的使用方式。
 
 #### 程序优先级（`pref`）和句柄（`handle`）
@@ -2387,7 +2387,7 @@ $ tree /var/run/bpf
 **默认情况下，`tc` 会创建一个如上面所示的初始目录，所有子系统的用户都会通过符号
 链接（symbolic links）指向相同的位置，也是就是 `globals` 命名空间**，因此 pinned
 BPF maps 可以被 `iproute2` 中不同类型的 BPF 程序使用。如果文件系统实例已经挂载、
-目录已经存在，那 tc 是不会覆盖这个目录的。因此对于 `lwt`, `tc` 和`xdp` 这几种类
+目录已经存在，那 tc 是不会覆盖这个目录的。因此对于 `lwt`, `tc` 和 `xdp` 这几种类
 型的 BPF maps，可以从 `globals` 中分离出来，放到各自的目录存放。
 
 在前面的 LLVM 小节中简要介绍过，安装 iproute2 时会向系统中安装一个头文件，BPF 程
@@ -2502,7 +2502,7 @@ $ bpftool prog show id 406
 
 从上面的输出可以看到：
 
-* 程序 ID 为 406，类型是 `sched_cls`（`BPF_PROG_TYPE_SCHED_CLS`），有一个`tag`
+* 程序 ID 为 406，类型是 `sched_cls`（`BPF_PROG_TYPE_SCHED_CLS`），有一个 `tag`
   为 `e0362f5bd9163a0a`（指令序列的 SHA sum）
 * 这个程序被 root `uid 0` 在 `Apr 09/16:24` 加载
 * BPF 指令序列有 `11,144 bytes` 长，JIT 之后的镜像有 `7,721 bytes`
@@ -2639,7 +2639,7 @@ $ bpftool prog dump xlated id 3
 
 bpftool 通过 kallsyms 来对辅助函数或 BPF-to-BPF 调用进行关联。因此，确保 JIT 之
 后的 BPF 程序暴露到了 kallsyms（`bpf_jit_kallsyms`），并且 kallsyms 地址是明确的
-（否则调用显示的就是`call bpf_unspec#0`）：
+（否则调用显示的就是 `call bpf_unspec#0`）：
 
 ```
 $ echo 0 > /proc/sys/kernel/kptr_restrict
@@ -2746,7 +2746,7 @@ $ cat tools/testing/selftests/bpf/test_xdp_noinline.c
    [...]
 ```
 
-`BPF_ANNOTATE_KV_PAIR()` 宏强制每个 map-specific ELF section包含一个空的
+`BPF_ANNOTATE_KV_PAIR()` 宏强制每个 map-specific ELF section 包含一个空的
 key/value，这样 iproute2 BPF 加载器可以将 BTF 数据关联到这个 section，因此在加载
 map 时可用从 BTF 中选择响应的类型。
 
@@ -3474,7 +3474,7 @@ XDP 有三种工作模式，默认是 `native`（原生）模式，当讨论 XDP
 **XDP hook 在协议栈之前就会被调用。这是 XDP 和 tc hook 性能差距的重要原因之一**
 。
 
-因此，attach 到 tc BPF hook 的 BPF 程序可以读取 skb 的`mark`、`pkt_type`、
+因此，attach 到 tc BPF hook 的 BPF 程序可以读取 skb 的 `mark`、`pkt_type`、
 `protocol`、`priority`、`queue_mapping`、`napi_id`、`cb[]`、`hash`、`tc_classid`
 、`tc_index`、vlan 元数据、XDP 层传过来的自定义元数据以及其他信息。
 tc BPF 的 BPF 上下文中使用了 `struct __sk_buff`，这个结构体中的所有成员字段都定
@@ -3544,11 +3544,11 @@ verdict）不同。
 运行在 tc 层的 BPF 程序使用的是 `cls_bpf` 分类器。**在 tc 术语中 “BPF 附着点”被
 称为“分类器”**，但这个词其实有点误导，因为它少描述了（under-represent）前者可以
 做的事情。attachment point 是一个完全可编程的包处理器，不仅能够读取 `skb` 元数据
-和包数据，还可以任意mangle 这两者，最后结束 tc 处理过程，返回一个裁定结果（
+和包数据，还可以任意 mangle 这两者，最后结束 tc 处理过程，返回一个裁定结果（
 verdict）。因此，`cls_bpf` 可以认为是一个**管理和执行 tc BPF 程序的自包含实体**（
 self-contained entity）。
 
-`cls_bpf` 可以持有（hold）一个或多个 tc BPF 程序。Cilium 在部署`cls_bpf` 程序时
+`cls_bpf` 可以持有（hold）一个或多个 tc BPF 程序。Cilium 在部署 `cls_bpf` 程序时
 ，**对于一个给定的 hook 点只会附着一个程序**，并且用的是 `direct-action` 模式。
 典型情况下，在传统 tc 方案中，分类器（classifier ）和动作模块（action modules）
 之间是分开的，每个分类器可以 attach 多个 action，当匹配到这个分类器时这些 action
@@ -3562,7 +3562,7 @@ self-contained entity）。
 和 XDP BPF 程序类似，tc BPF 程序能在运行时（runtime）通过 `cls_bpf` 原子地更新，
 而不会导致任何网络流量中断，也不用重启服务。
 
-`cls_bpf` 可以附着的 tc ingress 和 egress hook 点都是由一个名为 **`sch_clsact`的
+`cls_bpf` 可以附着的 tc ingress 和 egress hook 点都是由一个名为 **`sch_clsact` 的
 伪 qdisc** 管理的，它**是 ingress qdisc 的一个超集**（superset），可以无缝替换后
 者，因为它既可以管理 ingress tc hook 又可以管理 egress tc hook。对于
 `__dev_queue_xmit()` 内的 tc egress hook，需要注意的是这个 hook 并不是在内核的
@@ -3570,7 +3570,7 @@ qdisc root lock 下执行的。因此，ingress 和 egress hook 都是在快速�
 lockless）方式执行的。不管是 ingress 还是 egress，抢占（preemption ）都被关闭，
 执行发生在 RCU 读侧（execution happens under RCU read side）。
 
-通常在 egress 的场景下，有很多类型的 qdisc 会 attach 到 netdevice，例如`sch_mq`,
+通常在 egress 的场景下，有很多类型的 qdisc 会 attach 到 netdevice，例如 `sch_mq`,
 `sch_fq`, `sch_fq_codel` or `sch_htb`，其中某些是 classful qdiscs，这些 qdisc 包
 含 subclasses 因此需要一个对包进行分类的机制，决定将包 demux 到哪里。这个机制是
 由调用 `tcf_classify()` 实现的，这个函数会进一步调用 tc 分类器（如果提供了）。在
@@ -3594,7 +3594,7 @@ ingress hook 支持 offloading BPF 程序。
 
 ### tc BPF 程序返回码
 
-tc ingress 和 egress hook 共享相同的返回码（动作判决），定义在`linux/pkt_cls.h`
+tc ingress 和 egress hook 共享相同的返回码（动作判决），定义在 `linux/pkt_cls.h`
 系统头文件：
 
 ```c
@@ -3626,8 +3626,8 @@ tc ingress 和 egress hook 共享相同的返回码（动作判决），定义�
 `TC_ACT_UNSPEC` 在某些方面和 `TC_ACT_OK` 非常类似，因为二者都是将 `skb` 向下一个
 处理阶段传递，在 ingress 的情况下是传递给内核协议栈的更上层，在 egress 的情况下
 是传递给网络设备驱动。唯一的不同是 `TC_ACT_OK` 基于 tc BPF 程序设置的 classid 来
-设置 `skb->tc_index`，而`TC_ACT_UNSPEC` 是通过 tc BPF 程序之外的 BPF 上下文中的
-`skb->tc_classid`设置。
+设置 `skb->tc_index`，而 `TC_ACT_UNSPEC` 是通过 tc BPF 程序之外的 BPF 上下文中的
+`skb->tc_classid` 设置。
 
 #### `TC_ACT_SHOT` 和 `TC_ACT_STOLEN`
 
@@ -3658,7 +3658,7 @@ queued 而不是被 dropped。
     不多。虽然对于 tc BPF 程序来说 `cls_bpf` 和 `act_bpf` 有相同的功能
     ，但前者更加灵活，因为它是后者的一个超集（superset）。tc 的工作原理是将 tc
     actions attach 到 tc 分类器。要想实现与 `cls_bpf` 一样的灵活性，`act_bpf` 需要
-    被 attach 到 `cls_matchall` 分类器。如名字所示，为了将包传递给attached tc
+    被 attach 到 `cls_matchall` 分类器。如名字所示，为了将包传递给 attached tc
     action 去处理，这个分类器会匹配每一个包。相比于工作在 `direct-action` 模式的
     `cls_bpf`，`act_bpf` 这种方式会导致较低的包处理性能。如果 `act_bpf` 用在
     `cls_bpf` or `cls_matchall` 之外的其他分类器，那性能会更差，这是由 tc 分类器的
@@ -3716,7 +3716,7 @@ queued 而不是被 dropped。
     南北向（虽然两者都可以用于东西向或南北向场景）。XDP 只能在 ingress 方向使用，
     tc BPF 程序还可以在 egress 方向使用，例如，可以在初始命名空间内（宿主机上的
     veth 设备上），通过 BPF 对容器的 egress 流量同时做地址转化（NAT）和负载均衡，
-    整个过程对容器是透明的。由于在内核网络栈的实现中，egress 流量已经是`sk_buff`
+    整个过程对容器是透明的。由于在内核网络栈的实现中，egress 流量已经是 `sk_buff`
     形式的了，因此很适合 tc BPF 对其进行重写（rewrite）和重定向（redirect）。
     使用 `bpf_redirect()` 辅助函数，BPF 就可以接管转发逻辑，将包推送到另一个网络设
     备的 ingress 或 egress 路径上。因此，有了 tc BPF 程序实现的转发网格（
@@ -3727,7 +3727,7 @@ queued 而不是被 dropped。
     和 XDP 类似，可以通过高性能无锁 per-CPU 内存映射 perf 环形缓冲区（ring buffer
     ）实现流抽样（flow sampling）和监控，在这种场景下，BPF 程序能够将自定义数据、
     全部或截断的包内容或者二者同时推送到一个用户空间应用。在 tc BPF 程序中这是通过
-    `bpf_skb_event_output()` BPF 辅助函数实现的，它和`bpf_xdp_event_output()` 有相
+    `bpf_skb_event_output()` BPF 辅助函数实现的，它和 `bpf_xdp_event_output()` 有相
     同的函数签名和语义。
 
     考虑到 tc BPF 程序可以同时 attach 到 ingress 和 egress，而 XDP 只能 attach 到
@@ -3736,7 +3736,7 @@ queued 而不是被 dropped。
     需要克隆 `skb`，而且因为其可编程性而更加灵活，例如。BPF 能够在内核中完成聚合
     ，而不用将所有数据推送到用户空间；也可以对每个放到 ring buffer 的包添加自定义
     的 annotations。Cilium 大量使用了后者，对被 drop 的包进一步 annotate，关联到
-    容器标签以及 drop的原因（例如因为违反了安全策略），提供了更丰富的信息。
+    容器标签以及 drop 的原因（例如因为违反了安全策略），提供了更丰富的信息。
 
 * **包调度器预处理**（Packet scheduler pre-processing）
 

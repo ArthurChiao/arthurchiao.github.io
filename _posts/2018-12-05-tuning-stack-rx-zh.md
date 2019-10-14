@@ -50,7 +50,7 @@ categories: network-stack kernel tuning
 以文章的形式发表。
 
 本文基于在 [Private Internet Access](https://privateinternetaccess.com/) 时的研
-究成果，最开始以 [5篇连载
+究成果，最开始以 [5 篇连载
 ](https://www.privateinternetaccess.com/blog/2016/01/linux-networking-stack-from-the-ground-up-part-1/)
 的形式出现。
 
@@ -108,7 +108,7 @@ categories: network-stack kernel tuning
     * 5.5 [`napi_gro_receive`](#chap_5.5)
     * 5.6 [`napi_skb_finish`](#chap_5.6)
 6. [RPS (Receive Packet Steering)](#chap_6)
-    * RPS调优
+    * RPS 调优
 7. [RFS (Receive Flow Steering)](#chap_7)
     * 调优：打开 RFS
 8. [aRFS (Hardware accelerated RFS)](#chap_8)
@@ -120,7 +120,7 @@ categories: network-stack kernel tuning
     * [10.2 使用 RPS](#chap_10.2)
     * [10.3 `enqueue_to_backlog`](#chap_10.3)
         * Flow limits
-        * 监控：由于`input_pkt_queue`打满或flow limit导致的丢包
+        * 监控：由于 `input_pkt_queue` 打满或 flow limit 导致的丢包
         * 调优
             * Adjusting netdev_max_backlog to prevent drops
             * Adjust the NAPI weight of the backlog poll loop
@@ -135,7 +135,7 @@ categories: network-stack kernel tuning
         * 11.1.1 `ip_rcv`
             * netfilter and iptables
         * 11.1.2 `ip_rcv_finish`
-            * 调优: 打开或关闭IP协议的early demux选项
+            * 调优: 打开或关闭 IP 协议的 early demux 选项
         * 11.1.3 `ip_local_deliver`
         * 11.1.4 `ip_local_deliver_finish`
             * Monitoring: IP protocol layer statistics
@@ -177,7 +177,7 @@ performance and health）对你或你的业务非常关键，那你没有别的�
 理想情况下，你应该考虑在网络栈的各层测量丢包状况，这样就可以缩小范围，确定哪个组
 件需要调优。
 
-**然而，这也是一些网络管理员开始走偏的地方**：他们想当然地认为通过一波`sysctl`
+**然而，这也是一些网络管理员开始走偏的地方**：他们想当然地认为通过一波 `sysctl`
 或 `/proc` 操作可以解决问题，并且这些配置适用于所有场景。在某些场景下，可能确实
 如此；但是，整个系统是如此细微而精巧地交织在一起，如果想做有意义的监控和调优
 ，你必须得努力在更深层次搞清系统是如何工作的。否则，你虽然可以使用默认配置，并在
@@ -207,8 +207,8 @@ performance and health）对你或你的业务非常关键，那你没有别的�
 3. 网卡（通过 DMA）将包 copy 到内核内存中的 ring buffer
 4. 产生硬件中断，通知系统收到了一个包
 5. 驱动调用 NAPI，如果轮询（poll）还没开始，就开始轮询
-6. `ksoftirqd` 进程调用 NAPI 的 `poll` 函数从 ring buffer 收包（`poll`函数是网卡
-   驱动在初始化阶段注册的；每个CPU上都运行着一个 `ksoftirqd` 进程，在系统启动期
+6. `ksoftirqd` 进程调用 NAPI 的 `poll` 函数从 ring buffer 收包（`poll` 函数是网卡
+   驱动在初始化阶段注册的；每个 CPU 上都运行着一个 `ksoftirqd` 进程，在系统启动期
    间就注册了）
 7. ring buffer 里包对应的内存区域解除映射（unmapped）
 8. （通过 DMA 进入）内存的数据包以 `skb` 的形式被送至更上层处理
@@ -265,7 +265,7 @@ static int __init igb_init_module(void)
 module_init(igb_init_module);
 ```
 
-初始化的大部分工作在`pci_register_driver`里面完成，下面来细看。
+初始化的大部分工作在 `pci_register_driver` 里面完成，下面来细看。
 
 ### PCI 初始化
 
@@ -330,8 +330,8 @@ static struct pci_driver igb_driver = {
 4. 注册设备驱动支持的 ethtool 方法（后面介绍）
 5. 注册所需的 watchdog（例如，e1000e 有一个检测设备是否僵死的 watchdog）
 6. 其他和具体设备相关的事情，例如一些 workaround，或者特定硬件的非常规处理
-7. 创建、初始化和注册一个 `struct net_device_ops`类型实例，包含了用于设备相关的
-   回调函数，例如打开设备、发送数据到网络、设置MAC地址等
+7. 创建、初始化和注册一个 `struct net_device_ops` 类型实例，包含了用于设备相关的
+   回调函数，例如打开设备、发送数据到网络、设置 MAC 地址等
 8. 创建、初始化和注册一个更高层的 `struct net_device` 类型实例（一个实例就代表了
    一个设备）
 
@@ -390,7 +390,7 @@ static const struct net_device_ops igb_netdev_ops = {
   /* ... */
 ```
 
-这个实例会在`igb_probe()`中赋给`struct net_device`中的`netdev_ops`字段：
+这个实例会在 `igb_probe()`中赋给 `struct net_device` 中的 `netdev_ops` 字段：
 
 ```c
 static int igb_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
@@ -451,7 +451,7 @@ NAPI 的使用方式：
 5. 驱动禁止网卡产生新的硬件中断。这样做是为了 NAPI 能够在收包的时候不会被新的中
    断打扰
 6. 一旦没有包需要收了，NAPI 关闭，网卡的硬中断重新开启
-7. 转步骤2
+7. 转步骤 2
 
 和传统方式相比，NAPI 一次中断会接收多个包，因此可以减少硬件中断的数量。
 
@@ -513,7 +513,7 @@ static int igb_alloc_q_vector(struct igb_adapter *adapter,
 回忆前面我们提到的 `structure net_device_ops` 实例，它包含网卡启用、发包、设置
 mac 地址等回调函数（函数指针）。
 
-当启用一个网卡时（例如，通过`ifconfig eth0 up`），`net_device_ops` 的 `ndo_open`
+当启用一个网卡时（例如，通过 `ifconfig eth0 up`），`net_device_ops` 的 `ndo_open`
 方法会被调用。它通常会做以下事情：
 
 1. 分配 RX、TX 队列内存
@@ -748,7 +748,7 @@ Inter-|   Receive                                                |  Transmit
 
 ## 3.6 网卡调优
 
-### 3.6.1 查看RX队列数量
+### 3.6.1 查看 RX 队列数量
 
 如果网卡及其驱动支持 RSS/多队列，那你可以会调整 RX queue（也叫 RX channel）的数量。
 这可以用 ethtool 完成。
@@ -928,7 +928,7 @@ Intel 的网卡上这个特性叫 Intel Ethernet Flow Director，其他厂商可
 1. webserver 进程运行在 80 口，并绑定到 CPU 2
 1. 和某个 RX queue 关联的硬中断绑定到 CPU 2
 1. 目的端口是 80 的 TCP 流量通过 ntuple filtering 绑定到 CPU 2
-1. 接下来所有到 80 口的流量，从数据包进来到数据到达用户程序的整个过程，都由 CPU 2处理
+1. 接下来所有到 80 口的流量，从数据包进来到数据到达用户程序的整个过程，都由 CPU 2 处理
 1. 仔细监控系统的缓存命中率、网络栈的延迟等信息，以验证以上配置是否生效
 
 检查 ntuple filtering 特性是否打开：
@@ -991,7 +991,7 @@ $ sudo ethtool -U eth0 flow-type tcp4 dst-port 80 action 2
 
 可以把软中断系统想象成一系列**内核线程**（每个 CPU 一个），这些线程执行针对不同
 事件注册的处理函数（handler）。如果你执行过 `top` 命令，可能会注意到
-`ksoftirqd/0`这个内核线程，其表示这个软中断线程跑在 CPU 0 上。
+`ksoftirqd/0` 这个内核线程，其表示这个软中断线程跑在 CPU 0 上。
 
 内核子系统（比如网络）能通过 `open_softirq` 函数注册软中断处理函数。接下来我们会看到
 网络系统是如何注册它的处理函数的。现在先来学习一下软中断是如何工作的。
@@ -1194,7 +1194,7 @@ void __napi_schedule(struct napi_struct *n)
 EXPORT_SYMBOL(__napi_schedule);
 ```
 
-`__get_cpu_var` 用于获取属于这个 CPU 的`structure softnet_data`实例。
+`__get_cpu_var` 用于获取属于这个 CPU 的 `structure softnet_data` 实例。
 
 `____napi_schedule`, [net/core/dev.c](https://github.com/torvalds/linux/blob/v3.13/net/core/dev.c#L4154-L4168):
 
@@ -1210,7 +1210,7 @@ static inline void ____napi_schedule(struct softnet_data *sd,
 
 这段代码了做了两个重要的事情：
 
-1. 将（从驱动的中断函数中传来的）`napi_struct` 实例，添加到 poll list，后者 attach 到这个 CPU 上的`softnet_data`
+1. 将（从驱动的中断函数中传来的）`napi_struct` 实例，添加到 poll list，后者 attach 到这个 CPU 上的 `softnet_data`
 1. `__raise_softirq_irqoff` 触发一个 `NET_RX_SOFTIRQ` 类型软中断。这会触发执行
    `net_rx_action`（如果没有正在执行），后者是网络设备初始化的时候注册的
 
@@ -1529,11 +1529,11 @@ NAPI 实例都处理完了，换言之，budget 数量大于网络包数量，�
 程序分配的一样，驱动程序也负责解绑（unmap）这些内存，读取数据，将数据送到网络栈
 。
 
-我们看下`igb`驱动如何实现这一过程的。
+我们看下 `igb` 驱动如何实现这一过程的。
 
 #### `igb_poll`
 
-可以看到`igb_poll`代码其实相当简单。
+可以看到 `igb_poll` 代码其实相当简单。
 [drivers/net/ethernet/intel/igb/igb_main.c](https://github.com/torvalds/linux/blob/v3.13/drivers/net/ethernet/intel/igb/igb_main.c#L5987-L6018):
 
 ```c
@@ -1592,37 +1592,37 @@ static int igb_poll(struct napi_struct *napi, int budget)
 
 做的几件重要事情：
 
-1. 分配额外的buffer用于接收数据，因为已经用过的buffer被clean out了。一次分配`IGB_RX_BUFFER_WRITE (16)`个。
-2. 从RX队列取一个buffer，保存到一个`skb`类型的实例中
-3. 判断这个buffer是不是一个包的最后一个buffer。如果是，继续处理；如果不是，继续
-   从buffer列表中拿出下一个buffer，加到skb。当数据帧的大小比一个buffer大的时候，
+1. 分配额外的 buffer 用于接收数据，因为已经用过的 buffer 被 clean out 了。一次分配 `IGB_RX_BUFFER_WRITE (16)`个。
+2. 从 RX 队列取一个 buffer，保存到一个 `skb` 类型的实例中
+3. 判断这个 buffer 是不是一个包的最后一个 buffer。如果是，继续处理；如果不是，继续
+   从 buffer 列表中拿出下一个 buffer，加到 skb。当数据帧的大小比一个 buffer 大的时候，
    会出现这种情况
-4. 验证数据的layout和头信息是正确的
-5. 更新`skb->len`，表示这个包已经处理的字节数
-6. 设置`skb`的hash, checksum, timestamp, VLAN id, protocol字段。hash，
-   checksum，timestamp，VLAN ID信息是硬件提供的，如果硬件报告checksum error，
-   `csum_error`统计就会增加。如果checksum通过了，数据是UDP或者TCP数据，`skb`就会
-   被标记成`CHECKSUM_UNNECESSARY`
-7. 构建的skb经`napi_gro_receive()`进入协议栈
+4. 验证数据的 layout 和头信息是正确的
+5. 更新 `skb->len`，表示这个包已经处理的字节数
+6. 设置 `skb` 的 hash, checksum, timestamp, VLAN id, protocol 字段。hash，
+   checksum，timestamp，VLAN ID 信息是硬件提供的，如果硬件报告 checksum error，
+   `csum_error` 统计就会增加。如果 checksum 通过了，数据是 UDP 或者 TCP 数据，`skb` 就会
+   被标记成 `CHECKSUM_UNNECESSARY`
+7. 构建的 skb 经 `napi_gro_receive()`进入协议栈
 8. 更新处理过的包的统计信息
-9. 循环直至处理的包数量达到budget
+9. 循环直至处理的包数量达到 budget
 
 循环结束的时候，这个函数设置收包的数量和字节数统计信息。
 
 接下来在进入协议栈之前，我们先开两个小差：首先是看一些如何监控和调优软中断，其次
-是介绍GRO。有了这个两个背景，后面（通过`napi_gro_receive`进入）协议栈部分会更容易理解。
+是介绍 GRO。有了这个两个背景，后面（通过 `napi_gro_receive` 进入）协议栈部分会更容易理解。
 
 ### 5.3.7 监控网络数据处理
 
 #### `/proc/net/softnet_stat`
 
-前面看到，如果budget或者time limit到了而仍有包需要处理，那`net_rx_action`在退出
-循环之前会更新统计信息。这个信息存储在该CPU的`struct softnet_data`实例中。
+前面看到，如果 budget 或者 time limit 到了而仍有包需要处理，那 `net_rx_action` 在退出
+循环之前会更新统计信息。这个信息存储在该 CPU 的 `struct softnet_data` 实例中。
 
 这些统计信息打到了`/proc/net/softnet_stat`，但不幸的是，关于这个的文档很少。每一
 列代表什么并没有标题，而且列的内容会随着内核版本可能发生变化。
 
-在内核 3.13.0中，你可以阅读内核源码，查看每一列分别对应什么。
+在内核 3.13.0 中，你可以阅读内核源码，查看每一列分别对应什么。
 [net/core/net-procfs.c](https://github.com/torvalds/linux/blob/v3.13/net/core/net-procfs.c#L161-L165):
 
 ```c
@@ -1634,8 +1634,8 @@ seq_printf(seq,
 ```
 
 其中一些的名字让人很困惑，而且在你意想不到的地方更新。在接下来的网络栈分析说，我
-们会举例说明其中一些字段是何时、在哪里被更新的。前面我们已经看到了`squeeze_time`
-是在`net_rx_action`在被更新的，到此时，如下数据你应该能看懂了：
+们会举例说明其中一些字段是何时、在哪里被更新的。前面我们已经看到了 `squeeze_time`
+是在 `net_rx_action` 在被更新的，到此时，如下数据你应该能看懂了：
 
 ```shell
 $ cat /proc/net/softnet_stat
@@ -1647,21 +1647,21 @@ $ cat /proc/net/softnet_stat
 6488cb92 00000000 00000001 00000000 00000000 00000000 00000000 00000000 00000000 00000000
 ```
 
-关于`/proc/net/softnet_stat`的重要细节:
+关于`/proc/net/softnet_stat` 的重要细节:
 
-1. 每一行代表一个`struct softnet_data`实例。因为每个CPU只有一个该实例，所以每行
-   其实代表一个CPU
-2. 每列用空格隔开，数值用16进制表示
-3. 第一列 `sd->processed`，是处理的网络帧的数量。如果你使用了ethernet bonding，
-   那这个值会大于总的网络帧的数量，因为ethernet bonding驱动有时会触发网络数据被
+1. 每一行代表一个 `struct softnet_data` 实例。因为每个 CPU 只有一个该实例，所以每行
+   其实代表一个 CPU
+2. 每列用空格隔开，数值用 16 进制表示
+3. 第一列 `sd->processed`，是处理的网络帧的数量。如果你使用了 ethernet bonding，
+   那这个值会大于总的网络帧的数量，因为 ethernet bonding 驱动有时会触发网络数据被
    重新处理（re-processed）
-4. 第二列，`sd->dropped`，是因为处理不过来而drop的网络帧数量。后面会展开这一话题
-5. 第三列，`sd->time_squeeze`，前面介绍过了，由于budget或time limit用完而退出
-   `net_rx_action`循环的次数
-6. 接下来的5列全是0
+4. 第二列，`sd->dropped`，是因为处理不过来而 drop 的网络帧数量。后面会展开这一话题
+5. 第三列，`sd->time_squeeze`，前面介绍过了，由于 budget 或 time limit 用完而退出
+   `net_rx_action` 循环的次数
+6. 接下来的 5 列全是 0
 7. 第九列，`sd->cpu_collision`，是为了发送包而获取锁的时候有冲突的次数
-8. 第十列，`sd->received_rps`，是这个CPU被其他CPU唤醒去收包的次数
-9. 最后一列，`flow_limit_count`，是达到flow limit的次数。flow limit是RPS的特性，
+8. 第十列，`sd->received_rps`，是这个 CPU 被其他 CPU 唤醒去收包的次数
+9. 最后一列，`flow_limit_count`，是达到 flow limit 的次数。flow limit 是 RPS 的特性，
    后面会稍微介绍一下
 
 如果你要画图监控这些数据，确保你的列和相应的字段是对的上的，最保险的方式是阅读相
@@ -1669,10 +1669,10 @@ $ cat /proc/net/softnet_stat
 
 ### 5.3.8 网络数据处理调优
 
-#### 调整`net_rx_action` budget
+#### 调整 `net_rx_action` budget
 
-`net_rx_action` budget表示一个CPU单次轮询（`poll`）所允许的最大收包数量。单次
-poll收包是，所有注册到这个CPU的NAPI实例收包数量之和不能大于这个阈值。 调整：
+`net_rx_action` budget 表示一个 CPU 单次轮询（`poll`）所允许的最大收包数量。单次
+poll 收包是，所有注册到这个 CPU 的 NAPI 实例收包数量之和不能大于这个阈值。 调整：
 
 ```shell
 $ sudo sysctl -w net.core.netdev_budget=600
@@ -1680,65 +1680,65 @@ $ sudo sysctl -w net.core.netdev_budget=600
 
 如果要保证重启仍然生效，需要将这个配置写到`/etc/sysctl.conf`。
 
-Linux 3.13.0的默认配置是300。
+Linux 3.13.0 的默认配置是 300。
 
 <a name="chap_5.4"></a>
 
 ## 5.4 GRO（Generic Receive Offloading）
 
-Large Receive Offloading (LRO) 是一个硬件优化，GRO是LRO的一种软件实现。
+Large Receive Offloading (LRO) 是一个硬件优化，GRO 是 LRO 的一种软件实现。
 
 两种方案的主要思想都是：通过合并“足够类似”的包来减少往网络栈传送的包的数量，这有
-助于减少CPU的使用量。例如，考虑大文件传输的场景，包的数量非常多，大部分包都是一
+助于减少 CPU 的使用量。例如，考虑大文件传输的场景，包的数量非常多，大部分包都是一
 段文件数据。相比于每次都将小包送到网络栈，可以将收到的小包合并成一个很大的包再送
-到网络栈。这可以使得协议层只需要处理一个header，而将包含大量数据的整个大包送到用
+到网络栈。这可以使得协议层只需要处理一个 header，而将包含大量数据的整个大包送到用
 户程序。
 
-这类优化方式的缺点就是：信息丢失。如果一个包有一些重要的option或者flag，那将这个
+这类优化方式的缺点就是：信息丢失。如果一个包有一些重要的 option 或者 flag，那将这个
 包的数据合并到其他包时，这些信息就会丢失。这也是为什么大部分人不使用或不推荐使用
-LRO的原因。
+LRO 的原因。
 
-LRO的实现，一般来说，对合并包的规则非常宽松。GRO是LRO的软件实现，但是对于包合并
+LRO 的实现，一般来说，对合并包的规则非常宽松。GRO 是 LRO 的软件实现，但是对于包合并
 的规则更严苛。
 
-顺便说一下，如果你曾经用过tcpdump抓包，并收到看起来不现实的非常大的包，那很可能
-是你的系统开启了GRO。你接下来会看到，捕获包的tap在整个栈的更后面一下，在GRO之
+顺便说一下，如果你曾经用过 tcpdump 抓包，并收到看起来不现实的非常大的包，那很可能
+是你的系统开启了 GRO。你接下来会看到，捕获包的 tap 在整个栈的更后面一下，在 GRO 之
 后。
 
-### 使用ethtool修改GRO配置
+### 使用 ethtool 修改 GRO 配置
 
-`-k`查看GRO配置：
+`-k` 查看 GRO 配置：
 
 ```shell
 $ ethtool -k eth0 | grep generic-receive-offload
 generic-receive-offload: on
 ```
 
-`-K`修改GRO配置：
+`-K` 修改 GRO 配置：
 
 ```shell
 $ sudo ethtool -K eth0 gro on
 ```
 
-注意：对于大部分驱动，修改GRO配置会涉及先down再up这个网卡，因此这个网卡上的连接
+注意：对于大部分驱动，修改 GRO 配置会涉及先 down 再 up 这个网卡，因此这个网卡上的连接
 都会中断。
 
 <a name="chap_5.5"></a>
 
 ## 5.5 `napi_gro_receive`
 
-如果开启了GRO，`napi_gro_receive`将负责处理网络数据，并将数据送到协议栈，大部分
-相关的逻辑在函数`dev_gro_receive`里实现。
+如果开启了 GRO，`napi_gro_receive` 将负责处理网络数据，并将数据送到协议栈，大部分
+相关的逻辑在函数 `dev_gro_receive` 里实现。
 
 ### `dev_gro_receive`
 
-这个函数首先检查GRO是否开启了，如果是，就准备做GRO。GRO首先遍历一个offload
-filter列表，如果高层协议认为其中一些数据属于GRO处理的范围，就会允许其对数据进行
+这个函数首先检查 GRO 是否开启了，如果是，就准备做 GRO。GRO 首先遍历一个 offload
+filter 列表，如果高层协议认为其中一些数据属于 GRO 处理的范围，就会允许其对数据进行
 操作。
 
-协议层以此方式让网络设备层知道，这个packet是不是当前正在处理的一个需要做GRO的
-network flow的一部分，而且也可以通过这种方式传递一些协议相关的信息。例如，TCP协
-议需要判断是否以及合适应该将一个ACK包合并到其他包里。
+协议层以此方式让网络设备层知道，这个 packet 是不是当前正在处理的一个需要做 GRO 的
+network flow 的一部分，而且也可以通过这种方式传递一些协议相关的信息。例如，TCP 协
+议需要判断是否以及合适应该将一个 ACK 包合并到其他包里。
 
 [net/core/dev.c](https://github.com/torvalds/linux/blob/v3.13/net/core/dev.c#L3844-L3856):
 
@@ -1758,9 +1758,9 @@ list_for_each_entry_rcu(ptype, head, list) {
 }
 ```
 
-如果协议层提示是时候flush GRO packet了，那就到下一步处理了。这发生在
-`napi_gro_complete`，会进一步调用相应协议的`gro_complete`回调方法，然后调用
-`netif_receive_skb`将包送到协议栈。
+如果协议层提示是时候 flush GRO packet 了，那就到下一步处理了。这发生在
+`napi_gro_complete`，会进一步调用相应协议的 `gro_complete` 回调方法，然后调用
+`netif_receive_skb` 将包送到协议栈。
 这个过程见[net/core/dev.c](https://github.com/torvalds/linux/blob/v3.13/net/core/dev.c#L3862-L3872)：
 
 ```c
@@ -1774,9 +1774,9 @@ if (pp) {
 }
 ```
 
-接下来，如果协议层将这个包合并到一个已经存在的flow，`napi_gro_receive`就没什么事
-情需要做，因此就返回了。如果packet没有被合并，而且GRO的数量小于 `MAX_GRO_SKBS`（
-默认是8），就会创建一个新的entry加到本CPU的NAPI实例的`gro_list`。
+接下来，如果协议层将这个包合并到一个已经存在的 flow，`napi_gro_receive` 就没什么事
+情需要做，因此就返回了。如果 packet 没有被合并，而且 GRO 的数量小于 `MAX_GRO_SKBS`（
+默认是 8），就会创建一个新的 entry 加到本 CPU 的 NAPI 实例的 `gro_list`。
 [net/core/dev.c](https://github.com/torvalds/linux/blob/v3.13/net/core/dev.c#L3877-L3886)：
 
 ```c
@@ -1792,90 +1792,90 @@ napi->gro_list = skb;
 ret = GRO_HELD;
 ```
 
-这就是Linux网络栈中GRO的工作原理。
+这就是 Linux 网络栈中 GRO 的工作原理。
 
 <a name="chap_5.6"></a>
 
 ## 5.6 `napi_skb_finish`
 
-一旦`dev_gro_receive`完成，`napi_skb_finish`就会被调用，其如果一个packet被合并了
-，就释放不用的变量；或者调用`netif_receive_skb`将数据发送到网络协议栈（因为已经
-有`MAX_GRO_SKBS`个flow了，够GRO了）。
+一旦 `dev_gro_receive` 完成，`napi_skb_finish` 就会被调用，其如果一个 packet 被合并了
+，就释放不用的变量；或者调用 `netif_receive_skb` 将数据发送到网络协议栈（因为已经
+有 `MAX_GRO_SKBS` 个 flow 了，够 GRO 了）。
 
-接下来，是看`netif_receive_skb`如何将数据交给协议层。但在此之前，我们先看一下RPS。
+接下来，是看 `netif_receive_skb` 如何将数据交给协议层。但在此之前，我们先看一下 RPS。
 
 <a name="chap_6"></a>
 
 # 6 RPS (Receive Packet Steering)
 
-回忆前面我们讨论了网络设备驱动是如何注册NAPI `poll`方法的。每个NAPI实例都会运
-行在相应CPU的软中断的上下文中。而且，触发硬中断的这个CPU接下来会负责执行相应的软
+回忆前面我们讨论了网络设备驱动是如何注册 NAPI `poll` 方法的。每个 NAPI 实例都会运
+行在相应 CPU 的软中断的上下文中。而且，触发硬中断的这个 CPU 接下来会负责执行相应的软
 中断处理函数来收包。
 
-换言之，同一个CPU既处理硬中断，又处理相应的软中断。
+换言之，同一个 CPU 既处理硬中断，又处理相应的软中断。
 
-一些网卡（例如Intel I350）在硬件层支持多队列。这意味着收进来的包会被通过DMA放到
-位于不同内存的队列上，而不同的队列有相应的NAPI实例管理软中断`poll()`过程。因此，
-多个CPU同时处理从网卡来的中断，处理收包过程。
+一些网卡（例如 Intel I350）在硬件层支持多队列。这意味着收进来的包会被通过 DMA 放到
+位于不同内存的队列上，而不同的队列有相应的 NAPI 实例管理软中断 `poll()`过程。因此，
+多个 CPU 同时处理从网卡来的中断，处理收包过程。
 
-这个特性被称作RSS（Receive Side Scaling，接收端扩展）。
+这个特性被称作 RSS（Receive Side Scaling，接收端扩展）。
 
 [RPS](https://github.com/torvalds/linux/blob/v3.13/Documentation/networking/scaling.txt#L99-L222)
-（Receive Packet Steering，接收包控制，接收包引导）是RSS的一种软件实现。因为是软
+（Receive Packet Steering，接收包控制，接收包引导）是 RSS 的一种软件实现。因为是软
 件实现的，意味着任何网卡都可以使用这个功能，即便是那些只有一个接收队列的网卡。但
-是，因为它是软件实现的，这意味着RPS只能在packet通过DMA进入内存后，RPS才能开始工
+是，因为它是软件实现的，这意味着 RPS 只能在 packet 通过 DMA 进入内存后，RPS 才能开始工
 作。
 
-这意味着，RPS并不会减少CPU处理硬件中断和NAPI `poll`（软中断最重要的一部分）的时
-间，但是可以在packet到达内存后，将packet分到其他CPU，从其他CPU进入协议栈。
+这意味着，RPS 并不会减少 CPU 处理硬件中断和 NAPI `poll`（软中断最重要的一部分）的时
+间，但是可以在 packet 到达内存后，将 packet 分到其他 CPU，从其他 CPU 进入协议栈。
 
-RPS的工作原理是对个packet做hash，以此决定分到哪个CPU处理。然后packet放到每个CPU
-独占的接收后备队列（backlog）等待处理。这个CPU会触发一个进程间中断（
+RPS 的工作原理是对个 packet 做 hash，以此决定分到哪个 CPU 处理。然后 packet 放到每个 CPU
+独占的接收后备队列（backlog）等待处理。这个 CPU 会触发一个进程间中断（
 [IPI](https://en.wikipedia.org/wiki/Inter-processor_interrupt)，Inter-processor
-Interrupt）向对端CPU。如果当时对端CPU没有在处理backlog队列收包，这个进程间中断会
-触发它开始从backlog收包。`/proc/net/softnet_stat`其中有一列是记录`softnet_data`
-实例（也即这个CPU）收到了多少IPI（`received_rps`列）。
+Interrupt）向对端 CPU。如果当时对端 CPU 没有在处理 backlog 队列收包，这个进程间中断会
+触发它开始从 backlog 收包。`/proc/net/softnet_stat` 其中有一列是记录 `softnet_data`
+实例（也即这个 CPU）收到了多少 IPI（`received_rps` 列）。
 
-因此，`netif_receive_skb`或者继续将包送到协议栈，或者交给RPS，后者会转交给其他CPU处理。
+因此，`netif_receive_skb` 或者继续将包送到协议栈，或者交给 RPS，后者会转交给其他 CPU 处理。
 
-## RPS调优
+## RPS 调优
 
-使用RPS需要在内核做配置（Ubuntu + Kernel 3.13.0 支持），而且需要一个掩码（
-bitmask）指定哪些CPU可以处理那些RX队列。相关的一些信息可以在[内核文档
+使用 RPS 需要在内核做配置（Ubuntu + Kernel 3.13.0 支持），而且需要一个掩码（
+bitmask）指定哪些 CPU 可以处理那些 RX 队列。相关的一些信息可以在[内核文档
 ](https://github.com/torvalds/linux/blob/v3.13/Documentation/networking/scaling.txt#L138-L164)
 里找到。
 
-bitmask配置位于：`/sys/class/net/DEVICE_NAME/queues/QUEUE/rps_cpus`。
+bitmask 配置位于：`/sys/class/net/DEVICE_NAME/queues/QUEUE/rps_cpus`。
 
-例如，对于eth0的queue 0，你需要更改`/sys/class/net/eth0/queues/rx-0/rps_cpus`。[
+例如，对于 eth0 的 queue 0，你需要更改`/sys/class/net/eth0/queues/rx-0/rps_cpus`。[
 内核文档
 ](https://github.com/torvalds/linux/blob/v3.13/Documentation/networking/scaling.txt#L160-L164)
-里说，对一些特定的配置下，RPS没必要了。
+里说，对一些特定的配置下，RPS 没必要了。
 
-注意：打开RPS之后，原来不需要处理软中断（softirq）的CPU这时也会参与处理。因此相
-应CPU的`NET_RX`数量，以及`si`或`sitime`占比都会相应增加。你可以对比启用RPS前后的
-数据，以此来确定你的配置是否生效，以及是否符合预期（哪个CPU处理哪个网卡的哪个中
+注意：打开 RPS 之后，原来不需要处理软中断（softirq）的 CPU 这时也会参与处理。因此相
+应 CPU 的 `NET_RX` 数量，以及 `si` 或 `sitime` 占比都会相应增加。你可以对比启用 RPS 前后的
+数据，以此来确定你的配置是否生效，以及是否符合预期（哪个 CPU 处理哪个网卡的哪个中
 断）。
 
 <a name="chap_7"></a>
 
 # 7 RFS (Receive Flow Steering)
 
-RFS（Receive flow steering）和RPS配合使用。RPS试图在CPU之间平衡收包，但是没考虑
-数据的本地性问题，如何最大化CPU缓存的命中率。RFS将属于相同flow的包送到相同的CPU
+RFS（Receive flow steering）和 RPS 配合使用。RPS 试图在 CPU 之间平衡收包，但是没考虑
+数据的本地性问题，如何最大化 CPU 缓存的命中率。RFS 将属于相同 flow 的包送到相同的 CPU
 进行处理，可以提高缓存命中率。
 
-## 调优：打开RFS
+## 调优：打开 RFS
 
-RPS记录一个全局的hash table，包含所有flow的信息。这个hash table的大小可以在`net.core.rps_sock_flow_entries`：
+RPS 记录一个全局的 hash table，包含所有 flow 的信息。这个 hash table 的大小可以在 `net.core.rps_sock_flow_entries`：
 
 ```
 $ sudo sysctl -w net.core.rps_sock_flow_entries=32768
 ```
 
-其次，你可以设置每个RX queue的flow数量，对应着`rps_flow_cnt`：
+其次，你可以设置每个 RX queue 的 flow 数量，对应着 `rps_flow_cnt`：
 
-例如，eth0的RX queue0的flow数量调整到2048：
+例如，eth0 的 RX queue0 的 flow 数量调整到 2048：
 
 ```
 $ sudo bash -c 'echo 2048 > /sys/class/net/eth0/queues/rx-0/rps_flow_cnt'
@@ -1885,42 +1885,42 @@ $ sudo bash -c 'echo 2048 > /sys/class/net/eth0/queues/rx-0/rps_flow_cnt'
 
 # 8 aRFS (Hardware accelerated RFS)
 
-RFS可以用硬件加速，网卡和内核协同工作，判断哪个flow应该在哪个CPU上处理。这需要网
+RFS 可以用硬件加速，网卡和内核协同工作，判断哪个 flow 应该在哪个 CPU 上处理。这需要网
 卡和网卡驱动的支持。
 
-如果你的网卡驱动里对外提供一个`ndo_rx_flow_steer`函数，那就是支持RFS。
+如果你的网卡驱动里对外提供一个 `ndo_rx_flow_steer` 函数，那就是支持 RFS。
 
-## 调优: 启用aRFS
+## 调优: 启用 aRFS
 
-假如你的网卡支持aRFS，你可以开启它并做如下配置：
+假如你的网卡支持 aRFS，你可以开启它并做如下配置：
 
-* 打开并配置RPS
-* 打开并配置RFS
-* 内核中编译期间指定了`CONFIG_RFS_ACCEL`选项。Ubuntu kernel 3.13.0是有的
-* 打开网卡的ntuple支持。可以用ethtool查看当前的ntuple设置
-* 配置IRQ（硬中断）中每个RX和CPU的对应关系
+* 打开并配置 RPS
+* 打开并配置 RFS
+* 内核中编译期间指定了 `CONFIG_RFS_ACCEL` 选项。Ubuntu kernel 3.13.0 是有的
+* 打开网卡的 ntuple 支持。可以用 ethtool 查看当前的 ntuple 设置
+* 配置 IRQ（硬中断）中每个 RX 和 CPU 的对应关系
 
-以上配置完成后，aRFS就会自动将RX queue数据移动到指定CPU的内存，每个flow的包都会
-到达同一个CPU，不需要你再通过ntuple手动指定每个flow的配置了。
+以上配置完成后，aRFS 就会自动将 RX queue 数据移动到指定 CPU 的内存，每个 flow 的包都会
+到达同一个 CPU，不需要你再通过 ntuple 手动指定每个 flow 的配置了。
 
 <a name="chap_9"></a>
 
-# 9 从`netif_receive_skb`进入协议栈
+# 9 从 `netif_receive_skb` 进入协议栈
 
-重新捡起我们前面已经几次提到过的`netif_receive_skb`，这个函数在好几个地方被调用
+重新捡起我们前面已经几次提到过的 `netif_receive_skb`，这个函数在好几个地方被调用
 。两个最重要的地方（前面都看到过了）：
 
-* `napi_skb_finish`：当packet不需要被合并到已经存在的某个GRO flow的时候
-* `napi_gro_complete`：协议层提示需要flush当前的flow的时候
+* `napi_skb_finish`：当 packet 不需要被合并到已经存在的某个 GRO flow 的时候
+* `napi_gro_complete`：协议层提示需要 flush 当前的 flow 的时候
 
-提示：`netif_receive_skb`和它调用的函数都运行在软中断处理循环（softirq
-processing loop）的上下文中，因此这里的时间会记录到`top`命令看到的`si`或者
-`sitime`字段。
+提示：`netif_receive_skb` 和它调用的函数都运行在软中断处理循环（softirq
+processing loop）的上下文中，因此这里的时间会记录到 `top` 命令看到的 `si` 或者
+`sitime` 字段。
 
-`netif_receive_skb`首先会检查用户有没有设置一个接收时间戳选项（sysctl），这个选
-项决定在packet在到达backlog queue之前还是之后打时间戳。如果启用，那立即打时间戳
-，在RPS之前（CPU和backlog queue绑定）；如果没有启用，那只有在它进入到backlog
-queue之后才会打时间戳。如果RPS开启了，那这个选项可以将打时间戳的任务分散个其他
+`netif_receive_skb` 首先会检查用户有没有设置一个接收时间戳选项（sysctl），这个选
+项决定在 packet 在到达 backlog queue 之前还是之后打时间戳。如果启用，那立即打时间戳
+，在 RPS 之前（CPU 和 backlog queue 绑定）；如果没有启用，那只有在它进入到 backlog
+queue 之后才会打时间戳。如果 RPS 开启了，那这个选项可以将打时间戳的任务分散个其他
 CPU，但会带来一些延迟。
 
 ## 9.1 调优: 收包打时间戳（RX packet timestamping）
@@ -1933,31 +1933,31 @@ CPU，但会带来一些延迟。
 $ sudo sysctl -w net.core.netdev_tstamp_prequeue=0
 ```
 
-默认是1。
+默认是 1。
 
 <a name="chap_10"></a>
 
 # 10 `netif_receive_skb`
 
-处理完时间戳后，`netif_receive_skb`会根据RPS是否启用来做不同的事情。我们先来看简
-单情况，RPS未启用。
+处理完时间戳后，`netif_receive_skb` 会根据 RPS 是否启用来做不同的事情。我们先来看简
+单情况，RPS 未启用。
 
 <a name="chap_10.1"></a>
 
-## 10.1 不使用RPS（默认）
+## 10.1 不使用 RPS（默认）
 
-如果RPS没启用，会调用`__netif_receive_skb`，它做一些bookkeeping工作，进而调用
+如果 RPS 没启用，会调用`__netif_receive_skb`，它做一些 bookkeeping 工作，进而调用
 `__netif_receive_skb_core`，将数据移动到离协议栈更近一步。
 
-`__netif_receive_skb_core`工作的具体细节我们稍后再看，先看一下RPS启用的情况下的
+`__netif_receive_skb_core` 工作的具体细节我们稍后再看，先看一下 RPS 启用的情况下的
 代码调用关系，它也会调到这个函数的。
 
 <a name="chap_10.2"></a>
 
-## 10.2 使用RPS
+## 10.2 使用 RPS
 
-如果RPS启用了，它会做一些计算，判断使用哪个CPU的backlog queue，这个过程由
-`get_rps_cpu`函数完成。
+如果 RPS 启用了，它会做一些计算，判断使用哪个 CPU 的 backlog queue，这个过程由
+`get_rps_cpu` 函数完成。
 [net/core/dev.c](https://github.com/torvalds/linux/blob/v3.13/net/core/dev.c#L3199-L3200):
 
 ```c
@@ -1970,16 +1970,16 @@ if (cpu >= 0) {
 }
 ```
 
-`get_rps_cpu`会考虑前面提到的RFS和aRFS设置，以此选出一个合适的CPU，通过调用
-`enqueue_to_backlog`将数据放到它的backlog queue。
+`get_rps_cpu` 会考虑前面提到的 RFS 和 aRFS 设置，以此选出一个合适的 CPU，通过调用
+`enqueue_to_backlog` 将数据放到它的 backlog queue。
 
 <a name="chap_10.3"></a>
 
 ## 10.3 `enqueue_to_backlog`
 
-首先从远端CPU的`struct softnet_data`实例获取backlog queue长度。如果backlog大于
-`netdev_max_backlog`，或者超过了flow limit，直接drop，并更新`softnet_data`的drop
-统计。注意这是远端CPU的统计。
+首先从远端 CPU 的 `struct softnet_data` 实例获取 backlog queue 长度。如果 backlog 大于
+`netdev_max_backlog`，或者超过了 flow limit，直接 drop，并更新 `softnet_data` 的 drop
+统计。注意这是远端 CPU 的统计。
 
 [net/core/dev.c](https://github.com/torvalds/linux/blob/v3.13/net/core/dev.c#L3199-L3200):
 
@@ -2006,23 +2006,23 @@ enqueue:
     return NET_RX_DROP;
 ```
 
-`enqueue_to_backlog`被调用的地方很少。在基于RPS处理包的地方，以及`netif_rx`，会
-调用到它。大部分驱动都不应该使用`netif_rx`，而应该是用`netif_receive_skb`。如果
-你没用到RPS，你的驱动也没有使用`netif_rx`，那增大`backlog`并不会带来益处，因为它
+`enqueue_to_backlog` 被调用的地方很少。在基于 RPS 处理包的地方，以及 `netif_rx`，会
+调用到它。大部分驱动都不应该使用 `netif_rx`，而应该是用 `netif_receive_skb`。如果
+你没用到 RPS，你的驱动也没有使用 `netif_rx`，那增大 `backlog` 并不会带来益处，因为它
 根本没被用到。
 
-注意：检查你的驱动，如果它调用了`netif_receive_skb`，而且你没用RPS，那增大
-`netdev_max_backlog`并不会带来任何性能提升，因为没有数据包会被送到
+注意：检查你的驱动，如果它调用了 `netif_receive_skb`，而且你没用 RPS，那增大
+`netdev_max_backlog` 并不会带来任何性能提升，因为没有数据包会被送到
 `input_pkt_queue`。
 
-如果`input_pkt_queue`足够小，而flow limit（后面会介绍）也还没达到（或者被禁掉了
-），那数据包将会被放到队列。这里的逻辑有点funny，但大致可以归为为：
+如果 `input_pkt_queue` 足够小，而 flow limit（后面会介绍）也还没达到（或者被禁掉了
+），那数据包将会被放到队列。这里的逻辑有点 funny，但大致可以归为为：
 
-* 如果backlog是空的：如果远端CPU NAPI实例没有运行，并且IPI没有被加到队列，那就
-  触发一个IPI加到队列，然后调用`____napi_schedule`进一步处理
-* 如果backlog非空，或者远端CPU NAPI实例正在运行，那就enqueue包
+* 如果 backlog 是空的：如果远端 CPU NAPI 实例没有运行，并且 IPI 没有被加到队列，那就
+  触发一个 IPI 加到队列，然后调用`____napi_schedule` 进一步处理
+* 如果 backlog 非空，或者远端 CPU NAPI 实例正在运行，那就 enqueue 包
 
-这里使用了`goto`，所以代码看起来有点tricky。
+这里使用了 `goto`，所以代码看起来有点 tricky。
 
 [net/core/dev.c](https://github.com/torvalds/linux/blob/v3.13/net/core/dev.c#L3201-L3218):
 
@@ -2048,23 +2048,23 @@ enqueue:
 
 ### Flow limits
 
-RPS在不同CPU之间分发packet，但是，如果一个flow特别大，会出现单个CPU被打爆，而
-其他CPU无事可做（饥饿）的状态。因此引入了flow limit特性，放到一个backlog队列的属
-于同一个flow的包的数量不能超过一个阈值。这可以保证即使有一个很大的flow在大量收包
-，小flow也能得到及时的处理。
+RPS 在不同 CPU 之间分发 packet，但是，如果一个 flow 特别大，会出现单个 CPU 被打爆，而
+其他 CPU 无事可做（饥饿）的状态。因此引入了 flow limit 特性，放到一个 backlog 队列的属
+于同一个 flow 的包的数量不能超过一个阈值。这可以保证即使有一个很大的 flow 在大量收包
+，小 flow 也能得到及时的处理。
 
-检查flow limit的代码，[net/core/dev.c](https://github.com/torvalds/linux/blob/v3.13/net/core/dev.c#L3199-L3200)：
+检查 flow limit 的代码，[net/core/dev.c](https://github.com/torvalds/linux/blob/v3.13/net/core/dev.c#L3199-L3200)：
 
 ```c
 if (qlen <= netdev_max_backlog && !skb_flow_limit(skb, qlen)) {
 ```
 
-默认，flow limit功能是关掉的。要打开flow limit，你需要指定一个bitmap（类似于RPS
-的bitmap）。
+默认，flow limit 功能是关掉的。要打开 flow limit，你需要指定一个 bitmap（类似于 RPS
+的 bitmap）。
 
-### 监控：由于`input_pkt_queue`打满或flow limit导致的丢包
+### 监控：由于 `input_pkt_queue` 打满或 flow limit 导致的丢包
 
-在`/proc/net/softnet_stat`里面的dropped列计数，包含本节提到的原因导致的drop。
+在`/proc/net/softnet_stat` 里面的 dropped 列计数，包含本节提到的原因导致的 drop。
 
 ### 调优
 
@@ -2072,8 +2072,8 @@ if (qlen <= netdev_max_backlog && !skb_flow_limit(skb, qlen)) {
 
 在调整这个值之前，请先阅读前面的“注意”。
 
-如果你使用了RPS，或者你的驱动调用了`netif_rx`，那增加`netdev_max_backlog`可以改
-善在`enqueue_to_backlog`里的丢包：
+如果你使用了 RPS，或者你的驱动调用了 `netif_rx`，那增加 `netdev_max_backlog` 可以改
+善在 `enqueue_to_backlog` 里的丢包：
 
 例如：increase backlog to 3000 with sysctl.
 
@@ -2081,21 +2081,21 @@ if (qlen <= netdev_max_backlog && !skb_flow_limit(skb, qlen)) {
 $ sudo sysctl -w net.core.netdev_max_backlog=3000
 ```
 
-默认值是1000。
+默认值是 1000。
 
 #### Tuning: Adjust the NAPI weight of the backlog poll loop
 
-`net.core.dev_weight`决定了backlog poll loop可以消耗的整体budget（参考前面更改
-`net.core.netdev_budget`的章节）：
+`net.core.dev_weight` 决定了 backlog poll loop 可以消耗的整体 budget（参考前面更改
+`net.core.netdev_budget` 的章节）：
 
 ```shell
 $ sudo sysctl -w net.core.dev_weight=600
 ```
 
-默认值是64。
+默认值是 64。
 
-记住，backlog处理逻辑和设备驱动的`poll`函数类似，都是在软中断（softirq）的上下文
-中执行，因此受整体budget和处理时间的限制，前面已经分析过了。
+记住，backlog 处理逻辑和设备驱动的 `poll` 函数类似，都是在软中断（softirq）的上下文
+中执行，因此受整体 budget 和处理时间的限制，前面已经分析过了。
 
 #### Tuning: Enabling flow limits and tuning flow limit hash table size
 
@@ -2103,25 +2103,25 @@ $ sudo sysctl -w net.core.dev_weight=600
 $ sudo sysctl -w net.core.flow_limit_table_len=8192
 ```
 
-默认值是4096.
+默认值是 4096.
 
-这只会影响新分配的flow hash table。所以，如果你想增加table size的话，应该在打开
-flow limit功能之前设置这个值。
+这只会影响新分配的 flow hash table。所以，如果你想增加 table size 的话，应该在打开
+flow limit 功能之前设置这个值。
 
-打开flow limit功能的方式是，在`/proc/sys/net/core/flow_limit_cpu_bitmap`中指定一
-个bitmask，和通过bitmask打开RPS的操作类似。
+打开 flow limit 功能的方式是，在`/proc/sys/net/core/flow_limit_cpu_bitmap` 中指定一
+个 bitmask，和通过 bitmask 打开 RPS 的操作类似。
 
 <a name="chap_10.4"></a>
 
-## 10.4 处理backlog队列：NAPI poller
+## 10.4 处理 backlog 队列：NAPI poller
 
-每个CPU都有一个backlog queue，其加入到NAPI实例的方式和驱动差不多，都是注册一个
-`poll`方法，在软中断的上下文中处理包。此外，还提供了一个`weight`，这也和驱动类似
+每个 CPU 都有一个 backlog queue，其加入到 NAPI 实例的方式和驱动差不多，都是注册一个
+`poll` 方法，在软中断的上下文中处理包。此外，还提供了一个 `weight`，这也和驱动类似
 。
 
 注册发生在网络系统初始化的时候。
 
-[net/core/dev.c](https://github.com/torvalds/linux/blob/v3.13/net/core/dev.c#L6952-L6955)的`net_dev_init`函数：
+[net/core/dev.c](https://github.com/torvalds/linux/blob/v3.13/net/core/dev.c#L6952-L6955)的 `net_dev_init` 函数：
 
 ```
 sd->backlog.poll = process_backlog;
@@ -2130,34 +2130,34 @@ sd->backlog.gro_list = NULL;
 sd->backlog.gro_count = 0;
 ```
 
-backlog NAPI实例和设备驱动NAPI实例的不同之处在于，它的weight是可以调节的，而设备
-驱动是hardcode 64。在下面的调优部分，我们会看到如何用sysctl调整这个设置。
+backlog NAPI 实例和设备驱动 NAPI 实例的不同之处在于，它的 weight 是可以调节的，而设备
+驱动是 hardcode 64。在下面的调优部分，我们会看到如何用 sysctl 调整这个设置。
 
 <a name="chap_10.5"></a>
 
 ## 10.5 `process_backlog`
 
-`process_backlog`是一个循环，它会一直运行直至`weight`（前面介绍了）用完，或者
-backlog里没有数据了。
+`process_backlog` 是一个循环，它会一直运行直至 `weight`（前面介绍了）用完，或者
+backlog 里没有数据了。
 
-backlog queue里的数据取出来，传递给`__netif_receive_skb`。这个函数做的事情和RPS
-关闭的情况下做的事情一样。即，`__netif_receive_skb`做一些bookkeeping工作，然后调
-用`__netif_receive_skb_core`将数据发送给更上面的协议层。
+backlog queue 里的数据取出来，传递给`__netif_receive_skb`。这个函数做的事情和 RPS
+关闭的情况下做的事情一样。即，`__netif_receive_skb` 做一些 bookkeeping 工作，然后调
+用`__netif_receive_skb_core` 将数据发送给更上面的协议层。
 
-`process_backlog`和NAPI之间遵循的合约，和驱动和NAPI之间的合约相同：NAPI is
+`process_backlog` 和 NAPI 之间遵循的合约，和驱动和 NAPI 之间的合约相同：NAPI is
 disabled if the total weight will not be used. The poller is restarted with the
 call to `____napi_schedule` from `enqueue_to_backlog` as described above.
 
-函数返回接收完成的数据帧数量（在代码中是变量`work`），`net_rx_action`（前面介绍了
-）将会从budget（通过`net.core.netdev_budget`可以调整，前面介绍了）里减去这个值。
+函数返回接收完成的数据帧数量（在代码中是变量 `work`），`net_rx_action`（前面介绍了
+）将会从 budget（通过 `net.core.netdev_budget` 可以调整，前面介绍了）里减去这个值。
 
 <a name="chap_10.6"></a>
 
 ## 10.6 `__netif_receive_skb_core`：将数据送到抓包点（tap）或协议层
 
-`__netif_receive_skb_core`完成将数据送到协议栈的繁重工作（the heavy lifting of
-delivering the data)。在它做这件事之前，会先检查是否有packet tap（探测点）插入，
-这些tap用于抓包。例如，`AF_PACKET`地址族可以做这种事情，一般通过`libpcap`这个库
+`__netif_receive_skb_core` 完成将数据送到协议栈的繁重工作（the heavy lifting of
+delivering the data)。在它做这件事之前，会先检查是否有 packet tap（探测点）插入，
+这些 tap 用于抓包。例如，`AF_PACKET` 地址族可以做这种事情，一般通过 `libpcap` 这个库
 。
 
 如果存在抓包点（tap），数据就先发送到那里，然后才送到协议层。
@@ -2166,7 +2166,7 @@ delivering the data)。在它做这件事之前，会先检查是否有packet ta
 
 ## 10.7 送到抓包点（tap）
 
-如果有packet tap（通常通过`libpcap`），packet会送到那里。
+如果有 packet tap（通常通过 `libpcap`），packet 会送到那里。
 [net/core/dev.c](https://github.com/torvalds/linux/blob/v3.13/net/core/dev.c#L3548-L3554):
 
 ```c
@@ -2179,16 +2179,16 @@ list_for_each_entry_rcu(ptype, &ptype_all, list) {
 }
 ```
 
-如何你对packet如何经过pcap有兴趣，可以阅读[net/packet/af_packet.c](https://github.com/torvalds/linux/blob/v3.13/net/packet/af_packet.c)。
+如何你对 packet 如何经过 pcap 有兴趣，可以阅读[net/packet/af_packet.c](https://github.com/torvalds/linux/blob/v3.13/net/packet/af_packet.c)。
 
 <a name="chap_10.8"></a>
 
 ## 10.8 送到协议层
 
-处理完taps之后，`__netif_receive_skb_core`将数据发送到协议层。它会从数据包中取出
+处理完 taps 之后，`__netif_receive_skb_core` 将数据发送到协议层。它会从数据包中取出
 协议信息，然后遍历注册在这个协议上的回调函数列表。
 
-可以看`__netif_receive_skb_core`函数，[net/core/dev.c](https://github.com/torvalds/linux/blob/v3.13/net/core/dev.c#L3548-L3554):
+可以看`__netif_receive_skb_core` 函数，[net/core/dev.c](https://github.com/torvalds/linux/blob/v3.13/net/core/dev.c#L3548-L3554):
 
 ```c
 type = skb->protocol;
@@ -2204,13 +2204,13 @@ list_for_each_entry_rcu(ptype,
 }
 ```
 
-上面的`ptype_base`是一个hash table，定义在[net/core/dev.c](https://github.com/torvalds/linux/blob/v3.13/net/core/dev.c#L146)中:
+上面的 `ptype_base` 是一个 hash table，定义在[net/core/dev.c](https://github.com/torvalds/linux/blob/v3.13/net/core/dev.c#L146)中:
 
 ```c
 struct list_head ptype_base[PTYPE_HASH_SIZE] __read_mostly;
 ```
 
-每种协议在上面的hash table的一个slot里，添加一个过滤器到列表里。这个列表的头用如
+每种协议在上面的 hash table 的一个 slot 里，添加一个过滤器到列表里。这个列表的头用如
 下函数获取：
 
 ```c
@@ -2223,7 +2223,7 @@ static inline struct list_head *ptype_head(const struct packet_type *pt)
 }
 ```
 
-添加的时候用`dev_add_pack`这个函数。这就是协议层如何注册自身，用于处理相应协议的
+添加的时候用 `dev_add_pack` 这个函数。这就是协议层如何注册自身，用于处理相应协议的
 网络数据的。
 
 现在，你已经知道了数据是如何从卡进入到协议层的了。
@@ -2234,20 +2234,20 @@ static inline struct list_head *ptype_head(const struct packet_type *pt)
 
 接下来我们看协议层注册自身的实现。
 
-本文会拿IP层作为例子，因为它最常用，大部分读者都很熟悉。
+本文会拿 IP 层作为例子，因为它最常用，大部分读者都很熟悉。
 
 <a name="chap_11.1"></a>
 
-## 11.1 IP协议层
+## 11.1 IP 协议层
 
-IP层在函数`inet_init`中将自身注册到`ptype_base`哈希表。
+IP 层在函数 `inet_init` 中将自身注册到 `ptype_base` 哈希表。
 [net/ipv4/af_inet.c](https://github.com/torvalds/linux/blob/v3.13/net/ipv4/af_inet.c#L1788):
 
 ```c
 dev_add_pack(&ip_packet_type);
 ```
 
-`struct packet_type`的实例`ip_packet_type`定义在
+`struct packet_type` 的实例 `ip_packet_type` 定义在
 [net/ipv4/af_inet.c](https://github.com/torvalds/linux/blob/v3.13/net/ipv4/af_inet.c#L1673-L1676):
 
 ```c
@@ -2257,16 +2257,16 @@ static struct packet_type ip_packet_type __read_mostly = {
 };
 ```
 
-`__netif_receive_skb_core`会调用`deliver_skb` (前面介绍过了), 后者会调用`.func`
-方法(这个例子中就是`ip_rcv`)。
+`__netif_receive_skb_core` 会调用 `deliver_skb` (前面介绍过了), 后者会调用`.func`
+方法(这个例子中就是 `ip_rcv`)。
 
 ### 11.1.1 `ip_rcv`
 
-`ip_rcv`方法的核心逻辑非常简单直接，此外就是一些数据合法性验证，统计计数器更新等
-等。它在最后会以netfilter的方式调用`ip_rcv_finish`方法。这样做的目的是，任何
-iptables规则都能在packet刚进入IP层协议的时候被应用，在其他处理之前。
+`ip_rcv` 方法的核心逻辑非常简单直接，此外就是一些数据合法性验证，统计计数器更新等
+等。它在最后会以 netfilter 的方式调用 `ip_rcv_finish` 方法。这样做的目的是，任何
+iptables 规则都能在 packet 刚进入 IP 层协议的时候被应用，在其他处理之前。
 
-我们可以在`ip_rcv`结束的时候看到交给netfilter的代码：
+我们可以在 `ip_rcv` 结束的时候看到交给 netfilter 的代码：
 [net/ipv4/ip_input.c](https://github.com/torvalds/linux/blob/v3.13/net/ipv4/ip_input.c#L453-L454)
 
 ```c
@@ -2275,26 +2275,26 @@ return NF_HOOK(NFPROTO_IPV4, NF_INET_PRE_ROUTING, skb, dev, NULL, ip_rcv_finish)
 
 #### netfilter and iptables
 
-这里简单介绍下`netfilter`, `iptables`和`conntrack`。
+这里简单介绍下 `netfilter`, `iptables` 和 `conntrack`。
 
-`NF_HOOK_THRESH`会检查是否有filter被安装，并会适时地返回到IP协议层，避免过深的进
-入netfilter处理，以及在netfilter下面再做hook的iptables和conntrack。
+`NF_HOOK_THRESH` 会检查是否有 filter 被安装，并会适时地返回到 IP 协议层，避免过深的进
+入 netfilter 处理，以及在 netfilter 下面再做 hook 的 iptables 和 conntrack。
 
-注意：**如果你有很多或者很复杂的netfilter或iptables规则，这些规则都是在软中断的
+注意：**如果你有很多或者很复杂的 netfilter 或 iptables 规则，这些规则都是在软中断的
 上下文中执行的，会导致网络延迟。**但如果你就是需要一些规则的话，那这个性能损失看
 起来是无法避免的。
 
 ### 11.1.2 `ip_rcv_finish`
 
-netfilter完成对数据的处理之后，就会调用`ip_rcv_finish`。当然，前提是netfilter没
+netfilter 完成对数据的处理之后，就会调用 `ip_rcv_finish`。当然，前提是 netfilter 没
 有决定丢掉这个包。
 
-`ip_rcv_finish`开始的地方做了一次优化。为了能将包送到合适的目的地，需要一个路由
-子系统的`dst_entry`实例。为了获取这个实例，早期的代码调用了`early_demux`函数，从
+`ip_rcv_finish` 开始的地方做了一次优化。为了能将包送到合适的目的地，需要一个路由
+子系统的 `dst_entry` 实例。为了获取这个实例，早期的代码调用了 `early_demux` 函数，从
 这个数据的目的端的高层协议中。
 
-`early_demux`是一个优化项，试图路由这个包所需要的`dst_entry`实例，通过检查相应的
-实例是否缓存在`socket`实例上。
+`early_demux` 是一个优化项，试图路由这个包所需要的 `dst_entry` 实例，通过检查相应的
+实例是否缓存在 `socket` 实例上。
 [net/ipv4/ip_input.c](https://github.com/torvalds/linux/blob/v3.13/net/ipv4/ip_input.c#L317-L327):
 
 ```c
@@ -2311,40 +2311,40 @@ if (sysctl_ip_early_demux && !skb_dst(skb) && skb->sk == NULL) {
 }
 ```
 
-可以看到，这个函数只有在`sysctl_ip_early_demux`为`true`的时候才有可能被执行。默
-认`early_demux`是打开的。下一节会介绍如何关闭它，以及为什么你可能会需要关闭它。
+可以看到，这个函数只有在 `sysctl_ip_early_demux` 为 `true` 的时候才有可能被执行。默
+认 `early_demux` 是打开的。下一节会介绍如何关闭它，以及为什么你可能会需要关闭它。
 
 如果这个优化打开了，但是并没有命中缓存（例如，这是第一个包），这个包就会被送到内
-核的路由子系统，在那里将会计算出一个`dst_entry`并赋给相应的字段。
+核的路由子系统，在那里将会计算出一个 `dst_entry` 并赋给相应的字段。
 
-路由子系统完成工作后，会更新计数器，然后调用`dst_input(skb)`，后者会进一步调用
-`dst_entry`实例中的`input`方法，这个方法是一个函数指针，有路由子系统初始化。例如
-，如果packet的最终目的地是本机（local system），路由子系统会将`ip_local_deliver`赋
-给`input`。
+路由子系统完成工作后，会更新计数器，然后调用 `dst_input(skb)`，后者会进一步调用
+`dst_entry` 实例中的 `input` 方法，这个方法是一个函数指针，有路由子系统初始化。例如
+，如果 packet 的最终目的地是本机（local system），路由子系统会将 `ip_local_deliver` 赋
+给 `input`。
 
-#### 调优: 打开或关闭IP协议的early demux选项
+#### 调优: 打开或关闭 IP 协议的 early demux 选项
 
-关闭`early_demux`优化：
+关闭 `early_demux` 优化：
 
 ```
 $ sudo sysctl -w net.ipv4.ip_early_demux=0
 ```
 
-默认是1，即该功能默认是打开的。
+默认是 1，即该功能默认是打开的。
 
-添加这个`sysctl`开关的原因是，一些用户报告说，在某些场景下`early_demux`优化会导
+添加这个 `sysctl` 开关的原因是，一些用户报告说，在某些场景下 `early_demux` 优化会导
 致 ~5% 左右的吞吐量下降。
 
 ### 11.1.3 `ip_local_deliver`
 
-回忆我们看到的IP协议层过程：
+回忆我们看到的 IP 协议层过程：
 
-1. 调用`ip_rcv`做一些初始的bookkeeping
-2. 将包交给netfilter处理，同时还有一个回调函数，netfilter处理完毕后会调用这个函
+1. 调用 `ip_rcv` 做一些初始的 bookkeeping
+2. 将包交给 netfilter 处理，同时还有一个回调函数，netfilter 处理完毕后会调用这个函
    数
-3. 处理结束的时候，调用`ip_rcv_finish`，将数据包送到协议栈的更上层
+3. 处理结束的时候，调用 `ip_rcv_finish`，将数据包送到协议栈的更上层
 
-`ip_local_deliver`的逻辑与此类似：
+`ip_local_deliver` 的逻辑与此类似：
 [net/ipv4/ip_input.c](https://github.com/torvalds/linux/blob/v3.13/net/ipv4/ip_input.c#L241-L258):
 
 ```c
@@ -2367,16 +2367,16 @@ int ip_local_deliver(struct sk_buff *skb)
 }
 ```
 
-只要packet没有在netfilter被drop，就会调用`ip_local_deliver_finish`函数。
+只要 packet 没有在 netfilter 被 drop，就会调用 `ip_local_deliver_finish` 函数。
 
 ### 11.1.4 `ip_local_deliver_finish`
 
-`ip_local_deliver_finish`从数据包中读取协议，寻找注册在这个协议上的`struct
-net_protocol`实例，并调用该实例中的回调方法。这样将包送到协议栈的更上层。
+`ip_local_deliver_finish` 从数据包中读取协议，寻找注册在这个协议上的 `struct
+net_protocol` 实例，并调用该实例中的回调方法。这样将包送到协议栈的更上层。
 
 #### Monitoring: IP protocol layer statistics
 
-读取`/proc/net/snmp`获取详细的IP协议统计：
+读取`/proc/net/snmp` 获取详细的 IP 协议统计：
 
 ```shell
 $ cat /proc/net/snmp
@@ -2385,9 +2385,9 @@ Ip: 1 64 25922988125 0 0 15771700 0 0 25898327616 22789396404 12987882 51 1 1012
 ...
 ```
 
-这个文件包含几个协议层的统计信息。先是IP层。
+这个文件包含几个协议层的统计信息。先是 IP 层。
 
-与这些列相关的，IP层的统计类型都定义在[include/uapi/linux/snmp.h](https://github.com/torvalds/linux/blob/v3.13/include/uapi/linux/snmp.h#L10-L59)：
+与这些列相关的，IP 层的统计类型都定义在[include/uapi/linux/snmp.h](https://github.com/torvalds/linux/blob/v3.13/include/uapi/linux/snmp.h#L10-L59)：
 
 ```c
 enum
@@ -2404,7 +2404,7 @@ enum
   /* ... */
 ```
 
-读取`/proc/net/netstat`获取更详细的IP层统计：
+读取`/proc/net/netstat` 获取更详细的 IP 层统计：
 
 ```c
 $ cat /proc/net/netstat | grep IpExt
@@ -2412,7 +2412,7 @@ IpExt: InNoRoutes InTruncatedPkts InMcastPkts OutMcastPkts InBcastPkts OutBcastP
 IpExt: 0 0 0 0 277959 0 14568040307695 32991309088496 0 0 58649349 0 0 0 0 0
 ```
 
-格式和`/proc/net/snmp`类似，除了每列的命字都一`IpExt`开头之外。
+格式和`/proc/net/snmp` 类似，除了每列的命字都一 `IpExt` 开头之外。
 
 一些有趣的统计：
 
@@ -2425,17 +2425,17 @@ IpExt: 0 0 0 0 277959 0 14568040307695 32991309088496 0 0 58649349 0 0 0 0 0
 * `InDelivers`: Total number of IP packets successfully delivered to higher protocol layers. Keep in mind that those protocol layers may drop data even if the IP layer does not.
 * InCsumErrors: Total number of IP Packets with checksum errors.
 
-注意这些计数分别在IP层的不同地方被更新。由于代码一直在更新，重复计数或者计数错误
-的bug可能会引入。如果这些计数对你非常重要，强烈建议你阅读内核的相应源码，确定它
-们是在哪里被更新的，以及更新的对不对，是不是有bug。
+注意这些计数分别在 IP 层的不同地方被更新。由于代码一直在更新，重复计数或者计数错误
+的 bug 可能会引入。如果这些计数对你非常重要，强烈建议你阅读内核的相应源码，确定它
+们是在哪里被更新的，以及更新的对不对，是不是有 bug。
 
 <a name="chap_11.2"></a>
 
 ## 11.2 高层协议注册
 
-本文介绍UDP处理函数的注册过程，TCP的注册过程与此一样，并且是在相同的时间注册的。
+本文介绍 UDP 处理函数的注册过程，TCP 的注册过程与此一样，并且是在相同的时间注册的。
 
-在`net/ipv4/af_inet.c`中定义了UDP、TCP和ICMP协议的回调函数相关的数据结构，IP层处
+在 `net/ipv4/af_inet.c` 中定义了 UDP、TCP 和 ICMP 协议的回调函数相关的数据结构，IP 层处
 理完毕之后会调用相应的回调. From
 [net/ipv4/af_inet.c](https://github.com/torvalds/linux/blob/v3.13/net/ipv4/af_inet.c#L1526-L1547):
 
@@ -2464,7 +2464,7 @@ static const struct net_protocol icmp_protocol = {
 };
 ```
 
-这些实例在`inet`地址族初始化的时候被注册。
+这些实例在 `inet` 地址族初始化的时候被注册。
 [net/ipv4/af_inet.c](https://github.com/torvalds/linux/blob/v3.13/net/ipv4/af_inet.c#L1720-L1725):
 
 ```c
@@ -2480,27 +2480,27 @@ static const struct net_protocol icmp_protocol = {
          pr_crit("%s: Cannot add TCP protocol\n", __func__);
 ```
 
-接下来我们详细查看UDP协议。上面可以看到，UDP的回调函数是`udp_rcv`。这是从IP层进
-入UDP层的入口。我们就从这里开始探索。
+接下来我们详细查看 UDP 协议。上面可以看到，UDP 的回调函数是 `udp_rcv`。这是从 IP 层进
+入 UDP 层的入口。我们就从这里开始探索。
 
 <a name="chap_11.3"></a>
 
-## 11.3 UDP协议层
+## 11.3 UDP 协议层
 
-UDP协议层的实现见[net/ipv4/udp.c](https://github.com/torvalds/linux/blob/v3.13/net/ipv4/udp.c)。
+UDP 协议层的实现见[net/ipv4/udp.c](https://github.com/torvalds/linux/blob/v3.13/net/ipv4/udp.c)。
 
 ### 11.3.1 `udp_rcv`
 
-这个函数只要一行，调用`__udp4_lib_rcv`接收UDP报文。
+这个函数只要一行，调用`__udp4_lib_rcv` 接收 UDP 报文。
 
 ### 11.3.2 `__udp4_lib_rcv`
 
-`__udp4_lib_rcv`首先对包数据进行合法性检查，获取UDP头、UDP数据报长度、源地址、目
-标地址等信息。然后进行其他一些完整性检测和checksum验证。
+`__udp4_lib_rcv` 首先对包数据进行合法性检查，获取 UDP 头、UDP 数据报长度、源地址、目
+标地址等信息。然后进行其他一些完整性检测和 checksum 验证。
 
-回忆前面的IP层内容，在送到更上面一层协议（这里是UDP）之前，会将一个`dst_entry`会关联到`skb`。
+回忆前面的 IP 层内容，在送到更上面一层协议（这里是 UDP）之前，会将一个 `dst_entry` 会关联到 `skb`。
 
-如果对应的`dst_entry`找到了，并且有对应的socket，`__udp4_lib_rcv`会将packet放到`socket`的接收队列：
+如果对应的 `dst_entry` 找到了，并且有对应的 socket，`__udp4_lib_rcv` 会将 packet 放到 `socket` 的接收队列：
 
 ```c
 sk = skb_steal_sock(skb);
@@ -2522,16 +2522,16 @@ if (sk) {
 } else {
 ```
 
-如果`early_demux`中没有关联socket信息，那此时会调用`__udp4_lib_lookup_skb`查找对应的socket。
+如果 `early_demux` 中没有关联 socket 信息，那此时会调用`__udp4_lib_lookup_skb` 查找对应的 socket。
 
-以上两种情况，最后都会将packet放到socket的接收队列：
+以上两种情况，最后都会将 packet 放到 socket 的接收队列：
 
 ```c
 ret = udp_queue_rcv_skb(sk, skb);
 sock_put(sk);
 ```
 
-如果socket没有找到，数据报(datagram)会被丢弃：
+如果 socket 没有找到，数据报(datagram)会被丢弃：
 
 ```c
 /* No socket. Drop packet silently, if checksum is wrong */
@@ -2553,13 +2553,13 @@ return 0;
 
 这个函数的前面部分所做的工作：
 
-1. 判断和这个数据报关联的socket是不是
-   [encapsulation](https://tools.ietf.org/html/rfc3948) socket。如果是，将packet
+1. 判断和这个数据报关联的 socket 是不是
+   [encapsulation](https://tools.ietf.org/html/rfc3948) socket。如果是，将 packet
    送到该层的处理函数
-2. 判断这个数据报是不是UDP-Lite数据报，做一些完整性检测
-3. 验证UDP数据报的校验和，如果校验失败，就丢弃
+2. 判断这个数据报是不是 UDP-Lite 数据报，做一些完整性检测
+3. 验证 UDP 数据报的校验和，如果校验失败，就丢弃
 
-最后，我们来到了socket的接收队列逻辑，判断队列是不是满了：
+最后，我们来到了 socket 的接收队列逻辑，判断队列是不是满了：
 [net/ipv4/udp.c](https://github.com/torvalds/linux/blob/v3.13/net/ipv4/udp.c#L1548-L1549):
 
 ```c
@@ -2590,8 +2590,8 @@ Tuning these values is a bit tricky as there are many things that can be adjuste
 
 #### 调优: Socket receive queue memory
 
-上面看到，判断socket接收队列是否满了是和`sk->sk_rcvbuf`做比较。
-这个值可以被两个sysctl参数控制：最大值和默认值：
+上面看到，判断 socket 接收队列是否满了是和 `sk->sk_rcvbuf` 做比较。
+这个值可以被两个 sysctl 参数控制：最大值和默认值：
 
 ```shell
 $ sudo sysctl -w net.core.rmem_max=8388608
@@ -2599,20 +2599,20 @@ $ sudo sysctl -w net.core.rmem_max=8388608
 $ sudo sysctl -w net.core.rmem_default=8388608
 ```
 
-你也可以在你的应用里调用`setsockopt`带上`SO_RCVBUF`来修改这个值(`sk->sk_rcvbuf`)
-，能设置的最大值不能超过`net.core.rmem_max`。
+你也可以在你的应用里调用 `setsockopt` 带上 `SO_RCVBUF` 来修改这个值(`sk->sk_rcvbuf`)
+，能设置的最大值不能超过 `net.core.rmem_max`。
 
-但是，你也可以`setsockopt`带上`SO_RCVBUFFORCE`来覆盖`net.core.rmem_max`，但是执
-行应用的用户要有`CAP_NET_ADMIN`权限。
+但是，你也可以 `setsockopt` 带上 `SO_RCVBUFFORCE` 来覆盖 `net.core.rmem_max`，但是执
+行应用的用户要有 `CAP_NET_ADMIN` 权限。
 
-`skb_set_owner_r`函数设置UDP数据包的owner，并会更新计数器`sk->sk_rmem_alloc`。
+`skb_set_owner_r` 函数设置 UDP 数据包的 owner，并会更新计数器 `sk->sk_rmem_alloc`。
 我们接下来会看到。
 
-`sk_add_backlog`函数会更新`sk->sk_backlog.len`计数，后面看。
+`sk_add_backlog` 函数会更新 `sk->sk_backlog.len` 计数，后面看。
 
 ### 11.3.5 `udp_queue_rcv_skb`
 
-判断queue未满之后，就会将数据报放到里面：
+判断 queue 未满之后，就会将数据报放到里面：
 [net/ipv4/udp.c](https://github.com/torvalds/linux/blob/v3.13/net/ipv4/udp.c#L1554-L1561):
 
 ```c
@@ -2628,15 +2628,15 @@ bh_unlock_sock(sk);
 return rc;
 ```
 
-第一步先判断有没有用户空间的程序正在这个socket上进行系统调用。如果没有，就可以调用`__udp_queue_rcv_skb`
-将数据报放到接收队列；如果有，就调用`sk_add_backlog`将它放到backlog队列。
+第一步先判断有没有用户空间的程序正在这个 socket 上进行系统调用。如果没有，就可以调用`__udp_queue_rcv_skb`
+将数据报放到接收队列；如果有，就调用 `sk_add_backlog` 将它放到 backlog 队列。
 
-当用户空间程序释放在这个socket上的系统调用时（通过向内核调用`release_sock`），这
-个数据报就从backlog移动到了接收队列。
+当用户空间程序释放在这个 socket 上的系统调用时（通过向内核调用 `release_sock`），这
+个数据报就从 backlog 移动到了接收队列。
 
 ### 11.3.7 `__udp_queue_rcv_skb`
 
-这个函数调用`sock_queue_rcv_skb`将数据报送到socket接收队列；如果失败，更新统计计数并释放skb。
+这个函数调用 `sock_queue_rcv_skb` 将数据报送到 socket 接收队列；如果失败，更新统计计数并释放 skb。
 
 [net/ipv4/udp.c](https://github.com/torvalds/linux/blob/v3.13/net/ipv4/udp.c#L1431-L1443):
 
@@ -2658,7 +2658,7 @@ if (rc < 0) {
 
 ### 11.3.8 Monitoring: UDP protocol layer statistics
 
-以下文件可以获取非常有用的UDP统计：
+以下文件可以获取非常有用的 UDP 统计：
 
 ```shell
 /proc/net/snmp
@@ -2666,7 +2666,7 @@ if (rc < 0) {
 /proc/net/snmp
 ```
 
-#### 监控UDP协议统计：`/proc/net/snmp`
+#### 监控 UDP 协议统计：`/proc/net/snmp`
 
 ```shell
 $ cat /proc/net/snmp | grep Udp\:
@@ -2686,7 +2686,7 @@ SndbufErrors: Incremented if the IP protocol layer reported an error when trying
 InCsumErrors: Incremented when a UDP checksum failure is detected. Note that in all cases I could find, InCsumErrors is incrememnted at the same time as InErrors. Thus, InErrors - InCsumErros should yield the count of memory related errors on the receive side.
 ```
 
-#### 监控UDP socket统计：`/proc/net/udp`
+#### 监控 UDP socket 统计：`/proc/net/udp`
 
 ```shell
 $ cat /proc/net/udp
@@ -2718,21 +2718,21 @@ The first line describes each of the fields in the lines following:
 
 <a name="chap_11.4"></a>
 
-## 11.4 将数据放到socket队列
+## 11.4 将数据放到 socket 队列
 
-网络数据通过`sock_queue_rcv`进入socket的接收队列。这个函数在将数据报最终送到接收
+网络数据通过 `sock_queue_rcv` 进入 socket 的接收队列。这个函数在将数据报最终送到接收
 队列之前，会做几件事情：
 
-1. 检查socket已分配的内存，如果超过了receive buffer的大小，丢弃这个包并更新计数
-1. 应用`sk_filter`，这允许BPF（Berkeley Packet Filter）过滤器在socket上被应用
-1. 执行`sk_rmem_scedule`，确保有足够大的receive buffer接收这个数据报
-1. 执行`skb_set_owner_r`，这会计算数据报的长度并更新`sk->sk_rmem_alloc`计数
-1. 调用`__skb_queue_tail`将数据加到队列尾端
+1. 检查 socket 已分配的内存，如果超过了 receive buffer 的大小，丢弃这个包并更新计数
+1. 应用 `sk_filter`，这允许 BPF（Berkeley Packet Filter）过滤器在 socket 上被应用
+1. 执行 `sk_rmem_scedule`，确保有足够大的 receive buffer 接收这个数据报
+1. 执行 `skb_set_owner_r`，这会计算数据报的长度并更新 `sk->sk_rmem_alloc` 计数
+1. 调用`__skb_queue_tail` 将数据加到队列尾端
 
-最后，所有在这个socket上等待数据的进程都收到一个通知通过`sk_data_ready`通知处理
+最后，所有在这个 socket 上等待数据的进程都收到一个通知通过 `sk_data_ready` 通知处理
 函数。
 
-**这就是一个数据包从到达机器开始，依次穿过协议栈，到达socket，最终被用户程序读取
+**这就是一个数据包从到达机器开始，依次穿过协议栈，到达 socket，最终被用户程序读取
 的过程。**
 
 <a name="chap_12"></a>
@@ -2745,16 +2745,16 @@ The first line describes each of the fields in the lines following:
 
 ## 12.1 打时间戳 (timestamping)
 
-前面提到，网络栈可以收集包的时间戳信息。如果使用了RPS功能，有相应的`sysctl`参数
-可以控制何时以及如何收集时间戳；更多关于RPS、时间戳，以及网络栈在哪里完成这些工
+前面提到，网络栈可以收集包的时间戳信息。如果使用了 RPS 功能，有相应的 `sysctl` 参数
+可以控制何时以及如何收集时间戳；更多关于 RPS、时间戳，以及网络栈在哪里完成这些工
 作的内容，请查看前面的章节。一些网卡甚至支持在硬件上打时间戳。
 
 如果你想看内核网络栈给收包增加了多少延迟，那这个特性非常有用。
 
 内核[关于时间戳的文档](https://github.com/torvalds/linux/blob/v3.13/Documentation/networking/timestamping.txt)
-非常优秀，甚至还包括一个[示例程序和相应的Makefile](https://github.com/torvalds/linux/tree/v3.13/Documentation/networking/timestamping)，有兴趣的话可以上手试试。
+非常优秀，甚至还包括一个[示例程序和相应的 Makefile](https://github.com/torvalds/linux/tree/v3.13/Documentation/networking/timestamping)，有兴趣的话可以上手试试。
 
-使用`ethtool -T`可以查看网卡和驱动支持哪种打时间戳方式：
+使用 `ethtool -T` 可以查看网卡和驱动支持哪种打时间戳方式：
 
 ```shell
 $ sudo ethtool -T eth0
@@ -2773,37 +2773,37 @@ Hardware Receive Filter Modes: none
 
 <a name="chap_12.2"></a>
 
-## 12.2 socket低延迟选项：busy polling
+## 12.2 socket 低延迟选项：busy polling
 
-socket有个`SO_BUSY_POLL`选项，可以让内核在**阻塞式接收**（blocking receive）
-的时候做busy poll。这个选项会减少延迟，但会增加CPU使用量和耗电量。
+socket 有个 `SO_BUSY_POLL` 选项，可以让内核在**阻塞式接收**（blocking receive）
+的时候做 busy poll。这个选项会减少延迟，但会增加 CPU 使用量和耗电量。
 
-**重要提示**：要使用此功能，首先要检查你的设备驱动是否支持。Linux内核3.13.0的
-`igb`驱动不支持，但`ixgbe`驱动支持。如果你的驱动实现(并注册)了`struct
-net_device_ops`(前面介绍过了)的`ndo_busy_poll`方法，那它就是支持`SO_BUSY_POLL`。
+**重要提示**：要使用此功能，首先要检查你的设备驱动是否支持。Linux 内核 3.13.0 的
+`igb` 驱动不支持，但 `ixgbe` 驱动支持。如果你的驱动实现(并注册)了 `struct
+net_device_ops`(前面介绍过了)的 `ndo_busy_poll` 方法，那它就是支持 `SO_BUSY_POLL`。
 
-Intel有一篇非常好的[文章](http://www.intel.com/content/dam/www/public/us/en/documents/white-papers/open-source-kernel-enhancements-paper.pdf)介绍其原理。
+Intel 有一篇非常好的[文章](http://www.intel.com/content/dam/www/public/us/en/documents/white-papers/open-source-kernel-enhancements-paper.pdf)介绍其原理。
 
-对单个socket设置此选项，需要传一个以微秒（microsecond）为单位的时间，内核会
-在这个时间内对设备驱动的接收队列做busy poll。当在这个socket上触发一个阻塞式读请
-求时，内核会busy poll来收数据。
+对单个 socket 设置此选项，需要传一个以微秒（microsecond）为单位的时间，内核会
+在这个时间内对设备驱动的接收队列做 busy poll。当在这个 socket 上触发一个阻塞式读请
+求时，内核会 busy poll 来收数据。
 
-全局设置此选项，可以修改`net.core.busy_poll`配置（毫秒，microsecond），当`poll`或`select`方
-法以阻塞方式调用时，busy poll的时长就是这个值。
+全局设置此选项，可以修改 `net.core.busy_poll` 配置（毫秒，microsecond），当 `poll` 或 `select` 方
+法以阻塞方式调用时，busy poll 的时长就是这个值。
 
 <a name="chap_12.3"></a>
 
 ## 12.3 Netpoll：特殊网络场景支持
 
-Linux内核提供了一种方式，在内核挂掉（crash）的时候，设备驱动仍然可以接收和发送数
-据，相应的API被称作`Netpoll`。这个功能在一些特殊的网络场景有用途，比如最著名的两个例子：
+Linux 内核提供了一种方式，在内核挂掉（crash）的时候，设备驱动仍然可以接收和发送数
+据，相应的 API 被称作 `Netpoll`。这个功能在一些特殊的网络场景有用途，比如最著名的两个例子：
 [`kgdb`](http://sysprogs.com/VisualKernel/kgdboe/launch/)和
 [`netconsole`](https://github.com/torvalds/linux/blob/v3.13/Documentation/networking/netconsole.txt)。
 
-大部分驱动都支持`Netpoll`功能。支持此功能的驱动需要实现`struct net_device_ops`的
-`ndo_poll_controller`方法（回调函数，探测驱动模块的时候注册的，前面介绍过）。
+大部分驱动都支持 `Netpoll` 功能。支持此功能的驱动需要实现 `struct net_device_ops` 的
+`ndo_poll_controller` 方法（回调函数，探测驱动模块的时候注册的，前面介绍过）。
 
-当网络设备子系统收包或发包的时候，会首先检查这个包的目的端是不是`netpoll`。
+当网络设备子系统收包或发包的时候，会首先检查这个包的目的端是不是 `netpoll`。
 
 例如，我们来看下`__netif_receive_skb_core`，[net/dev/core.c](https://github.com/torvalds/linux/blob/v3.13/net/core/dev.c#L3511-L3514):
 
@@ -2821,15 +2821,15 @@ static int __netif_receive_skb_core(struct sk_buff *skb, bool pfmemalloc)
 }
 ```
 
-设备驱动收发包相关代码里，关于`netpoll`的判断逻辑在很前面。
+设备驱动收发包相关代码里，关于 `netpoll` 的判断逻辑在很前面。
 
-Netpoll API的消费者可以通过`netpoll_setup`函数注册`struct netpoll`实例，后者有收
-包和发包的hook方法（函数指针）。
+Netpoll API 的消费者可以通过 `netpoll_setup` 函数注册 `struct netpoll` 实例，后者有收
+包和发包的 hook 方法（函数指针）。
 
-如果你对使用Netpoll API感兴趣，可以看看
+如果你对使用 Netpoll API 感兴趣，可以看看
 [netconsole](https://github.com/torvalds/linux/blob/v3.13/drivers/net/netconsole.c)
 的[驱动](https://github.com/torvalds/linux/blob/v3.13/drivers/net/netconsole.c)
-，Netpoll API的头文件
+，Netpoll API 的头文件
 [`include/linux/netpoll.h`](https://github.com/torvalds/linux/blob/v3.13/include/linux/netpoll.h)
 ，以及[这个](http://people.redhat.com/~jmoyer/netpoll-linux_kongress-2005.pdf)精
 彩的分享。
@@ -2838,70 +2838,70 @@ Netpoll API的消费者可以通过`netpoll_setup`函数注册`struct netpoll`�
 
 ## 12.4 `SO_INCOMING_CPU`
 
-`SO_INCOMING_CPU`直到Linux 3.19才添加, 但它非常有用，所以这里讨论一下。
+`SO_INCOMING_CPU` 直到 Linux 3.19 才添加, 但它非常有用，所以这里讨论一下。
 
-使用`getsockopt`带`SO_INCOMING_CPU`选项，可以判断当前哪个CPU在处理这个socket的网
-络包。你的应用程序可以据此将socket交给在期望的CPU上运行的线程，增加数据本地性（
-data locality）和CPU缓存命中率。
+使用 `getsockopt` 带 `SO_INCOMING_CPU` 选项，可以判断当前哪个 CPU 在处理这个 socket 的网
+络包。你的应用程序可以据此将 socket 交给在期望的 CPU 上运行的线程，增加数据本地性（
+data locality）和 CPU 缓存命中率。
 
-在提出`SO_INCOMING_CPU`的[邮件列表](https://patchwork.ozlabs.org/patch/408257/)
+在提出 `SO_INCOMING_CPU` 的[邮件列表](https://patchwork.ozlabs.org/patch/408257/)
 里有一个简单示例框架，展示在什么场景下使用这个功能。
 
 <a name="chap_12.5"></a>
 
-## 12.5 DMA引擎
+## 12.5 DMA 引擎
 
-DMA engine (直接内存访问引擎)是一个硬件，允许CPU将**很大的复制操作**（large copy
-operations）offload（下放）给它。这样CPU就从数据拷贝中解放出来，去做其他工作，而
-拷贝就交由硬件完成。合理的使用DMA引擎（代码要利用到DMA特性）可以减少CPU的使用量
+DMA engine (直接内存访问引擎)是一个硬件，允许 CPU 将**很大的复制操作**（large copy
+operations）offload（下放）给它。这样 CPU 就从数据拷贝中解放出来，去做其他工作，而
+拷贝就交由硬件完成。合理的使用 DMA 引擎（代码要利用到 DMA 特性）可以减少 CPU 的使用量
 。
 
-Linux内核有一个通用的DMA引擎接口，DMA engine驱动实现这个接口即可。更多关于这个接
+Linux 内核有一个通用的 DMA 引擎接口，DMA engine 驱动实现这个接口即可。更多关于这个接
 口的信息可以查看内核源码的[文档
 ](https://github.com/torvalds/linux/blob/v3.13/Documentation/dmaengine.txt)。
 
-内核支持的DMA引擎很多，这里我们拿Intel的[IOAT DMA
+内核支持的 DMA 引擎很多，这里我们拿 Intel 的[IOAT DMA
 engine](https://en.wikipedia.org/wiki/I/O_Acceleration_Technology)为例来看一下。
 
 ### Intel’s I/O Acceleration Technology (IOAT)
 
 很多服务器都安装了[Intel I/O AT
 bundle](http://www.intel.com/content/www/us/en/wireless-network/accel-technology.html)
-，其中包含了一系列性能优化相关的东西，包括一个硬件DMA引擎。可以查看`dmesg`里面有
-没有`ioatdma`，判断这个模块是否被加载，以及它是否找到了支持的硬件。
+，其中包含了一系列性能优化相关的东西，包括一个硬件 DMA 引擎。可以查看 `dmesg` 里面有
+没有 `ioatdma`，判断这个模块是否被加载，以及它是否找到了支持的硬件。
 
-DMA引擎在很多地方有用到，例如TCP协议栈。
+DMA 引擎在很多地方有用到，例如 TCP 协议栈。
 
-Intel IOAT DMA engine最早出现在Linux 2.6.18，但随后3.13.11.10就禁用掉了，因为有一些bug，会导致数据损坏。
+Intel IOAT DMA engine 最早出现在 Linux 2.6.18，但随后 3.13.11.10 就禁用掉了，因为有一些 bug，会导致数据损坏。
 
-`3.13.11.10`版本之前的内核默认是开启的，将来这些版本的内核如果有更新，可能也会禁用掉。
+`3.13.11.10` 版本之前的内核默认是开启的，将来这些版本的内核如果有更新，可能也会禁用掉。
 
 #### 直接缓存访问 (DCA, Direct cache access)
 
 [Intel I/O AT bundle](http://www.intel.com/content/www/us/en/wireless-network/accel-technology.html)
 中的另一个有趣特性是直接缓存访问（DCA）。
 
-该特性允许网络设备（通过各自的驱动）直接将网络数据放到CPU缓存上。至于是如何实现
-的，随各家驱动而异。对于`igb`的驱动，你可以查看`igb_update_dca`和
-`igb_update_rx_dca`这两个函数的实现。`igb`驱动使用DCA，直接写硬件网卡的一个
+该特性允许网络设备（通过各自的驱动）直接将网络数据放到 CPU 缓存上。至于是如何实现
+的，随各家驱动而异。对于 `igb` 的驱动，你可以查看 `igb_update_dca` 和
+`igb_update_rx_dca` 这两个函数的实现。`igb` 驱动使用 DCA，直接写硬件网卡的一个
 寄存器。
 
-要使用DCA功能，首先检查你的BIOS里是否打开了此功能，然后确保`dca`模块加载了，
-还要确保你的网卡和驱动支持DCA。
+要使用 DCA 功能，首先检查你的 BIOS 里是否打开了此功能，然后确保 `dca` 模块加载了，
+还要确保你的网卡和驱动支持 DCA。
 
 #### Monitoring IOAT DMA engine
 
-如上所说，如果你不怕数据损坏的风险，那你可以使用`ioatdma`模块。监控上，可以看几
-个sysfs参数。
+如上所说，如果你不怕数据损坏的风险，那你可以使用 `ioatdma` 模块。监控上，可以看几
+个 sysfs 参数。
 
-例如，监控一个DMA通道（channel）总共offload的`memcpy`操作次数：
+例如，监控一个 DMA 通道（channel）总共 offload 的 `memcpy` 操作次数：
 
 ```shell
 $ cat /sys/class/dma/dma0chan0/memcpy_count
 123205655
 ```
 
-类似的，一个DMA通道总共offload的字节数：
+类似的，一个 DMA 通道总共 offload 的字节数：
 
 ```shell
 $ cat /sys/class/dma/dma0chan0/bytes_transferred
@@ -2910,26 +2910,26 @@ $ cat /sys/class/dma/dma0chan0/bytes_transferred
 
 #### Tuning IOAT DMA engine
 
-IOAT DMA engine只有在包大小超过一定的阈值之后才会使用，这个阈值叫`copybreak`。
-之所以要设置阈值是因为，对于小包，设置和使用DMA的开销要大于其收益。
+IOAT DMA engine 只有在包大小超过一定的阈值之后才会使用，这个阈值叫 `copybreak`。
+之所以要设置阈值是因为，对于小包，设置和使用 DMA 的开销要大于其收益。
 
-调整DMA engine `copybreak`参数：
+调整 DMA engine `copybreak` 参数：
 
 ```shell
 $ sudo sysctl -w net.ipv4.tcp_dma_copybreak=2048
 ```
 
-默认值是4096。
+默认值是 4096。
 
 <a name="chap_13"></a>
 
 # 13 总结
 
-Linux网络栈很复杂。
+Linux 网络栈很复杂。
 
 对于这样复杂的系统（以及类似的其他系统），
 如果不能在更深的层次理解它正在做什么，就不可能做监控和调优。
-当遇到网络问题时，你可能会在网上搜到一些`sysctl.conf`最优实践一类的东西，然后应
+当遇到网络问题时，你可能会在网上搜到一些 `sysctl.conf` 最优实践一类的东西，然后应
 用在自己的系统上，但这并不是网络栈调优的最佳方式。
 
 监控网络栈需要从驱动开始，逐步往上，仔细地在每一层统计网络数据。

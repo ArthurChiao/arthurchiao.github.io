@@ -127,7 +127,7 @@ into the global Internet）领域的专家。
 这就是互联网（Internet）的前身。
 
 Internet 被禁止用于商业目的，不过大量的接入还是导致了扩展性和链路拥塞问题，因此
-NSF开始研究 NSFNET。
+NSF 开始研究 NSFNET。
 
 #### NSFNET
 
@@ -499,7 +499,7 @@ ISP3 里面只有 RTA 和 RTC 运行 BGP 协议。当 ISP1 将 192.213.1.0/24 �
 RTA 之后，RTA 进一步将消息通告给 RTC。RTC 再通告给 ISP2。当 ISP2 向这个路由发送
 流量时，RTC 会将流量转发给 RTB，而 RTB 没有这个路由信息，会将流量丢弃。
 
-因此，BGP 规定，从 iBGP 邻居学习到的路由不应该通告给其他 AS，除非这条路由通告IGP
+因此，BGP 规定，从 iBGP 邻居学习到的路由不应该通告给其他 AS，除非这条路由通告 IGP
 也能访问到（The BGP rule states that a BGP router should not advertise to
 external neighbors destinations learned from IBGP neighbors unless those
 destinations are also known via an IGP.）。这就是所谓的同步。如果 IGP 可达，那说
@@ -511,7 +511,7 @@ destinations are also known via an IGP.）。这就是所谓的同步。如果 I
 模路由设计的（IGPs are not designed to handle that many routes）。
 
 其次，**没有必要将所有外部路由都同步到所有内部节点**。更简单的方式通常是，AS 内
-分成non-BGP 路由器和 BGP 路由器，non-BGP 路由器的默认路由指向 BGP 路由器。这样可
+分成 non-BGP 路由器和 BGP 路由器，non-BGP 路由器的默认路由指向 BGP 路由器。这样可
 能会导致路径并不是最优的，但是跟在 AS 内维护上千条外部路由相比，代价要小的多。
 
 除了 BGP+IGP 方式之外，解决这个问题的另一个办法是，AS 内部的非边界路由器之间做
@@ -537,7 +537,7 @@ routers）。
 动态注入：
 
 * 优点
-    * 配置简单，IGP 路由自动注入 BGP，不管是具体哪种 IGP 类型（RIP、OSPF、IS-IS等等）
+    * 配置简单，IGP 路由自动注入 BGP，不管是具体哪种 IGP 类型（RIP、OSPF、IS-IS 等等）
 * 缺点
     * 可能会泄露内网路由到公网，造成安全问题
     * IGP 路由抖动会影响到 BGP，想象一下几百个 AS 同时有 IGP 路由抖动给 BGP 造成
@@ -766,7 +766,7 @@ outbound 被打爆了？
 #### 8.1.1 BGP 注入 IGP
 
 **不推荐将全部 BGP 路由注入到 IGP**，这会给 IGP 路由增加很大的负担。IGP 路由是针
-对AS 内路由和很小的网络设计的，不适用于大规模网络。但可以将部分 BGP 路由注入 IGP。
+对 AS 内路由和很小的网络设计的，不适用于大规模网络。但可以将部分 BGP 路由注入 IGP。
 
 需要考虑的因素：
 
@@ -813,7 +813,7 @@ RTC 和 RTD 之间出现环路：
 **将 RTA 的默认路由从指向 RTC 改为指向 RTD**。
 
 具体地，将 RTC 的默认路由 0/0 的 metric 设置的非常大。这样 RTD 的路径相比之下很
-短，RTA就会将 RTA-RTB-RTD 作为最优路径。
+短，RTA 就会将 RTA-RTB-RTD 作为最优路径。
 
 ##### 方案 2: 直连 RTC 和 RTD
 
@@ -872,7 +872,7 @@ BGP 之间通过 full-mesh 做 peering，当节点多了之后，BGP mesh 非常
 <p align="center">图 9-1 Internal Peers in a Normal Full-Mesh Environment</p>
 
 没有 RR 的情况下，同一 AS 内的 BGP speaker 之间形成一个 **logical** full-mesh。
-如图9-1 所示，虽然 RTA-RTC 之间没有物理链路，但仍然有一条逻辑 peer 链路。
+如图 9-1 所示，虽然 RTA-RTC 之间没有物理链路，但仍然有一条逻辑 peer 链路。
 
 **RTB 从 RTA 收到的 UPDATE 消息并不会发送给 RTC**，因为：
 

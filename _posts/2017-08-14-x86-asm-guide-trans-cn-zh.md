@@ -105,7 +105,7 @@ mov edx, [esi+4*ebx]  ; Move the 4 bytes of data at address ESI+4*EBX into EDX
 
 ```
 mov eax, [ebx-ecx]      ; 只能对寄存器的值相加，不能相减
-mov [eax+esi+edi], ebx  ; 最多只能有2个寄存器参与地址计算
+mov [eax+esi+edi], ebx  ; 最多只能有 2 个寄存器参与地址计算
 ```
 
 ### 3.3 数据类型(大小)原语（Size Directives）

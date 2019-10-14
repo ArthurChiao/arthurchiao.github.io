@@ -54,7 +54,7 @@ fail-safe mechanism）。
 从 2003 年开始，随着虚拟化技术的引入，原来三层（three-tier）数据中心中，**在二层（
 L2）以 pod 形式做了隔离**的计算、网络和存储资源，现在都可以被池化（pooled）。这
 种革命性的技术产生了**从接入层到核心层的大二层域**（larger L2 domain）的需求，如
-图3 所示
+图 3 所示
 。
 
 <p align="center"><img src="/assets/img/spine-leaf-design/3-extended-L3-domain.PNG" width="60%" height="60%"></p>
@@ -185,7 +185,7 @@ FabricPath **MAC-in-MAC** 帧封装。
 数据平面使用 L2 FabricPath MAC-in-MAC 封装，控制面在 underlay 网络中使用
 FabricPath IS-IS。每个 FabricPath 交换机都有一个 FabricPath switch ID。**Fabric
 IS-IS 控制平面构建可达性信息**（reachability information），即 FabricPath 交换机
-如何连接到其它FabricPath 交换机。
+如何连接到其它 FabricPath 交换机。
 
 #### 4.1.2 Overlay 网络
 
@@ -219,10 +219,10 @@ learning）。
 VXLAN 是网络虚拟化 overlay 技术之一，有一些自己的优势。它是一个工业标准（
 industry-standard）协议，使用 underlay IP 网络。它将 L2 网络进行扩展，在 L3
 基础设施之上构建出一个 L2 overlay 逻辑网络。它将以太帧封装到 UDP IP 包里面，通
-过underlay 网络以正常的 IP 路由和转发机制发送到对端 VTEP（VXLAN tunnel endpoint
+过 underlay 网络以正常的 IP 路由和转发机制发送到对端 VTEP（VXLAN tunnel endpoint
 ）。
 
-Cisco 从 2014 年开始，陆续在多个 Nexus 系列（例如 Nexus 5600、7000、9000系列）交
+Cisco 从 2014 年开始，陆续在多个 Nexus 系列（例如 Nexus 5600、7000、9000 系列）交
 换机上支持 VXLAN flood-and-learn spine-and-leaf 技术。本节介绍这些硬件交换机
 的 Cisco VXLAN flood-and-learn 特性。
 
@@ -320,7 +320,7 @@ active-active 网关的最大数量是两个。另外，**spine L3 VXLAN 网关�
 leaf）到达 border leaf，然后才能被路由到外部网络。
 
 同样，在使用 HSRP 和 vPC 的配置下，inter-VXLAN active-active 网关的最大数量是两
-个。另外，**border leaf L3 VXLAN 网关会学习主机 MAC地址**，所以需要考虑 MAC 地
+个。另外，**border leaf L3 VXLAN 网关会学习主机 MAC 地址**，所以需要考虑 MAC 地
 址的规模，以免超出硬件的限制。
 
 ### 5.6 多租户
@@ -345,7 +345,7 @@ RFC 7348 定义的 VXLAN flood-and-learn 模型中，**end-host（终端主机�
 
 使用 VXLAN 封装，原始 L2 帧加一层 VXLAN 头然后封装到 UDP-IP 包进行传输。
 
-与 IETF RFC 7348 和draft-ietf-bess-evpn-overlay 标准是兼容的。
+与 IETF RFC 7348 和 draft-ietf-bess-evpn-overlay 标准是兼容的。
 
 #### 6.1.1 Underlay 网络
 
@@ -359,8 +359,8 @@ RFC 7348 定义的 VXLAN flood-and-learn 模型中，**end-host（终端主机�
 
 使用 underlay IP PIM 或 ingress replication 特性发送**广播**和**未知单播**流量。
 
-underlay 开启 IP 组播的情况下，每个 VXLAN segment，或者 VNI，都会映射到underlay
-的一个 IP 组播组（multicast group）。每个 VTEP 设备独立配置组播组，参与PIM 路由
+underlay 开启 IP 组播的情况下，每个 VXLAN segment，或者 VNI，都会映射到 underlay
+的一个 IP 组播组（multicast group）。每个 VTEP 设备独立配置组播组，参与 PIM 路由
 。基于参与的 VTEP 的位置，会在传输网络中形成这个组对应的多播分发树（multicast
 distribution tree）。
 

@@ -7,13 +7,13 @@ categories: load-balancing proxying
 
 ### 译者序
 
-本文翻译自 Envoy 作者 Matt Klein 2017年的一篇英文博客 [Introduction to modern
+本文翻译自 Envoy 作者 Matt Klein 2017 年的一篇英文博客 [Introduction to modern
 network load balancing and proxying
 ](https://blog.envoyproxy.io/introduction-to-modern-network-load-balancing-and-proxying-a57f6ff80236)
 。
 
 Service mesh 是近两年网络、容器编排和微服务领域最火热的话题之一。Envoy 是目前
-service mesh 数据平面的首选组件。Matt Klein是 Envoy 的设计者和核心开发。
+service mesh 数据平面的首选组件。Matt Klein 是 Envoy 的设计者和核心开发。
 
 文章循序渐进，从最简单的中间代理（middle proxy）负载均衡，逐步过渡到大型互联网公
 司经典的 L4/L7 两级架构，再到包括 service mesh 在内的业界最新负载均衡实践。原文
@@ -138,7 +138,7 @@ LB 的阻抗不匹配问题（impedance mismatch）随时间越来越彰显。�
 
 图 3 是一个 L7 HTTP/2 负载均衡器。这种情况下，客户端与 LB 只建立一个 HTTP /2 TCP
 连接。LB 接下来和**两个**后端建立连接。当客户端向 LB 发送两个 HTTP/2 流（streams
-）时，stream 1 会被发送到后端 1，而stream 2 会被发送到后端 2。因此，即使不同客户
+）时，stream 1 会被发送到后端 1，而 stream 2 会被发送到后端 2。因此，即使不同客户
 端的请求数量差异巨大，这些请求也可以被高效地、平衡地分发到后端。这就是 L7 LB 对
 现代协议如此重要的原因。L7 负载均衡具备检测应用层流量的能力，这带来了大量额外的
 好处，我们后面会更详细看到。
@@ -155,10 +155,10 @@ discrete layers），例如，对于 HTTP 流量考虑如下子层级：
 * 逻辑 HTTP 协议（headers, body data, trailers）
 * 消息协议（gRPC, REST 等等）
 
-一个复杂的 L7 LB 可能会提供与以上全部子层级相关的特性，而另一个 L7 LB可能会认为
+一个复杂的 L7 LB 可能会提供与以上全部子层级相关的特性，而另一个 L7 LB 可能会认为
 其中只有一部分才属于 7 层的功能，因此只提供这个子集的功能。也就是说，如果要比较
 负载均衡器的特性（features），L7 的范围比 L4 的复杂的多。（当然，这里我们只涉及
-了 HTTP；Redis、Kafka、MongoDB等等都是 L7 LB 应用层协议的例子，它们都受益于 7 层
+了 HTTP；Redis、Kafka、MongoDB 等等都是 L7 LB 应用层协议的例子，它们都受益于 7 层
 负载均衡。）
 
 ## 2 负载均衡器特性
@@ -203,7 +203,7 @@ session 的后端会挂掉），因此如果设计的系统依赖这个特性，
 
 ### 2.5 TLS Termination
 
-关于 TLS 以及它在边缘服务（edge serving）和安全的 service-to-service通信中扮演的
+关于 TLS 以及它在边缘服务（edge serving）和安全的 service-to-service 通信中扮演的
 角色，值得单独写一篇文章，因此这里不详细展开。许多 L7 LB 会做大量的 TLS 处理工作
 ，包括 termination、证书验证和绑定（verification and pinning）、使用
 [SNI](https://en.wikipedia.org/wiki/Server_Name_Indication) 提供证书服务等等。
@@ -328,14 +328,14 @@ point of failure），而且横向扩展有瓶颈**。
 
 ### 4.1 L4 负载均衡还有用吗？
 
-我们前面已经解释了为什么 L7 负载均衡器对现代协议如此重要，接下来详细讨论 L7 LB的
-功能特性。这是否意味着 L4 LB 没用了？不！虽然我认为在service-to-service 通信中L7
+我们前面已经解释了为什么 L7 负载均衡器对现代协议如此重要，接下来详细讨论 L7 LB 的
+功能特性。这是否意味着 L4 LB 没用了？不！虽然我认为在 service-to-service 通信中 L7
 负载均衡最终会完全取代 L4 负载均衡，但 L4 负载均衡在边缘仍然是非常有用的，因为几
 乎所有的现代大型分布式架构都是**在因特网流量接入处使用 L4/L7 两级负载均衡架构**。
 在边缘 L7 负载均衡器之前部署 L4 负载均衡器的原因：
 
 * L7 LB 承担的更多工作是复杂的分析、变换、以及应用流量路由，他们处理原始流量的能
-  力（按每秒处理的包数和字节数衡量）比经过优化的 L4 负载均衡器要差。这使得L4 LB
+  力（按每秒处理的包数和字节数衡量）比经过优化的 L4 负载均衡器要差。这使得 L4 LB
   更适合处理特定类型的攻击，例如 SYN 泛洪、通用包（generic packet）泛洪攻击等
 * L7 LB 部署的更多更频繁，bug 也比 L4 LB 多。在 L7 之前加一层 L4 LB，可以在调整
   L7 部署的时候，对其做健康检查和流量排除（drain），这比（单纯使用）现代 L4 LB
@@ -362,7 +362,7 @@ L4 负载均衡器仍然在用有两个原因：
    很近，重传可能就会更快的发生（retransmits are likely to happen  faster prior
    to the data being moved to reliable fiber transit en-route to its ultimate
    location）。换句话说，这种负载均衡方式可能会用于入网点（POP，Point of
-   Presence）的raw TCP connection termination
+   Presence）的 raw TCP connection termination
 
 ### 4.3 TCP/UDP passthrough 负载均衡
 
@@ -423,18 +423,18 @@ DSR 在如下方面扩展了 passthrough LB：
   视网络设置的底层细节，GRE 可能还需要自己的连接跟踪和 NAT
 
 注意，不管是在 passthrough 还是 DSR 设计中，负载均衡器和后端之间的连接跟踪、NAT
-、GRE等等都有多种设置方式。但不幸的是这个话题超出本文的讨论范围。
+、GRE 等等都有多种设置方式。但不幸的是这个话题超出本文的讨论范围。
 
 ### 4.5 通过 HA pair 实现容错
 
 <p align="center"><img src="/assets/img/intro-to-modern-lb/l4-fault-tolerance-via-ha.png" width="70%" height="70%"></p>
 <p align="center">图 11：通过 HA pair 和 连接跟踪实现 L4 容错</p>
 
-到目前为止，我们讨论的都是单个 L4 LB。passthrough 和 DSR都需要 LB保存一些连接跟
-踪的状态。假如 LB 挂了呢？如果一个 LB实例挂了，那所有经过这个 LB 的连接都
+到目前为止，我们讨论的都是单个 L4 LB。passthrough 和 DSR 都需要 LB 保存一些连接跟
+踪的状态。假如 LB 挂了呢？如果一个 LB 实例挂了，那所有经过这个 LB 的连接都
 会受到影响。视应用的不同，这可能会对应用性能产生很大影响。
 
-历史上，L4 负载均衡器是从一些厂商（Cisco、Juniper、F5等等）购买的硬件设备，这些
+历史上，L4 负载均衡器是从一些厂商（Cisco、Juniper、F5 等等）购买的硬件设备，这些
 设备非常昂贵，可以处理大量的网络流量。为了避免单个负载均衡器挂掉导致应用不可用，
 负载均衡器通常都是以高可用对（high availability pair）方式部署的，如图 11 所示。
 典型的 HA 负载均衡器设置包括：
@@ -442,9 +442,9 @@ DSR 在如下方面扩展了 passthrough LB：
 * 一对 HA 边缘路由器提供若干虚拟 IP（virtual IP，VIP），并通过 BGP (Border
   Gateway Protocol) 协议通告 VIP。主（primary）边缘路由器的 BGP 权重比备（backup
   ）边缘路由器的高，在正常情况下处理所有流量。（BGP 是一个非常复杂的协议，出于本
-  文讨论目的，可以认为 BGP就是一种对外宣告哪个网络设备配置了哪个 IP 的机制，每个
+  文讨论目的，可以认为 BGP 就是一种对外宣告哪个网络设备配置了哪个 IP 的机制，每个
   设备有一个表示处理网络流量的权重）
-* 类似地，primary L4 LB 向边缘路由器宣告它的权重比 backup LB大，因此正常情况下它
+* 类似地，primary L4 LB 向边缘路由器宣告它的权重比 backup LB 大，因此正常情况下它
   处理所有流量
 * primary LB 交叉连接（cross-connected）到 backup LB，共享所有的连接跟踪状态。因
   此，假如 primary LB 挂了，backup LB 可以马上接管所有活动连接
@@ -472,7 +472,7 @@ DSR 在如下方面扩展了 passthrough LB：
 
 前一节介绍了通过 HA pair 实现 L4 LB 的容错，以及这种设计固有的问题。从 2000s 初
 期到中期，大型因特性基础设施（公司）开始设计和部署全新的大规模并行 L4 负载均衡系
-统，如图 12所示。这些系统的设计目标是：
+统，如图 12 所示。这些系统的设计目标是：
 
 * 避免 HA pair 设计的所有缺点
 * 从厂商的商业硬件方案，迁移到基于标准服务器和网卡的通用软件方案
@@ -513,8 +513,8 @@ fault tolerance and scaling via clustering and distributed consistent hashing）
 影响程度会大很多**。
 
 所有现代 L4 负载均衡系统都在朝着这种设计（或其变种）演进。其中最有名的两个分别是
-来自Google 的 [Maglev](https://research.google.com/pubs/pub44824.html) 和来自
-Amazon的 [Network Load
+来自 Google 的 [Maglev](https://research.google.com/pubs/pub44824.html) 和来自
+Amazon 的 [Network Load
 Balancer](http://docs.aws.amazon.com/elasticloadbalancing/latest/network/introduction.html)
 。基于这种设计的开源方案目前还没有，但据我所知，有一家公司准备在 2018 年开源他们
 的产品。对此我非常兴奋，因为现代 L4 LB 是网络领域的开源产品中仍然缺失的重要部分
@@ -642,7 +642,7 @@ plane](https://medium.com/@mattklein123/service-mesh-data-plane-vs-control-plane
   和商业机会也都会在这两个方向
 * 对于网络解决方案，工业界正在大步迈向**通用开源硬件和软件解决方案**。我相信传统
   负载均衡厂商，比如 F5，会是最先被开源软件和云厂商干掉的。传统路由器/交换机厂商
-  ，例如 Arista/Cumulus等，由于 on-premise deployments （本地部署）的需求，我认
+  ，例如 Arista/Cumulus 等，由于 on-premise deployments （本地部署）的需求，我认
   为存在时间会更长一些，但最终会被云厂商和他们的自研物理网络干掉
 
 总体来说，我认为这是计算机网络的一个令人振奋的时代。朝着开源和软件方向的转变使得

@@ -72,7 +72,7 @@ namespace）构建复杂的网络。但出现故障时，排障（troubleshootin
 
 `perf` 是 Linux 上的最重要的性能分析工具之一。它和内核出自同一个源码树（source
 tree），但编译需要针对指定的内核版本。`perf` 可以跟踪内核，也可以跟踪用户程序，
-还可用于采样或者设置跟踪点。**可以把它想象成开销更低，但功能更强大的`strace`**。
+还可用于采样或者设置跟踪点。**可以把它想象成开销更低，但功能更强大的 `strace`**。
 本文只会使用非常简单的 `perf` 命令。想了解更多，强烈建议访问 [Brendan
 Gregg](http://www.brendangregg.com/perf.html)的博客。
 
@@ -173,7 +173,7 @@ netif_receive_skb       dev=docker0     skbaddr=0xffff96d481988b00
 
 1. `docker0` 网桥
 1. veth pair 的宿主机端（`veth79215ff`)
-1. veth pair 的容器端（容器里的`eth0`）
+1. veth pair 的容器端（容器里的 `eth0`）
 1. 接下来是相反的返回路径
 
 **至此，虽然我们还没有看到网络命名空间，但已经得到了一个不错的全局视图。**
@@ -243,7 +243,7 @@ Linux 上跟踪一个 packet 的传输路径，那到此已经足够了。但如
 是一个灵活强大的工具，允许用受限的 C 语法（restricted C）写内核探测代码，然后用
 Python 在用户态做控制。这种方式对于生产环境算是重量级，但对开发来说非常完美。
 
-**注意：eBPF需要Linux Kernel 4.7+。**
+**注意：eBPF 需要 Linux Kernel 4.7+。**
 
 Ubuntu 17.04 [安装 (GitHub)](https://github.com/iovisor/bcc/blob/master/INSTALL.md) `bcc`:
 
@@ -419,18 +419,18 @@ bpf_probe_read(&evt.ifname, IFNAMSIZ, dev->name);
 现在你可以测试一下，这样是能工作的。注意相应地修改一下 Python 部分。那么，它是怎
 么工作的呢？
 
-我们引入了`net_device`结构体来访问**网卡名字**字段。第一个`bpf_probe_read`从内核
-的网络包中将网卡名字拷贝到`dev`，第二个将其接力复制到`evt.ifname`。
+我们引入了 `net_device` 结构体来访问**网卡名字**字段。第一个 `bpf_probe_read` 从内核
+的网络包中将网卡名字拷贝到 `dev`，第二个将其接力复制到 `evt.ifname`。
 
-不要忘了，eBPF的目标是允许安全地编写在内核运行的脚本。这意味着，随机内存访问是绝
+不要忘了，eBPF 的目标是允许安全地编写在内核运行的脚本。这意味着，随机内存访问是绝
 对不允许的。所有的内存访问都要经过验证。除非你要访问的内存在协议栈，否则你需要通
-过`bpf_probe_read`读取数据。这会使得代码看起来很繁琐，但非常安全。`bpf_probe_read`
-像是`memcpy`的一个更安全的版本，它定义在内核源文件
+过 `bpf_probe_read` 读取数据。这会使得代码看起来很繁琐，但非常安全。`bpf_probe_read`
+像是 `memcpy` 的一个更安全的版本，它定义在内核源文件
 [bpf_trace.c](http://elixir.free-electrons.com/linux/v4.10.17/source/kernel/trace/bpf_trace.c#L64)
 中:
 
-1. 它和memcpy类似，因此注意内存拷贝的代价
-2. 如果遇到错误，它会返回一个错误和一个初始化为0的缓冲区，而不会造成程序崩溃或停
+1. 它和 memcpy 类似，因此注意内存拷贝的代价
+2. 如果遇到错误，它会返回一个错误和一个初始化为 0 的缓冲区，而不会造成程序崩溃或停
    止运行
 
 接下来为使代码看起来更加简洁，我将使用如下宏：
@@ -452,20 +452,20 @@ bpf_probe_read(&evt.ifname, IFNAMSIZ, dev->name);
 member_read(&dev, skb, dev);
 ```
 
-#### 3.4.2 添加网络命名空间ID
+#### 3.4.2 添加网络命名空间 ID
 
 采集网络命名空间信息非常有用，但是实现起来要复杂一些。原理上可以从两个地方访问：
 
-1. socket结构体`sk`
-1. device结构体`dev`
+1. socket 结构体 `sk`
+1. device 结构体 `dev`
 
 当我在写
 [`solisten.py`](https://github.com/iovisor/bcc/blob/master/tools/solisten.py)时
-，我使用的时socket结构体。不幸的是，不知道为什么，网络命名空间ID在跨命名空间的地
-方消失了。这个字段全是0，很明显是有非法内存访问时的返回值（回忆前面介绍的
-`bpf_probe_read`如何处理错误）。
+，我使用的时 socket 结构体。不幸的是，不知道为什么，网络命名空间 ID 在跨命名空间的地
+方消失了。这个字段全是 0，很明显是有非法内存访问时的返回值（回忆前面介绍的
+`bpf_probe_read` 如何处理错误）。
 
-幸好，device结构体工作正常。想象一下，我们可以问一个`packet`它在哪个`网卡`，进而
+幸好，device 结构体工作正常。想象一下，我们可以问一个 `packet` 它在哪个`网卡`，进而
 问这个网卡它在哪个`网络命名空间`。
 
 ```c
@@ -489,7 +489,7 @@ member_read(&evt.netns, ns, inum);
 })
 ```
 
-这个宏还可以用于简化`member_read`，这个就留给读者作为练习了。
+这个宏还可以用于简化 `member_read`，这个就留给读者作为练习了。
 
 好了，有了以上实现，我们再运行的效果就是：
 
@@ -503,22 +503,22 @@ $> sudo python ./tracepkt.py
 [  4026531957]          docker0
 ```
 
-如果ping一个容器，你看到的就是类似上面的输出。packet首先经过本地的docker0网桥，
-然后经veth pair跨过网络命名空间，最后到达容器的eth0网卡。应答包沿着相反的路径回
+如果 ping 一个容器，你看到的就是类似上面的输出。packet 首先经过本地的 docker0 网桥，
+然后经 veth pair 跨过网络命名空间，最后到达容器的 eth0 网卡。应答包沿着相反的路径回
 到宿主机。
 
 至此，功能是实现了，不过还太粗糙，继续改进。
 
-#### 3.4.3 只跟踪ICMP echo request/reply包
+#### 3.4.3 只跟踪 ICMP echo request/reply 包
 
-这次我们将读取包的IP信息，这里我只展示IPv4的例子，IPv6的与此类似。
+这次我们将读取包的 IP 信息，这里我只展示 IPv4 的例子，IPv6 的与此类似。
 
-不过，事情也并没有那么简单。我们是在和kernel的网络部分打交道。一些包可能还没被打
-开，这意味着，变量的很多字段是没有初始化的。我们只能从MAC头开始，用offset的方式
-计算IP头和ICMP头的位置。
+不过，事情也并没有那么简单。我们是在和 kernel 的网络部分打交道。一些包可能还没被打
+开，这意味着，变量的很多字段是没有初始化的。我们只能从 MAC 头开始，用 offset 的方式
+计算 IP 头和 ICMP 头的位置。
 
-首先从MAC头地址推导IP头地址。这里我们不(从`skb`的相应字段)加载MAC头长度信息，就认为
-它是固定的14字节。
+首先从 MAC 头地址推导 IP 头地址。这里我们不(从 `skb` 的相应字段)加载 MAC 头长度信息，就认为
+它是固定的 14 字节。
 
 
 ```c
@@ -534,9 +534,9 @@ member_read(&mac_header, skb, mac_header);
 char* ip_header_address = head + mac_header + MAC_HEADER_SIZE;
 ```
 
-这表示我们假设IP头开始的地方在：`skb->head + skb->mac_header + MAC_HEADER_SIZE`
+这表示我们假设 IP 头开始的地方在：`skb->head + skb->mac_header + MAC_HEADER_SIZE`
 。
-现在，我们可以解析IP头第一个字节的前4个bit：
+现在，我们可以解析 IP 头第一个字节的前 4 个 bit：
 
 ```c
 // Load IP protocol version
@@ -550,8 +550,8 @@ if (ip_version != 4) {
 }
 ```
 
-然后加载整个IP头，获取IP地址，以使得Python程序的输出看起来更有意义。另外注意，IP
-包内的下一个头就是ICMP头。
+然后加载整个 IP 头，获取 IP 地址，以使得 Python 程序的输出看起来更有意义。另外注意，IP
+包内的下一个头就是 ICMP 头。
 
 ```c
 // Load IP Header
@@ -569,7 +569,7 @@ if (iphdr.protocol != IPPROTO_ICMP) {
 }
 ```
 
-最后，我们加载ICMP头，如果是ICMP echo request或reply，就读取序列号：
+最后，我们加载 ICMP 头，如果是 ICMP echo request 或 reply，就读取序列号：
 
 ```c
 // Compute ICMP header address and load ICMP header
@@ -594,13 +594,13 @@ evt.icmpseq = be16_to_cpu(evt.icmpseq);
 
 这就是全部工作了。
 
-如果你想过滤特定的ping进程的包，你可以认为`evt.icmpid`就是相应ping进程的进程号，
-至少Linux上如此。
+如果你想过滤特定的 ping 进程的包，你可以认为 `evt.icmpid` 就是相应 ping 进程的进程号，
+至少 Linux 上如此。
 
 ### 3.5 最终效果
 
-再写一些比较简单的Python程序配合，我们就可以测试我们的跟踪器在多种场景下的用途。
-以root权限启动这个程序，在不同终端发起几个ping进程，就会看到：
+再写一些比较简单的 Python 程序配合，我们就可以测试我们的跟踪器在多种场景下的用途。
+以 root 权限启动这个程序，在不同终端发起几个 ping 进程，就会看到：
 
 ```shell
 # ping -4 localhost
@@ -610,10 +610,10 @@ evt.icmpseq = be16_to_cpu(evt.icmpseq);
 [  4026531957]               lo   reply #20212.001 127.0.0.1 -> 127.0.0.1
 ```
 
-这个ICMP请求是进程20212（Linux ping的ICMP ID）在loopback网卡发出的，最后的
-reply原路回到了这个loopback。这个环回接口既是发送网卡又是接收网卡。
+这个 ICMP 请求是进程 20212（Linux ping 的 ICMP ID）在 loopback 网卡发出的，最后的
+reply 原路回到了这个 loopback。这个环回接口既是发送网卡又是接收网卡。
 
-如果是我的WiFi网关会是什么样子内？
+如果是我的 WiFi 网关会是什么样子内？
 
 ```shell
 # ping -4 192.168.43.1
@@ -621,14 +621,14 @@ reply原路回到了这个loopback。这个环回接口既是发送网卡又是�
 [  4026531957]           wlp2s0   reply #20710.001 192.168.43.1 -> 192.168.43.191
 ```
 
-可以看到，这种情况下走的是WiFi网卡，也没问题。
+可以看到，这种情况下走的是 WiFi 网卡，也没问题。
 
 另外，让我们的话题稍微偏一下，还记得刚开始我们只打印程序名字的版本吗？在
-上面这种情况下，ICMP请求的程序名字会是ping，而应答包的程序的名字会是WiFi驱动，因
-为是驱动发的应答包，至少Linux上是如此。
+上面这种情况下，ICMP 请求的程序名字会是 ping，而应答包的程序的名字会是 WiFi 驱动，因
+为是驱动发的应答包，至少 Linux 上是如此。
 
-最后还是拿我最喜欢的例子：ping容器。之所以最喜欢并不是因为Docker，而是它展示了
-eBPF的强大，**就像给ping过程做了一次X射线检查**。
+最后还是拿我最喜欢的例子：ping 容器。之所以最喜欢并不是因为 Docker，而是它展示了
+eBPF 的强大，**就像给 ping 过程做了一次 X 射线检查**。
 
 ```shell
 # ping -4 172.17.0.2
@@ -651,21 +651,21 @@ eBPF的强大，**就像给ping过程做了一次X射线检查**。
 
 ## 4 结束语
 
-在eBPF/bcc出现之前，要深入的排查和追踪很多网络问题，只能靠给内核打补丁。现在，我
-们可以比较方便地用eBPF/bcc编写一些工具来完成这些事情。跟踪点(tracepoint)也很方便
-，它们提示了我们可以在哪些地方进行探测，避免了去看繁杂的内核代码。kprobe无法探测
-的一些地方，例如一些内联函数和静态函数，eBPF/bcc也可以探测。
+在 eBPF/bcc 出现之前，要深入的排查和追踪很多网络问题，只能靠给内核打补丁。现在，我
+们可以比较方便地用 eBPF/bcc 编写一些工具来完成这些事情。跟踪点(tracepoint)也很方便
+，它们提示了我们可以在哪些地方进行探测，避免了去看繁杂的内核代码。kprobe 无法探测
+的一些地方，例如一些内联函数和静态函数，eBPF/bcc 也可以探测。
 
-本文的例子要添加对IPv6的支持也非常简单，我就留给读者作为练习。
+本文的例子要添加对 IPv6 的支持也非常简单，我就留给读者作为练习。
 
 如果要使本文更加完善的话，我需要对我们的程序做性能测试。但考虑到文章本身已经非常
 长，这里就不做了。
 
-对我们的代码进行改进，用在跟踪路由和iptables判决，或是ARP包，也是很有意思的。
-这将会把它变成一个完美的X射线跟踪器，对像我这样需要经常处理复杂网络问题的
+对我们的代码进行改进，用在跟踪路由和 iptables 判决，或是 ARP 包，也是很有意思的。
+这将会把它变成一个完美的 X 射线跟踪器，对像我这样需要经常处理复杂网络问题的
 人来说将非常有用。
 
-完整的（包含IPv6支持）代码可以访问：
+完整的（包含 IPv6 支持）代码可以访问：
 [https://github.com/yadutaf/tracepkt](https://github.com/yadutaf/tracepkt)。
 
 最后，我要感谢 [@fcabestre](https://twitter.com/fcabestre)帮我将这篇文章的草稿从

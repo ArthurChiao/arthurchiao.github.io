@@ -57,7 +57,7 @@ S3 高级或新特性的支持还是有滞后的，这也可以想得到），�
 很低。
 
 Ceph 的三种存储类型目前在业内的使用频率：**块存储 > 对象存储 > 文件系统**。
-如果你没有用文件系统，那大可跳过文中 metadata server（MDS，只有 CephFS会用到
+如果你没有用文件系统，那大可跳过文中 metadata server（MDS，只有 CephFS 会用到
 ）相关的部分（第 3、4 节）。另外注意这是 2006 年的文章，Ceph 的最新行为请参考官
 方最新文档，或相应版本的代码。
 
@@ -156,7 +156,7 @@ Ceph 有三个主要组件，如图 1 所示：
 <p align="center"><img src="/assets/img/ceph-osdi/1.png" width="60%" height="60%"></p>
 <p align="center">图 1 Ceph 系统架构</p>
 
-1. **客户端**：每个客户端实例暴露一个 **准POSIX** 接口给宿主机或进程
+1. **客户端**：每个客户端实例暴露一个 **准 POSIX** 接口给宿主机或进程
 1. **OSD 集群**：存储了所有数据和元数据
 1. **metadata server 集群**：管理命名空间（文件名和目录），协调 security、consistency 和 coherence
 
@@ -164,7 +164,7 @@ Ceph 有三个主要组件，如图 1 所示：
 > 一般指缓存一致性，为避免歧义，接下来尽量对这两个词不作翻译。类似的还有文中的
 > safety 和 security。译者注
 
-说 Ceph 的接口是 准POSIX 的（near-POSIX）是因为，我们发现如果要更好的和**应用的
+说 Ceph 的接口是 准 POSIX 的（near-POSIX）是因为，我们发现如果要更好的和**应用的
 需求**对接、提升系统的性能，那完全可以对这套接口进行扩展，选择性地放宽一致性的语
 义。
 
@@ -193,7 +193,7 @@ Ceph 在解决了扩展性的同时还取得了很高的性能、可靠性和可
 ### 2.1 数据和元数据解耦
 
 Ceph 将文件的**数据存储**和**元数据管理**进行了最大程度的解耦。元数据操作（
-`open`、`rename` 等）由 metadata server 统一管理，客户端直接和OSD 通信执行文件
+`open`、`rename` 等）由 metadata server 统一管理，客户端直接和 OSD 通信执行文件
 I/O（`read`、`write`）。
 
 基于对象的存储很早就宣称要将底层的块分配（block allocation）决定权交给每个设备，
@@ -248,7 +248,7 @@ caches），使得链接到客户端的应用可以直接访问。
 ### 3.1 文件 I/O 和访问权限控制（Capabilities）
 
 当进程打开一个文件时，客户端会向 MDS 发送一个请求。MDS 会遍历文件系统层级，将文
-件名翻译成文件的 inode 信息，其中包括一个唯一的inode 号、文件 owner、模式、大小
+件名翻译成文件的 inode 信息，其中包括一个唯一的 inode 号、文件 owner、模式、大小
 ，以及其他一些每个文件各自的元数据（per-file metadata）。如果文件存在并且被授予
 了访问权限，MDS 会返回 inode、文件大小和 striping 策略（将文件数据映射到对象。
 stripe：使...带有条纹，种类，军阶，译者注）。
@@ -341,7 +341,7 @@ shared-write）语义，保持了简单性；另一方面，通过放松一致�
 
 Ceph 本可以通过将 metadata 缓存更长的时间来进一步放松一致性的限制，和 NFS 的早期
 版本很像，典型情况下缓存 30s。但是，这种方式破坏了 coherency，而 coherency 对很
-多应用来说都是非常关键的，例如通过 `stat`确定一个文件是不是更新过了。这种场景下
+多应用来说都是非常关键的，例如通过 `stat` 确定一个文件是不是更新过了。这种场景下
 ，这些应用要么工作不正常，要么就是等到老的缓存失效。
 
 因此，我们对这些影响性能的接口进行了扩展，保证行为的正确性（和 POSIX 预期行为是
@@ -649,7 +649,7 @@ in-memory buffer cache）后，primary OSD **会回一个 `ack`**，这样使用
 障检测变得越来越难。
 
 对于某些特定类型的故障，例如磁盘错误和数据损坏，OSD 可以主动上报。但对于那些会导
-致OSD 失联的故障，就需要使用**主动监控**（active monitoring），RADOS 的做法是：**让共享
+致 OSD 失联的故障，就需要使用**主动监控**（active monitoring），RADOS 的做法是：**让共享
 PG 的 OSD 互相监控彼此**。
 
 在大部分情况下，**副本同步的流量**（existing replication traffic）都可以**被动证
@@ -667,7 +667,7 @@ peer 节点一段时间内没有收到一个 OSD 过来的流量，就会向其�
 ）都临时地转发给每个 PG 对应的下一个 OSD**。
 
 如果这个 OSD 没有很快恢复，就会标记为**“停止向这个 OSD 分布数据”**（marked out
-of the data distribution），**另外一个 OSD 会加入到 PG的 OSD 列表**，同步这个
+of the data distribution），**另外一个 OSD 会加入到 PG 的 OSD 列表**，同步这个
 OSD 的数据。在故障的 OSD 上有 pending 操作的客户端会重新将请求提交给新的 primary
 OSD。
 
@@ -677,7 +677,7 @@ OSD。
 两阶段提交等技术来提供对 cluster map 的一致的、可用的访问。
 
 当有**故障或恢复导致 map 变化时，受影响的 OSD 会递增自己在 map 中的版本号**，然
-后在OSD 之间的通信上捎带上这些变动信息，分发给整个集群。
+后在 OSD 之间的通信上捎带上这些变动信息，分发给整个集群。
 
 分布式检测可以在不给 monitor 增加负担的情况下实现快速检测，而检测的结果又提交给
 monitor 集中解决出现的不一致问题。
@@ -697,9 +697,9 @@ OSD cluster map 会因为 OSD 故障、OSD 恢复和显式地集群变更（例�
 CRUSH mapping，**确定每个 OSD 是该作为 primary OSD 还是 replica OSD**。
 
 **如果一个 PG 的 OSD 成员列表变了**，或者如果一个 OSD 刚启动，那这个 OSD 必须和
-PG的其他 OSD 进行同步（peer）。对于 replicated PG，它需要向 primary OSD 提供它自
+PG 的其他 OSD 进行同步（peer）。对于 replicated PG，它需要向 primary OSD 提供它自
 己当前的 PG 版本号。**如果一个 OSD 是 PG 的 primary OSD**，它需要收集当前（以及
-之前的）replica OSD 的 PG版本信息。
+之前的）replica OSD 的 PG 版本信息。
 
 **如果 primary OSD 缺失了 PG 最近的更新**，那为了确定正确的（最近的）PG 内容，它
 需要从 PG 对应的当前或前一个 OSD 那里获取最近的 PG 改动（或者一个完整的内容
@@ -708,13 +708,13 @@ summary，如果需要）的 log。然后，primary OSD 会向每个副本发送
 该是什么样的，即使它们本地存储的对象可能还不匹配。
 
 **只有当 primary OSD 确定了正确的 PG 状态，并且将它共享给其他副本后**，开始接受
-到这个 PG内的对象的 I/O 操作。然后，OSD 就可以独立从它们的 peer 那里获取它们丢失
+到这个 PG 内的对象的 I/O 操作。然后，OSD 就可以独立从它们的 peer 那里获取它们丢失
 的或是过期的对象。
 
 如果一个 OSD 收到的是对一个过期或丢失的对象的请求，那它会延迟处理这个请求，并且
 将这个对象放到恢复队列的前端（优先处理）。例如，
 
-1. 假设 `osd1` 挂了，被标记为`down`，然后 `osd2` 接管，作为 `pgA` 的 primary OSD
+1. 假设 `osd1` 挂了，被标记为 `down`，然后 `osd2` 接管，作为 `pgA` 的 primary OSD
 1. 当 `osd1` 恢复后，它启动时会请求最新的 map，monitor 会将这个 OSD 置为 `up`
 1. 当 `osd2` 收到（`osd1` `up` 事件导致的）map 更新，意识到自己不再是 `gpA` 的
    primary OSD，就会将 `pgA` 的版本号发给 `osd1`
@@ -722,7 +722,7 @@ summary，如果需要）的 log。然后，primary OSD 会向每个副本发送
    过的对象在后台恢复之后，`osd1` 就开始处理新请求
 
 因为**故障恢复完全是由每个 OSD 驱动的**，因此一个 OSD 故障受影响的那些 PG （很可
-能）会在不同OSD 上并行恢复。这种方式基于 Fast Recovery Mechanism (FaRM) [37]，可
+能）会在不同 OSD 上并行恢复。这种方式基于 Fast Recovery Mechanism (FaRM) [37]，可
 以减少恢复时间，提高总体的数据安全性（safety）。
 
 ### 5.6 本地对象文件系统：EBOFS
@@ -744,11 +744,11 @@ summary，如果需要）的 log。然后，primary OSD 会向每个副本发送
 磁盘提交（为了安全性）分离开来。
 EBOFS 支持原子事务（例如，对多个对象进行写和属性更新），更新函数在内存中的缓存更
 新之后就返回，提供异步的磁盘提交通知。用户态的实现除了提供更好的灵活性和更简单的
-实现之外，也避免了和 Linux VFS和 页缓存（page cache）的笨重的交互，这两者都是为
+实现之外，也避免了和 Linux VFS 和 页缓存（page cache）的笨重的交互，这两者都是为
 不同的接口和负载设计的。
 
 大部分内核文件系统都是惰性地（lazily）将更新 flush 到磁盘，但**EBOFS 是主动地调
-度磁盘写操作**，并且如果后面的更新会覆盖前面的更新，那前面的pending 更新可能会在
+度磁盘写操作**，并且如果后面的更新会覆盖前面的更新，那前面的 pending 更新可能会在
 flush 之前就被取消了。这使得我们的低层磁盘调度器有一个更长的 I/O 队列，可以提高
 调度的效率。用户态的调度器还使得按优先级排序更容易（例如，client I/O 和恢复相比
 ），或者提供 QoS 保证 [36]。
@@ -874,7 +874,7 @@ Ceph MDS 集群提供了良好的扩展性和增强的 POSIX 语义。
 首先来看元数据更新（`mknod`、`mkdir` 等）的延迟。
 
 测试中单个客户端生成大量文件和目录，为保证 safety，MDS 必须同步地将这些文件和目
-录journal 到 OSD 集群。我们考虑两种情况：
+录 journal 到 OSD 集群。我们考虑两种情况：
 
 1. 无本地磁盘的 MDS（diskless MDS）：所有的元数据都存储在一个共享的 OSD 集群
 1. 有本地磁盘的 MDS：本地磁盘作为 primary OSD 的 journal 盘
@@ -909,7 +909,7 @@ MDS 缓存可以减少 `readdir` 次数，因为 inode 内容嵌入在目录里�
 
 #### 6.2.3 元数据扩展性
 
-我们在 Lawrence Livermore National Laboratory (LLNL) 的 `alc` Linux 集群中 430个
+我们在 Lawrence Livermore National Laboratory (LLNL) 的 `alc` Linux 集群中 430 个
 节点上进行了元数据可扩展性测试。图 10 显示了单个 OSD 吞吐随 MDS 集群大小的变化。
 
 <p align="center"><img src="/assets/img/ceph-osdi/10.png" width="50%" height="50%"></p>

@@ -7,7 +7,7 @@ categories: iptables netfilter
 
 ### 译者序
 
-本文翻译自2015年的一篇英文博客 [A Deep Dive into Iptables and Netfilter
+本文翻译自 2015 年的一篇英文博客 [A Deep Dive into Iptables and Netfilter
 Architecture](https://www.digitalocean.com/community/tutorials/a-deep-dive-into-iptables-and-netfilter-architecture)
 。
 
@@ -44,7 +44,7 @@ Architecture](https://www.digitalocean.com/community/tutorials/a-deep-dive-into-
 
 ## 1 IPTables 和 Netfilter 是什么？
 
-Linux 上最常用的防火墙工具是 iptables。iptables 与协议栈内有包过滤功能的hook 交
+Linux 上最常用的防火墙工具是 iptables。iptables 与协议栈内有包过滤功能的 hook 交
 互来完成工作。这些内核 hook 构成了 netfilter 框架。
 
 每个进入网络系统的包（接收或发送）在经过协议栈时都会触发这些 hook，程序
@@ -76,7 +76,7 @@ netfilter 框架，提示该对这个包做什么操作。
 ## 3 IPTables 表和链（Tables and Chains）
 
 iptables 使用 table 来组织规则，根据**用来做什么类型的判断**（the type of
-decisions they are used to make）标准，将规则分为不同table。例如，如果规则是处理
+decisions they are used to make）标准，将规则分为不同 table。例如，如果规则是处理
 网络地址转换的，那会放到 `nat` table；如果是判断是否允许包继续向前，那可能会放到
 `filter` table。
 
@@ -93,7 +93,7 @@ decisions they are used to make）标准，将规则分为不同table。例如�
 
 chain 使管理员可以控制在**包的传输路径上哪个点**（where in a packet's delivery
 path）应用策略。因为每个 table 有多个 chain，因此一个 table 可以在处理过程中的多
-个地方施加影响。**特定类型的规则只在协议栈的特定点有意义，因此并不是每个table 都
+个地方施加影响。**特定类型的规则只在协议栈的特定点有意义，因此并不是每个 table 都
 会在内核的每个 hook 注册 chain**。
 
 内核一共只有 5 个 netfilter hook，因此不同 table 的 chain 最终都是注册到这几个点
@@ -151,8 +151,8 @@ SELinux 安全上下文的系统处理包的行为。这些标记可以基于单
 `PRETOUTING` chain，那应该按照什么顺序调用它们呢？
 
 下面的表格展示了 table 和 chain 的关系。横向是 table， 纵向是 chain，Y 表示 这个
-table 里面有这个 chain。例如，第二行表示 `raw` table 有`PRETOUTING` 和 `OUTPUT` 两
-个 chain。具体到每列，从上倒下的顺序就是netfilter hook 触发的时候，（对应
+table 里面有这个 chain。例如，第二行表示 `raw` table 有 `PRETOUTING` 和 `OUTPUT` 两
+个 chain。具体到每列，从上倒下的顺序就是 netfilter hook 触发的时候，（对应
 table 的）chain 被调用的顺序。
 
 有几点需要说明一下。在下面的图中，`nat` table 被细分成了 `DNAT` （修改目的地址）
@@ -189,12 +189,12 @@ table 的）chain 被调用的顺序。
 
 **综合前面讨论的 table 顺序问题，我们可以看到对于一个收到的、目的是本机的包**：
 首先依次经过 `PRETOUTING` chain 上面的 `raw`、`mangle`、`nat` table；然后依次经
-过`INPUT` chain 的 `mangle`、`filter`、`security`、`nat` table，然后才会到达本机
+过 `INPUT` chain 的 `mangle`、`filter`、`security`、`nat` table，然后才会到达本机
 的某个 socket。
 
 ## 6 IPTables 规则
 
-规则放置在特定 table 的特定 chain 里面。当 chain 被调用的时候，包会依次匹配chain
+规则放置在特定 table 的特定 chain 里面。当 chain 被调用的时候，包会依次匹配 chain
 里面的规则。每条规则都有一个匹配部分和一个动作部分。
 
 ### 6.1 匹配
@@ -202,7 +202,7 @@ table 的）chain 被调用的顺序。
 规则的匹配部分指定了一些条件，包必须满足这些条件才会和相应的将要执行的动作（“
 target”）进行关联。
 
-匹配系统非常灵活，还可以通过 iptables extension大大扩展其功能。规则可以匹配**协
+匹配系统非常灵活，还可以通过 iptables extension 大大扩展其功能。规则可以匹配**协
 议类型、目的或源地址、目的或源端口、目的或源网段、接收或发送的接口（网卡）、协议
 头、连接状态**等等条件。这些综合起来，能够组合成非常复杂的规则来区分不同的网络流
 量。

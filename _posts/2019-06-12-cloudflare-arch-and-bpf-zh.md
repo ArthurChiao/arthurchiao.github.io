@@ -106,7 +106,7 @@ Kartseva](http://vger.kernel.org/lpc-bpf2018.html#session-9) 也面临同样的�
 
 <p align="center"><img src="/assets/img/cloudflare-arch-and-bpf/6.png" width="60%" height="60%"></p>
 
-虽然我们的现代大规模 DoS 防御系统是在 XDP 层做的，但我们的 7层（应用层）防御目前
+虽然我们的现代大规模 DoS 防御系统是在 XDP 层做的，但我们的 7 层（应用层）防御目前
 还是依赖 iptables。在应用层，更高级别防火墙的一些特性会带来很大帮助：connlimit、
 hashlimits 和 ipsets。我们也用到了 `xt_bpf` iptables 模块，以在 iptables 内运行
 cBPF 匹配 packet payload。下面两个分享中介绍了这部分工作：
@@ -235,7 +235,7 @@ Babrou 写了一个名为 “ebpf_exporter” 的 Prometheus metrics exporter �
 
 这仅仅是开始！
 
-接下来我们会进一步改进基于 eBPF 的 socket dispatch，基于eBPF 的
+接下来我们会进一步改进基于 eBPF 的 socket dispatch，基于 eBPF 的
 Linux TC（Traffic Control），以及与 cgroup eBPF hook 的更多集成。我们的 SRE 团队
 也维护着越来越多的 [BCC 脚本](https://github.com/iovisor/bcc)，它们对 debug 很有
 帮助。

@@ -66,7 +66,7 @@ Cilium and eBPF](https://www.infoq.com/presentations/linux-cilium-ebpf)
 
 现在，我们正在进入微服务和容器时代。**本质上，我们正在重新回到将应用跑在宿主机上的
 时代**：我们将不同应用直接跑在宿主机操作系统上，不再是每个应用一个虚拟机。这些应用
-需要通过宿主机操作系统、容器、namespace等进行隔离和资源管理，后面会介绍这些内容。
+需要通过宿主机操作系统、容器、namespace 等进行隔离和资源管理，后面会介绍这些内容。
 
 这对**操作系统需要提供什么功能**产生了巨大的影响。不再是“喔，我需要将网络包转发给
 这个虚拟机。我需要做一些防火墙工作”。**我们真正需要考虑的是应用**。同样的，这是一个
@@ -85,7 +85,7 @@ Cilium and eBPF](https://www.infoq.com/presentations/linux-cilium-ebpf)
 
 软件开发者都喜欢抽象。上面这张图只是网络相关的抽象，但它清楚地展示了 Linux 内核里
 的抽象长什么样子。如果我们想用 Netfilter 做包过滤，那就必须要经过 socket 和
-TCP协议栈。而如果从网卡往上看的话，包得经过网络设备抽象层、流量整形（traffic
+TCP 协议栈。而如果从网卡往上看的话，包得经过网络设备抽象层、流量整形（traffic
 shaping）、以太网层、IP 层等等才能到达应用。上下都需要经历协议栈。
 
 这种抽象会带来几方面好处：
@@ -117,7 +117,7 @@ shaping）、以太网层、IP 层等等才能到达应用。上下都需要经�
 * 配置 IP 防火墙使用 `iptables` 命令，但如果你使用的是 raw sockets，那有很多地方都
   会 bypass，因此这并不是一个完整的防火墙
 * 配置流量整形使用 `tc` 命令
-* 抓包使用 `tcpdump`命令，但同样的，它并没有展示出全部信息，因为它只关注了一层
+* 抓包使用 `tcpdump` 命令，但同样的，它并没有展示出全部信息，因为它只关注了一层
 * 如果有虚拟交换机，那使用 `brctl` 或 `ovsctl`
 
 所以我们看到，每个子系统都有自己的 API，这意味着如果要自动化这些东西，必须单独的
@@ -132,7 +132,7 @@ shaping）、以太网层、IP 层等等才能到达应用。上下都需要经�
 
 但是，先来看一些好的方面。Linux 内核是开放和透明的，任何人都可以看到其他任何人的
 改动，而且它的代码质量非常高。另
-外，Linux内核非常稳定，可能是目前最稳定的系统，而且获取它非常方便。一旦你将自己
+外，Linux 内核非常稳定，可能是目前最稳定的系统，而且获取它非常方便。一旦你将自己
 的改动合并到内核，每个使用内核的人都会用到你的改动，这几乎完全是厂商无关的（
 vendor-neutral）。
 
@@ -141,7 +141,7 @@ vendor-neutral）。
 首先，内核是非常，非常难改。通常需要大喊大叫（Shouting is involved）。
 但这种状况也正在明显地改善。Linux 内核是一个非常庞大和复
 杂的代码库，包含 12 million 行 C 和其他语言代码，其中一些代码已经 30 多岁高龄了
-。向upstream
+。向 upstream
 提交代码很难，需要达成共识。如果你有特殊的使用场景，而且没有发现其他人认同你的观
 点，那你的代码是无法合并进内核的。在这种情况下，你只能 fork 一份内核，维护自己的
 包含 12 million 行代码的内核分支。
@@ -152,7 +152,7 @@ vendor-neutral）。
 最大的问题可能是，每个人都在维护自己的内核 fork，很多时候涉及到上千个 patch 需要
 backport。如果你运行的是 Android，那你运行的是 Linux，具体的说是 Android Linux。
 如果你在运行 Rail，那你运行的是 Linux，具体的说是有 4 万个 patch 的 Linux。它们
-和上游的Linux 还是不太一样的，而只是上游的一个 fork。因此，大家都在运行自己的
+和上游的 Linux 还是不太一样的，而只是上游的一个 fork。因此，大家都在运行自己的
 Linux。
 
 ### 问题四：Linux 感知不到容器
@@ -195,7 +195,7 @@ namespace 内的网络设备。
 核本身并不理解一个容器是什么。它只能看到 cgroups 里面的 namespaces。
 
 **内核理解应用是否需要暴露给外部**。在多任务时代，内核其实知道一个应用绑定了哪个
-IP 和 port，以及是否对外暴露。例如如果一个web server 运行在 localhost 的 80
+IP 和 port，以及是否对外暴露。例如如果一个 web server 运行在 localhost 的 80
 端口，内核就理解它不应该被暴露到外部。在容器时代，内核已经不清楚什么应该被暴露，
 什么不应该被暴露了。
 
@@ -291,8 +291,8 @@ per-CPU variant，性能更高。
 <p align="center"><img src="/assets/img/how-to-make-linux-microservice-aware-with-cilium/15.PNG" width="70%" height="70%"></p>
 
 可以调用 BPF 辅助函数。例如 BPF 程序本身不知道如何操作一个网络包，而我们可以通过
-调用helper 函数实现。这些 helper 函数都是稳定的 API。这使得 BPF 程序可以通过
-Linux内核理解的、已有的功能来和内核交互。
+调用 helper 函数实现。这些 helper 函数都是稳定的 API。这使得 BPF 程序可以通过
+Linux 内核理解的、已有的功能来和内核交互。
 
 <p align="center"><img src="/assets/img/how-to-make-linux-microservice-aware-with-cilium/16.PNG" width="70%" height="70%"></p>
 
@@ -303,7 +303,7 @@ Linux内核理解的、已有的功能来和内核交互。
 <p align="center"><img src="/assets/img/how-to-make-linux-microservice-aware-with-cilium/17.PNG" width="70%" height="70%"></p>
 
 我们有一个 JIT （Just-In-Time）编译器。当加载通用
-的、CPU无关的字节码之后，内核会接管，验证它的合法性，然后将它编译成 CPU 相关的代
+的、CPU 无关的字节码之后，内核会接管，验证它的合法性，然后将它编译成 CPU 相关的代
 码，例如 x86。可以看到目前支持的 CPU 类型，目前主要支持的是 64 位 CPU。
 
 <p align="center"><img src="/assets/img/how-to-make-linux-microservice-aware-with-cilium/18.PNG" width="70%" height="70%"></p>
@@ -336,8 +336,8 @@ Google 已经开始用 BPF 做 **profiling**，找出在分布式系统中应用
 ### Use case 3：Redhat
 
 Redhat 正在开发一个叫 `bpffilter` 的上游项目，将来会替换掉内核里的 iptables，也
-就是说，内核里基于 iptables做包过滤的功能，以后都会用 BPF 替换。另外还有一些论文
-和项目，关于 XDP 和 BPF+NFV的场景。
+就是说，内核里基于 iptables 做包过滤的功能，以后都会用 BPF 替换。另外还有一些论文
+和项目，关于 XDP 和 BPF+NFV 的场景。
 
 ### Use case 4：Netflix
 
@@ -385,7 +385,7 @@ Cilium 基于 BPF。
 第三个目标是**安全**，通过 BPF 使内核能够感知到 API 层。内核能够理解：“嗨，你有
 两个应用互相通信，它们之间调用了哪些 API？”使内核能够为 API 调用提供安全保障。构
 建一个基于身份认证（identity-based）的机制来保障服务间通信的安全。因此不同于以前
-简单的IP+Port 过滤，**现在内核可以理解什么是一个微服务**，微服务的 labels 有哪些
+简单的 IP+Port 过滤，**现在内核可以理解什么是一个微服务**，微服务的 labels 有哪些
 ，这个微服务的安全性是怎么样的。
 
 进程级别的上下文 enforcement。利用 BPF 的强大功能使内核理解一个可执行文件是什么
@@ -420,7 +420,7 @@ exec` 可以到一个容器里去执行命令，但是，谁来保证这个通�
 
 右边是它实际的、在数据传输层的样子。服务出来的请求经过协议栈和 iptables 规则进入到
 sidecar 的监听 socket，这个 TCP 连接到这里就是终点了。sidecar 会将请求收进来，检
-查 HTTP头和其他一些信息，做一些它自己的处理，然后再将请求发送出去。这个过程并不
+查 HTTP 头和其他一些信息，做一些它自己的处理，然后再将请求发送出去。这个过程并不
 高效。**加上这一层 sidecar 会有 10x 的性能损失**。**这并不是 sidecar 本身的性能造成
 的**（我这里放的图是 Envoy，已经很高效了），而是 sidecar 代理的工作方式造成的。
 

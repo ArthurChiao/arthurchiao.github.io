@@ -7,13 +7,13 @@ categories: ltrace system-call
 
 ### 译者序
 
-本文翻译自2016年的一篇英文博客 [How Does ltrace Work
+本文翻译自 2016 年的一篇英文博客 [How Does ltrace Work
 ](https://blog.packagecloud.io/eng/2016/03/14/how-does-ltrace-work/)
 。**如果能看懂英文，我建议你阅读原文，或者和本文对照看。**
 
 阅读本文之前，强烈建议先阅读下面几篇之前的文章：
 
-1. [(译) Linux系统调用权威指南]({% link _posts/2019-01-30-system-call-definitive-guide-zh.md %})
+1. [(译) Linux 系统调用权威指南]({% link _posts/2019-01-30-system-call-definitive-guide-zh.md %})
 1. [(译) strace 是如何工作的]({% link _posts/2019-02-02-how-does-strace-work-zh.md %})
 
 其中包含了本文所需的部分预备知识。
@@ -39,12 +39,12 @@ categories: ltrace system-call
 我们在前一篇文章[strace 是如何工作的]({% link _posts/2019-02-02-how-does-strace-work-zh.md %})
 中介绍过， `strace` 内部是基于 `ptrace` 系统调用的。
 
-`ltrace`是一个**（函数）库调用跟踪器**（libraray call tracer），顾名思义，主要用
+`ltrace` 是一个**（函数）库调用跟踪器**（libraray call tracer），顾名思义，主要用
 于跟踪程序的函数库调用信息。另外，它也可以像 `strace` 一样跟踪系统调用和信号。它
 的命令行参数和 `strace` 很相似。
 
 `ltrace` 也是基于 `ptrace`，但跟踪库函数和跟踪系统调用还是有很大差别的，这就是为
-什么会有 `ltrace`的原因。
+什么会有 `ltrace` 的原因。
 
 在介绍细节之前，我们需要先了解几个概念。
 
@@ -57,7 +57,7 @@ categories: ltrace system-call
 
 那么，程序是如何调用地址未知的函数的呢？
 
-简短版的回答是：**二进制格式**、**操作系统**，以及**加载器**。在Linux上，这是一
+简短版的回答是：**二进制格式**、**操作系统**，以及**加载器**。在 Linux 上，这是一
 支程序和动态加载器之间的曼妙舞蹈。
 
 下面是详细版的回答。
@@ -98,7 +98,7 @@ ABI](http://www.x86-64.org/documentation/abi.pdf)，从 75 页开始。
 
 总结起来：
 
-1. 程序加载到内存时，程序和每个动态共享库（例如DSO）通过 PLT 和 GOT 映射到内存
+1. 程序加载到内存时，程序和每个动态共享库（例如 DSO）通过 PLT 和 GOT 映射到内存
 1. 程序开始执行时，动态共享库里的函数的内存地址是未知的，因为动态库可以被加载到程序地址空间的任意地址
 1. 首次执行到一个函数的时候，执行过程转到函数的 PLT，里面是一些汇编代码（trampoline）
 1. trampoline 组织数据，然后调用动态链接器
@@ -115,9 +115,9 @@ ABI](http://www.x86-64.org/documentation/abi.pdf)，从 75 页开始。
 
 有两类断点：硬件断点和软件断点。
 
-硬件断点是 CPU 特性，数量比较有限。在 amd64 CPU上有 4 个特殊的寄存器，可以设置让程序停止执行的地址。
+硬件断点是 CPU 特性，数量比较有限。在 amd64 CPU 上有 4 个特殊的寄存器，可以设置让程序停止执行的地址。
 
-软件断点通过特殊的汇编指令触发，数量不受限制。在 amd64 CPU上，通过如下汇编指令触发软件断点：
+软件断点通过特殊的汇编指令触发，数量不受限制。在 amd64 CPU 上，通过如下汇编指令触发软件断点：
 
 ```c
 int $3
@@ -188,7 +188,7 @@ Linux 内核有对应的中断处理函数，在执行的时候会向被调试�
 似：为被跟踪程序触发 `SIGTRAP` 信号，暂停执行，通知跟踪程序（`strace` 或
 `ltrace`），然后跟踪程序被“唤醒”，分析被暂停的程序。
 
-`ltrace` 还会通过`PTRACE_POKETEXT`重写程序内存，以便通过特殊指令中断程序的执行。
+`ltrace` 还会通过 `PTRACE_POKETEXT` 重写程序内存，以便通过特殊指令中断程序的执行。
 
 想了解更多 `PTRACE_SYSCALL` 的内部细节，可以阅读我们前一篇介绍 `strace` 的[博客
 ](https://blog.packagecloud.io/eng/2016/03/14/how-does-ltrace-work/)。
@@ -197,5 +197,5 @@ Linux 内核有对应的中断处理函数，在执行的时候会向被调试�
 
 如果对本文感兴趣，那么你可能对我们的以下文章也感兴趣：
 
-1. [(译) Linux系统调用权威指南]({% link _posts/2019-01-30-system-call-definitive-guide-zh.md %})
+1. [(译) Linux 系统调用权威指南]({% link _posts/2019-01-30-system-call-definitive-guide-zh.md %})
 1. [(译) strace 是如何工作的]({% link _posts/2019-02-02-how-does-strace-work-zh.md %})

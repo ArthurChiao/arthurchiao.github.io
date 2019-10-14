@@ -277,7 +277,7 @@ const sys_call_ptr_t ia32_sys_call_table[__NR_ia32_syscall_max+1] = {
 
 回忆前面在 [arch/x86/syscalls/syscall_64.tbl](https://github.com/torvalds/linux/blob/v3.13/arch/x86/syscalls/syscall_64.tbl#L69)
 中看到了系统调用列表的定义。有几个脚本会在内核编译期间运行，通过这个文件生成
-`syscalls_32.h` 头文件，后者是合法的C代码文件，通过上面看到的`#include` 插入到
+`syscalls_32.h` 头文件，后者是合法的 C 代码文件，通过上面看到的`#include` 插入到
 `ia32_sys_call_table`。
 
 这就是通过 **传统系统调用方式**进入内核的过程。
@@ -289,11 +289,11 @@ const sys_call_ptr_t ia32_sys_call_table[__NR_ia32_syscall_max+1] = {
 
 如果查看 [Intel Software Developer's
 Manual](ftp://download.intel.com/design/processor/manuals/253668.pdf)（警告：很
-大的PDF），里面有一张非常有帮助的图，它解释了当特权级别变化时，程序栈是如何组织的：
+大的 PDF），里面有一张非常有帮助的图，它解释了当特权级别变化时，程序栈是如何组织的：
 
 <p align="center"><img src="/assets/img/system-call-definitive-guide/isr_stack.png" width="60%" height="60%"></p>
 
-执行转交给 `ia32_syscall` 时会发生特权级别切换，其结果是进入`ia32_syscall` 时的
+执行转交给 `ia32_syscall` 时会发生特权级别切换，其结果是进入 `ia32_syscall` 时的
 栈会变成如上图所示的样子。从中可以看出，**返回地址、包含特权级别的 CPU flags 以
 及其他一些参数都在 `ia32_syscall` 执行之前压入栈顶**。所以，内核只需要**将这些值
 从栈里复制回它们原来所在的寄存器，程序就可以回到用户空间继续执行**。那么，如何做
@@ -301,7 +301,7 @@ Manual](ftp://download.intel.com/design/processor/manuals/253668.pdf)（警告�
 
 有几种方式，其中最简单的是通过 `iret` 指令。
 
-Intel指令集手册解释说 `iret` 指令从栈上依次 pop 返回地址和保存的寄存器值：
+Intel 指令集手册解释说 `iret` 指令从栈上依次 pop 返回地址和保存的寄存器值：
 
 > As with a real-address mode interrupt return, the IRET instruction pops the
 > return instruction pointer, return code segment selector, and EFLAGS image
@@ -346,7 +346,7 @@ irq_return:
 
 我们逐步来看，一窥其中乾坤。首先来看 [Intel Instruction Set
 Reference](http://www.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-vol-2b-manual.pdf)
-（警告：很大的PDF）如何描述 `sysenter` 的，以及如何使用它。
+（警告：很大的 PDF）如何描述 `sysenter` 的，以及如何使用它。
 
 > Prior to executing the SYSENTER instruction, software must specify the
 > privilege level 0 code segment and code entry point, and the privilege level 0
@@ -383,7 +383,7 @@ void enable_sep_cpu(void)
 
 其中 `MSR_IA32_SYSENTER_EIP` 定义在
 [arch/x86/include/uapi/asm/msr-index.h](https://github.com/torvalds/linux/blob/v3.13/arch/x86/include/uapi/asm/msr-index.h#L54)
-，值为`0x00000176`。
+，值为 `0x00000176`。
 
 和传统软中断系统调用类似，使用 `sysenter` 创建快速系统调用时也需要一个约定（
 convention ）。内核的 [arch/x86/ia32/ia32entry.S](https://github.com/torvalds/linux/blob/v3.13/arch/x86/ia32/ia32entry.S#L99-L117) 这里对这一过程做了注释说明：
@@ -402,7 +402,7 @@ convention ）。内核的 [arch/x86/ia32/ia32entry.S](https://github.com/torval
  * 0(%ebp) Arg6
 ```
 
-回忆前面讲的，传统系统调用方式包含一个`iret`指令，用于在调用结束时返回用户程序。
+回忆前面讲的，传统系统调用方式包含一个 `iret` 指令，用于在调用结束时返回用户程序。
 
 跟踪 `sysenter` 工作的逻辑是一项相当复杂的工作，因为和软中断不同，`sysenter` 并
 不保存返回地址。内核在调用 `sysenter` 之前所做的工作随着内核版本在不断变化（已经
@@ -442,7 +442,7 @@ vector](https://www.gnu.org/software/libc/manual/html_node/Auxiliary-Vector.html
 （辅助功能矢量），用户程序能（典型情况下通过 `glibc`）找到后者并使用它。寻找 ELF
 auxiliary vector 有多种方式：
 
-1. 通过 [`getauxval`](http://man7.org/linux/man-pages/man3/getauxval.3.html)，带 `AT_SYSINFO`参数
+1. 通过 [`getauxval`](http://man7.org/linux/man-pages/man3/getauxval.3.html)，带 `AT_SYSINFO` 参数
 1. 遍历环境变量，从内存解析
 
 方法 1 是最简单的方式，但 `glibc` 2.16+ 才支持。下面的示例代码使用方法 2.
@@ -514,8 +514,8 @@ main(int argc, char* argv[], char* envp[])
 }
 ```
 
-(译者注：这里 `main` 函数`main(int argc, char* argv[], char* envp[])`的签名很特
-殊，常见的`main`都是不带参数或带两个参数，带三个参数的平时还是比较少见。)
+(译者注：这里 `main` 函数 `main(int argc, char* argv[], char* envp[])`的签名很特
+殊，常见的 `main` 都是不带参数或带两个参数，带三个参数的平时还是比较少见。)
 
 编译，运行，查看返回值：
 
@@ -584,9 +584,9 @@ sysexit_from_sys_call:
 [arch/x86/include/asm/irqflags.h](https://github.com/torvalds/linux/blob/v3.13/arch/x86/include/asm/irqflags.h#L139-L143)
 。
 
-这就是 **32位系统上的快速系统调用**是如何工作的。
+这就是 **32 位系统上的快速系统调用**是如何工作的。
 
-### 4.2 64-bit快速系统调用
+### 4.2 64-bit 快速系统调用
 
 接下来看 64 位系统的快速系统调用的工作原理，它用到了 `syscall` 和 `sysret` 两个
 指令。
@@ -595,7 +595,7 @@ sysexit_from_sys_call:
 
 [Intel Instruction Set
 Reference](http://www.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-vol-2b-manual.pdf)
-(警告：很大的PDF）解释了 `syscall` 是如何工作的：
+(警告：很大的 PDF）解释了 `syscall` 是如何工作的：
 
 > SYSCALL invokes an OS system-call handler at privilege level 0. It does so by
 > loading RIP from the IA32_LSTAR MSR (after saving the address of the
@@ -689,7 +689,7 @@ $ echo $?
 
 接下来看内核端是如何实现的。
 
-回忆前面，我们看到一个名为 `system_call` 函数的地址写到了`LSTAR` MSR。
+回忆前面，我们看到一个名为 `system_call` 函数的地址写到了 `LSTAR` MSR。
 我们来看下这个函数的实现，看它如何使用 `rax` 将执行交给系统调用的，
 [arch/x86/kernel/entry_64.S](https://github.com/torvalds/linux/blob/v3.13/arch/x86/kernel/entry_64.S#L629)
 ：
@@ -744,12 +744,12 @@ USERGS_SYSRET64
 [arch/x86/include/asm/irqflags.h](https://github.com/torvalds/linux/blob/v3.13/arch/x86/include/asm/irqflags.h#L133-L135)
 。
 
-这就是 **64位系统上快速系统调用**如何工作的。
+这就是 **64 位系统上快速系统调用**如何工作的。
 
 ## 5 通过 `syscall(2)` 半手动发起系统调用
 
 现在，我们已经看到如何手动写汇编通过几种不同方式触发系统调用了。通常不需要自己写
-汇编程序，`glibc` 已经提供了 wrapper 函数处理这些事情。然而，有些系统调用`glibc`
+汇编程序，`glibc` 已经提供了 wrapper 函数处理这些事情。然而，有些系统调用 `glibc`
 没有提供 wrapper，一个例子是
 [`futex`](http://man7.org/linux/man-pages/man7/futex.7.html#NOTES)，**快速用户空
 间锁（fast userspace locking）**系统调用。为什么没有为 `futex` 实现一个 wrapper
@@ -926,15 +926,15 @@ header，它包含了 vDSO 的 ELF 头的内存地址。
 
 ### 6.3 `glibc` 中的 vDSO
 
-很多情况下大家已经用到了vDSO，只是没意识到，这是因为 `glibc` 使用我们前面介绍的
+很多情况下大家已经用到了 vDSO，只是没意识到，这是因为 `glibc` 使用我们前面介绍的
 接口对它做了封装。
 
 当程序加载的时候，[动态连接器和加载器
 ](http://man7.org/linux/man-pages/man8/ld.so.8.html)会加载程序依赖的动态链接库（
 DSO），其中就包括 vDSO。
 
-解析 ELF 头的时候，`glibc` 保存了vDSO的位置信息等数据，后面加载的时候会用上。另
-外，它还包含了一个很短的 stub 函数，在系统调用真正发生之前在vDSO中查找符号（函数
+解析 ELF 头的时候，`glibc` 保存了 vDSO 的位置信息等数据，后面加载的时候会用上。另
+外，它还包含了一个很短的 stub 函数，在系统调用真正发生之前在 vDSO 中查找符号（函数
 ）。
 
 例如，`glibc` 中的 `gettimeofday` 函数，
@@ -963,7 +963,7 @@ indirect function）来优雅地完成这一过程。
 应用程序就是通过这种方式经 `glibc` 调用 vDSO 的 `gettimeofday` 函数，从而避免了
 切换到内核、提升特权级别以及触发软中断等过程。
 
-**以上就是Linux 32和64位系统上所有的发起系统调用的方法**，适用于 Intel 和 AMD CPU。
+**以上就是 Linux 32 和 64 位系统上所有的发起系统调用的方法**，适用于 Intel 和 AMD CPU。
 
 ## 7 `glibc` 系统调用 wrappers
 
@@ -1018,12 +1018,12 @@ call *ia32_sys_call_table(,%rax,8)
 
 ### 8.2 Android `sysenter` ABI hardcode
 
-还记得前面说过，不要在应用程序中 hardcode `sysenter` ABI吗？
+还记得前面说过，不要在应用程序中 hardcode `sysenter` ABI 吗？
 
 不幸的是，android-x86 的开发者犯了这个错误，导致内核 API 变了之后，android-x86
 突然停止工作。
 
-内核开发者只好恢复了老版`sysenter` ABI，以避免那些 hardcode ABI 的 android 设备
+内核开发者只好恢复了老版 `sysenter` ABI，以避免那些 hardcode ABI 的 android 设备
 无法使用。
 
 [这是
@@ -1040,7 +1040,7 @@ Linux 内核的系统调用基础架构相当复杂。有多种方式可以发�
 通常来说，自己写汇编代码来发起系统调用并不是一个好主意，因为内核的 ABI 可能会有
 不兼容更新。内核和 libc 实现通常（可能）会为每个系统自动选择最快的系统调用方式。
 
-如果无法使用 `glibc` 提供的 wrapper（或者没有wrapper可用），你至少应该使用 `syscall`
+如果无法使用 `glibc` 提供的 wrapper（或者没有 wrapper 可用），你至少应该使用 `syscall`
 wrapper，或者尝试 vDSO 提供的 `__kernel_vsyscall`。
 
 保持关注本博客，我们将来会针对单个系统调用及其实现进行研究。
