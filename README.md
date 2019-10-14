@@ -1,7 +1,10 @@
-My blog repo.
+Repo for my blog.
 
-Visit it at https://arthurchiao.github.io
+Visit [https://arthurchiao.github.io](https://arthurchiao.github.io).
 
 # Theme
-The blog is powered by [jekyll](http://jekyllrb.com/), and theme based on
-[Long Haul](http://github.com/brianmaierjr/long-haul). Great Merits to them!
+
+Powered by [jekyll](http://jekyllrb.com/).
+
+Theme originally based on [Long Haul](http://github.com/brianmaierjr/long-haul),
+and has changed a lot since then.
