@@ -270,15 +270,14 @@ module_init(igb_init_module);
 ### PCI 初始化
 
 Intel I350 网卡是 [PCI express](https://en.wikipedia.org/wiki/PCI_Express) 设备。
-
 PCI 设备通过 [PCI Configuration
 Space](https://en.wikipedia.org/wiki/PCI_configuration_space#Standardized_registers)
 里面的寄存器识别自己。
 
-当设备驱动编译的时候，宏 `MODULE_DEVICE_TABLE`（定义在
+当设备驱动编译时，`MODULE_DEVICE_TABLE` 宏（定义在
 [`include/module.h`](https://github.com/torvalds/linux/blob/v3.13/include/linux/module.h#L145-L146)）
-会导出一个 PCI 设备 ID 表（a table of PCI device IDs），驱动据此识别它可以控制的设备。内核也会依据这个设备表判断
-对哪个设备加载哪个驱动。
+会导出一个 **PCI 设备 ID 列表**（a table of PCI device IDs），驱动据此识别它可以
+控制的设备，内核也会依据这个列表对不同设备加载相应驱动。
 
 `igb` 驱动的设备表和 PCI 设备 ID 分别见：
 [drivers/net/ethernet/intel/igb/igb_main.c](https://github.com/torvalds/linux/blob/v3.13/drivers/net/ethernet/intel/igb/igb_main.c#L79-L117)
@@ -302,7 +301,7 @@ MODULE_DEVICE_TABLE(pci, igb_pci_tbl);
 ```
 
 前面提到，驱动初始化的时候会调用 `pci_register_driver`，这个函数会将该驱动的各
-种回调方法注册到一个 `struct pci_driver` 实例，[drivers/net/ethernet/intel/igb/igb_main.c](https://github.com/torvalds/linux/blob/v3.13/drivers/net/ethernet/intel/igb/igb_main.c#L238-L249)：
+种回调方法注册到一个 `struct pci_driver` 变量，[drivers/net/ethernet/intel/igb/igb_main.c](https://github.com/torvalds/linux/blob/v3.13/drivers/net/ethernet/intel/igb/igb_main.c#L238-L249)：
 
 ```c
 static struct pci_driver igb_driver = {
@@ -330,9 +329,9 @@ static struct pci_driver igb_driver = {
 4. 注册设备驱动支持的 ethtool 方法（后面介绍）
 5. 注册所需的 watchdog（例如，e1000e 有一个检测设备是否僵死的 watchdog）
 6. 其他和具体设备相关的事情，例如一些 workaround，或者特定硬件的非常规处理
-7. 创建、初始化和注册一个 `struct net_device_ops` 类型实例，包含了用于设备相关的
-   回调函数，例如打开设备、发送数据到网络、设置 MAC 地址等
-8. 创建、初始化和注册一个更高层的 `struct net_device` 类型实例（一个实例就代表了
+7. 创建、初始化和注册一个 `struct net_device_ops` 类型变量，这个变量包含了用于设
+   备相关的回调函数，例如打开设备、发送数据到网络、设置 MAC 地址等
+8. 创建、初始化和注册一个更高层的 `struct net_device` 类型变量（一个变量就代表了
    一个设备）
 
 我们来简单看下 `igb` 驱动的 `igb_probe` 包含哪些过程。下面的代码来自 `igb_probe`，[drivers/net/ethernet/intel/igb/igb_main.c](https://github.com/torvalds/linux/blob/v3.13/drivers/net/ethernet/intel/igb/igb_main.c#L2038-L2059)：
@@ -366,7 +365,7 @@ pci_save_state(pdev);
 `igb_probe` 做了很多重要的设备初始化工作。除了 PCI 相关的，还有如下一些通用网络
 功能和网络设备相关的工作：
 
-1. 注册 `struct net_device_ops` 实例
+1. 注册 `struct net_device_ops` 变量
 1. 注册 ethtool 相关的方法
 1. 从网卡获取默认 MAC 地址
 1. 设置 `net_device` 特性标记
@@ -375,7 +374,7 @@ pci_save_state(pdev);
 
 ### 3.3.1 `struct net_device_ops`
 
-网络设备相关的操作函数都注册到这个类型的实例中。[igb_main.c](https://github.com/torvalds/linux/blob/v3.13/drivers/net/ethernet/intel/igb/igb_main.c#L2038-L2059)：
+网络设备相关的操作函数都注册到这个类型的变量中。[igb_main.c](https://github.com/torvalds/linux/blob/v3.13/drivers/net/ethernet/intel/igb/igb_main.c#L2038-L2059)：
 
 ```c
 static const struct net_device_ops igb_netdev_ops = {
@@ -390,7 +389,7 @@ static const struct net_device_ops igb_netdev_ops = {
   /* ... */
 ```
 
-这个实例会在 `igb_probe()`中赋给 `struct net_device` 中的 `netdev_ops` 字段：
+这个变量会在 `igb_probe()`中赋给 `struct net_device` 中的 `netdev_ops` 字段：
 
 ```c
 static int igb_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
@@ -419,8 +418,8 @@ static int igb_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 当一个数据帧通过 DMA 写到 RAM（内存）后，网卡是如何通知其他系统这个包可以被处理
 了呢？
 
-传统的方式是，网卡会产生一个硬件中断（IRQ），通知数据包到了。有三种常见的硬中断
-类型：
+传统的方式是，网卡会产生一个硬件中断（IRQ），通知数据包到了。有**三种常见的硬中
+断类型**：
 
 * MSI-X
 * MSI
@@ -445,9 +444,9 @@ NAPI 的使用方式：
 
 1. 驱动打开 NAPI 功能，默认处于未工作状态（没有在收包）
 2. 数据包到达，网卡通过 DMA 写到内存
-3. 网卡触发一个硬中断，中断处理函数开始执行
-4. 软中断（softirq，稍后介绍），唤醒 NAPI 子系统。这会触发在一个单独的线程里，调
-   用驱动注册的 `poll` 方法收包
+3. 网卡触发一个硬中断，**中断处理函数开始执行**
+4. 软中断（softirq，稍后介绍），唤醒 NAPI 子系统。这会触发**在一个单独的线程里，
+   调用驱动注册的 `poll` 方法收包**
 5. 驱动禁止网卡产生新的硬件中断。这样做是为了 NAPI 能够在收包的时候不会被新的中
    断打扰
 6. 一旦没有包需要收了，NAPI 关闭，网卡的硬中断重新开启
@@ -476,7 +475,7 @@ NAPI 的使用方式：
 1. 如果支持 `MSI-X`，调用 `pci_enable_msix` 打开它
 1. 计算和初始化一些配置，包括网卡收发队列的数量
 1. 调用 `igb_alloc_q_vector` 创建每个发送和接收队列
-1. `igb_alloc_q_vector` 会进一步调用 `netif_napi_add` 注册 poll 方法到 NAPI 实例
+1. `igb_alloc_q_vector` 会进一步调用 `netif_napi_add` 注册 poll 方法到 NAPI 变量
 
 我们来看下 `igb_alloc_q_vector` 是如何注册 poll 方法和私有数据的：
 [drivers/net/ethernet/intel/igb/igb_main.c](https://github.com/torvalds/linux/blob/v3.13/drivers/net/ethernet/intel/igb/igb_main.c#L1145-L1271):
@@ -501,7 +500,7 @@ static int igb_alloc_q_vector(struct igb_adapter *adapter,
 ```
 
 `q_vector` 是新分配的队列，`igb_poll` 是 poll 方法，当它收包的时候，会通过
-这个接收队列找到关联的 NAPI 实例（`q_vector->napi`）。
+这个接收队列找到关联的 NAPI 变量（`q_vector->napi`）。
 
 这里很重要，后面我们介绍从驱动到网络协议栈的 flow（根据 IP 头信息做哈希，哈希相
 同的属于同一个 flow）时会看到。
@@ -510,7 +509,7 @@ static int igb_alloc_q_vector(struct igb_adapter *adapter,
 
 ## 3.4 启用网卡 (Bring A Network Device Up)
 
-回忆前面我们提到的 `structure net_device_ops` 实例，它包含网卡启用、发包、设置
+回忆前面我们提到的 `structure net_device_ops` 变量，它包含网卡启用、发包、设置
 mac 地址等回调函数（函数指针）。
 
 当启用一个网卡时（例如，通过 `ifconfig eth0 up`），`net_device_ops` 的 `ndo_open`
@@ -526,18 +525,18 @@ mac 地址等回调函数（函数指针）。
 
 ### 3.4.1 准备从网络接收数据
 
-今天的大部分网卡都使用 DMA 将数据直接写到内存，接下来操作系统可以直接从里面读取。
-实现这一目的所使用的数据结构是 buffer ring（环形缓冲区）。
+今天的大部分网卡都**使用 DMA 将数据直接写到内存**，接下来**操作系统可以直接从里
+面读取**。实现这一目的所使用的数据结构是 ring buffer（环形缓冲区）。
 
-要实现这一功能，设备驱动必须和操作系统合作，预留（reserve）出一段内存来给网卡使
-用。预留成功后，网卡知道了这块内存的地址，接下来收到的包就会放到这里，进而被操作
-系统取走。
+要实现这一功能，设备驱动必须和操作系统合作，**预留（reserve）出一段内存来给网卡
+使用**。预留成功后，网卡知道了这块内存的地址，接下来收到的包就会放到这里，进而被
+操作系统取走。
 
 由于这块内存区域是有限的，如果数据包的速率非常快，单个 CPU 来不及取走这些包，新
 来的包就会被丢弃。这时候，Receive Side Scaling（RSS，接收端扩展）或者多队列（
 multiqueue）一类的技术可能就会排上用场。
 
-一些网卡有能力将接收到的包写到多个不同的内存区域，每个区域都是独立的接收队列。这
+一些网卡有能力将接收到的包写到**多个不同的内存区域，每个区域都是独立的接收队列**。这
 样操作系统就可以利用多个 CPU（硬件层面）并行处理收到的包。只有部分网卡支持这个功
 能。
 
@@ -565,12 +564,12 @@ RX 队列的数量和大小可以通过 ethtool 进行配置，调整这两个�
 
 前面看到了驱动如何注册 NAPI `poll` 方法，但是，一般直到网卡被启用之后，NAPI 才被启用。
 
-启用 NAPI 很简单，调用 `napi_enable` 函数就行，这个函数会设置 NAPI 实例（`struct
+启用 NAPI 很简单，调用 `napi_enable` 函数就行，这个函数会设置 NAPI 变量（`struct
 napi_struct`）中一个表示是否启用的标志位。前面说到，NAPI 启用后并不是立即开始工
 作（而是等硬中断触发）。
 
 对于 `igb`，驱动初始化或者通过 ethtool 修改 queue 数量或大小的时候，会启用每个
-`q_vector` 的 NAPI 实例。
+`q_vector` 的 NAPI 变量。
 [drivers/net/ethernet/intel/igb/igb_main.c](https://github.com/torvalds/linux/blob/v3.13/drivers/net/ethernet/intel/igb/igb_main.c#L2833-L2834):
 
 ```c
@@ -594,10 +593,10 @@ for (i = 0; i < adapter->num_q_vectors; i++)
 一些驱动，例如 `igb`，会试图为每种中断类型注册一个中断处理函数，如果注册失败，就
 尝试下一种（没测试过的）类型。
 
-MSI-X 中断是比较推荐的方式，尤其是对于支持多队列的网卡。因为每个 RX 队列有独立的
-MSI-X 中断，因此可以被不同的 CPU 处理（通过 `irqbalance` 方式，或者修改
+**MSI-X 中断是比较推荐的方式，尤其是对于支持多队列的网卡**。因为每个 RX 队列有独
+立的MSI-X 中断，因此可以被不同的 CPU 处理（通过 `irqbalance` 方式，或者修改
 `/proc/irq/IRQ_NUMBER/smp_affinity`）。我们后面会看到，处理中断的 CPU 也是随后处
-理这个包的 CPU。这样的话，从网卡硬件中断的层面，就可以设置让收到的包被不同的 CPU
+理这个包的 CPU。这样的话，从网卡硬件中断的层面就可以设置让收到的包被不同的 CPU
 处理。
 
 如果不支持 MSI-X，那 MSI 相比于传统中断方式仍然有一些优势，驱动仍然会优先考虑它。
@@ -648,8 +647,8 @@ request_done:
 }
 ```
 
-这就是 `igb` 驱动注册中断处理函数的过程，这个函数在一个包到达网卡，触发了一个硬
-件中断的时候，就会被执行。
+这就是 `igb` 驱动注册中断处理函数的过程，这个函数在一个包到达网卡触发一个硬
+件中断时就会被执行。
 
 ### 3.4.4 Enable Interrupts
 
@@ -1085,15 +1084,15 @@ Steering 可能会派上用场。但也要注意：不要太相信这个数值�
 
 网络设备（netdev）的初始化在 `net_dev_init`，里面有些东西很有意思。
 
-### `struct softnet_data` 实例初始化
+### `struct softnet_data` 变量初始化
 
-`net_dev_init` 为每个 CPU 创建一个 `struct softnet_data` 实例。这些实例包含一些
+`net_dev_init` 为每个 CPU 创建一个 `struct softnet_data` 变量。这些变量包含一些
 指向重要信息的指针：
 
-* 需要注册到这个 CPU 的 NAPI 实例列表
+* 需要注册到这个 CPU 的 NAPI 变量列表
 * 数据处理 backlog
 * 处理权重
-* receive offload 实例列表
+* receive offload 变量列表
 * receive packet steering 设置
 
 接下来随着逐步进入网络栈，我们会一一查看这些功能。
@@ -1123,8 +1122,8 @@ static int __init net_dev_init(void)
 
 终于，网络数据来了！
 
-如果 RX 队列有足够的描述符（descriptors），包会通过 DMA 写到 RAM。设备然后发起对应于
-它的中断（或者在 MSI-X 的场景，中断和包达到的 RX 队列绑定）。
+如果 RX 队列有足够的描述符（descriptors），包会**通过 DMA 写到 RAM**。设备然后发
+起对应于它的中断（或者在 MSI-X 的场景，中断和包达到的 RX 队列绑定）。
 
 ### 5.2.1 中断处理函数
 
@@ -1154,12 +1153,12 @@ static irqreturn_t igb_msix_ring(int irq, void *data)
 首先，它调用 `igb_write_itr` 更新一个硬件寄存器。对这个例子，这个寄存器是记录硬件
 中断频率的。
 
-这个寄存器和一个叫 "Interrupt Throttling"（也叫 "Interrupt Coalescing"）的硬件特性
-相关，这个特性可以平滑传送到 CPU 的中断数量。我们接下来会看到，ethtool 是怎么样提供
-了一个机制用于调整 IRQ 触发频率的。
+这个寄存器和一个叫 **"Interrupt Throttling"（也叫 "Interrupt Coalescing"）的硬件
+特性**相关，这个特性可以平滑传送到 CPU 的中断数量。我们接下来会看到，ethtool 是
+怎么样提供了一个机制用于**调整 IRQ 触发频率**的。
 
-第二，`napi_schedule` 触发，如果 NAPI 的处理循环还没开始的话，这会唤醒它。注意，这个
-处理循环是在软中断中执行的，而不是硬中断。
+第二，触发 `napi_schedule`，如果 NAPI 的处理循环还没开始的话，这会唤醒它。注意，
+这个处理循环是在软中断中执行的，而不是硬中断。
 
 这段代码展示了硬中断尽量简短为何如此重要；为我们接下来理解多核 CPU 的接收逻辑很有
 帮助。
@@ -1168,7 +1167,7 @@ static irqreturn_t igb_msix_ring(int irq, void *data)
 
 接下来看从硬件中断中调用的 `napi_schedule` 是如何工作的。
 
-注意，NAPI 存在的意义是无需硬件中断通知可以收包了，就可以接收网络数据。前面提到，
+注意，NAPI 存在的意义是**无需硬件中断通知就可以接收网络数据**。前面提到，
 NAPI 的轮询循环（poll loop）是受硬件中断触发而跑起来的。换句话说，NAPI 功能启用了
 ，但是默认是没有工作的，直到第一个包到达的时候，网卡触发的一个硬件将它唤醒。后面
 会看到，也还有其他的情况，NAPI 功能也会被关闭，直到下一个硬中断再次将它唤起。
@@ -1194,7 +1193,7 @@ void __napi_schedule(struct napi_struct *n)
 EXPORT_SYMBOL(__napi_schedule);
 ```
 
-`__get_cpu_var` 用于获取属于这个 CPU 的 `structure softnet_data` 实例。
+`__get_cpu_var` 用于获取属于这个 CPU 的 `structure softnet_data` 变量。
 
 `____napi_schedule`, [net/core/dev.c](https://github.com/torvalds/linux/blob/v3.13/net/core/dev.c#L4154-L4168):
 
@@ -1210,7 +1209,7 @@ static inline void ____napi_schedule(struct softnet_data *sd,
 
 这段代码了做了两个重要的事情：
 
-1. 将（从驱动的中断函数中传来的）`napi_struct` 实例，添加到 poll list，后者 attach 到这个 CPU 上的 `softnet_data`
+1. 将（从驱动的中断函数中传来的）`napi_struct` 变量，添加到 poll list，后者 attach 到这个 CPU 上的 `softnet_data`
 1. `__raise_softirq_irqoff` 触发一个 `NET_RX_SOFTIRQ` 类型软中断。这会触发执行
    `net_rx_action`（如果没有正在执行），后者是网络设备初始化的时候注册的
 
@@ -1219,11 +1218,11 @@ static inline void ____napi_schedule(struct softnet_data *sd,
 ### 5.2.3 关于 CPU 和网络数据处理的一点笔记
 
 注意到目前为止，我们从硬中断处理函数中转移到软中断处理函数的逻辑，都是使用的本
-CPU 实例。
+CPU 变量。
 
-驱动的硬中断处理函数做的事情很少，但软中断将会在和硬中断相同的 CPU 上执行。这就
+驱动的硬中断处理函数做的事情很少，但软中断将会在和硬中断相同的 CPU 上执行。**这就
 是为什么给每个 CPU 一个特定的硬中断非常重要：这个 CPU 不仅处理这个硬中断，而且通
-过 NAPI 处理接下来的软中断来收包。
+过 NAPI 处理接下来的软中断来收包**。
 
 后面我们会看到，Receive Packet Steering 可以将软中断分给其他 CPU。
 
@@ -1346,11 +1345,9 @@ $ sudo bash -c 'echo 1 > /proc/irq/8/smp_affinity'
 
 ### 5.3.1 `net_rx_action` 处理循环
 
-`net_rx_action` 从包所在的内存开始处理，包是被设备通过 DMA 直接送到内存的。
-
-函数遍历本 CPU 队列的 NAPI 实例列表，依次出队，操作它。
-
-处理逻辑考虑任务量（work）和执行时间两个因素：
+**`net_rx_action` 从包所在的内存开始处理，包是被设备通过 DMA 直接送到内存的。**
+函数遍历本 CPU 队列的 NAPI 变量列表，依次出队并操作之。处理逻辑考虑任务量（work
+）和执行时间两个因素：
 
 1. 跟踪记录工作量预算（work budget），预算可以调整
 2. 记录消耗的时间
@@ -1371,13 +1368,12 @@ while (!list_empty(&sd->poll_list)) {
 ```
 
 这里可以看到内核是如何防止处理数据包过程霸占整个 CPU 的，其中 budget 是该 CPU 的
-所有 NAPI 实例的总预算。
-
+所有 NAPI 变量的总预算。
 这也是多队列网卡应该精心调整 IRQ Affinity 的原因。回忆前面讲的，处理硬中断的 CPU
 接下来会处理相应的软中断，进而执行上面包含 budget 的这段逻辑。
 
-多网卡多队列可能会出现这样的情况：多个 NAPI 实例注册到同一个 CPU 上。每个 CPU 上
-的所有 NAPI 实例共享一份 budget。
+多网卡多队列可能会出现这样的情况：多个 NAPI 变量注册到同一个 CPU 上。每个 CPU 上
+的所有 NAPI 变量共享一份 budget。
 
 如果没有足够的 CPU 来分散网卡硬中断，可以考虑增加 `net_rx_action` 允许每个 CPU
 处理更多包。增加 budget 可以增加 CPU 使用量（`top` 等命令看到的 `sitime` 或 `si`
@@ -1395,7 +1391,7 @@ Note: the CPU will still be bounded by a time limit of 2 jiffies, regardless of 
   netif_napi_add(adapter->netdev, &q_vector->napi, igb_poll, 64);
 ```
 
-这注册了一个 NAPI 实例，hardcode 64 的权重。我们来看在 `net_rx_action` 处理循环
+这注册了一个 NAPI 变量，hardcode 64 的权重。我们来看在 `net_rx_action` 处理循环
 中这个值是如何使用的。
 [net/core/dev.c](https://github.com/torvalds/linux/blob/v3.13/net/core/dev.c#L4322-L4338):
 
@@ -1413,7 +1409,7 @@ WARN_ON_ONCE(work > weight);
 budget -= work;
 ```
 
-其中的 `n` 是 `struct napi` 的实例。其中的 `poll` 指向 `igb_poll`。`poll()` 返回
+其中的 `n` 是 `struct napi` 的变量。其中的 `poll` 指向 `igb_poll`。`poll()` 返回
 处理的数据帧数量，budget 会减去这个值。
 
 所以，假设驱动使用 weight 值 64（Linux 3.13.0 的所有驱动都是 hardcode 这个值）
@@ -1468,8 +1464,8 @@ if (unlikely(work == weight)) {
 
 1. 网络设备需要关闭（例如，用户敲了 `ifconfig eth0 down` 命令）
 2. 如果设备不需要关闭，那检查是否有 GRO（后面会介绍）列表。如果时钟 tick rate
-   `>= 1000`，所有最近被更新的 GRO network flow 都会被 flush。将这个 NAPI 实例移
-   到 list 末尾，这个循环下次再进入时，处理的就是下一个 NAPI 实例
+   `>= 1000`，所有最近被更新的 GRO network flow 都会被 flush。将这个 NAPI 变量移
+   到 list 末尾，这个循环下次再进入时，处理的就是下一个 NAPI 变量
 
 这就是包处理循环如何唤醒驱动注册的 `poll` 方法进行包处理的过程。接下来会看到，
 `poll` 方法会收割网络数据，发送到上层栈进行处理。
@@ -1478,7 +1474,7 @@ if (unlikely(work == weight)) {
 
 `net_rx_action` 下列条件之一退出循环：
 
-1. 这个 CPU 上注册的 poll 列表已经没有 NAPI 实例需要处理(`!list_empty(&sd->poll_list)`)
+1. 这个 CPU 上注册的 poll 列表已经没有 NAPI 变量需要处理(`!list_empty(&sd->poll_list)`)
 2. 剩余的 `budget <= 0`
 3. 已经满足 2 个 jiffies 的时间限制
 
@@ -1504,7 +1500,7 @@ softnet_break:
   goto out;
 ```
 
-`softnet_data` 实例更新统计信息，软中断的 `NET_RX_SOFTIRQ` 被关闭。
+`softnet_data` 变量更新统计信息，软中断的 `NET_RX_SOFTIRQ` 被关闭。
 
 `time_squeeze` 字段记录的是满足如下条件的次数：`net_rx_action` 有很多 `work` 要做但
 是 budget 用完了，或者 work 还没做完但时间限制到了。这对理解网络处理的瓶颈至关重要
@@ -1513,7 +1509,7 @@ softnet_break:
 我们主动让出 CPU，不想独占太久。
 
 然后执行到了 `out` 标签所在的代码。另外还有一种条件也会跳转到 `out` 标签：所有
-NAPI 实例都处理完了，换言之，budget 数量大于网络包数量，所有驱动都已经关闭 NAPI
+NAPI 变量都处理完了，换言之，budget 数量大于网络包数量，所有驱动都已经关闭 NAPI
 ，没有什么事情需要 `net_rx_action` 做了。
 
 `out` 代码段在从 `net_rx_action` 返回之前做了一件重要的事情：调用
@@ -1579,7 +1575,7 @@ static int igb_poll(struct napi_struct *napi, int budget)
 * 然后执行 `igb_clean_rx_irq`，这里做的事情非常多，我们后面看
 * 然后执行 `clean_complete`，判断是否仍然有 work 可以做。如果有，就返回 budget（
   回忆，这里是 hardcode 64）。在之前我们已经看到，`net_rx_action` 会将这个 NAPI
-  实例移动到 poll 列表的末尾
+  变量移动到 poll 列表的末尾
 * 如果所有 `work` 都已经完成，驱动通过调用 `napi_complete` 关闭 NAPI，并通过调用
   `igb_ring_irq_enable` 重新进入可中断状态。下次中断到来的时候回重新打开 NAPI
 
@@ -1593,7 +1589,7 @@ static int igb_poll(struct napi_struct *napi, int budget)
 做的几件重要事情：
 
 1. 分配额外的 buffer 用于接收数据，因为已经用过的 buffer 被 clean out 了。一次分配 `IGB_RX_BUFFER_WRITE (16)`个。
-2. 从 RX 队列取一个 buffer，保存到一个 `skb` 类型的实例中
+2. 从 RX 队列取一个 buffer，保存到一个 `skb` 类型的变量中
 3. 判断这个 buffer 是不是一个包的最后一个 buffer。如果是，继续处理；如果不是，继续
    从 buffer 列表中拿出下一个 buffer，加到 skb。当数据帧的大小比一个 buffer 大的时候，
    会出现这种情况
@@ -1617,7 +1613,7 @@ static int igb_poll(struct napi_struct *napi, int budget)
 #### `/proc/net/softnet_stat`
 
 前面看到，如果 budget 或者 time limit 到了而仍有包需要处理，那 `net_rx_action` 在退出
-循环之前会更新统计信息。这个信息存储在该 CPU 的 `struct softnet_data` 实例中。
+循环之前会更新统计信息。这个信息存储在该 CPU 的 `struct softnet_data` 变量中。
 
 这些统计信息打到了`/proc/net/softnet_stat`，但不幸的是，关于这个的文档很少。每一
 列代表什么并没有标题，而且列的内容会随着内核版本可能发生变化。
@@ -1649,7 +1645,7 @@ $ cat /proc/net/softnet_stat
 
 关于`/proc/net/softnet_stat` 的重要细节:
 
-1. 每一行代表一个 `struct softnet_data` 实例。因为每个 CPU 只有一个该实例，所以每行
+1. 每一行代表一个 `struct softnet_data` 变量。因为每个 CPU 只有一个该变量，所以每行
    其实代表一个 CPU
 2. 每列用空格隔开，数值用 16 进制表示
 3. 第一列 `sd->processed`，是处理的网络帧的数量。如果你使用了 ethernet bonding，
@@ -1672,7 +1668,7 @@ $ cat /proc/net/softnet_stat
 #### 调整 `net_rx_action` budget
 
 `net_rx_action` budget 表示一个 CPU 单次轮询（`poll`）所允许的最大收包数量。单次
-poll 收包是，所有注册到这个 CPU 的 NAPI 实例收包数量之和不能大于这个阈值。 调整：
+poll 收包是，所有注册到这个 CPU 的 NAPI 变量收包数量之和不能大于这个阈值。 调整：
 
 ```shell
 $ sudo sysctl -w net.core.netdev_budget=600
@@ -1686,10 +1682,10 @@ Linux 3.13.0 的默认配置是 300。
 
 ## 5.4 GRO（Generic Receive Offloading）
 
-Large Receive Offloading (LRO) 是一个硬件优化，GRO 是 LRO 的一种软件实现。
+**Large Receive Offloading (LRO) 是一个硬件优化，GRO 是 LRO 的一种软件实现。**
 
-两种方案的主要思想都是：通过合并“足够类似”的包来减少往网络栈传送的包的数量，这有
-助于减少 CPU 的使用量。例如，考虑大文件传输的场景，包的数量非常多，大部分包都是一
+两种方案的主要思想都是：**通过合并“足够类似”的包来减少传送给网络栈的包数，这有
+助于减少 CPU 的使用量**。例如，考虑大文件传输的场景，包的数量非常多，大部分包都是一
 段文件数据。相比于每次都将小包送到网络栈，可以将收到的小包合并成一个很大的包再送
 到网络栈。这可以使得协议层只需要处理一个 header，而将包含大量数据的整个大包送到用
 户程序。
@@ -1701,9 +1697,9 @@ LRO 的原因。
 LRO 的实现，一般来说，对合并包的规则非常宽松。GRO 是 LRO 的软件实现，但是对于包合并
 的规则更严苛。
 
-顺便说一下，如果你曾经用过 tcpdump 抓包，并收到看起来不现实的非常大的包，那很可能
-是你的系统开启了 GRO。你接下来会看到，捕获包的 tap 在整个栈的更后面一下，在 GRO 之
-后。
+顺便说一下，**如果你曾经用过 tcpdump 抓包，并收到看起来不现实的非常大的包，那很
+可能是你的系统开启了 GRO**。接下来会看到，**tcpdump 的抓包点（捕获包的 tap）在整
+个栈的更后面一些，在GRO 之后**。
 
 ### 使用 ethtool 修改 GRO 配置
 
@@ -1776,7 +1772,7 @@ if (pp) {
 
 接下来，如果协议层将这个包合并到一个已经存在的 flow，`napi_gro_receive` 就没什么事
 情需要做，因此就返回了。如果 packet 没有被合并，而且 GRO 的数量小于 `MAX_GRO_SKBS`（
-默认是 8），就会创建一个新的 entry 加到本 CPU 的 NAPI 实例的 `gro_list`。
+默认是 8），就会创建一个新的 entry 加到本 CPU 的 NAPI 变量的 `gro_list`。
 [net/core/dev.c](https://github.com/torvalds/linux/blob/v3.13/net/core/dev.c#L3877-L3886)：
 
 ```c
@@ -1792,7 +1788,7 @@ napi->gro_list = skb;
 ret = GRO_HELD;
 ```
 
-这就是 Linux 网络栈中 GRO 的工作原理。
+**这就是 Linux 网络栈中 GRO 的工作原理。**
 
 <a name="chap_5.6"></a>
 
@@ -1808,14 +1804,14 @@ ret = GRO_HELD;
 
 # 6 RPS (Receive Packet Steering)
 
-回忆前面我们讨论了网络设备驱动是如何注册 NAPI `poll` 方法的。每个 NAPI 实例都会运
+回忆前面我们讨论了网络设备驱动是如何注册 NAPI `poll` 方法的。每个 NAPI 变量都会运
 行在相应 CPU 的软中断的上下文中。而且，触发硬中断的这个 CPU 接下来会负责执行相应的软
 中断处理函数来收包。
 
 换言之，同一个 CPU 既处理硬中断，又处理相应的软中断。
 
 一些网卡（例如 Intel I350）在硬件层支持多队列。这意味着收进来的包会被通过 DMA 放到
-位于不同内存的队列上，而不同的队列有相应的 NAPI 实例管理软中断 `poll()`过程。因此，
+位于不同内存的队列上，而不同的队列有相应的 NAPI 变量管理软中断 `poll()`过程。因此，
 多个 CPU 同时处理从网卡来的中断，处理收包过程。
 
 这个特性被称作 RSS（Receive Side Scaling，接收端扩展）。
@@ -1834,7 +1830,7 @@ RPS 的工作原理是对个 packet 做 hash，以此决定分到哪个 CPU 处�
 [IPI](https://en.wikipedia.org/wiki/Inter-processor_interrupt)，Inter-processor
 Interrupt）向对端 CPU。如果当时对端 CPU 没有在处理 backlog 队列收包，这个进程间中断会
 触发它开始从 backlog 收包。`/proc/net/softnet_stat` 其中有一列是记录 `softnet_data`
-实例（也即这个 CPU）收到了多少 IPI（`received_rps` 列）。
+变量（也即这个 CPU）收到了多少 IPI（`received_rps` 列）。
 
 因此，`netif_receive_skb` 或者继续将包送到协议栈，或者交给 RPS，后者会转交给其他 CPU 处理。
 
@@ -1977,7 +1973,7 @@ if (cpu >= 0) {
 
 ## 10.3 `enqueue_to_backlog`
 
-首先从远端 CPU 的 `struct softnet_data` 实例获取 backlog queue 长度。如果 backlog 大于
+首先从远端 CPU 的 `struct softnet_data` 变量获取 backlog queue 长度。如果 backlog 大于
 `netdev_max_backlog`，或者超过了 flow limit，直接 drop，并更新 `softnet_data` 的 drop
 统计。注意这是远端 CPU 的统计。
 
@@ -2018,9 +2014,9 @@ enqueue:
 如果 `input_pkt_queue` 足够小，而 flow limit（后面会介绍）也还没达到（或者被禁掉了
 ），那数据包将会被放到队列。这里的逻辑有点 funny，但大致可以归为为：
 
-* 如果 backlog 是空的：如果远端 CPU NAPI 实例没有运行，并且 IPI 没有被加到队列，那就
+* 如果 backlog 是空的：如果远端 CPU NAPI 变量没有运行，并且 IPI 没有被加到队列，那就
   触发一个 IPI 加到队列，然后调用`____napi_schedule` 进一步处理
-* 如果 backlog 非空，或者远端 CPU NAPI 实例正在运行，那就 enqueue 包
+* 如果 backlog 非空，或者远端 CPU NAPI 变量正在运行，那就 enqueue 包
 
 这里使用了 `goto`，所以代码看起来有点 tricky。
 
@@ -2115,7 +2111,7 @@ flow limit 功能之前设置这个值。
 
 ## 10.4 处理 backlog 队列：NAPI poller
 
-每个 CPU 都有一个 backlog queue，其加入到 NAPI 实例的方式和驱动差不多，都是注册一个
+每个 CPU 都有一个 backlog queue，其加入到 NAPI 变量的方式和驱动差不多，都是注册一个
 `poll` 方法，在软中断的上下文中处理包。此外，还提供了一个 `weight`，这也和驱动类似
 。
 
@@ -2130,7 +2126,7 @@ sd->backlog.gro_list = NULL;
 sd->backlog.gro_count = 0;
 ```
 
-backlog NAPI 实例和设备驱动 NAPI 实例的不同之处在于，它的 weight 是可以调节的，而设备
+backlog NAPI 变量和设备驱动 NAPI 变量的不同之处在于，它的 weight 是可以调节的，而设备
 驱动是 hardcode 64。在下面的调优部分，我们会看到如何用 sysctl 调整这个设置。
 
 <a name="chap_10.5"></a>
@@ -2155,12 +2151,12 @@ call to `____napi_schedule` from `enqueue_to_backlog` as described above.
 
 ## 10.6 `__netif_receive_skb_core`：将数据送到抓包点（tap）或协议层
 
-`__netif_receive_skb_core` 完成将数据送到协议栈的繁重工作（the heavy lifting of
-delivering the data)。在它做这件事之前，会先检查是否有 packet tap（探测点）插入，
-这些 tap 用于抓包。例如，`AF_PACKET` 地址族可以做这种事情，一般通过 `libpcap` 这个库
-。
+`__netif_receive_skb_core` 完成**将数据送到协议栈**这一繁重工作（the heavy
+lifting of delivering the data)。在此之前，它会先**检查是否插入了 packet tap（探
+测点），这些 tap 是抓包用的**。例如，`AF_PACKET` 地址族就可以插入这些抓包指令，
+一般通过 `libpcap` 库。
 
-如果存在抓包点（tap），数据就先发送到那里，然后才送到协议层。
+**如果存在抓包点（tap），数据就会先到抓包点，然后才到协议层。**
 
 <a name="chap_10.7"></a>
 
@@ -2179,7 +2175,8 @@ list_for_each_entry_rcu(ptype, &ptype_all, list) {
 }
 ```
 
-如何你对 packet 如何经过 pcap 有兴趣，可以阅读[net/packet/af_packet.c](https://github.com/torvalds/linux/blob/v3.13/net/packet/af_packet.c)。
+如果对 packet 如何经过 pcap 有兴趣，可以阅读
+[net/packet/af_packet.c](https://github.com/torvalds/linux/blob/v3.13/net/packet/af_packet.c)。
 
 <a name="chap_10.8"></a>
 
@@ -2247,7 +2244,7 @@ IP 层在函数 `inet_init` 中将自身注册到 `ptype_base` 哈希表。
 dev_add_pack(&ip_packet_type);
 ```
 
-`struct packet_type` 的实例 `ip_packet_type` 定义在
+`struct packet_type` 的变量 `ip_packet_type` 定义在
 [net/ipv4/af_inet.c](https://github.com/torvalds/linux/blob/v3.13/net/ipv4/af_inet.c#L1673-L1676):
 
 ```c
@@ -2290,11 +2287,11 @@ netfilter 完成对数据的处理之后，就会调用 `ip_rcv_finish`。当然
 有决定丢掉这个包。
 
 `ip_rcv_finish` 开始的地方做了一次优化。为了能将包送到合适的目的地，需要一个路由
-子系统的 `dst_entry` 实例。为了获取这个实例，早期的代码调用了 `early_demux` 函数，从
+子系统的 `dst_entry` 变量。为了获取这个变量，早期的代码调用了 `early_demux` 函数，从
 这个数据的目的端的高层协议中。
 
-`early_demux` 是一个优化项，试图路由这个包所需要的 `dst_entry` 实例，通过检查相应的
-实例是否缓存在 `socket` 实例上。
+`early_demux` 是一个优化项，试图路由这个包所需要的 `dst_entry` 变量，通过检查相应的
+变量是否缓存在 `socket` 变量上。
 [net/ipv4/ip_input.c](https://github.com/torvalds/linux/blob/v3.13/net/ipv4/ip_input.c#L317-L327):
 
 ```c
@@ -2318,7 +2315,7 @@ if (sysctl_ip_early_demux && !skb_dst(skb) && skb->sk == NULL) {
 核的路由子系统，在那里将会计算出一个 `dst_entry` 并赋给相应的字段。
 
 路由子系统完成工作后，会更新计数器，然后调用 `dst_input(skb)`，后者会进一步调用
-`dst_entry` 实例中的 `input` 方法，这个方法是一个函数指针，有路由子系统初始化。例如
+`dst_entry` 变量中的 `input` 方法，这个方法是一个函数指针，有路由子系统初始化。例如
 ，如果 packet 的最终目的地是本机（local system），路由子系统会将 `ip_local_deliver` 赋
 给 `input`。
 
@@ -2372,7 +2369,7 @@ int ip_local_deliver(struct sk_buff *skb)
 ### 11.1.4 `ip_local_deliver_finish`
 
 `ip_local_deliver_finish` 从数据包中读取协议，寻找注册在这个协议上的 `struct
-net_protocol` 实例，并调用该实例中的回调方法。这样将包送到协议栈的更上层。
+net_protocol` 变量，并调用该变量中的回调方法。这样将包送到协议栈的更上层。
 
 #### Monitoring: IP protocol layer statistics
 
@@ -2464,7 +2461,7 @@ static const struct net_protocol icmp_protocol = {
 };
 ```
 
-这些实例在 `inet` 地址族初始化的时候被注册。
+这些变量在 `inet` 地址族初始化的时候被注册。
 [net/ipv4/af_inet.c](https://github.com/torvalds/linux/blob/v3.13/net/ipv4/af_inet.c#L1720-L1725):
 
 ```c
@@ -2823,7 +2820,7 @@ static int __netif_receive_skb_core(struct sk_buff *skb, bool pfmemalloc)
 
 设备驱动收发包相关代码里，关于 `netpoll` 的判断逻辑在很前面。
 
-Netpoll API 的消费者可以通过 `netpoll_setup` 函数注册 `struct netpoll` 实例，后者有收
+Netpoll API 的消费者可以通过 `netpoll_setup` 函数注册 `struct netpoll` 变量，后者有收
 包和发包的 hook 方法（函数指针）。
 
 如果你对使用 Netpoll API 感兴趣，可以看看
