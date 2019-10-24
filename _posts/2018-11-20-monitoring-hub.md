@@ -3,7 +3,7 @@ layout: post
 title:  "Monitoring Docker Registry"
 date:   2018-11-20
 author: ArthurChiao
-categories: monitoring docker registry hub
+categories: monitoring registry hub
 ---
 
 We run a customized image service in our private cloud, which

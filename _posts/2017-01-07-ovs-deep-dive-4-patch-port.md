@@ -2,7 +2,7 @@
 layout: post
 title:  "OVS Deep Dive 4: OVS netdev and Patch Port"
 date:   2017-01-07
-categories: OVS
+categories: ovs
 ---
 
 This post introduces OVS patch port, and compares it with linux veth pair.

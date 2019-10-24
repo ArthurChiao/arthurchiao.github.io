@@ -2,7 +2,7 @@
 layout: post
 title:  "bcc/ebpf 安装及示例"
 date:   2019-01-27
-categories: bcc ebpf
+categories: bcc bpf
 ---
 
 eBPF 是 Linux 内核近几年最为引人注目的特性之一，通过一个内核内置的字节码虚拟机，完

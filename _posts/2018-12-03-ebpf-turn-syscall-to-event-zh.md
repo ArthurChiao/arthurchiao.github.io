@@ -4,7 +4,7 @@ title     : "[译] eBPF 内核探测：如何将任意系统调用转换成事�
 date      : 2018-12-03
 lastupdate: 2019-05-06
 author    : ArthurChiao
-categories: eBPF tracing bcc
+categories: bpf tracing bcc
 ---
 
 译者按：本文翻译自 2016 年的一篇英文博客 [How to turn any syscall into an event: Introducing eBPF Kernel probes](https://blog.yadutaf.fr/2016/03/30/turn-any-syscall-into-event-introducing-ebpf-kernel-probes/)。**如果能看懂英文，我建议你阅读原文，或者和本文对照看。**

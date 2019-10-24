@@ -3,7 +3,7 @@ layout: post
 title:  "Play With Container Network Interface"
 date:   2018-11-07
 author: ArthurChiao
-categories: docker container OVS internal-port veth-pair
+categories: container network nic
 ---
 
 A docker container may need more than one network interfaces (virtual or physical NICs).

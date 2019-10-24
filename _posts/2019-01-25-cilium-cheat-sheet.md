@@ -4,7 +4,7 @@ title     : "Cilium Cheat Sheet"
 date      : 2019-01-25
 lastupdate: 2019-07-18
 author    : ArthurChiao
-categories: cilium ebpf
+categories: cilium bpf
 ---
 
 ### TL;DR

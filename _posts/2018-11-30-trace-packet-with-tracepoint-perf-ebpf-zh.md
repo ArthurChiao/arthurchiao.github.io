@@ -4,7 +4,7 @@ title     : "[译] 使用 Linux tracepoint、perf 和 eBPF 跟踪数据包 (2017
 date      : 2018-11-30
 lastupdate: 2019-07-27
 author    : ArthurChiao
-categories: eBPF perf tracepoint
+categories: bpf perf tracepoint
 ---
 
 ### 译者序

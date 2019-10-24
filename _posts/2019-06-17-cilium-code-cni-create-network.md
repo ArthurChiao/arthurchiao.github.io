@@ -3,7 +3,7 @@ layout: post
 title:  "Cilium Code Walk Through: CNI Create Network"
 date:   2019-02-08
 lastupdate: 2019-05-28
-categories: cilium ebpf
+categories: cilium bpf
 ---
 
 ### TL;DR

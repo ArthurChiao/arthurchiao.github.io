@@ -3,7 +3,7 @@ layout: post
 title:  "Traffic Mirroring With OVS"
 date:   2018-11-10
 author: ArthurChiao
-categories: traffic-mirror OVS docker container
+categories: traffic-mirror ovs container
 ---
 
 Traffic mirroring, or port mirroring, is a technique to send a copy of the

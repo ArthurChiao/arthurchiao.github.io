@@ -3,7 +3,7 @@ layout    : post
 title     : "Awesome BPF Resources"
 date      : 2019-05-06
 lastupdate: 2019-05-06
-categories: bpf ebpf
+categories: bpf bpf
 ---
 
 Awesome BPF resources that I've ever read (and would like to read many times).
