@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "[译] 数据中心网络：分层网络设计综述"
+title:  "[译] 数据中心网络：分层网络设计综述（2014）"
 date:   2019-03-04
 categories: network architecture design
 ---

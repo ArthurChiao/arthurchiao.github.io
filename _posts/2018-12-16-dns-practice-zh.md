@@ -1,6 +1,6 @@
 ---
 layout    : post
-title     : "DNS 问题分析示例"
+title     : "DNS 问题分析示例（2019）"
 date      : 2018-12-16
 lastupdate: 2019-05-05
 categories: dns nameserver

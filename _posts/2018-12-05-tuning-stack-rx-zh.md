@@ -4,7 +4,7 @@ title:  "[译] Linux 网络栈监控和调优：接收数据（2016）"
 date:   2018-12-05
 lastupdate: 2019-10-12
 author: ArthurChiao
-categories: network-stack kernel tuning
+categories: network-stack kernel monitoring tuning
 ---
 
 ## 译者序

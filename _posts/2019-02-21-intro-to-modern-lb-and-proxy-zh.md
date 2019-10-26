@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "[译] 现代网络负载均衡与代理导论"
+title:  "[译] 现代网络负载均衡与代理导论（2017）"
 date:   2019-02-21
 categories: load-balancing proxying
 ---

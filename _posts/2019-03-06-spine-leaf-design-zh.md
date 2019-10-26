@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "[译] 数据中心网络：Spine-Leaf 架构设计综述"
+title:  "[译] 数据中心网络：Spine-Leaf 架构设计综述（2016）"
 date:   2019-03-06
 categories: spine-leaf network architecture
 ---

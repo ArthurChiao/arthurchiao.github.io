@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "[译] strace 是如何工作的"
+title:  "[译] strace 是如何工作的（2016）"
 date:   2019-02-02
 categories: strace system-call
 ---

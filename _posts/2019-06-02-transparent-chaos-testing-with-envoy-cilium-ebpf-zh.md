@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "[译] 基于 Envoy、Cilium 和 eBPF 实现透明的混沌测试"
+title:  "[译] 基于 Envoy、Cilium 和 eBPF 实现透明的混沌测试（2019）"
 date:   2019-06-02
 lastupdate:   2019-06-04
 categories: envoy cilium bpf chaos

@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "[译] 你是一名软件架构师吗？"
+title:  "[译] 你是一名软件架构师吗？（2019）"
 date:   2019-03-18
 categories: architect architecture
 ---

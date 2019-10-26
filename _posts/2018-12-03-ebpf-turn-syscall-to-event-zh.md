@@ -1,6 +1,6 @@
 ---
 layout    : post
-title     : "[译] eBPF 内核探测：如何将任意系统调用转换成事件"
+title     : "[译] eBPF 内核探测：如何将任意系统调用转换成事件（2016）"
 date      : 2018-12-03
 lastupdate: 2019-05-06
 author    : ArthurChiao

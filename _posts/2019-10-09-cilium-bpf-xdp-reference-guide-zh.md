@@ -1,6 +1,6 @@
 ---
 layout    : post
-title     : "[译] Cilium：BPF 和 XDP 参考指南"
+title     : "[译] Cilium：BPF 和 XDP 参考指南（2019）"
 date      : 2019-10-09
 lastupdate: 2019-10-09
 categories: cilium bpf xdp

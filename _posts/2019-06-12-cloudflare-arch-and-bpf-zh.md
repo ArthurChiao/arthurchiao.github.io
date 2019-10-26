@@ -1,6 +1,6 @@
 ---
 layout    : post
-title     : "[译] Cloudflare 边缘网络架构：无处不在的 BPF"
+title     : "[译] Cloudflare 边缘网络架构：无处不在的 BPF（2019）"
 date      : 2019-06-12
 lastupdate: 2019-06-12
 categories: bpf edge-network
