@@ -31,7 +31,7 @@ Nodes and pods are in the same VPC, with VPC gateway `10.5.2.1`.
 
 > Note: For security reasons, as well as easy of understanding, I have
 > substituted the real IP/MAC addresses with faked ones. This should not
-> undermine the purpose of this post.
+> undermine the meaningfulness of this post.
 
 ## 1.2 Container netns and `nsenter`
 
@@ -355,7 +355,7 @@ Now re-depict the global data flow picture here:
 
 # 3 Summary
 
-This post guides you through the **network topology** and **data flow** of the
+This post explores the **network topology** and **data flow** of the
 inter-host traffic between two pods in a **Cilium-powered K8S cluster on AWS**.
 We used common Linux command line tools to fulfill this task. Hope it be helpful
 to you!
