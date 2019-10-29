@@ -169,12 +169,13 @@ see the egress part:
 ```shell
 root@node1:~  # tc filter show dev lxc050ba70e11a8 egress
 filter protocol all pref 1 bpf
-filter protocol all pref 1 bpf handle 0x1
+filter protocol all pref 1 bpf handle 0x1 bpf_lxc.o:[from-container] direct-action not_in_hw tag db59e2ea8177ded3
 ```
 
-> Note: normally the above output should also include the BPF program tags,
-> which could be used for dumping the BPF code contents. I'm
-> still not ensure why they are not shown here.
+> Note: if the output of the above command doesn't show the
+> `bpf_lxc.o:[from-container] direct-action not_in_hw tag db59e2ea8177ded3`
+> info, it may be that your `iproute2` package is too old, try to upgrade to
+> a newer version.
 
 List all loaded BPF programs on this host (node1):
 
@@ -314,7 +315,7 @@ Let's check this one:
 ```shell
 root@node2:~  # tc filter show dev lxcd86fc95bf974 ingress
 filter protocol all pref 1 bpf
-filter protocol all pref 1 bpf handle 0x1
+filter protocol all pref 1 bpf handle 0x1 bpf_lxc.o:[from-container] direct-action not_in_hw tag c17fab4b3f874a54
 ```
 
 If you are interested in the exact BPF code, following step are much the same as
