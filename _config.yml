@@ -14,7 +14,7 @@ paginate: 5
 navigation:
  - title: Home
    url: /index.html
- - title: Articles
+ - title: Articles (EN)
    url: /articles
  - title: Articles (中文)
    url: /articles-zh
