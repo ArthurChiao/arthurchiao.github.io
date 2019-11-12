@@ -310,6 +310,9 @@ OVS in the future (currently in using only for historical reasons).
 
 ## A: Simple Service used for problem reproduction
 
+This yaml will schedule the pod to `node1`. Make sure you have correct
+tolerations for the taints on `node1`.
+
 `nginx-sts.yaml`:
 
 ```shell
