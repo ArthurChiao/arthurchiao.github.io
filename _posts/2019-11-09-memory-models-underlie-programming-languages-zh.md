@@ -9,14 +9,14 @@ categories: memory language
 ### 译者序
 
 本文翻译自一篇英文博客 [The memory models that underlie programming
-languages](http://canonical.org/~kragen/memory-models/)，翻译本文时，原文最后一
-次更新是在 2016 年。
+languages](http://canonical.org/~kragen/memory-models/)，截至本文翻译时，原文最
+后一次更新是在 2016 年。
 
 作者似乎是计算机和编程领域的老兵，除了高屋建瓴地分析这 6 种横跨半个多
-世纪的内存模型之外，还不失时机地随手点评了如下几十种语言、库或系统（大部
+世纪的内存模型之外，还举重若轻地点评了如下几十种语言、库或系统（大部
 分都是编程语言）：Forth、morden Lisps、Haskell、ML、Python、Ruby、PHP5、Lua、
 JavaScript、Erlang、Smalltalk、Java、C#、Assembly、Awk、Perl4、Tcl、Octave、
-Matlab、APL、J、K、PV-WAVE IDL、Lush、S、S-Plus、R Numpy、Pandas、OpenGL、Linda
+Matlab、APL、J、K、PV-WAVE IDL、Lush、S、S-Plus、R、Numpy、Pandas、OpenGL、Linda
 、C++、D、MUMPS、Wheat、Prolog、miniKANREN 等等。
 
 **由于译者水平有限，本文不免存在遗漏或错误之处。如有疑问，请查阅原文。**
@@ -27,15 +27,15 @@ Matlab、APL、J、K、PV-WAVE IDL、Lush、S、S-Plus、R Numpy、Pandas、Open
 
 ## 目录
 
-1. [引言](#ch_1)
-2. [序曲：只有原子变量的程序](#ch_2)
-3. [COBOL 内存模型：嵌套结构 —— 内存就像一张税单](#ch_3)
-4. [LISP 内存模型：对象图 —— 内存是一张带标签的有向图](#ch_4)
-5. [FORTRAN 内存模型：并行数组 —— 内存是一系列数组](#ch_5)
-6. [茶歇：为什么没有 Lua、Erlang 和 Forth 内存模型？](#ch_6)
-7. [磁带内存模型：管道 —— 写入、等待数据、继续写入](#ch_7)
-8. [MULTICS 内存模型：目录 —— 内存是一棵树](#ch_8)
-9. [SQL 内存模型：关系 —— 内存是一个可变、多值有限函数集](#ch_9)
+1.  [引言](#ch_1)
+2.  [序曲：只有原子变量的程序](#ch_2)
+3.  [COBOL 内存模型：嵌套结构 —— 内存就像一张税单](#ch_3)
+4.  [LISP 内存模型：对象图 —— 内存是一张带标签的有向图](#ch_4)
+5.  [FORTRAN 内存模型：并行数组 —— 内存是一系列数组](#ch_5)
+6.  [茶歇：为什么没有 Lua、Erlang 和 Forth 内存模型？](#ch_6)
+7.  [磁带内存模型：管道 —— 写入、等待数据、继续写入](#ch_7)
+8.  [MULTICS 内存模型：目录 —— 内存是一棵树](#ch_8)
+9.  [SQL 内存模型：关系 —— 内存是一个可变、多值有限函数集](#ch_9)
 10. [注释](#ch_10)
 
 ----
@@ -1054,7 +1054,6 @@ SQL 背后的实现使用了很多技巧，**牺牲了简单查询的效率，�
 1. **《Essentials of Programming Languages》** 建议分析编程语言时，首先要看它可
    以表示什么类型的变量，以及可以对什么类型的表达式求值，这比仅仅分析其语法要有
    用的多，但是我认为这很大程度上忽略了更深层次的东西。
-2. I’m calling these six conceptualizations “memory models”, even though that
-   term used to mean a specific thing that is related to 8086 addressing modes
-   in C but not really related to this.  (I’d love to have a better term for
-   this.)
+2. 我将其称为六种 **“内存模型”**，即使这个术语过去指的是 C 语言中与 8086 寻址模
+   式相关的一个东西，而与本文所描述的内容关系不大（我倒是很希望为本文描述的东西
+   找一个更好的术语）。
