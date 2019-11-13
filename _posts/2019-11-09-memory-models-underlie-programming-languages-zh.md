@@ -345,14 +345,14 @@ Lisps 中没有字符串。
 * 更新属性向量，让 `middle-name` 指向新的字符串
 * 构造一个指向新 `account-holder` 对象的新 `alist`
 
-具体取决于`account-holder` 是否在多个 `account` 对象之间共享，以及是否希望其
+具体取决于 `account-holder` 是否在多个 `account` 对象之间共享，以及是否希望其
 他 account 的 `account-holder` 也被更新。
 
 ## 4.4 垃圾回收
 
 **垃圾回收（GC）在这类语言中是必不可少的**。
 
-从 McCarthy 在 1959 年发明 LISP，到1980 年 Lieberman 和 Hewitt 提出新一代的垃圾
+从 McCarthy 在 1959 年发明 LISP，到 1980 年 Lieberman 和 Hewitt 提出新一代的垃圾
 回收算法，在这中间的二十多年，所有使用**标记有向图（labeled-directed-graph）**的
 内存模型通常都将 1/3 到 1/2 的时间用在垃圾回收上。在此期间，某些特意设计为多核的
 计算机会将专门的核用于垃圾回收。
@@ -486,7 +486,7 @@ FORTRAN 不仅**没有递归子过程、指针和记录**，它**最
     ```
 
     在完成以上 4 次数组索引的查找操作（array-indexing operations）之后，`CCHARS`
-    字符数组的 `[IA, IE)` 区间对应的就是account-holder 的 middle-name了。
+    字符数组的 `[IA, IE)` 区间对应的就是 account-holder 的 middle-name 了。
 
 * 方式二（针对 account-holder 的属性没有存储在独立数组中的场景，译者注）
 
@@ -516,7 +516,7 @@ FORTRAN 不仅**没有递归子过程、指针和记录**，它**最
 这就是**“可以用任何语言进行 FORTRAN 式编程”（programming FORTRAN in any language
 ）**表达的意思：几乎每种编程语言中都有数组（arrays of primitive types）。
 
-* 即使是在汇编语言或Forth 中，数组都不是很难构造。
+* 即使是在汇编语言或 Forth 中，数组都不是很难构造。
 * Awk、Perl4 和 Tcl 还额外提供了字典（dictionaries），虽然这些并不是一等对象（
   first-class objects），因为这些语言并不是对象图（object-graph）语言，但在对实
   体的属性进行排序方面，这些字典完全可以取代数组，允许用字符串而不是数组（by
@@ -563,7 +563,7 @@ nested-record model）中通过指针引用的结构体成员产生的代码几�
 1. 支持多维索引（属性可以是 entity tuple，而并不仅仅是单个 entity）
 
 另外，并行数组还支持**编写子过程来在属性之上进行抽象**，因为它们**在运行时才对每
-个属性进行具体化**：你可以写一个能够应用到任何属性的 `sum` 或`covariance` 函数 —
+个属性进行具体化**：你可以写一个能够应用到任何属性的 `sum` 或 `covariance` 函数 —
 — 这一点尤其有趣：虽然并行数组不支持让某个特定实体对某段特定程序可见（private）
 ，但它支持让实体（变量）的某个 **属性**（attribute）是私有的（private）。
 
@@ -592,7 +592,7 @@ Fortran 并不是唯一一种推荐用并行数组组织内存的语言。
 * Octave、Matlab、APL、J、K、PV-WAVE IDL、Lush、S、S-Plus 和 R 很大程度上都是面
   向并行数组（parallel-array-oriented）的编程语言
 * Numpy、Pandas、和 OpenGL 是面向并行数组的库（parallel-array-oriented libraries）
-* 我前面还提到，Perl4、awk、和Tcl 在一定程度上也是面向并行数组的
+* 我前面还提到，Perl4、awk、和 Tcl 在一定程度上也是面向并行数组的
 
 以上提到的某些语言为了**减少并行数组不一致（getting out of sync）的风险**，将数
 组设计为一旦创建就**不可变的**（immutable once populated），或者至少鼓励创建新数
@@ -668,9 +668,9 @@ forward iterators）、D 语言的 forward ranges，以及 Golang 的 channel
 
 **如果一种编程语言的内存模型完全基于管道，那将会是什么样子？**需要有从管道中读取
 数据元素（可能都只能是 primitive 类型的数据）和将数据元素写入管道的操作。考虑我
-们在文章开头定义的示例编程语言。给定管道和 `empty`、`get` 和`put` 子过程，我们就
+们在文章开头定义的示例编程语言。给定管道和 `empty`、`get` 和 `put` 子过程，我们就
 可以写一个 `merge` 函数，用于**合并排序**（merge sorting），虽然这样的实现并没有
-Python或其他语言更方便。
+Python 或其他语言更方便。
 
 ```c
 def merge(in1, in2, out) {
@@ -724,7 +724,7 @@ pipe-processing threads），可能会将它们分散到不同机器上执行。
 **在某种程度上，π-calculus 是一种只使用管道的语言**；它是一种面向 channel 的并发
 语言（concurrent channel-oriented alternative），与 λ-calculus 类似。
 
-按照Jeannette Wing 的解释，用 P 和 Q 表示两个进程。那么：
+按照 Jeannette Wing 的解释，用 P 和 Q 表示两个进程。那么：
 
 * `P | Q` 表示一个由 P 和 Q 组成的进程，其中 **P 和 Q 并行运行**（running in
   parallel）
@@ -747,7 +747,7 @@ pipe-processing threads），可能会将它们分散到不同机器上执行。
 
 * `!P` 创建了一个有无数个进程的服务程序（server），这里 `P` 就是 `incr(a, x).ā〈x+1〉`
 * 每个进程监听在 channel `incr` 上，等待接收一条消息；收到消息后会将其分别赋给
-  `a` 和 `x`两个变量
+  `a` 和 `x` 两个变量
 * 在 channel `a` 上将 `x+1` 发送出去，然后进程终止
 
 同时，还有两个与此并行运行的进程（`i̅n̅c̅r̅〈a, 17〉` 和 `a(y)`）：
@@ -764,7 +764,7 @@ of processes）！如果不用这两个特性，我不确定这门语言的通�
 ## 7.4 其他基于管道的尝试
 
 **基于流的编程（Flow-based programming）**，例如 NSA 项目 Apache NiFi，是另一种
-对Unix 管道和过滤器（pipes-and-filters）进行通用化的尝试方式。
+对 Unix 管道和过滤器（pipes-and-filters）进行通用化的尝试方式。
 
 <a name="ch_8"></a>
 
@@ -883,8 +883,8 @@ id   host                  type        permi  expir  expireTime       a  i
 对于关系模型（relational model），这里的**每一列在某种程度上都是主键（primary
 key）的一个函数**，而这里的主键就是 `id` 这一列；因此，可以说：
 
-1. `host(1)` 就是`addons.mozilla.org`
-1. `host(2)` 就是`getpersonas.com`
+1. `host(1)` 就是 `addons.mozilla.org`
+1. `host(2)` 就是 `getpersonas.com`
 1. `type(5)` 就是 `sts/use`
 
 在这里的实现中，这是一张哈希表。
@@ -918,7 +918,7 @@ min(expireTime)
 **唯一的属性集合**来标识出这些实体，这个属性集合称为**键（key）**，例如前面的表
 中的 `id`，然后在其他实体的某个列中包含这个实体的键。
 
-现在回到我们前面的银行账户 middle name的例子，在这里就可以表示成：
+现在回到我们前面的银行账户 middle name 的例子，在这里就可以表示成：
 
 ```shell
 select accountholder.middlename
@@ -1038,7 +1038,7 @@ SQL 背后的实现使用了很多技巧，**牺牲了简单查询的效率，�
 ，而这是一个无限连续体（infinite continuum）问题，如果只是出于性能原因，那些低于
 这个抽象层次但很实用的考虑一定会不可避免的侵入进来。
 
-也许更有趣的是，**Prolog 和 miniKANREN实现了关系型模型**（虽然二者的实现并不纯粹
+也许更有趣的是，**Prolog 和 miniKANREN 实现了关系型模型**（虽然二者的实现并不纯粹
 ），它们将关系型编程和对象图（object-graph）递归数据结构结合起来，**取得了真正令
 人惊叹的能力**。例如，一个非常简单的 miniKANREN 程序可以在一个合理的计算时间内，
 生成无限多个输出自身源代码的程序（quines）。

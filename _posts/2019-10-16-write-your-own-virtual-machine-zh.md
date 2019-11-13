@@ -55,7 +55,7 @@ categories: vm assembly
 单，并从中深受启发。
 
 本文所说的虚拟机最终由 400 行左右 C 代码组成。理解这些代码只需要基本的 C/C++
-知识和二进制运算。这个虚拟机可以在 Unix 系统（包括macOS）上执行。代码中包含少
+知识和二进制运算。这个虚拟机可以在 Unix 系统（包括 macOS）上执行。代码中包含少
 量平台相关的配置终端（terminal）和显示（display）的代码，但这些并不是本项目的核
 心。（欢迎大家添加对 Windows 的支持。）
 
@@ -65,7 +65,7 @@ categories: vm assembly
 ## 什么是虚拟机？
 
 虚拟机就像计算机（computer），它模拟包括 CPU 在内的几个硬件组件，能够执行
-算术运算、读写内存、与 I/O设备交互。最重要的是，它能理解机器语言（machine
+算术运算、读写内存、与 I/O 设备交互。最重要的是，它能理解机器语言（machine
 language），因此可以用相应的语言来对它进行编程。
 
 一个虚拟机需要模拟哪些硬件要看它的使用场景。有些虚拟机是设计用来模拟特定类型的计算设备
@@ -514,7 +514,7 @@ LDI 的二进制格式如下：
 
 <p align="center"><img src="/assets/img/write-your-own-virtual-machine-zh/ldi_layout.gif" width="60%" height="60%"></p>
 
-与 ADD 相比，LDI 只有一种模式，参数也更少。LDI 的操作码是 `1010`，对应`OP_LDI`
+与 ADD 相比，LDI 只有一种模式，参数也更少。LDI 的操作码是 `1010`，对应 `OP_LDI`
 枚举类型。和 ADD 类似，它包含一个 3 比特的 DR（destination register）寄存器，用
 于存放加载的值。剩余的比特组成 `PCoffset9` 字段，这是该指令内嵌的一个立即值（
 immediate value），和 `imm5` 类似。由于这个指令是从内存加载值，因此我们可以猜测
@@ -532,7 +532,7 @@ DR 中的值。
 
 这种方式听上去非常绕，但它确是不可或缺的。LD 指令只能加载 offset 是 9 位的地址，
 但整个内存是 16 位的。LDI 适用于加载那些远离当前 PC 的地址内的值，但要加载这
-些值，需要将这些最终地址存储在离 PC 较近的位置。可以将它想想成 C中有一个局部变
+些值，需要将这些最终地址存储在离 PC 较近的位置。可以将它想想成 C 中有一个局部变
 量，这变量是指向某些数据的指针：
 
 ```c
@@ -736,7 +736,7 @@ RET 在规范中作为一个单独的指令列出，因为在汇编中它是一�
 LC-3 提供了几个预定于的函数（过程），用于执行常规任务以及与 I/O 设备交换，
 例如，用于从键盘接收输入的函数，在控制台上显示字符串的函数。这些都称为
 trap routines，你可以将它们当做操作系统或者是 LC-3 的 API。
-每个 trap routine 都有一个对应的trap code（中断号）。要执行一次捕获，
+每个 trap routine 都有一个对应的 trap code（中断号）。要执行一次捕获，
 需要用相应的 trap code 执行 `TRAP` 指令。
 
 <p align="center"><img src="/assets/img/write-your-own-virtual-machine-zh/trap_layout.gif" width="60%" height="60%"></p>
@@ -755,10 +755,10 @@ enum {
 ```
 
 你可能会觉得奇怪：为什么 trap code 没有包含在指令编码中？这是因为**它们没有给
-LC-3带来任何新功能，只是提供了一种方便地执行任务的方式**（和 C 中的系统函数类似
+LC-3 带来任何新功能，只是提供了一种方便地执行任务的方式**（和 C 中的系统函数类似
 ）。在官方 LC-3 模拟器中，trap routines 是用[汇编实现](https://justinmeiners.github.io/lc3-vm/supplies/os.asm)的。
 **当调用到 trap code 时，PC 会移动到 code 对应的地址**。CPU 执行这个函数（
-procedure）的指令流，函数结束后 PC重置到 trap 调用之前的位置。
+procedure）的指令流，函数结束后 PC 重置到 trap 调用之前的位置。
 
 > 注：这就是为什么程序从 0x3000 而不是 0x0 开始的原因。低地址空间是特意留出来
 > 给 trap routine 用的。
@@ -795,7 +795,7 @@ switch (instr & 0xFF) {
 ## 8.1 PUTS
 
 `PUT` trap code 用于输出一个以空字符结尾的字符串（和 C 中的 `printf` 类似）。规
-范见543 页。
+范见 543 页。
 
 显示一个字符串需要将这个字符串的地址放到 `R0` 寄存器，然后触发 trap。规范中说：
 
@@ -805,8 +805,8 @@ switch (instr & 0xFF) {
 > occurrence of x0000 in a memory location. (Pg. 543)
 
 意思是说字符串是存储在一个**连续的内存区域**。注意这里和 C 中的字符串有所不同：C
-中每个字符占用一个 byte；LC-3 中内存寻找是 16位的，**每个字符都是 16 位**，占用
-两个byte。因此要用 C 函数打印这些字符，需要将每个值先转换成 `char` 类型再输出：
+中每个字符占用一个 byte；LC-3 中内存寻找是 16 位的，**每个字符都是 16 位**，占用
+两个 byte。因此要用 C 函数打印这些字符，需要将每个值先转换成 `char` 类型再输出：
 
 ```c
 {
