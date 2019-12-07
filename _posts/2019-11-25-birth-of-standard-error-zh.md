@@ -2,7 +2,7 @@
 layout    : post
 title     : "[译] 标准错误 stderr 的诞生（2013）"
 date      : 2019-11-25
-lastupdate: 2019-11-25
+lastupdate: 2019-12-06
 categories: c
 ---
 
@@ -10,7 +10,7 @@ categories: c
 
 本文翻译自 2013 年的一篇英文博客 [The Birth of Standard Error](https://www2.dmst.aueb.gr/dds/blog/20131211/index.html)。
 
-从这则奇闻轶事可以看出，“需求是第一生产力” 定律即使对这些最富传奇色彩的大佬也是
+从这则故事可以看出，即使是对这些极富传奇色彩的大佬，“需求是第一生产力” 也是
 成立的。
 
 **由于译者水平有限，本文不免存在遗漏或错误之处。如有疑问，请查阅原文。**
@@ -34,6 +34,9 @@ phototypesetter](https://en.wikipedia.org/wiki/CAT_(phototypesetter))（照相�
 strobe）对预置在旋转磁鼓上的那些**字符字形**（character glyphs）进行**曝光**，从
 而实现对文档的排版。
 
+<p align="center"><img src="/assets/img/birth-of-stderr/drum.png" width="40%" height="40%"></p>
+<p align="center">译注：补一张磁鼓存储器的老照片，来自 https://segmentfault.com/a/1190000021052139 </p>
+
 * 磁鼓支持**四种字体**（Times Roman、italic、bold、和 Symbol）
 * 有一个**放大镜用于改变字体大小**
 * **文本输入**（text input）通常来自**纸质磁带**（paper tape），**输出**（output
@@ -43,9 +46,7 @@ strobe）对预置在旋转磁鼓上的那些**字符字形**（character glyphs
   化学药水池非常难闻，并且还会粘到滚筒上。你需要定期地将显影滚筒（developer
   roller）和内齿轮带到清洁室，在洗刷池里打开水龙头用牙刷不断冲洗。”
 
-大家可能会猜到，贝尔实验室不会采用纸带输入这种方式（Bell Labs didn't use the paper
-tape input）。
-
+大家可能已经猜到，贝尔实验室不会采用纸带输入这么挫的方式。
 [根据 Doug McIlroy 的说法](http://minnie.tuhs.org/pipermail/tuhs/2013-December/002929.html)，“那台机器一
 到货，Joe Ossanna （`troff` 的作者）就**旁路（bypass）**了纸带读取器（tape
 reader），这样就可以**直接从 PDP-11 驱动 C/A/T** 了。制造商对此大吃一惊。” **连
