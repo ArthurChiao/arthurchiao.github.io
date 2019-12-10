@@ -1,7 +1,7 @@
 title: ArthurChiao's Blog
 description: ArthurChiao's Blog
 
-url: arthurchiao.github.io
+url: https://arthurchiao.github.io
 baseurl: ""
 paginate_path: "blog/page:num/"
 permalink: blog/:title/
