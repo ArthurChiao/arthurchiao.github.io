@@ -3480,9 +3480,9 @@ XDP 有三种工作模式，默认是 `native`（原生）模式，当讨论 XDP
 tc BPF 的 BPF 上下文中使用了 `struct __sk_buff`，这个结构体中的所有成员字段都定
 义在 `linux/bpf.h` 系统头文件。
 
-通常来说，`sk_buff` 和 `xdp_buff` 完全不同，二者各有优缺点。例如，`sk_buff` 修改
+通常来说，`sk_buff` 和 `xdp_buff` 完全不同，二者各有有略。例如，`sk_buff` 修改
 与其关联的元数据（its associated metadata）非常方便，但它包含了大量协议相关的信
-息（例如 GSO 相关的状态），这使得无法仅仅通过重新包数据来切换协议（switch
+息（例如 GSO 相关的状态），这使得无法仅仅通过重写包数据来切换协议（switch
 protocols by solely rewriting the packet data）。这是因为**协议栈是基于元数据处
 理包的，而不是每次都去读包的内容**。因此，BPF 辅助函数需要额外的转换，并且还要正
 确处理 `sk_buff` 内部信息。`xdp_buff` 没有这些问题，因为它所处的阶段非常早，此时
@@ -3493,7 +3493,7 @@ protocols by solely rewriting the packet data）。这是因为**协议栈是基
 
 #### 2. hook 触发点
 
-tc BPF 程序在网络数据路径上的 ingress 和 egress 点都可以触发；而 **XDP BPF 程序
+tc BPF 程序在数据路径上的 ingress 和 egress 点都可以触发；而 **XDP BPF 程序
 只能在 ingress 点触发**。
 
 内核两个 hook 点：
