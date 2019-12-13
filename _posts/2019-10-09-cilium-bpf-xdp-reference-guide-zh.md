@@ -19,7 +19,7 @@ https://docs.cilium.io/en/v1.6/bpf/)。
 
 ---
 
-> 本文的目标读者是 **希望在技术层面对 BPF 和 XDP 有更深入理解的开发者和用户**。虽
+> 本文的目标读者是 **“希望在技术层面对 BPF 和 XDP 有更深入理解的开发者和用户”**。虽
 > 然阅读本文有助于拓宽读者对 Cilium 的认识，但这并不是使用 Cilium 的前提条件。
 
 BPF 是 **Linux 内核中**一个高度灵活与高效的**类虚拟机**（virtual machine-like）
@@ -295,7 +295,7 @@ op:8, dst_reg:4, src_reg:4, off:16, imm:32
   functions, and a hidden tail call instruction, which will jump into a different
   BPF program.
 
-**Linux 内核中内置了一个 BPF 解释器**，这个解释器可以执行 BPF 指令组成的程序。即
+**Linux 内核中内置了一个 BPF 解释器**，该解释器能够执行由 BPF 指令组成的程序。即
 使是 cBPF 程序，也可以在内核中透明地转换成 eBPF 程序，除非该架构仍然内置了 cBPF
 JIT，还没有迁移到 eBPF JIT。
 
@@ -311,14 +311,14 @@ JIT，还没有迁移到 eBPF JIT。
 ## 1.2 辅助函数
 
 辅助函数（Helper functions）使得 BPF 能够通过一组内核定义的函数调用（function
-call）来从内核中查询数据，或者将数据推送到内核。每种类型的 BPF 程序可以使用的辅
-助函数可能不同，例如，与 attach 到 tc 层的 BPF 程序相比，attach 到 socket 的 BPF
-程序只允许调用前者可以调用的辅助函数的一个子集。另外一个例子是，轻量级隧道（
-lightweight tunneling ）使用的封装和解封装（Encapsulation and decapsulation）辅
-助函数，只能被更低的 tc 层（lower tc layers）使用；而推送通知到用户态所使用的事
-件输出辅助函数，既可以被 tc 程序使用也可以被 XDP 程序使用。
+call）来从内核中查询数据，或者将数据推送到内核。**不同类型的 BPF 程序能够使用的
+辅助函数可能是不同的**，例如，与 attach 到 tc 层的 BPF 程序相比，attach 到
+socket 的 BPF程序只能够调用前者可以调用的辅助函数的一个子集。另外一个例子是，**
+轻量级隧道**（lightweight tunneling ）使用的封装和解封装（Encapsulation and
+decapsulation）辅助函数，只能被更低的 tc 层（lower tc layers）使用；而推送通知到
+用户态所使用的事件输出辅助函数，既可以被 tc 程序使用也可以被 XDP 程序使用。
 
-所有辅助函数的实现都共享一个通用的、和系统调用类似的函数签名。签名定义如下：
+**所有的辅助函数都共享同一个通用的、和系统调用类似的函数签名**。签名定义如下：
 
 ```c
 u64 fn(u64 r1, u64 r2, u64 r3, u64 r4, u64 r5)
@@ -366,10 +366,10 @@ BPF 排列参数的方式（assignments）已经和底层架构的调用约定�
 buffer）的 `pointer/size` 参数对，辅助函数可以从这个位置读取数据或向其写入数据。
 对于这种情况，校验器还可以执行额外的检查，例如，缓冲区是否已经初始化过了。
 
-可用的 BPF 辅助函数很多，并且还在不断增加，例如，写作本文时，tc BPF 程序可以使用
-38 种不同的 BPF 辅助函数。对于一个给定的 BPF 程序类型，内核的 `struct
-bpf_verifier_ops` 包含了 `get_func_proto` 回调函数，这个函数提供了从某个特定的
-`enum bpf_func_id` 到一个可用的辅助函数的映射。
+**当前可用的 BPF 辅助函数已经有几十个，并且数量还在不断增加**，例如，写作本文时，tc
+BPF 程序可以使用38 种不同的 BPF 辅助函数。对于一个给定的 BPF 程序类型，内核的
+`struct bpf_verifier_ops` 包含了 `get_func_proto` 回调函数，这个函数提供了从某个
+特定的`enum bpf_func_id` 到一个可用的辅助函数的映射。
 
 <a name="bpf_maps"></a>
 
@@ -849,7 +849,7 @@ $ clang -O2 -Wall -target bpf -c xdp-example.c -o xdp-example.o
 $ ip link set dev em1 xdp obj xdp-example.o
 ```
 
-> 以上命令将一个 XDP 程序 attach 到一个网络设备，这需要 Linux 4.11 内核中支持
+> 以上命令将一个 XDP 程序 attach 到一个网络设备，需要是 Linux 4.11 内核中支持
 > XDP 的设备，或者 4.12+ 版本的内核。
 
 LLVM（>= 3.9） 使用**正式的 BPF 机器值**（machine value），即 `EM_BPF`（十进制 `247`
@@ -915,10 +915,10 @@ xdp_drop:
     1:        exit
 ```
 
-`llvm-objdump` 工具可以用编译的 C 源码对汇编输出添加注解（annotate ）。这里的例
-子过于简单，没有几行 C 代码；但注意上面的 `0` 和 `1` 行号，它们直接对应到内核的校
-验器日志（见下面的输出）。这意味着假如 BPF 程序被校验器拒绝了，`llvm-objdump` 可
-以帮助你将 BPF 指令关联到原始的 C 代码，对于分析来说非常有用。
+**`llvm-objdump` 工具能够用编译的 C 源码对汇编输出添加注解（annotate ）**。这里
+的例子过于简单，没有几行 C 代码；但注意上面的 `0` 和 `1` 行号，**这些行号直接对
+应到内核的校验器日志（见下面的输出）**。这意味着假如 BPF 程序被校验器拒绝了，
+`llvm-objdump`能帮助你将 BPF 指令关联到原始的 C 代码，对于分析来说非常有用。
 
 ```shell
 $ ip link set dev em1 xdp obj xdp-example.o verb
@@ -1204,7 +1204,7 @@ BPF 不支持共享库（Shared libraries）。但是，可以将常规的库代
 或其他库中的头文件，复用其中的静态内联函数（static inline functions）或宏/定义（
 macros / definitions）。
 
-内核 4.16+ 和 LLVM 6.0+ 之后已经支持 BPF-to-BPF 函数调用。对于任意跟定的程序片段
+内核 4.16+ 和 LLVM 6.0+ 之后已经支持 BPF-to-BPF 函数调用。对于任意给定的程序片段
 ，在此之前的版本只能将全部代码编译和内联成一个扁平的 BPF 指令序列（a flat
 sequence of BPF instructions）。在这种情况下，最佳实践就是为每个库函数都使用一个
 像 `__inline` 一样的注解（annotation ），下面的例子中会看到。推荐使用
@@ -1259,8 +1259,8 @@ char __license[] __section("license") = "GPL";
 
 ##### 示例程序
 
-原来的 `xdp-example.c` 已经修改为 `tc-example.c`，后者可以被 tc 加载，attach 到
-一个 netdevice 的 ingress 或 egress hook。这个程序对传输的字节进行计数，存储在一
+这里将原来的 `xdp-example.c` 修改为 `tc-example.c`，然后用 `tc` 命令加载，attach 到
+一个 netdevice 的 ingress 或 egress hook。该程序对传输的字节进行计数，存储在一
 个名为 `acc_map` 的 BPF map 中，这个 map 有两个槽（slot），分别用于 ingress hook
 和 egress hook 的流量统计。
 
@@ -1328,7 +1328,7 @@ char __license[] __section("license") = "GPL";
 
 ##### 其他程序说明
 
-这个例子还展示了其他的一些很有用的地方，在开发程序的过程中需要引起注意。这段代码
+这个例子还展示了其他一些很有用的东西，在开发程序的过程中需要引起注意。这段代码
 include 了内核头文件、标准 C 头文件和一个特定的 iproute2 头文件，后者定义了
 `struct bpf_elf_map`。iproute2 有一个通用的 BPF ELF 加载器，因此 `struct bpf_elf_map`
 的定义对于 XDP 和 tc 类型的程序是完全一样的。
