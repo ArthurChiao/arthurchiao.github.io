@@ -2,7 +2,7 @@
 layout    : post
 title     : "Cracking kubernetes node proxy (aka kube-proxy)"
 date      : 2019-11-30
-lastupdate: 2019-11-30
+lastupdate: 2019-12-15
 categories: kubernetes iptables ipvs
 ---
 
@@ -881,6 +881,10 @@ target          prot opt source               destination
 DNAT            tcp  --  0.0.0.0/0            0.0.0.0/0            /* default/nginx:web */ tcp to:10.244.3.182:80
 ```
 
+## 5.5 Further Re-structure the iptables rules
+
+TODO: add rules for traffic coming from outside of cluster.
+
 <a name="ch_6"></a>
 
 # 6. Implementation: proxy via IPVS
@@ -996,9 +1000,155 @@ Done
 
 This is also an `O(1)` proxy, but has even higher performance compared with IPVS.
 
-See some of my previous posts for bpf/cilium.
+Let's see how to implement the proxy function with eBPF in **less than 100 lines of C code**.
 
-TODO: Proxy via BPF (or ebpf) requires 4.19+ kernel.
+## 7.1 Prerequisites
+
+If you have enough time and interests to eBPF/BPF, consider reading through
+[**Cilium: BPF and XDP Reference Guide**](
+https://docs.cilium.io/en/v1.6/bpf/) (or my Chinese translation 
+[here]({% link _posts/2019-10-09-cilium-bpf-xdp-reference-guide-zh.md %})),
+it's a perfect documentation on BPF for developers.
+
+## 7.2 Implementation
+
+let's see the egress part, basic idea:
+
+1. for all traffic, match `dst=CLUSTER_IP && proto==TCP && dport==80`
+1. change destination IP: `CLUSTER_IP -> POD_IP`
+1. update checksum filelds in IP and TCP headers (otherwise our packets will be
+   dropped)
+
+```c
+__section("egress")
+int tc_egress(struct __sk_buff *skb)
+{
+    const __be32 cluster_ip = 0x846F070A; // 10.7.111.132
+    const __be32 pod_ip = 0x0529050A;     // 10.5.41.5
+
+    const int l3_off = ETH_HLEN;    // IP header offset
+    const int l4_off = l3_off + 20; // TCP header offset: l3_off + sizeof(struct iphdr)
+    __be32 sum;                     // IP checksum
+
+    void *data = (void *)(long)skb->data;
+    void *data_end = (void *)(long)skb->data_end;
+    if (data_end < data + l4_off) { // not our packet
+        return TC_ACT_OK;
+    }
+
+    struct iphdr *ip4 = (struct iphdr *)(data + l3_off);
+    if (ip4->daddr != cluster_ip || ip4->protocol != IPPROTO_TCP /* || tcp->dport == 80 */) {
+        return TC_ACT_OK;
+    }
+
+    // DNAT: cluster_ip -> pod_ip, then update L3 and L4 checksum
+    sum = csum_diff((void *)&ip4->daddr, 4, (void *)&pod_ip, 4, 0);
+    skb_store_bytes(skb, l3_off + offsetof(struct iphdr, daddr), (void *)&pod_ip, 4, 0);
+    l3_csum_replace(skb, l3_off + offsetof(struct iphdr, check), 0, sum, 0);
+	l4_csum_replace(skb, l4_off + offsetof(struct tcphdr, check), 0, sum, BPF_F_PSEUDO_HDR);
+
+    return TC_ACT_OK;
+}
+```
+
+and the ingress part, quite similar to the egress code:
+
+```c
+__section("ingress")
+int tc_ingress(struct __sk_buff *skb)
+{
+    const __be32 cluster_ip = 0x846F070A; // 10.7.111.132
+    const __be32 pod_ip = 0x0529050A;     // 10.5.41.5
+
+    const int l3_off = ETH_HLEN;    // IP header offset
+    const int l4_off = l3_off + 20; // TCP header offset: l3_off + sizeof(struct iphdr)
+    __be32 sum;                     // IP checksum
+
+    void *data = (void *)(long)skb->data;
+    void *data_end = (void *)(long)skb->data_end;
+    if (data_end < data + l4_off) { // not our packet
+        return TC_ACT_OK;
+    }
+
+    struct iphdr *ip4 = (struct iphdr *)(data + l3_off);
+    if (ip4->saddr != pod_ip || ip4->protocol != IPPROTO_TCP /* || tcp->dport == 80 */) {
+        return TC_ACT_OK;
+    }
+
+    // SNAT: pod_ip -> cluster_ip, then update L3 and L4 header
+    sum = csum_diff((void *)&ip4->saddr, 4, (void *)&cluster_ip, 4, 0);
+    skb_store_bytes(skb, l3_off + offsetof(struct iphdr, saddr), (void *)&cluster_ip, 4, 0);
+    l3_csum_replace(skb, l3_off + offsetof(struct iphdr, check), 0, sum, 0);
+	l4_csum_replace(skb, l4_off + offsetof(struct tcphdr, check), 0, sum, BPF_F_PSEUDO_HDR);
+
+    return TC_ACT_OK;
+}
+
+char __license[] __section("license") = "GPL";
+```
+
+## 7.3 Compile and load into kernel
+
+Now use my tiny script for compiling and loading into kernel:
+
+```shell
+$ ./compile-and-load.sh
+...
+++ sudo tc filter show dev eth0 egress
+filter protocol all pref 49152 bpf chain 0
+filter protocol all pref 49152 bpf chain 0 handle 0x1 toy-proxy-bpf.o:[egress] direct-action not_in_hw id 18 tag f5f39a21730006aa jited
+
+++ sudo tc filter show dev eth0 ingress
+filter protocol all pref 49152 bpf chain 0
+filter protocol all pref 49152 bpf chain 0 handle 0x1 toy-proxy-bpf.o:[ingress] direct-action not_in_hw id 19 tag b41159c5873bcbc9 jited
+```
+
+where the script looks like:
+
+```shell
+$ cat compile-and-load.sh
+set -x
+
+NIC=eth0
+
+# compile c code into bpf code
+clang -O2 -Wall -c toy-proxy-bpf.c -target bpf -o toy-proxy-bpf.o
+
+# add tc queuing discipline (egress and ingress buffer)
+sudo tc qdisc del dev $NIC clsact 2>&1 >/dev/null
+sudo tc qdisc add dev $NIC clsact
+
+# load bpf code into the tc egress and ingress hook respectively
+sudo tc filter add dev $NIC egress bpf da obj toy-proxy-bpf.o sec egress
+sudo tc filter add dev $NIC ingress bpf da obj toy-proxy-bpf.o sec ingress
+
+# show info
+sudo tc filter show dev $NIC egress
+sudo tc filter show dev $NIC ingress
+```
+
+## 7.4 Verify
+
+```shell
+$ curl $CLUSTER_IP:$PORT
+<!DOCTYPE html>
+...
+</html>
+```
+
+Perfect!
+
+## 7.5 Cleanup
+
+```shell
+$ sudo tc qdisc del dev $NIC clsact 2>&1 >/dev/null
+```
+
+## 7.6 Explanations
+
+TODO.
+
+See some of my previous posts for bpf/cilium.
 
 <a name="ch_8"></a>
 
