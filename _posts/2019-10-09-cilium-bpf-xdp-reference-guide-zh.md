@@ -246,54 +246,58 @@ op:8, dst_reg:4, src_reg:4, off:16, imm:32
 
 可能的指令类别包括：
 
-* `BPF_LD`, `BPF_LDX`：这两种都是**加载操作**（load operations）。`BPF_LD` is
-  used for loading a double word as a special instruction spanning two instructions
-  due to the `imm:32` split, and for byte / half-word / word loads of packet data.
-  The latter was carried over from cBPF mainly in order to keep cBPF to BPF
-  translations efficient, since they have optimized JIT code. For native BPF
-  these packet load instructions are less relevant nowadays. `BPF_LDX` class
-  holds instructions for byte / half-word / word / double-word loads out of
-  memory. Memory in this context is generic and could be stack memory, map value
-  data, packet data, etc.
+* `BPF_LD`, `BPF_LDX`：**加载操作**（load operations）
 
-* `BPF_ST`, `BPF_STX`：这两种都是**存储操作**（store operations）。Similar to `BPF_LDX`
-  the `BPF_STX` is the store counterpart and is used to store the data from a
-  register into memory, which, again, can be stack memory, map value, packet data,
-  etc. `BPF_STX` also holds special instructions for performing word and double-word
-  based atomic add operations, which can be used for counters, for example. The
-  `BPF_ST` class is similar to `BPF_STX` by providing instructions for storing
-  data into memory only that the source operand is an immediate value.
+    * `BPF_LD` 用于加载**double word 长度的特殊指令**（占两个指令长度，源于
+      `imm:32` 的限制），或byte / half-word / word 长度的**包数据**（packet data
+      ）。后者是从 cBPF 中延续过来的，主要为了保证 cBPF 到 BPF 翻译的高效，因为
+      这里的 JIT code 是优化过的。对于 native BPF 来说，这些包加载指令在今天已经
+      用的很少了。
+    * `BPF_LDX` 用于从内存中加载 byte / half-word / word / double-word，这里的内
+      存包括栈内存、map value data、packet data 等等。
 
-* `BPF_ALU`, `BPF_ALU64`：这两种都是 **逻辑运算操作**（ALU operations）。Generally,
-  `BPF_ALU` operations are in 32 bit mode and `BPF_ALU64` in 64 bit mode.
-  Both ALU classes have basic operations with source operand which is register-based
-  and an immediate-based counterpart. Supported by both are add (`+`), sub (`-`),
-  and (`&`), or (`|`), left shift (`<<`), right shift (`>>`), xor (`^`),
-  mul (`*`), div (`/`), mod (`%`), neg (`~`) operations. Also mov (`<X> := <Y>`)
-  was added as a special ALU operation for both classes in both operand modes.
-  `BPF_ALU64` also contains a signed right shift. `BPF_ALU` additionally
-  contains endianness conversion instructions for half-word / word / double-word
-  on a given source register.
+* `BPF_ST`, `BPF_STX`：**存储操作**（store operations）
 
-* `BPF_JMP`：这种专用于**跳转操作**（jump operations）。Jumps can be unconditional
-  and conditional. Unconditional jumps simply move the program counter forward, so
-  that the next instruction to be executed relative to the current instruction is
-  `off + 1`, where `off` is the constant offset encoded in the instruction. Since
-  `off` is signed, the jump can also be performed backwards as long as it does not
-  create a loop and is within program bounds. Conditional jumps operate on both,
-  register-based and immediate-based source operands. If the condition in the jump
-  operations results in `true`, then a relative jump to `off + 1` is performed,
-  otherwise the next instruction (`0 + 1`) is performed. This fall-through
-  jump logic differs compared to cBPF and allows for better branch prediction as it
-  fits the CPU branch predictor logic more naturally. Available conditions are
-  jeq (`==`), jne (`!=`), jgt (`>`), jge (`>=`), jsgt (signed `>`), jsge
-  (signed `>=`), jlt (`<`), jle (`<=`), jslt (signed `<`), jsle (signed
-  `<=`) and jset (jump if `DST & SRC`). Apart from that, there are three
-  special jump operations within this class: the exit instruction which will leave
-  the BPF program and return the current value in `r0` as a return code, the call
-  instruction, which will issue a function call into one of the available BPF helper
-  functions, and a hidden tail call instruction, which will jump into a different
-  BPF program.
+    * `BPF_STX` 与 `BPF_LDX` 相对，将某个寄存器中的值存储到内存中，同样，这里的
+      内存可以是栈内存、map value、packet data 等等。`BPF_STX` 类包含一些 word
+      和 double-word 相关的原子加操作，例如，可以用于计数器。
+    * `BPF_ST` 类与 `BPF_STX` 类似，提供了将数据存储到内存的操作，只不过其源操作
+      数（source operand）必须是一个立即值（immediate value）。
+
+* `BPF_ALU`, `BPF_ALU64`：**逻辑运算操作**（ALU operations）
+
+    Generally,
+    `BPF_ALU` operations are in 32 bit mode and `BPF_ALU64` in 64 bit mode.
+    Both ALU classes have basic operations with source operand which is register-based
+    and an immediate-based counterpart. Supported by both are add (`+`), sub (`-`),
+    and (`&`), or (`|`), left shift (`<<`), right shift (`>>`), xor (`^`),
+    mul (`*`), div (`/`), mod (`%`), neg (`~`) operations. Also mov (`<X> := <Y>`)
+    was added as a special ALU operation for both classes in both operand modes.
+    `BPF_ALU64` also contains a signed right shift. `BPF_ALU` additionally
+    contains endianness conversion instructions for half-word / word / double-word
+    on a given source register.
+
+* `BPF_JMP`：**跳转操作**（jump operations）
+
+    Jumps can be unconditional
+    and conditional. Unconditional jumps simply move the program counter forward, so
+    that the next instruction to be executed relative to the current instruction is
+    `off + 1`, where `off` is the constant offset encoded in the instruction. Since
+    `off` is signed, the jump can also be performed backwards as long as it does not
+    create a loop and is within program bounds. Conditional jumps operate on both,
+    register-based and immediate-based source operands. If the condition in the jump
+    operations results in `true`, then a relative jump to `off + 1` is performed,
+    otherwise the next instruction (`0 + 1`) is performed. This fall-through
+    jump logic differs compared to cBPF and allows for better branch prediction as it
+    fits the CPU branch predictor logic more naturally. Available conditions are
+    jeq (`==`), jne (`!=`), jgt (`>`), jge (`>=`), jsgt (signed `>`), jsge
+    (signed `>=`), jlt (`<`), jle (`<=`), jslt (signed `<`), jsle (signed
+    `<=`) and jset (jump if `DST & SRC`). Apart from that, there are three
+    special jump operations within this class: the exit instruction which will leave
+    the BPF program and return the current value in `r0` as a return code, the call
+    instruction, which will issue a function call into one of the available BPF helper
+    functions, and a hidden tail call instruction, which will jump into a different
+    BPF program.
 
 **Linux 内核中内置了一个 BPF 解释器**，该解释器能够执行由 BPF 指令组成的程序。即
 使是 cBPF 程序，也可以在内核中透明地转换成 eBPF 程序，除非该架构仍然内置了 cBPF
@@ -1328,12 +1332,14 @@ char __license[] __section("license") = "GPL";
 
 ##### 其他程序说明
 
-这个例子还展示了其他一些很有用的东西，在开发程序的过程中需要引起注意。这段代码
-include 了内核头文件、标准 C 头文件和一个特定的 iproute2 头文件，后者定义了
-`struct bpf_elf_map`。iproute2 有一个通用的 BPF ELF 加载器，因此 `struct bpf_elf_map`
-的定义对于 XDP 和 tc 类型的程序是完全一样的。
+这个例子还展示了其他一些很有用的东西，在开发过程中要注意。
 
-程序中每条 `struct bpf_elf_map` 记录（entry）定义一个 map，这个记录包含了生成一
+首先，include 了内核头文件、标准 C 头文件和一个特定的 iproute2 头文件
+`iproute2/bpf_elf.h`，后者定义了`struct bpf_elf_map`。iproute2 有一个通用的 BPF
+ELF 加载器，因此 `struct bpf_elf_map`的定义对于 XDP 和 tc 类型的程序是完全一样的
+。
+
+其次，程序中每条 `struct bpf_elf_map` 记录（entry）定义一个 map，这个记录包含了生成一
 个（ingress 和 egress 程序需要用到的）map 所需的全部信息（例如 key/value 大
 小）。这个结构体的定义必须放在 `maps` section，这样加载器才能找到它。可以用这个
 结构体声明很多名字不同的变量，但这些声明前面必须加上 `__section("maps")` 注解。
@@ -1343,7 +1349,7 @@ include 了内核头文件、标准 C 头文件和一个特定的 iproute2 头�
 （结构体定义）。iproute2 保证 `struct bpf_elf_map` 的后向兼容性。**Cilium 采用的
 是 iproute2 模型**。
 
-这个例子还展示了 BPF 辅助函数是如何映射到 C 代码以及如何被使用的。这里首先定义了
+另外，这个例子还展示了 BPF 辅助函数是如何映射到 C 代码以及如何被使用的。这里首先定义了
 一个宏 `BPF_FUNC`，接受一个函数名 `NAME` 以及其他的任意参数。然后用这个宏声明了一
 个 `NAME` 为 `map_lookup_elem` 的函数，经过宏展开后会变成
 `BPF_FUNC_map_lookup_elem` 枚举值，后者以辅助函数的形式定义在 `uapi/linux/bpf.h`
