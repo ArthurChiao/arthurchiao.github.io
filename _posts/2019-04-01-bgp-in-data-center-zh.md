@@ -594,7 +594,7 @@ minutes is a lifetime）。典型配置：
 
 ## 3 自动化 BGP 配置
 
-运维口头禅：**要么自动化，要么去死**（automate or die）。
+运维口头禅：**无自动化，即等死**（automate or die）。
 
 <a name="chap_3.1"></a>
 
