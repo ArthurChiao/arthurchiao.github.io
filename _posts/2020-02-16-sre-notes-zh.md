@@ -6,7 +6,7 @@ lastupdate: 2020-02-16
 categories: sre
 ---
 
-### 译者序
+### 编者按
 
 本文是阅读 ***Site Reliability Engineering***: How Google Runs Production Systems
 一书时所做的一些笔记。
@@ -1228,8 +1228,8 @@ Google 的监控系统演进：
 
 1. 最原始的基于脚本采集、处理、告警、单独展示
 1. 现代监控 Borgmon（2003）
-    * 时序（time-series）数据作为**监控系统的核心角色**
-    * 将时序数据转换为看板或告警的**富语言（rich language）**
+    * **监控系统的核心角色**：时序（time-series）数据
+    * 一套**富语言（rich language）**：将时序数据转换为看板或告警
 
 花了 10 年时间。
 
@@ -1293,7 +1293,7 @@ Borgmon 是白盒监控，能及时预测问题，方便排障。
 
 但白盒测试无法提供系统的完整视图：
 
-* 看不到用户视角下的系统状态
+* 看不到**用户视角下的系统状态**
 * 只能看到进入服务的请求，但如果 DNS 请求失败，那用户请求根本进不来
 * 只能对能预料到的故障（failures that you expect）做告警
 
@@ -1301,7 +1301,7 @@ Borgmon 是白盒监控，能及时预测问题，方便排障。
 
 * 针对服务目标做协议检测（protocol check），报告成功或失败
 * 能够解析协议的响应体（response payload of the protocol），检验内容是否符合预期
-  ，甚至生成时间序列
+  ，甚至能生成时间序列
 * 能够直接向 Alertmanager 发送告警
 * 自身能被 Borgmon 监控
 
@@ -1323,11 +1323,11 @@ Borgmon 是白盒监控，能及时预测问题，方便排障。
 * 规则维护代价很小，因为设计为通用时间序列格式。
 * 新应用直接接入监控，因为框架、语言库等已经内置了基本的监控指标，降低了应用的实现成本。
 
-SRE 的永恒主题：确保运维/维护代价不随系统规模等比例上升。
+SRE 的永恒主题：**确保运维/维护代价不随系统规模等比例增加**。
 
 <a name="ch_11"></a>
 
-# 11. 轮班（Oncall）
+# 11. 轮班（Being Oncall）
 
 ## 11.1 引言
 
@@ -1336,9 +1336,9 @@ SRE 的永恒主题：确保运维/维护代价不随系统规模等比例上升
 
 ## 11.2 Oncall 工程师的日常
 
-99.99%（4 个 9）的可靠性：对应每季度 13 分钟的宕机时间。
-
 一主一备两个 oncall。
+
+`99.99%`（4 个 9）的可靠性：对应每季度 `13` 分钟的宕机时间。
 
 ## 11.3 平衡的 Oncall
 
@@ -1366,12 +1366,12 @@ SRE 团队必须书写事后报告，详细记录事故时间线。这些事后�
 
 运维工作量应该可衡量，例如每天工单不超过 5 个，每次 oncall 保障不超过 2 个等等。
 
-不合理的监控配置是导致过多运维工作量的一大原因。
+**不合理的监控配置是导致过多运维工作量的一大原因**。
 
 避免告警疲劳：
 
 * 避免针对单个指标的告警，而应该针对服务或其他维度聚合。
-* 重要告警数量与故障数量应该接近 1:1（a `1:1` alert/incident ratio）。
+* `重要告警数量:故障数量` 应该接近 `1:1`（a `1:1` alert/incident ratio）。
 
 ## 11.6 
 
@@ -1411,8 +1411,8 @@ SRE 团队必须书写事后报告，详细记录事故时间线。这些事后�
 ## 12.2 实践
 
 新手飞行员学到的第一课是：如果遇到紧急故障，首先要做的是保证飞机能继续飞行。相比
-于排查故障，保证飞机和乘客的安全更重要。计算机系统也是类似的：保证系统运行比查找
-故障原因重要。对很多新人 —— 尤其是具有开发背景的人 —— 来说，这有点反直觉。
+于排查故障，保证飞机和乘客的安全更重要。计算机系统也是类似的：**保证系统运行比查
+找故障原因重要**。对很多新人 —— 尤其是具有开发背景的人 —— 来说，这有点反直觉。
 
 能动态调整日志级别（无需重启服务）的系统在排障时会更方便。
 
@@ -1421,7 +1421,7 @@ SRE 团队必须书写事后报告，详细记录事故时间线。这些事后�
 <p align="center"><img src="/assets/img/sre-notes-zh/12-2.png" width="50%" height="50%"></p>
 <p align="center">图 12-2：在错误率图中同时显示新版本发布信息</p>
 
-## 12.3 “负面结果”自有奇处（negative results are magic）
+## 12.3 “负面结果”自有妙用（negative results are magic）
 
 “负面结果”（negative results） 指一项实验结果不符合预期，即实验不成功。这里
 的实验是广义的，包括新的设计、算法或工作流程。
@@ -1454,7 +1454,7 @@ Google 的应用跟踪系统：Dapper。
 Google 的事故流程系统基于以清晰和可扩展著称的 [Incident Command
 System](http://www.fema.gov/national-incident-management-system)。
 
-定义良好的事故管理流程具备以下特征。
+定义良好的事故管理流程具备以下特征：
 
 1. 职责的嵌套分离（Recursive Separation of Responsibilities）
    * 在应对紧急故障时，每个人要清楚自己的角色，不要越俎代庖
@@ -1464,7 +1464,7 @@ System](http://www.fema.gov/national-incident-management-system)。
        * 具体操作团队（Operational Work）：在总指挥的领导下执行具体操作，这应该
          是故障期间唯一被允许做系统变更的团队
        * 沟通团队（communication）：向各方及时通报故障进展、维护故障文档等等
-       * 规划团队（planning）：记录 bug、给团队订餐、安排职责交接等等
+       * 规划保障团队（planning）：记录 bug、给团队订餐、安排职责交接等等
 1. 明确的故障总指挥（A Recognized Command Post）
    * 故障核心人员集中到“作战室”（war room），其他人在工位
 1. 实时的故障状态文档（Live Incident State Document）
@@ -1513,13 +1513,14 @@ System](http://www.fema.gov/national-incident-management-system)。
 
 Blameless postmortems are a tenet of SRE culture.
 
-Blameless culture 源于健康护理（healthcare ）和航空电子学（avionics）领域，在这
-些行业中，错误是致命的。这些行业中孕育了这样一种文件：每个“错误”都是
-一次对系统进行增强的机会（every “mistake” is seen as an opportunity to strengthen the system）。
+Blameless culture 源于**健康护理**（healthcare ）和**航空电子学**（avionics）领
+域，在这些行业中，错误是致命的。这些行业中孕育了这样一种文化：**每个“错误”都是
+一次对系统进行增强的机会**（every “mistake” is seen as an opportunity to strengthen the system）。
+
 When postmortems shift from allocating blame to investigating the systematic
 reasons why an individual or team had incomplete or incorrect information,
-effective prevention plans can be put in place. You can’t “fix” people, but you
-can fix systems and processes to better support people making the right choices
+effective prevention plans can be put in place. **You can’t “fix” people, but you
+can fix systems and processes** to better support people making the right choices
 when designing and maintaining complex systems.
 
 ## 15.2 合作与共享知识
@@ -1530,7 +1531,7 @@ when designing and maintaining complex systems.
 
 最佳实践：
 
-* 显式地奖励以正确的方式做事的人
+* **公开地奖励以正确的方式做事的人**
 * 收集大家对事后分析文化效率的反馈
 
 ## 15.4 小结和后续改进
@@ -1569,11 +1570,11 @@ Escalator 是负责单个服务或事件的故障，Outalator 在 Escalator 之�
 >
 > 如果你还没试过一样东西，那就先假设它是坏的。
 
-SRE 的一个核心职责是：对他们所维护的系统的信心（confidence in the systems they
-maintain）进行量化。
+SRE 的一个核心职责是：**对他们所维护的系统的信心（confidence in the systems they
+maintain）进行量化**。
 
-* 采取的方式：将经典软件测试技术（classical software testing techniques）用于大规模系统（systems at scale）。
-* 信心测量方式：依据过去的可靠性（past reliability）和未来的可靠性（future reliability）
+* 采取的方式：将经典软件测试技术（classical software testing techniques）应用于大规模系统（systems at scale）
+* **信心测量方式**：依据过去的可靠性（past reliability）和未来的可靠性（future reliability）
     * 过去的可靠性：根据监控提供的历史数据
     * 未来的可靠性：根据系统的历史数据预测
 
@@ -1581,7 +1582,7 @@ maintain）进行量化。
 
 1. 系统没有做过任何变更，例如，没有软件升级、没有服务器增减：这种情况下，未来的行
    为将和过去类似
-1. 能够充分描述系统的所有变更：这种情况下，能够对每次变更带来的不确定性进行分析
+1. **能够充分描述系统的所有变更**：这种情况下，能够对每次变更带来的不确定性进行分析
 
 测试（testing）是一种证明系统在变更后，某些方面没有变化的机制。在变更前后都能通
 过的测试用例，减少了需要分析的不确定性。因此，完善的测试（thorough testing）能帮
@@ -1597,8 +1598,10 @@ maintain）进行量化。
 > 低。
 >
 > 监控系统能暴露（uncover）出系统中的 bug，但多快能暴露出 bug，则与采集间隔、数
-> 据上报等流水线处理速度密切相关。MTTR 衡量的是多久能修复（repair）故障，这里“修
-> 复”可以是回退（rollback），也可以是其他方式。
+> 据上报等流水线处理速度密切相关。
+> 
+> MTTR 衡量的是**多久能修复（repair）故障**，这里“修
+> 复” **可以是回退（rollback）**，也可以是其他方式。
 >
 > 测试系统有可能检测到 MTTR 为 0 的 bug。
 > * 在上线前的系统测试中发现的 bug 其 MTTR 为 0（如果测试没发现，正式上线后，监控系统将发现这个 bug）
@@ -1630,8 +1633,8 @@ System test：
 * 配置测试
 * 压力测试
 
-金丝雀测试（canary test）并没有放到生产测试中，因为如果金丝雀发布没有问题是不会
-回退的，因此它是一种用户验收（user acceptance）方式，而不是测试。
+**金丝雀测试（canary test）并没有归入生产测试中，因为金丝雀发布如果没问题是不会
+回退的，因此它是一种用户验收（user acceptance）方式，而不是测试**。
 
 配置测试和压力测试会对各种条件下的系统进行验证，而金丝雀测试只是简单接入生产流量
 ，因此并不全面，也很有可能无法检测出新引入的 bug。
@@ -1662,7 +1665,7 @@ System test：
 Auxon 是 Google 的容量规划系统，耗时两年时间完成，是 SRE 内部软件工程的一个
 完美案例。
 
-* 传统容器规划方式
+* 传统容量规划方式
 * Intent-based（基于意图的）容量规划
 
 ## 18.3 Intent-based（基于意图的）容量规划
@@ -1675,12 +1678,13 @@ Auxon 是 Google 的容量规划系统，耗时两年时间完成，是 SRE 内�
 # 19. 外部入口（frontend）负载均衡
 
 * 第一级：DNS
-    * 虽然 DNS 方式有很多缺点，但它仍然是最简单、最有效的对用户流量进行负载均衡
-      方式 ——甚至在用户建立连接之前。但是，光使用 DNS 一种技术是不够的。
-    * 根据 RFC 1035，DNS 响应不应超过 512 字节。这限制了单条 DNS 消息内的 IP 数量。
+    * **虽然 DNS 方式有很多缺点，但它仍然是最简单、最有效的对用户流量进行负载均衡
+      方式 ——甚至在用户建立连接之前**。但是，光使用 DNS 一种技术是不够的。
+    * 根据 RFC 1035，DNS 响应不应超过 512 字节。这限制了**单条 DNS 消息内的 IP 数量**。
 * 第二级：VIP
     * 网络负载均衡器
-    * 负载均衡算法：Google 使用 GRE 隧道
+    * 负载均衡算法
+    * 后端分发：Google 使用 GRE 隧道
 
 <a name="ch_20"></a>
 
@@ -1707,8 +1711,8 @@ Auxon 是 Google 的容量规划系统，耗时两年时间完成，是 SRE 内�
 active TCP 连接），根据 Google RPC 的实现，这些客户端会定期通过 UDP 检测健康状态
 。因此最终结果是：跛脚鸭状态会迅速传播到整个集群 —— 一般 1 或 2 个 RTT。
 
-引入跛脚鸭状态的最大好处是：实现了优雅的退出。使得推送代码、维护设备、处理故障、
-重启服务等对用户透明。
+引入跛脚鸭状态的最大好处是：**实现了优雅的退出**。使得推送代码、维护设备、处理故
+障、重启服务等对用户透明。
 
 停止一个后端服务的过程：
 
@@ -1730,21 +1734,22 @@ active TCP 连接），根据 Google RPC 的实现，这些客户端会定期通
 
 # 21. 处理过载（Handling Overload）
 
-处理过载的一种方式是服务降级（serve degraded responses）：降低响应的准确性，或者
-返回的数据比平时少。例如:
+处理过载的一种方式是**服务降级（serve degraded responses）：降低响应的准确性，或
+者返回的数据比平时少**。例如:
 
 * 正常时搜索整个语料库，返回最佳结果；过载时仅在一小部分语料库中进行搜索
 * 使用本地缓存的、可能不是最新的数据，而不去主存系统获取
 
 ## 21.1 QPS 陷阱
 
-每个请求消耗的资源，不同时间、不同用户的请求消耗的资源可能都是不同的，因此用 QPS
-衡量系统容量很多时候并不准确。
+每个请求消耗的资源，不同时间、不同用户的请求消耗的资源可能都是不同的，因此**用
+QPS衡量系统容量很多时候并不准确**。
 
-更好的方式是直接以可用资源来衡量容量（measure capacity directly in available
-resources）。例如，某服务可能在某个数据中心内有 500 CPU 和 1 TB 内存，用这些数字
-来建模该数据中心内的服务容量是很合理的。很多情况下，我们将一个请求的“成本” 定义
-为：该请求在正常情况下所消耗的 CPU 时间。
+更好的方式：**直接衡量可用资源的容量**（measure capacity directly in available
+resources）。例如，某服务在某个数据中心有 500 CPU 和 1 TB 内存，用这些数字
+来建模该数据中心内的服务容量是很合理的。
+
+很多情况下，我们将**一个请求的“成本”**定义为：该请求在正常情况下所消耗的 CPU 时间。
 
 ## 21.2 用户级限制（Per-Customer Limits）
 
@@ -1756,50 +1761,50 @@ resources）。例如，某服务可能在某个数据中心内有 500 CPU 和 1
 * Google+ 允许使用 2,000 CPU
 * 其他用户总共允许使用 500 CPU
 
-注意，以上用户配额加起来超过了 10,000 个 CPU，这是假设了所有用户不会同时达到最大
-配额。
+**注意，以上用户配额加起来超过了 10,000 个 CPU**，这是假设了所有用户不会同时达到
+最大配额。
 
-这里的难点是如何在后端服务中实时地统计各客户的使用量。这个主题超出了本书的范围，
-但可以说明的是：我们的后端服务中加了很多代码来做这个事情（we’ve written
-significant code to implement this in our backend tasks）。尤其是非
+这里的难点是：**如何在后端服务中实时地统计各客户的使用量**。这个主题超出了本书的
+范围，但可以说明的是：我们的**后端服务中加了很多代码来做这个事情**（we’ve
+written significant code to implement this in our backend tasks）。尤其是非
 a-thread-per-request 模型的服务，统计每个用户（请求） CPU 使用使用非常有挑战。
 
 ## 21.3 客户端节流（Client-Side Throttling）
 
-服务端在检测到某个用户超出 quota 后，直接拒绝其请求，返回一个错误消息。但是，某
-些情况下，这种方式并没有节省资源，服务还是有可能过载，例如：
+服务端在检测到某个用户超出 quota 后，**直接拒绝其请求，返回一个错误消息**。但是，
+**某些情况下，这种方式并没有节省资源，服务还是有可能过载**，例如：
 
 1. 如果请求很简单（例如，只需做一次内存查询），那返回拒绝消息并不会比正常处理这
    个请求更省资源（差不多的资源消耗）
 1. 即使是返回拒绝服务的响应，这一过程也是要消耗资源的。如果后端有大量请求需要拒
    绝，那它还是有可能过载（大部分 CPU 花在“拒绝服务”响应上）
 
-客户端节流可以解决这个问题：当客户端检测到自己的很大一部分请求返回的都是 “out of
-quota” 错误时，主动降低请求频率。
+客户端节流可以解决这个问题：**当客户端检测到很大一部分请求返回的都是 “out of
+quota” 错误时，主动降低请求频率**。
 
-客户端自适应节流（adaptive throttling）：每个客户端维护过去两分钟的如下状态，
+客户端自适应节流（adaptive throttling）：**每个客户端维护过去两分钟的如下状态**，
 
-1. requests：客户端发送的请求数
-1. accepts：实际被服务端接受的请求数
+1. `requests`：客户端发送的请求数
+1. `accepts`：实际被服务端接受的请求数
 
 ## 21.4 请求重要性分类（Criticality）
 
-每个发往后端的请求会属于以下 4 类之一：
+每个发往后端的请求会属于以下 **4 类**之一：
 
-* CRITICAL_PLUS：最重要的请求，失败会严重影响用户
-* CRITICAL：生产环境过来的请求的默认级别
-* SHEDDABLE_PLUS：可接受短暂不可用，批处理任务的默认级别
-* SHEDDABLE：可接受长时间或经常不可用
+* `CRITICAL_PLUS`：最重要的请求，失败会严重影响用户
+* `CRITICAL`：生产环境过来的请求的默认级别
+* `SHEDDABLE_PLUS`：能接受短暂不可用，批处理任务的默认级别
+* `SHEDDABLE`：能接受长时间或经常不可用
 
-这个级别是 Google RPC 系统里的头等概念，并且在很多控制机制中做了实现。例如，过载
-之后按请求的重要性级别拒绝服务。
+**请求级别是 Google RPC 系统最重要的概念之一**，并且很多控制机制都实现了对此的支
+持。例如，**过载后开始按请求的重要性级别拒绝服务**。
 
 ## 21.5 资源利用率信号
 
-Google 的后端服务级过载保护基于资源利用率（utilization）的概念。很多情况下，使用
-的是 CPU 利用率。
+Google 的后端服务级过载保护**基于资源利用率**（utilization）的概念。很多情况下，
+使用的是 CPU 利用率。
 
-资源使用率超过一定阈值后，开始拒绝响应（根据请求的重要性）。
+**资源使用率超过一定阈值后，开始（根据请求的重要性）拒绝响应**。
  
 ## 21.6 处理过载错误
 
@@ -1828,8 +1833,8 @@ serve traffic at that rate without any significant impact on latency, regardless
 of how much excess traffic is thrown at the task. 
 
 While we have a vast array of tools to implement good load balancing and
-overload protections, there is no magic bullet: load balancing often requires
-deep understand‐ ing of a system and the semantics of its requests.
+overload protections, **there is no magic bullet: load balancing often requires
+deep understanding of a system and the semantics of its requests**.
 
 <a name="ch_22"></a>
 
@@ -1839,9 +1844,10 @@ deep understand‐ ing of a system and the semantics of its requests.
 >
 > Why do people always forget that you need to add a little jitter?
 
-连锁故障是正反馈（positive feedback）的结果。当一个系统的部分实例出故障时，
-请求会全部打到还没有出故障的实例，增加后者出现故障的概率，最终结果可能就是整个系
-统挂掉，就像多米诺骨牌效应一样。
+**连锁故障是正反馈（positive feedback）的结果**。
+
+* 当一个系统的部分实例出故障时，请求会全部打到还没有出故障的实例，增加后者出现故障的概率
+* 最终结果可能就是整个系统挂掉，就像多米诺效应一样
 
 本章以前面介绍的莎士比亚搜索作为例子来解释这个问题。
 
@@ -1900,15 +1906,15 @@ A 承受不了 1200 QPS，因此也会挂掉，最终整个服务完全挂掉。
 
 ### 22.2.2 Load Shedding（负载丢弃）和优雅降级
 
-Load Shedding：当接近负载极限时，通过丢弃流量（dropping traffic）的方式主动丢弃
-一部分负载。
+Load Shedding：当接近负载极限时，**通过丢弃流量（dropping traffic）的方式主动丢弃
+一部分负载**。
 
 * 最终目的：在避免过载的前提下，能承担尽量多的有效服务。
 * 直接方式：每个后端依据 CPU、内存、请求队列等因素做节流（throttling）
 
-优雅降低（Graceful degradation）比 Load Shedding 更进一步：减少处理每个请求时所
-做的事，降低系统负载。例如，原来去磁盘上查完整数据库，现在只去内存查缓存数据库，
-查询准确性会低一些，但速度更快。
+**优雅降低（Graceful degradation）比 Load Shedding 更进一步**：减少处理每个请求
+时所做的事，降低系统负载。例如，原来去磁盘上查完整数据库，现在只去内存查缓存数据
+库，查询准确性会低一些，但速度更快。
 
 评估 load shedding 和 graceful degradation 时，需要考虑：
 
@@ -1920,19 +1926,19 @@ Load Shedding：当接近负载极限时，通过丢弃流量（dropping traffic
 
 需要牢记：
 
-1. 优雅降低不能频繁触发（反过来，频繁触发说明你的系统设计有问题）；保持系统的简
-   单和可理解性，尤其是不常用的系统。
-1. 执行不到的代码（经常）就是有问题的代码。由于优雅降级的代码很少用到，因此要定
-   期演练或制造故障，测试它是否符合预期。
-1. 做好监控告警，当多个实例都进入降级模式时，必须告警出来
-1. 过于复杂的降级方案（或实现）不可取，这种方案（或实现）自身都是一个风险点。
+1. **优雅降低不能频繁触发**（反过来，频繁触发说明你的系统设计或部署有问题）；保
+   持系统的简单和可理解性，尤其是不常用的系统。
+1. **执行不到的代码（经常）就是出问题的代码**。由于优雅降级的代码很少用到，因此
+   要**定期演练或制造故障**，测试它是否符合预期。
+1. **做好监控告警**，当多个实例都进入降级模式时，必须告警出来
+1. **过于复杂的降级方案（或实现）不可取**，这种方案（或实现）自身都是一个风险点。
 
 ### 22.2.3 重试
 
 错误的重试方式会导致后端服务雪崩。为使后端服务恢复正常，减少客户端的请求量非常重
 要 —— 尤其是重试请求。
 
-使用客户端自动重试时，务必注意一下事项：
+**使用客户端自动重试时，务必注意一下事项**：
 
 1. 确保后端服务实现了 load shedding 和优雅降级，否则重试可能导致后端服务雪崩
 1. 使用随机指数后退算法（randomized exponential backoff），见[AWS Architecture
@@ -2031,7 +2037,7 @@ deadline 不能超过 A 发起请求时设置的 deadline。
 * 核心服务：数据库查询服务
 * 非核心服务：拼写建议服务
 
-保证非核心服务挂掉时，不会影响到核心服务的可用性。
+**保证非核心服务挂掉时，不会影响到核心服务的可用性。**
 
 在这种情况下，客户端又改如何应对？
 
@@ -2065,10 +2071,10 @@ deadline 不能超过 A 发起请求时设置的 deadline。
 > * 可用性（Availability of the data at each node）
 > * 分区容忍性（tolerance to network Partitions）
 >
-> CAP 的逻辑其实非常好懂：
+> **CAP 的逻辑其实非常好懂**：
 >
-> * 如果网络出现分区，集群会分裂为几个部分
-> * 这时系统要么不可用，要么出现数据不一致
+> * 如果网络出现分区（P），集群会分裂为几个部分：这时系统要么不可用（not A），要么出现数据不一致（not C）
+> * 考虑到分布式系统出现分区（not P）是不可避免的，因此权衡就是在故障时保可用性（A）还是保一致性（C）
 
 > A. Fox and E. A. Brewer, [“Harvest, Yield, and Scalable Tolerant Systems”](http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=798396), 
 > in Proceedings of the 7th Workshop on Hot Topics in Operating Systems, Rio Rico, Arizona, March 1999.
@@ -2094,15 +2100,15 @@ deadline 不能超过 A 发起请求时设置的 deadline。
     * Isolation：隔离性
     * Durability：持久性
 * BASE：最终一致
-    * Basically Availabel：基本一致
+    * Basically Availabel：基本可用
     * Soft state：软状态
     * Eventually consistemcy：最终一致性
 
-大部分支持 BASIC 语义的系统都依赖多主复制（multimaster replication），数据可以同
-时往多个地方写，有机制来解决数据冲突（例如最简单的“时间戳最新的有效”，latest
-timestamp wins）。这种方式通常称为最终一致性。但最终一致性可能导致严重的问题，尤
-其是在有时钟漂移（clock drifting，分布式系统中不可避免的）或网络分区（network
-partitioning）的情况下。
+**大部分支持 BASIC 语义的系统都依赖多主复制**（multimaster replication），数据可
+以同时往多个地方写，有机制来解决数据冲突（例如最简单的“时间戳最新的胜出”，latest
+timestamp wins），**这种方式通常称为最终一致性**。但最终一致性可能导致严重的问题
+，尤其是在有**时钟漂移**（clock drifting，分布式系统中不可避免的）或网络分区（
+network partitioning）的情况下。
 
 > It is also difficult for developers to design systems that work well with
 > datastores that support only BASE semantics. Jeff Shute [Shu13], for example,
@@ -2119,22 +2125,22 @@ partitioning）的情况下。
 工作方式：
 
 * 1 leader + 1 follower
-* 互相检测心跳，如果检测不到，就向对方发送 STONITH（Shoot The Other Node in
-  the Head）命
+* 互相检测心跳，如果检测不到，就向对方发送 **STONITH**（Shoot The Other Node in
+  the Head，给对方脑袋上来一枪）命令
 
-存在的问题：某些情况，双方同时认为自己是 leader 或 follower，即发生脑裂。
+存在的问题：某些情况，双方都认为自己是 leader 或都认为自己是 follower，即发生脑裂。
 
-根本原因：（由于网络原因）心跳检测方式无法解决 leader 判定问题。
+根本原因：（由于网络原因）**心跳检测方式无法解决 leader 判定问题**。
 
 ### 23.1.2 Case 2：需要人类干预的灾备切换
 
 工作方式：
 
 * 1 primary + 1 secondary，primary 向 secondary 同步数据
-* 1 个外部系统对 primary 做健康检测，如果发现异常，立即将 secondary 切为
+* **1 个外部系统**对 primary 做健康检测，如果发现异常，立即将 secondary 切为
   primary
-* primary 负责对 secondary 做健康检测，如果发现异常，立即停止工作，并通知人
-  介入，由人来决定是否切换
+* **primary 负责对 secondary 做健康检测，如果发现异常，立即停止工作，并通知人
+  介入**，由人来决定是否切换
 
 存在的问题：
 
@@ -2149,8 +2155,8 @@ partitioning）的情况下。
 * 多个 node 组成一个集群
 * 启动后各 node 采用 gossip 协议发现彼此，并加入集群
 * 集群选出一个 leader，负责协调（coordination）
-* 发生网络分区后，各分区再次按照 gossip 协议选出各自分区的 leader，然后继续接受
-  写入和删除操作
+* **发生网络分区后，各分区再次按照 gossip 协议选出各自分区的 leader，然后继续接
+  受写入和删除操作**
 
 存在的问题：
 
