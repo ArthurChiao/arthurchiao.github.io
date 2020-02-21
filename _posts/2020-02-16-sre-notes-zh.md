@@ -2171,7 +2171,7 @@ network partitioning）的情况下。
   情况下消息的延迟是不确定的，没有上限（unbouded delays）
 * 同步共识（Synchronous consensus）：用于实时系统，有专用硬件保证消息的实时性
 
-根据对“故障后的节点是否能回到集群”的不同假设，分布式共识算法分为：
+根据对**“故障后的节点是否能回到集群”**的不同假设，分布式共识算法分为：
 
 * crash-fail：一个节点挂掉后不会再回到系统
 * crash-recover：挂掉后还可以回来
@@ -2192,14 +2192,15 @@ presence of an unreliable network.
 > [“Impossibility of Distributed Consensus with One Faulty Process”](http://dl.acm.org/citation.cfm?id=214121),
 > J. ACM, 1985.
 
-实践中，通过保证系统有足够的健康副本（healthy replicas）和网络连接（network
-connectivity），我们能在受限时间（bounded time）内解决分布式共识问题。另外，系统
-还要有随机延迟后退机制（backoffs with randomized delays）。这样的设置解决了：
+实践中，通过保证系统有足够的**健康副本（healthy replicas）和网络连接（network
+connectivity）**，我们能**在受限时间（bounded time）内解决分布式共识问题**。另外
+，系统还要有随机延迟后退机制（backoffs with randomized delays）。这样的设置解决
+了：
 
 * 重试导致的雪崩问题
 * dueling proposers（角斗士）问题
 
-Lamport 的 Paxos 协议是分布式共识问题的最初解决方案，除此之外还有 Raft、Zab、
+**Lamport 的 Paxos 协议是分布式共识问题的最初解决方案**，除此之外还有 Raft、Zab、
 Mencius 等等。另外，Paxos 自身也有一些变种，用于解决性能问题。
 
 > L. Lamport, [“The Part-Time Parliament”](http://research.microsoft.com/en-us/um/people/lamport/pubs/lamport-paxos.pdf),
@@ -2224,7 +2225,7 @@ Mencius 等等。另外，Paxos 自身也有一些变种，用于解决性能问
 
 ## 23.3 分布式共识的系统架构模式（System Architecture Patterns）
 
-分布式共识算法本身很底层，无法直接应用到系统设计中，需要添加一些高层系统组件（
+**分布式共识算法本身很底层**，无法直接应用到系统设计中，需要添加一些高层系统组件（
 higher-level system components）才能使其比较有用，例如：
 
 * datastore
@@ -2233,7 +2234,7 @@ higher-level system components）才能使其比较有用，例如：
 * locking
 * leader election service
 
-现成的分布式共识服务：
+**现成的分布式共识服务**：
 
 * Zookeeper
 * Consul
@@ -2247,18 +2248,18 @@ higher-level system components）才能使其比较有用，例如：
 集（set of operations）的系统。RSM 是很多分布式系统和服务的基础组件，例如数据存
 储、配置存储、leader 选举等等。
 
-RSM 构建在分布式共识算法之上：
+**RSM 构建在分布式共识算法之上：**
 
-<p align="center"><img src="/assets/img/sre-notes-zh/23-2.png" width="40%" height="40%"></p>
+<p align="center"><img src="/assets/img/sre-notes-zh/23-2.png" width="60%" height="60%"></p>
 <p align="center">图 23-2：分布式共识和 RSM 的关系</p>
 
-### 23.3.2 可靠的复制数据仓库（datastore）和配置仓库（configuration store）
+### 23.3.2 可靠的复制数据仓库（replicate datastore）和配置仓库（configuration store）
 
 复制数据仓库（replicated datastore）是 RSM 的一个具体应用。
 
 不是基于分布式共识的系统，通常都是按时间戳计算数据的新旧（rely on timestamps to
-provide bounds on the age of data being returned），而在分布式系统中，时间戳是非
-常不可靠的，因为无法保证多台机器之间的时间是同步的。Spanner 解决这个问题的方式：
+provide bounds on the age of data being returned），而**在分布式系统中，时间戳是非
+常不可靠的**，因为无法保证多台机器之间的时间是同步的。Spanner 解决这个问题的方式：
 对最坏情况下的不确定性进行建模（modeling the worst-case uncertainty involved），
 当必须得解决这种不确定性时，就放慢处理速度（slowing down processing where
 necessary to resolve that uncertainty）。
@@ -2266,7 +2267,7 @@ necessary to resolve that uncertainty）。
 > J. C. Corbett et al., [“Spanner: Google’s Globally-Distributed Database”](https://research.google.com/archive/spanner.html),
 > in OSDI ’12: Tenth Symposium on Operating System Design and Implementation, October 2012.
 
-### 23.3.3 基于 Leader 选举的高可用处理
+### 23.3.3 基于 Leader election 的高可用处理
 
 系统架构：
 
@@ -2277,18 +2278,19 @@ necessary to resolve that uncertainty）。
 <p align="center"><img src="/assets/img/sre-notes-zh/23-3.png" width="40%" height="40%"></p>
 <p align="center">图 23-3：使用 replicated service 做 master election 的高可用系统</p>
 
-与 replicated datastore 不同，在这种架构中，共识算法并没有在主业务流的关键路径上
-（critical path of the main work the system is doing），因此吞吐不是一个大问题。
+与 replicated datastore 不同，在这种架构中，**共识算法并没有在主业务流的关键路径
+上**（critical path of the main work the system is doing），因此吞吐不是一个大问
+题。
 
-GFS 和 Bigtable 都使用了这种系统架构。
+**GFS 和 Bigtable 都使用了这种系统架构。**
 
 ### 23.3.4 分布式协调（distributed coordination）和锁服务
 
-barrier 是一个 coordination primitive：阻塞一组进程，直到满足某个条件。
+barrier 是一个协调原语（coordination primitive），作用：阻塞一组进程，直到满足某个条件。
 
 例如，barrier 可用于实现 MapReduce 模型：
 
-<p align="center"><img src="/assets/img/sre-notes-zh/23-4.png" width="40%" height="40%"></p>
+<p align="center"><img src="/assets/img/sre-notes-zh/23-4.png" width="50%" height="50%"></p>
 <p align="center">图 23-4：MapReduce 计算中用于进程协调（process coordination）的 barrier</p>
 
 可以用一个单独的进程来实现 coordinator，但这样增加了一个单点故障源。更好的方式是
@@ -2301,22 +2303,23 @@ barrier 是一个 coordination primitive：阻塞一组进程，直到满足某�
 > ZooKeeper Project (Apache Foundation), [“ZooKeeper Recipes and Solutions”](http://zookeeper.apache.org/doc/trunk/recipes.html),
 > in ZooKeeper 3.4 documentation, 2014.
 
-锁（lock）是另一个能够用 RSM 实现的 coordination primitive。实践中避免无限长时间
-的锁（indefinite locks），而应该使用可续租、有过期时间的租约锁（renewable leases
-with timeouts），以防止某个进程在持有锁之后挂掉导致锁永远不会释放的问题。
+锁（lock）是另一个能够用 RSM 实现的 coordination primitive。实践中应避免**无限
+时间锁**（indefinite locks），而应该使用**可续租、有过期时间的租约锁**（
+renewable leases with timeouts），以防止某个进程在持有锁之后挂掉导致锁永远不会释
+放的问题。
 
-本章不会深入讨论分布式锁，但牢记：它是一个低层系统原语（low-level system
+本章不会深入讨论分布式锁，但牢记：分布式锁是一个低层系统原语（low-level system
 primitive），用的时候千万要当心。大部分系统都应该使用提供分布式事物的高层系统，
 而不应该直接使用低层原语。
 
 ### 23.3.5 可靠的分布式排队和消息传递（queuing and messaging）
 
-要确保从 queue 里拿出的任务能成功完成。因此推荐使用租约系统（lease system），而
-不是直接从 queue 里面将任务移除（outright removal from the queue）。
+要**确保从 queue 里拿出的任务能成功完成**。因此推荐使用租约系统（lease system），而
+**不是直接从 queue 里将任务移除**（outright removal from the queue）。
 
 Queue-based 系统最大的风险是队列丢失，将 queue 实现为 RSM 可以降低这种风险。
 
-原子广播（Atomic broadcast）是分布式系统的一个 primitive，所有接收方能以可靠
+**原子广播**（Atomic broadcast）是分布式系统的一个 primitive，所有接收方能以可靠
 、严格的顺序接收消息。不是所有 publish-subscribe 系统都实现原子广播。Chandra and
 Toueg demonstrate the equivalence of atomic broadcast and consensus.
 
@@ -2325,7 +2328,7 @@ Toueg demonstrate the equivalence of atomic broadcast and consensus.
 <p align="center"><img src="/assets/img/sre-notes-zh/23-5.png" width="50%" height="50%"></p>
 <p align="center">图 23-5：基于队列的任务分发，使用了可靠的、基于共识的队列组件</p>
 
-publish-subscribe 还可用于实现一致性分布式缓存（coherent distributed caches）。
+publish-subscribe 还可用于实现**一致性分布式缓存**（coherent distributed caches）。
 
 基于队列的系统通常更关心吞吐而不是延迟。
 
@@ -2350,7 +2353,7 @@ publish-subscribe 还可用于实现一致性分布式缓存（coherent distribu
 
 ## 23.7 小结
 
-当你需要处理 leader election、核心共享状态、分布式锁等问题时，考虑使用分布式共识
+当需要处理 leader election、核心共享状态、分布式锁等问题时，考虑使用分布式共识
 ：任何其他方式都是一颗定时炸弹（ticking bomb）。
 
 <a name="ch_24"></a>
@@ -2558,10 +2561,10 @@ cloud remain accessible to users）。保证用户能访问到数据是非常重
 衡量一个系统的可靠性时，“在线时间”（可用性）似乎比“数据完整性”要求更严格。但考虑
 下面的情况：
 
-* 如果可用性 SLO 是 99.99%，那对应的是一年内宕机不超过 1 个小时，这是非常高
+* 如果可用性 SLO 是 `99.99%`，那对应的是一年内宕机不超过 `1 个小时`，这是非常高
   的标准了，超过了大部分互联网用户甚至企业用户的预期
-* 如果数据完整性 SLO 同样是 99.99%，那对于一个 2GB 的数据库，就会有最多 200KB 的
-  数据损坏，考虑到数据库最整个系统的重要性，这将是灾难性的
+* 如果数据完整性 SLO 同样是 `99.99%`，那对于一个 `2GB` 的数据库，就会有最多
+  `200KB` 的数据损坏，考虑到数据库对整个系统的重要性，这将是灾难性的
 
 <p align="center"><img src="/assets/img/sre-notes-zh/26-00.png" width="90%" height="90%"></p>
 
@@ -2573,7 +2576,7 @@ and recovery）。
 
 ### 26.1.1 策略选择
 
-各自数据完整性策略都是对以下几个因素的取舍：
+各种数据完整性策略都是对以下几个因素的取舍：
 
 * uptime
 * latency 
@@ -2595,11 +2598,11 @@ and recovery）。
 ### 26.1.2 备份 vs. 存档
 
 公司会通过备份（backup）来防止数据丢失，但真正应该关注的是**数据恢复**（data recovery），
-这是**真正的备份**（*real* backup）与存档（achieve）的区别。没人真的想要备份数据
-，他们只想恢复数据。
+这是**真正的备份**（*real* backup）与存档（achieve）的区别。**没人真的想要备份数据
+，他们只想恢复数据**。
 
-备份和存档的区别：备份可以被重新加载回应用，而存档不行。这也决定了它们的用途不同
-。
+备份和存档的区别：**备份可以被重新加载回应用，而存档不行**。这也决定了它们的用途
+不同。
 
 <p align="center"><img src="/assets/img/sre-notes-zh/26-01.png" width="90%" height="90%"></p>
 
@@ -2607,9 +2610,9 @@ and recovery）。
 
 SRE 的目标：维护持久数据的完整性（maintaining integrity of persistent data）。
 
-### 26.2.1 数据完整性是手段，数据可用性是目标
+### 26.2.1 数据完整性只是手段，数据可用性才是目标
 
-数据完整性（integrity）：数据在其生命周期内保持准确（accuracy）和一致（consistency）。
+数据完整性（integrity）：**数据在其生命周期内保持准确（accuracy）和一致（consistency）**。
 
 从用户的角度来看，仅仅保障数据完整性是没用的，例如：
 
