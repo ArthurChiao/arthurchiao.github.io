@@ -313,7 +313,7 @@ $ ovs-vsctl show
 ## Appendix B: Scripts Used In This Article
 
 1. [add-mirror.sh](/assets/img/traffic-mirror-with-ovs/add-mirror.sh)
-1. [add-port.sh]({/assets/img/traffic-mirror-with-ovs/add-port.sh)
+1. [add-port.sh](/assets/img/traffic-mirror-with-ovs/add-port.sh)
 1. [add-traffic-source.sh](/assets/img/traffic-mirror-with-ovs/add-traffic-source.sh)
 1. [del-mirrors.sh](/assets/img/traffic-mirror-with-ovs/del-mirrors.sh)
 1. [del-mirror.sh](/assets/img/traffic-mirror-with-ovs/del-mirror.sh)

@@ -8,7 +8,7 @@ categories: network datacenter cilium
 
 This post also
 provides an English version: [***Ctrip Network Architecture Evolution in the
-Cloud Computing Era***](% link _posts/2019-04-17-ctrip-network-arch-evolution.md %}).
+Cloud Computing Era***]({% link _posts/2019-04-17-ctrip-network-arch-evolution.md %}).
 
 ### 前言
 

@@ -1,7 +1,8 @@
 ---
-layout: post
-title:  "OVS Deep Dive 6: Internal Port"
-date:   2017-03-08
+layout    : post
+title     : "OVS Deep Dive 6: Internal Port"
+date      : 2017-03-08
+lastupdate: 2020-03-17
 categories: ovs
 ---
 
@@ -184,12 +185,10 @@ of L2 frames:
 
 ```shell
 root@hostA # tcpdump -e -i vlan1000 'icmp'
-tcpdump: verbose output suppressed, use -v or -vv for full protocol decode
-listening on vlan1000, link-type EN10MB (Ethernet), capture size 65535 bytes
-10:28:24.176777 64:f6:9d:5a:bd:13 (oui Unknown) > a6:f2:f7:d0:1d:e6 (oui Unknown), ethertype IPv4 (0x0800), length 74: 10.32.4.123 > 10.18.138.168: ICMP echo request, id 1, seq 1742, length 40
-10:28:24.176833 a6:f2:f7:d0:1d:e6 (oui Unknown) > aa:bb:cc:dd:ee:ff (oui Unknown), ethertype IPv4 (0x0800), length 74: 10.18.138.168 > 10.32.4.123: ICMP echo reply, id 1, seq 1742, length 40
-10:28:25.177262 64:f6:9d:5a:bd:13 (oui Unknown) > a6:f2:f7:d0:1d:e6 (oui Unknown), ethertype IPv4 (0x0800), length 74: 10.32.4.123 > 10.18.138.168: ICMP echo request, id 1, seq 1743, length 40
-10:28:25.177294 a6:f2:f7:d0:1d:e6 (oui Unknown) > aa:bb:cc:dd:ee:ff (oui Unknown), ethertype IPv4 (0x0800), length 74: 10.18.138.168 > 10.32.4.123: ICMP echo reply, id 1, seq 1743, length 40
+10:28:24.176777 64:f6:9d:5a:bd:13 > a6:f2:f7:d0:1d:e6, 10.32.4.123   > 10.18.138.168: ICMP echo request
+10:28:24.176833 a6:f2:f7:d0:1d:e6 > aa:bb:cc:dd:ee:ff, 10.18.138.168 > 10.32.4.123:   ICMP echo reply
+10:28:25.177262 64:f6:9d:5a:bd:13 > a6:f2:f7:d0:1d:e6, 10.32.4.123   > 10.18.138.168: ICMP echo request
+10:28:25.177294 a6:f2:f7:d0:1d:e6 > aa:bb:cc:dd:ee:ff, 10.18.138.168 > 10.32.4.123:   ICMP echo reply
 ```
 
 We could see that the **source MAC (`a6:f2:f7:d0:1d:e6`) of ICMP echo reply
@@ -298,10 +297,10 @@ scripts:
 $ ./run-containers.sh centos_1 centos_2
 
 # 2. show container netns IDs, we will use these later
-$ ./expose_container_netns.sh centos_1
+$ ./expose-container-netns.sh centos_1
 <netns1>
 
-$ ./expose_container_netns.sh centos_2
+$ ./expose-container-netns.sh centos_2
 <netns2>
 
 # 3. add a tap device to each container, the tap is on OVS and has type=internal
@@ -322,17 +321,28 @@ $ ip netns exec <netns2> ifconfig eth0 down
 # 6. verify connectivity
 $ ./attach-container.sh centos_1
 root@<centos_1>#: ping <centos_2 ip>
-
 ```
+
+> **UPDATE** (2020.03): explicitly exposing container netns is cumbersome,
+> instead, you could achieve the same effect as step 4 & 5 with tool `nsenter`, see
+> my later post [Cilium Network Topology and Traffic Path on AWS]({% link _posts/2019-10-26-cilium-network-topology-on-aws.md %})
+> for an example.
 
 ### 4.2 Performance Comparison (TODO: update)
 
 Connect to OVS via internal port achieves (***slightly?***) better performance
 than via veth-pair.
 
-
 ## References
+
 1. https://ask.openstack.org/en/question/4276/what-is-the-internal-interface-and-port-for-on-openvswitch/
 2. https://mail.openvswitch.org/pipermail/ovs-discuss/2013-August/030855.html
 3. http://blog.scottlowe.org/2012/10/30/running-host-management-on-open-vswitch/
 4. https://wiki.linuxfoundation.org/networking/bridge
+
+## Appendix: Scripts used in this post
+
+1. [run-containers.sh](/assets/img/ovs-deep-dive/run-containers.sh)
+1. [add-tap-to-container.sh](/assets/img/ovs-deep-dive/add-tap-to-container.sh)
+1. [expose-container-netns.sh](/assets/img/ovs-deep-dive/expose_container_netns.sh)
+1. [attach-container.sh](/assets/img/ovs-deep-dive/attach-container.sh)
