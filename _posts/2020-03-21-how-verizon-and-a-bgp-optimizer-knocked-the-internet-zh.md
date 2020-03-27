@@ -22,9 +22,9 @@ Cloudflare 等公司是受害者；按照 Cloudflare 这篇博客的说法，如
 
 但作为重要的中间节点，**Verizon 的不作为和装死**（故障后 Cloudflare 立即联系了包
 括 Verizon 在内的几家 ISP 并较快地解决了问题，但 8 小时后 Verizon 仍然没有任何回
-复）**激怒了Cloudflare**，因此他们写了这篇博客。除了技术复盘，他们还在文中毫不客
+复）**激怒了 Cloudflare**，因此他们写了这篇博客。除了技术复盘，他们还在文中毫不客
 气地说（ma）Verizon 的网工“马虎”、“懒惰”，这还不够解气，因此他们把 Verizon 的大
-名写在了文章的标题开头，让大家看看Verizon 是什么样的一家公司（以及有一支怎样的网
+名写在了文章的标题开头，让大家看看 Verizon 是什么样的一家公司（以及有一支怎样的网
 络团队）。
 
 **由于译者水平有限，本文不免存在遗漏或错误之处。如有疑问，请查阅原文。**
@@ -37,7 +37,7 @@ Cloudflare 等公司是受害者；按照 Cloudflare 这篇博客的说法，如
 
 # 1. 发生了什么？
 
-今天早上`10:30 UTC`，互联网出现了一次短暂的心脏颤动。**很多经由 Verizon（AS701）的
+今天早上 `10:30 UTC`，互联网出现了一次短暂的心脏颤动。**很多经由 Verizon（AS701）的
 互联网路由，下一跳（preferred path）变成了位于 Northern Pennsylvania 的一个小公
 司，而 Verizon 是全球互联网的主要中间节点之一**。可以想象，这就像一条主干高速公
 路连到了一条小巷子 —— 瞬间导致托管在 Cloudflare 及其他提供商上的大量网站无法从全
@@ -96,13 +96,13 @@ steer traffic within a network）的方式 —— 但是，**这些分割后的�
 
 网络之间通过 BGP 交换路由信息：如何从当前位置访问任意其他位置。这些路由可以是
 **具体到某个网络的路由**（specific routes），就像通过 GPS 精确定位某个城市；也可以
-是**宽泛的路由**（generic routes），就像在GPS 上定位一个国家或省份。
+是**宽泛的路由**（generic routes），就像在 GPS 上定位一个国家或省份。
 
 而这也是**本次出故障的地方**。
 
 1. Pennsylvania 的一个 ISP 在它们的网络（
    [AS33154](https://bgp.he.net/AS33154) - DQE Communications）中使用了一个 BGP
-   优化器，这意味着它们的网络中有很多specific routes。**specific routes 比
+   优化器，这意味着它们的网络中有很多 specific routes。**specific routes 比
    general routes 的优先级高**（就像导航的时候，白金汉宫比伦敦更精确，因此优先级
    更高）。
 
@@ -119,7 +119,7 @@ steer traffic within a network）的方式 —— 但是，**这些分割后的�
 4. 这意味着突然之间，Verizon、Allegheny 和 DQE 的大量用户都无法正常的访问网络服
    务，因为**这些小公司的网络根本没有足够的容量支撑如此规模的流量经过**。另一方
    面，即便这些公司有足够的容量，DQE, Allegheny 和 Verizon 也不能（not allowed）
-   说它们有 [到达 Cloudflare、Amazon 和 Linode的最佳路由
+   说它们有 [到达 Cloudflare、Amazon 和 Linode 的最佳路由
    ](https://twitter.com/atoonk/status/1143143943531454464)（最佳路由和拓扑、代
    价等有关，见链接及下图，译者注）。
 
@@ -157,7 +157,7 @@ IRR 表示 Internet Routing Registry，网络可以向这样的分布式数据�
 faulty more-specifics）。
 
 让我们感到震惊的是，**IRR 已经存在（并且有良好的文档）24 年了，但 Verizon 似乎并
-未在它与Allegheny 的 BGP session 之间实现任何此类过滤**。IRR 不会给 Verizon 增加
+未在它与 Allegheny 的 BGP session 之间实现任何此类过滤**。IRR 不会给 Verizon 增加
 任何成本或给他们的服务带来任何限制。**我们只能再重复一遍说，他们没有这样做没有其他
 理由：只有粗心或者懒惰**。
 
@@ -190,7 +190,7 @@ Clouflare 的网络团队发现了有问题的网络 AS33154 (DQE Communications
 <p align="center">发给 Verizon 的邮件截图</p>
 
 我们的一个网络工程师快速联系到 DQE 公司，对方也没有耽搁，很快将他们能解决这个故
-障的人告诉我们。我们双方通过电话合作，**停止将这些“优化的”路由通告给Allegheny 公
+障的人告诉我们。我们双方通过电话合作，**停止将这些“优化的”路由通告给 Allegheny 公
 司**。我们在此向 DQE 表示感谢。**这些工作完成后，互联网就重新稳定了，一切回到正
 轨**。
 

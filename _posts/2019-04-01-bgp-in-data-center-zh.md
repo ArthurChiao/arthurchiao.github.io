@@ -1624,9 +1624,10 @@ neighbor eth0 remote-as external
 
 #### 服务器上可用的路由软件
 
-如果你是网络设计的老兵，你会意识到服务器上跑的 BGP 其实只是一个 GBP speaker，不
-需要最优路径计算、将路由添加到路由表等全套 BGP 功能。大型互联网公司意识到了这一
-点，因此他们会运行一些能作为 BGP speaker 的软件，例如 [ExaBGP]()。
+至此，网络设计领域的老兵会意识到：**服务器上跑的 BGP 其实只是一个 GBP speaker，
+不需要最优路径计算、将路由添加到路由表等全套 BGP 功能**。大型互联网公司也意识到
+了这一点，因此他们会运行一些能作为 BGP speaker 的软件，例如
+[ExaBGP](https://github.com/Exa-Networks/exabgp)。
 
 更注重全功能的软件有 [FRRouting](https://bird.network.cz/)  和
 [BIRD](https://bird.network.cz/)。FRRouting 对 BGP unnumbered 和动态邻居两种模型
