@@ -618,16 +618,15 @@ plane](https://medium.com/@mattklein123/service-mesh-data-plane-vs-control-plane
 
 上面这条 tweet 是一个很幽默的夸张，但确实很好地总结了当前的趋势：
 
-* 从历史来说，路由器和负载均衡器都是厂商提供的专有硬件，非常昂贵
-* 越来越多的专有 L3/L4 网络设备被通用服务器、通用网卡，以及基于 [IPVS](http://www.linuxvirtualserver.org/software/ipvs.html)、[DPDK](http://dpdk.org/)、
-  fd.io](https://fd.io/) 等框架的特殊软件方案代替。一台现代数据中心的价格 $5K 以
-  下机器，基于 DPDK 开发用户态应用程序在 Linux 发小包，很容易就可以用满 80Gbps
-  的网卡带宽。同时，价格便宜的、ECMP 路由聚合带宽能力惊人的基础路由器/交换机
-  ASICs 正在被组装成通用路由器
+* 从历史来说，路由器和负载均衡器都是厂商提供的专有硬件，非常昂贵。
+* 越来越多的专有 L3/L4 网络设备被通用服务器、通用网卡，以及基于 [IPVS](http://www.linuxvirtualserver.org/software/ipvs.html)、[DPDK](http://dpdk.org/)、[fd.io](https://fd.io/) 等框架的特殊软件方案
+  代替。一台现代数据中心的价格 $5K 以下机器，基于 DPDK 开发用户态应用程序在
+  Linux 发小包，很容易就可以用满 80Gbps的网卡带宽。同时，人们正在将价格便宜的、ECMP 路由聚
+  合带宽能力惊人的基础路由器/交换机 ASICs 组装成通用路由器。
 * NGINX、HAProxy 以及 Envoy 这样的功能复杂的 L7 负载均衡器正在快速迭代，并不断侵
-  蚀原来硬件厂商例如 F5 的地盘。因此，L7 LB 也在非常有气势地朝着通用软件方案迈进
+  蚀原来硬件厂商例如 F5 的地盘。因此，L7 LB 也在非常有气势地朝着通用软件方案迈进。
 * 同时，工业界几个主要云厂商主导的以 IaaS、CaaS、FaaA 为整体演进的趋势，意味着将
-  来只有很少一部分工程师需要了解物理的网络是如何工作的（这些就是“黑科技”）
+  来只有很少一部分工程师需要了解物理的网络是如何工作的（这些就是“黑科技”）。
 
 ## 8 总结及展望
 
@@ -642,7 +641,7 @@ plane](https://medium.com/@mattklein123/service-mesh-data-plane-vs-control-plane
   和商业机会也都会在这两个方向
 * 对于网络解决方案，工业界正在大步迈向**通用开源硬件和软件解决方案**。我相信传统
   负载均衡厂商，比如 F5，会是最先被开源软件和云厂商干掉的。传统路由器/交换机厂商
-  ，例如 Arista/Cumulus 等，由于 on-premise deployments （本地部署）的需求，我认
+  ，例如 Arista/Cumulus 等，由于 on-premises deployments （本地部署）的需求，我认
   为存在时间会更长一些，但最终会被云厂商和他们的自研物理网络干掉
 
 总体来说，我认为这是计算机网络的一个令人振奋的时代。朝着开源和软件方向的转变使得
