@@ -3,23 +3,26 @@ layout: default
 title: About ArthurChiao
 ---
 
-## About ArthurChiao
+# About ArthurChiao
 
-* Software Developer
+* Software developer
+* Part time translator
 
-### Work For
+## Working Experience
 
-1. Ericsson (2014-2016)
-1. Ctrip (2016-)
+1. Ericsson (2014-2016), Software Engineer
+1. Ctrip (2016-), Senior Architect
 
-### Focus & Interests
+## Focus & Interests
 
 * Networking, SDN
 * Cloud, Virtualization
-* Storage: Ceph, Distributed File System
-* Multimedia Processing
+* Distributed storage
+* Low level techniques
 
-### Open Source Contributions
+## Translated Books
 
-* [owncloud/client](https://github.com/owncloud/client)
-* [x265](https://bitbucket.org/multicoreware/x265/wiki/Home)
+* [《云安全实用指南》](https://item.jd.com/66761430027.html)，电子工业出版社，2020
+
+    * 原著：[***Practical Cloud Security***](https://www.oreilly.com/library/view/practical-cloud-security/9781492037507/),
+      Chris Dotson, O'Reilly 2019
