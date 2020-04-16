@@ -9,7 +9,8 @@ categories: network-stack kernel monitoring tuning
 
 ## 译者序
 
-本文翻译自 2016 年的一篇英文博客 [Monitoring and Tuning the Linux Networking Stack: Receiving Data](https://blog.packagecloud.io/eng/2016/06/22/monitoring-tuning-linux-networking-stack-receiving-data/)。**如果能看懂英文，我建议你阅读原文，或者和本文对照看。**
+本文翻译自 2016 年的一篇英文博客
+[Monitoring and Tuning the Linux Networking Stack: Receiving Data](https://blog.packagecloud.io/eng/2016/06/22/monitoring-tuning-linux-networking-stack-receiving-data/)。**如果能看懂英文，建议阅读原文，或者和本文对照看。**
 
 这篇文章写的是 **“Linux networking stack"**，这里的 ”stack“ 指的不仅仅是内核协议
 栈，而是包括内核协议栈在内的、从数据包到达物理网卡到最终被用户态程序收起的整个路

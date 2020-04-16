@@ -9,7 +9,8 @@ categories: network-stack kernel monitoring tuning
 
 ## 译者序
 
-本文翻译自 2017 年的一篇英文博客 [Monitoring and Tuning the Linux Networking Stack: Sending Data](https://blog.packagecloud.io/eng/2017/02/06/monitoring-tuning-linux-networking-stack-sending-data)。**如果能看懂英文，我建议你阅读原文，或者和本文对照看。**
+本文翻译自 2017 年的一篇英文博客
+[Monitoring and Tuning the Linux Networking Stack: Sending Data](https://blog.packagecloud.io/eng/2017/02/06/monitoring-tuning-linux-networking-stack-sending-data)。**如果能看懂英文，建议阅读原文，或者和本文对照看。**
 
 这篇文章写的是 **“Linux networking stack"**，这里的 ”stack“ 并不仅仅是内核协议栈，
 而是包括内核协议栈在内的，从应用程序通过系统调用**写数据到 socket**，到数据被组织
