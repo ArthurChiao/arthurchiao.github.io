@@ -966,8 +966,8 @@ Total 0 rules
 $ sudo ethtool -U eth0 flow-type tcp4 dst-port 80 action 2
 ```
 
-你也可以用 ntuple filtering 在硬件层面直接 drop 某些 flow 的包。当特定 IP 过来的流量太大
-时，这种功能可能会派上用场。更多关于 ntuple 的信息，参考 ethtool man page。
+也可以用 ntuple filtering 在硬件层面直接 drop 某些 flow 的包。当特定 IP 过来的流
+量太大时，这种功能可能会派上用场。更多关于 ntuple 的信息，参考 ethtool man page。
 
 `ethtool -S <DEVICE>` 的输出统计里，Intel 的网卡有 `fdir_match` 和 `fdir_miss` 两项，
 是和 ntuple filtering 相关的。关于具体的、详细的统计计数，需要查看相应网卡的设备驱
@@ -990,15 +990,17 @@ $ sudo ethtool -U eth0 flow-type tcp4 dst-port 80 action 2
 式。
 
 可以把软中断系统想象成一系列**内核线程**（每个 CPU 一个），这些线程执行针对不同
-事件注册的处理函数（handler）。如果你执行过 `top` 命令，可能会注意到
+事件注册的处理函数（handler）。如果你用过 `top` 命令，可能会注意到
 `ksoftirqd/0` 这个内核线程，其表示这个软中断线程跑在 CPU 0 上。
 
-内核子系统（比如网络）能通过 `open_softirq` 函数注册软中断处理函数。接下来我们会看到
-网络系统是如何注册它的处理函数的。现在先来学习一下软中断是如何工作的。
+内核子系统（比如网络）能通过 `open_softirq()` 注册软中断处理函数。接下来会看到
+网络系统是如何注册它的处理函数的。
+
+现在先来学习一下软中断是如何工作的。
 
 ## 4.2 `ksoftirqd`
 
-软中断对分担硬中断的工作量非常重要，因此软中断线程在内核启动的很早阶段就 `spawn` 出来了。
+软中断对分担硬中断的工作量至关重要，因此软中断线程在**内核启动的很早阶段**就 `spawn` 出来了。
 
 [`kernel/softirq.c`](https://github.com/torvalds/linux/blob/v3.13/kernel/softirq.c#L743-L758)
 展示了 `ksoftirqd` 系统是如何初始化的：
@@ -1263,10 +1265,9 @@ $ cat /proc/interrupts
 
 #### 中断合并（Interrupt coalescing）
 
-中断合并会将多个中断事件放到一起，到达一定的阈值之后才向 CPU 发起中断请求。
+中断合并会将多个中断事件放到一起，累积到一定阈值后才向 CPU 发起中断请求。
 
-这可以防止中断风暴，提升吞吐。减少中断数量能使吞吐更高，但延迟也变大，CPU 使用量
-下降；中断数量过多则相反。
+这可以防止**中断风暴**，提升吞吐，降低 CPU 使用量，但延迟也变大；中断数量过多则相反。
 
 历史上，早期的 igb、e1000 版本，以及其他的都包含一个叫 InterruptThrottleRate 参数，
 最近的版本已经被 ethtool 可配置的参数取代。
@@ -1282,11 +1283,11 @@ pkt-rate-high: 0
 ...
 ```
 
-ethtool 提供了用于中断合并相关的通用的接口。但切记，不是所有的设备都支持完整的配
-置。你需要查看你的驱动文档或代码来确定哪些支持，哪些不支持。ethtool 的文档说的：“
-驱动没有实现的接口将会被静默忽略”。
+ethtool 提供了用于中断合并相关的通用接口。但切记，不是所有的设备都支持完整的配
+置。你需要查看驱动文档或代码来确定哪些支持，哪些不支持。ethtool 的文档说：**“
+驱动没有实现的接口将会被静默忽略”**。
 
-某些驱动支持一个有趣的特性“自适应 RX/TX 硬中断合并”。这个特性一般是在硬件实现的
+某些驱动支持一个有趣的特性：“自适应 RX/TX 硬中断合并”。这个特性一般是在硬件实现的
 。驱动通常需要做一些额外的工作来告诉网卡需要打开这个特性（前面的 igb 驱动代码里有
 涉及）。
 
@@ -1307,12 +1308,12 @@ $ sudo ethtool -C eth0 adaptive-rx on
 
 请注意你的硬件可能只支持以上列表的一个子集，具体请参考相应的驱动说明或源码。
 
-不幸的是，通常并没有一个很好的文档来说明这些选项，最全的文档很可能是头文件。查看
+不幸的是，通常并没有一个很好的文档来说明这些选项，最全的文档很可能是头文件。每个选项的解释见
 [include/uapi/linux/ethtool.h](https://github.com/torvalds/linux/blob/v3.13/include/uapi/linux/ethtool.h#L184-L255)
-ethtool 每个每个选项的解释。
+。
 
-注意：虽然硬中断合并看起来是个不错的优化项，但要你的网络栈的其他一些相应
-部分也要针对性的调整。只合并硬中断很可能并不会带来多少收益。
+注意：虽然硬中断合并看起来是个不错的优化项，但需要网络栈的其他一些
+部分做针对性调整。只合并硬中断很可能并不会带来多少收益。
 
 #### 调整硬中断亲和性（IRQ affinities）
 
@@ -1338,11 +1339,11 @@ $ sudo bash -c 'echo 1 > /proc/irq/8/smp_affinity'
 
 ## 5.3 网络数据处理：开始
 
-一旦软中断代码判断出有 softirq 处于 pending 状态，就会开始处理，执行
-`net_rx_action`，网络数据处理就此开始。
+一旦软中断代码判断出有 softirq 处于 pending 状态，就会开始处理，**执行
+`net_rx_action`，网络数据处理就此开始**。
 
 我们来看一下 `net_rx_action` 的循环部分，理解它是如何工作的。哪个部分可以调优，
-哪个可以被监控。
+哪个可以监控。
 
 ### 5.3.1 `net_rx_action` 处理循环
 
@@ -1369,9 +1370,9 @@ while (!list_empty(&sd->poll_list)) {
 ```
 
 这里可以看到内核是如何防止处理数据包过程霸占整个 CPU 的，其中 budget 是该 CPU 的
-所有 NAPI 变量的总预算。
-这也是多队列网卡应该精心调整 IRQ Affinity 的原因。回忆前面讲的，处理硬中断的 CPU
-接下来会处理相应的软中断，进而执行上面包含 budget 的这段逻辑。
+所有 NAPI 变量的总预算。这也是多队列网卡应该精心调整 IRQ Affinity 的原因。回忆前
+面讲的，**处理硬中断的 CPU接下来会处理相应的软中断**，进而执行上面包含 budget 的
+这段逻辑。
 
 多网卡多队列可能会出现这样的情况：多个 NAPI 变量注册到同一个 CPU 上。每个 CPU 上
 的所有 NAPI 变量共享一份 budget。
@@ -1384,8 +1385,7 @@ Note: the CPU will still be bounded by a time limit of 2 jiffies, regardless of 
 
 ### 5.3.2 NAPI poll 函数及权重
 
-回忆前面，网络设备驱动使用 `netif_napi_add` 注册 poll 方法，`igb` 驱动有如下
-代码片段：
+回忆前面，网络设备驱动使用 `netif_napi_add` 注册 poll 方法，`igb` 驱动有如下代码：
 
 ```c
  /* initialize NAPI */
@@ -1669,7 +1669,7 @@ $ cat /proc/net/softnet_stat
 #### 调整 `net_rx_action` budget
 
 `net_rx_action` budget 表示一个 CPU 单次轮询（`poll`）所允许的最大收包数量。单次
-poll 收包是，所有注册到这个 CPU 的 NAPI 变量收包数量之和不能大于这个阈值。 调整：
+poll 收包时，所有注册到这个 CPU 的 NAPI 变量收包数量之和不能大于这个阈值。 调整：
 
 ```shell
 $ sudo sysctl -w net.core.netdev_budget=600
@@ -1688,19 +1688,18 @@ Linux 3.13.0 的默认配置是 300。
 两种方案的主要思想都是：**通过合并“足够类似”的包来减少传送给网络栈的包数，这有
 助于减少 CPU 的使用量**。例如，考虑大文件传输的场景，包的数量非常多，大部分包都是一
 段文件数据。相比于每次都将小包送到网络栈，可以将收到的小包合并成一个很大的包再送
-到网络栈。这可以使得协议层只需要处理一个 header，而将包含大量数据的整个大包送到用
+到网络栈。GRO **使协议层只需处理一个 header**，而将包含大量数据的整个大包送到用
 户程序。
 
-这类优化方式的缺点就是：信息丢失。如果一个包有一些重要的 option 或者 flag，那将这个
-包的数据合并到其他包时，这些信息就会丢失。这也是为什么大部分人不使用或不推荐使用
-LRO 的原因。
+这类优化方式的缺点是 **信息丢失**：包的 option 或者 flag 信息在合并时会丢
+失。这也是为什么大部分人不使用或不推荐使用LRO 的原因。
 
 LRO 的实现，一般来说，对合并包的规则非常宽松。GRO 是 LRO 的软件实现，但是对于包合并
 的规则更严苛。
 
-顺便说一下，**如果你曾经用过 tcpdump 抓包，并收到看起来不现实的非常大的包，那很
-可能是你的系统开启了 GRO**。接下来会看到，**tcpdump 的抓包点（捕获包的 tap）在整
-个栈的更后面一些，在GRO 之后**。
+顺便说一下，**如果用 tcpdump 抓包，有时会看到机器收到了看起来不现实的、非常大的包**，
+这很可能是你的系统开启了 GRO。接下来会看到，**tcpdump 的抓包点（捕获包的 tap
+）在整个栈的更后面一些，在GRO 之后**。
 
 ### 使用 ethtool 修改 GRO 配置
 
@@ -2278,21 +2277,21 @@ return NF_HOOK(NFPROTO_IPV4, NF_INET_PRE_ROUTING, skb, dev, NULL, ip_rcv_finish)
 `NF_HOOK_THRESH` 会检查是否有 filter 被安装，并会适时地返回到 IP 协议层，避免过深的进
 入 netfilter 处理，以及在 netfilter 下面再做 hook 的 iptables 和 conntrack。
 
-注意：**如果你有很多或者很复杂的 netfilter 或 iptables 规则，这些规则都是在软中断的
-上下文中执行的，会导致网络延迟。**但如果你就是需要一些规则的话，那这个性能损失看
-起来是无法避免的。
+注意：**netfilter 或 iptables 规则都是在软中断上下文中执行的**，数量很多或规则很
+复杂时会导致**网络延迟**。但如果你就是需要一些规则的话，那这个性能损失看起来是无
+法避免的。
 
 ### 11.1.2 `ip_rcv_finish`
 
-netfilter 完成对数据的处理之后，就会调用 `ip_rcv_finish`。当然，前提是 netfilter 没
-有决定丢掉这个包。
+netfilter 完成对数据的处理之后，就会调用 `ip_rcv_finish` —— 当然，前提是
+netfilter 没有丢掉这个包。
 
-`ip_rcv_finish` 开始的地方做了一次优化。为了能将包送到合适的目的地，需要一个路由
+`ip_rcv_finish` 开始的地方做了一个优化。为了能将包送到合适的目的地，需要一个路由
 子系统的 `dst_entry` 变量。为了获取这个变量，早期的代码调用了 `early_demux` 函数，从
 这个数据的目的端的高层协议中。
 
-`early_demux` 是一个优化项，试图路由这个包所需要的 `dst_entry` 变量，通过检查相应的
-变量是否缓存在 `socket` 变量上。
+`early_demux` 是一个优化项，通过检查相应的变量是否缓存在 `socket` 变量上，来路由
+这个包所需要的 `dst_entry` 变量。
 [net/ipv4/ip_input.c](https://github.com/torvalds/linux/blob/v3.13/net/ipv4/ip_input.c#L317-L327):
 
 ```c
@@ -2423,9 +2422,9 @@ IpExt: 0 0 0 0 277959 0 14568040307695 32991309088496 0 0 58649349 0 0 0 0 0
 * `InDelivers`: Total number of IP packets successfully delivered to higher protocol layers. Keep in mind that those protocol layers may drop data even if the IP layer does not.
 * InCsumErrors: Total number of IP Packets with checksum errors.
 
-注意这些计数分别在 IP 层的不同地方被更新。由于代码一直在更新，重复计数或者计数错误
-的 bug 可能会引入。如果这些计数对你非常重要，强烈建议你阅读内核的相应源码，确定它
-们是在哪里被更新的，以及更新的对不对，是不是有 bug。
+注意这些计数分别在 IP 层的不同地方被更新。由于代码一直在更新，重复计数或者计数错
+误的 bug 可能会引入。如果这些计数对你非常重要，强烈建议阅读内核的相应源码，确定
+它们是在哪里更新的，以及更新的对不对，是不是有 bug 等等。
 
 <a name="chap_11.2"></a>
 
