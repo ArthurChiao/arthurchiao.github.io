@@ -2,10 +2,15 @@
 layout    : post
 title     : "Trip.com: First Step towards Cloud-native Networking"
 date      : 2020-01-19
-lastupdate: 2020-01-19
+lastupdate: 2020-04-25
 author    : ArthurChiao
 categories: cilium network
 ---
+
+**Update [2020-04-25]**: This post was summarized by Cilium official blog:
+[User Story - How Trip.com uses Cilium](https://cilium.io/blog/2020/02/05/how-trip-com-uses-cilium).
+
+----
 
 In a [previous sharing](https://arthurchiao.github.io/blog/ctrip-network-arch-evolution/), we
 showed how our network virtualization schemes have evolved in the past 7 years.
