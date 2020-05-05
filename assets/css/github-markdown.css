@@ -647,7 +647,6 @@
 }
 
 .markdown-body table {
-  display: block;
   overflow: auto;
   width: 100%;
 }
