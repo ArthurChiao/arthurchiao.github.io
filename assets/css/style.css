@@ -366,13 +366,7 @@ body .intro {
     font-size:1.25em;
     line-height:1.7
 }
-@media (min-width: 43.75em) {
-    body {
-        font-size:1em;
-        line-height:1.375;
-        text-align:justify;
-    }
-}
+
 h1,.h1,h2,.h2,h3,.h3,h4,.h4,h5,.h5,h6,.h6 {
     margin:.5rem 0 1.5rem;
     font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol";
@@ -381,10 +375,46 @@ h1,.h1 {
     font-size:2em;
     line-height:1.25
 }
+h2,.h2 {
+    font-size:1.7em;
+    line-height:1.15384615
+}
+h3,.h3 {
+    font-size:1.4em;
+    line-height:1.13636364
+}
+h4,.h4 {
+    font-size:1.25em;
+    line-height:1.11111111
+}
+h5,.h5 {
+    font-size:1.1em;
+    line-height:1.11111111
+}
+
 @media (min-width: 43.75em) {
+    body {
+        font-size:1em;
+        line-height:1.375;
+        text-align:justify;
+    }
     h1,.h1 {
         font-size:2.5em;
         line-height:1.125
+    }
+    h2,.h2 {
+        font-size:2em;
+        line-height:1.25
+    }
+    h3,.h3 {
+        font-size:1.5em;
+        line-height:1.25
+    }
+    h4,.h4 {
+        line-height:1.22222222
+    }
+    blockquote {
+        line-height:1.45833333
     }
 }
 @media (min-width: 56.25em) {
@@ -392,57 +422,16 @@ h1,.h1 {
         font-size:2.75em;
         line-height:1.05
     }
-}
-h2,.h2 {
-    font-size:1.7em;
-    line-height:1.15384615
-}
-@media (min-width: 43.75em) {
-    h2,.h2 {
-        font-size:2em;
-        line-height:1.25
-    }
-}
-@media (min-width: 56.25em) {
     h2,.h2 {
         font-size:2.25em;
         line-height:1.25
     }
-}
-h3,.h3 {
-    font-size:1.4em;
-    line-height:1.13636364
-}
-@media (min-width: 43.75em) {
-    h3,.h3 {
-        font-size:1.5em;
-        line-height:1.25
-    }
-}
-@media (min-width: 56.25em) {
     h3,.h3 {
         font-size:1.75em;
         line-height:1.25
     }
 }
-h4,.h4 {
-    font-size:1.25em;
-    line-height:1.11111111
-}
-@media (min-width: 43.75em) {
-    h4,.h4 {
-        line-height:1.22222222
-    }
-}
-@media (min-width: 43.75em) {
-    blockquote {
-        line-height:1.45833333
-    }
-}
-h5,.h5 {
-    font-size:1.1em;
-    line-height:1.11111111
-}
+
 .clearfix {
     zoom:1
 }
@@ -534,12 +523,6 @@ a:hover {
     max-height:9999px
 }
 .nav-toggle {
-    -webkit-tap-highlight-color:transparent;
-    -webkit-touch-callout:none;
-    -webkit-user-select:none;
-    -moz-user-select:none;
-    -ms-user-select:none;
-    -o-user-select:none;
     user-select:none;
     float:right;
     line-height:2em;
@@ -551,8 +534,6 @@ a:hover {
     text-decoration:none;
     position:relative;
     right:2rem;
-    -webkit-transition:all 0.2s ease-in-out;
-    transition:all 0.2s ease-in-out
 }
 .nav-toggle:hover {
     color:white;
@@ -794,6 +775,7 @@ dd {
 .posts li h3 {
     margin:0 0 .5em
 }
+
 @media only screen and (min-width: 900px) {
     .content {
         padding-top:0;
@@ -992,4 +974,7 @@ dd {
 	.markdown-body {
 		padding: 15px;
 	}
+    .markdown-body img {
+        width: 100%;
+    }
 }
