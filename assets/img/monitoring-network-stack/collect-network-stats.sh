@@ -1,5 +1,5 @@
 #!/bin/bash
-# 2020-04-23
+# 2020-05-06
 # @ArthurChiao Github
 
 PREFIX="network"
@@ -25,9 +25,10 @@ nic_stats_output eth1
 # 2. Hardware Interrupts
 #######################################################################
 interrupts_output() {
+    PATTERN=$1
     METRIC=$PREFIX"_interrupts_by_cpu"
 
-    cat /proc/interrupts | grep "eth" | awk -v metric=$METRIC \
+    egrep "$PATTERN" /proc/interrupts | awk -v metric=$METRIC \
         '{ for (i=2;i<=NF-3;i++) sum[i]+=$i;}
          END {
                for (i=2;i<=NF-3; i++) {
@@ -37,7 +38,7 @@ interrupts_output() {
          }'
 
     METRIC=$PREFIX"_interrupts_by_queue"
-    cat /proc/interrupts | grep "eth" | awk -v metric=$METRIC \
+    egrep "$PATTERN" /proc/interrupts | awk -v metric=$METRIC \
         '{ for (i=2;i<=NF-3; i++)
                sum+=$i;
                tags=sprintf("{\"queue\":\"%s\"}", $NF);
@@ -46,7 +47,10 @@ interrupts_output() {
          }'
 }
 
-interrupts_output
+# interface pattern
+# eth: intel
+# mlx: mellanox
+interrupts_output "eth|mlx"
 
 #######################################################################
 # 3. Software Interrupts
@@ -55,7 +59,7 @@ softirqs_output() {
     METRIC=$PREFIX"_softirqs"
 
     for dir in "NET_RX" "NET_TX"; do
-        cat /proc/softirqs | grep $dir | awk -v metric=$METRIC -v dir=$dir \
+        grep $dir /proc/softirqs | awk -v metric=$METRIC -v dir=$dir \
             '{ for (i=2;i<=NF-1;i++) {
                    tags=sprintf("{\"cpu\":\"%d\", \"direction\": \"%s\"}", i-2, dir); \
                    printf(metric tags " " $i "\n"); \
@@ -112,6 +116,7 @@ netstat_output() {
     ARG_IDX=$2
 
     METRIC=$PREFIX"_tcp"
+    VAL=$(netstat -s | grep "$PATTERN" | awk -v i=$ARG_IDX '{print $i}')
 
     # generate "type" string with prefix and pattern
     #
@@ -120,11 +125,9 @@ netstat_output() {
     #
     # e.g. "fast retransmits$" -> "fast_retransmits"
     #
-    VAL=$(netstat -s | grep "$PATTERN" | awk -v i=$ARG_IDX '{print $i}')
-
     TYP=$(echo "$PATTERN" | tr ' ' '_' | sed 's/\$//g')
-    TAGS="{\"type\":\"$TYP\"}";
 
+    TAGS="{\"type\":\"$TYP\"}";
     echo $METRIC$TAGS $VAL;
 }
 

@@ -133,9 +133,10 @@ Add this code snippet to our script:
 
 ```shell
 interrupts_output() {
+    PATTERN=$1
     METRIC=$PREFIX"_interrupts_by_cpu"
 
-    cat /proc/interrupts | grep "eth" | awk -v metric=$METRIC \
+    egrep "$PATTERN" /proc/interrupts | awk -v metric=$METRIC \
         '{ for (i=2;i<=NF-3;i++) sum[i]+=$i;}
          END {
                for (i=2;i<=NF-3; i++) {
@@ -145,7 +146,7 @@ interrupts_output() {
          }'
 
     METRIC=$PREFIX"_interrupts_by_queue"
-    cat /proc/interrupts | grep "eth" | awk -v metric=$METRIC \
+    egrep "$PATTERN" /proc/interrupts | awk -v metric=$METRIC \
         '{ for (i=2;i<=NF-3; i++)
                sum+=$i;
                tags=sprintf("{\"queue\":\"%s\"}", $NF);
@@ -154,7 +155,10 @@ interrupts_output() {
          }'
 }
 
-interrupts_output
+# interface patterns
+# eth: intel
+# mlx: mellanox
+interrupts_output "eth|mlx"
 ```
 
 ```shell
@@ -209,7 +213,7 @@ softirqs_output() {
     METRIC=$PREFIX"_softirqs"
 
     for dir in "NET_RX" "NET_TX"; do
-        cat /proc/softirqs | grep $dir | awk -v metric=$METRIC -v dir=$dir \
+        grep $dir /proc/softirqs | awk -v metric=$METRIC -v dir=$dir \
             '{ for (i=2;i<=NF-1;i++) {
                    tags=sprintf("{\"cpu\":\"%d\", \"direction\": \"%s\"}", i-2, dir); \
                    printf(metric tags " " $i "\n"); \
@@ -351,6 +355,7 @@ netstat_output() {
     ARG_IDX=$2
 
     METRIC=$PREFIX"_tcp"
+    VAL=$(netstat -s | grep "$PATTERN" | awk -v i=$ARG_IDX '{print $i}')
 
     # generate "type" string with prefix and pattern
     #
@@ -359,11 +364,9 @@ netstat_output() {
     #
     # e.g. "fast retransmits$" -> "fast_retransmits"
     #
-    VAL=$(netstat -s | grep "$PATTERN" | awk -v i=$ARG_IDX '{print $i}')
-
     TYP=$(echo "$PATTERN" | tr ' ' '_' | sed 's/\$//g')
-    TAGS="{\"type\":\"$TYP\"}";
 
+    TAGS="{\"type\":\"$TYP\"}";
     echo $METRIC$TAGS $VAL;
 }
 
@@ -409,7 +412,22 @@ Grafana queries:
 avg(irate(network_tcp{host="$hostname"})*60) by (type)
 ```
 
-# 6. More metrics
+# 6. Top N nodes
+
+Top-N nodes for some specific metrics:
+
+<p align="center"><img src="/assets/img/monitoring-network-stack/top-n-nodes.png" width="100%" height="100%"></p>
+
+This is quite helpful for detecting problematic nodes.
+
+Queries for these panels are very similar, we list some here:
+
+* `topk(10, avg(irate(k8s.node.network.tcp{type="segments_retransmited"})*60) by (host))`
+* `topk(10, avg(irate(k8s.node.network.tcp{type="TCPSynRetrans"})*60) by (host))`
+* `topk(10, avg(irate(k8s.node.network.nic.errors{type=~'rx_.*'})*60) by (host))`
+* `topk(10, avg(irate(k8s.node.network.nic.errors{type=~'tx_.*'})*60) by (host))`
+
+# 7. More metrics
 
 This post serves as a introductory guide for how to monitoring you network
 stack with Prometheus and Grafana.
