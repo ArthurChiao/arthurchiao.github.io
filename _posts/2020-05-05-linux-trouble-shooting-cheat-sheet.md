@@ -173,7 +173,7 @@ The others are similar.
 |          |             | * `swapon -s`                                                               |
 |          |             | * `free`                                                                    |
 |          | Utilization | * `cat /proc/meminfo`: `SwapTotal`, `SwapFree`                              |
-|          |             | * `df -h`            : file system info                                     |
+|          |             | * `df -h`            : `Size`, `Use%`                                       |
 |          |             |                                                                             |
 |          +-------------+-----------------------------------------------------------------------------|
 |          |             |                                                                             |
