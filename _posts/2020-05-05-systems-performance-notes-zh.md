@@ -67,7 +67,7 @@ DTrace 之前，系统跟踪常常使用**静态探测**（static probes），
 以 3.3 GHz processor 为例，
 
 * 访问一次寄存器需要一个时钟周期，`0.3 ns`
-* **作为对比，光传播 `1` 米所需的时间**是`3.4 ns`
+* **作为对比，光传播 `1` 米所需的时间**是 `3.4 ns`
 
 <p align="center">表 2-1. 系统延迟的时间尺度</p>
 
@@ -163,7 +163,7 @@ Sun Microsystem，最初目的是让 UNIX File System (UFS) 和 NFS 更容易共
 
 * `vmstat`: 操作系统级别的虚拟和物理内存统计信息
 * `mpstat`: per CPU 使用情况统计（mp: multi-processor?）
-* `iostat`: per-disk I/O 统计, reported from the block device interface
+* `iostat`: per-disk I/O 统计， reported from the block device interface
 * `netstat`: 网卡统计，TCP/IP 协议栈统计，某些 per-connection statistics
 * `sar`: 各种杂七杂八的统计；can also archive them for historical reporting
 
@@ -1000,7 +1000,7 @@ $ echo 1159 > tasks      # 绑定进程号（PID）
 
 ### 7.2.5. Swapping（换出）
 
-Swapping：将整个进程在主存（main memory）和物理swap设备或swap文件之间移动。
+Swapping：将整个进程在主存（main memory）和物理 swap 设备或 swap 文件之间移动。
 
 > This is the original Unix technique for managing main memory and
 > is the origin of the term swap [Thompson 78].
@@ -1502,7 +1502,7 @@ Volumes 和 pools 使得文件系统能够建立在多个磁盘上，并且支�
 
 **Volume 将多个磁盘抽象为一个虚拟磁盘**
 
-* 如果文件系统是建立在多个完整磁盘上（而不是 slice或 partition），volume 能够
+* 如果文件系统是建立在多个完整磁盘上（而不是 slice 或 partition），volume 能够
   **隔离 workload**，减少竞争导致的性能下降
 * 一个 volume 只支持一种文件系统
 * LVM：Logical Volume Manager
@@ -1683,7 +1683,7 @@ $ fio --runtime=60 --time_based --clocksource=clock_gettime --name=randread --nu
 
 * SAS（Serial Attached SCSI）
 
-    * high-speed point-to-point transport, avoiding the
+    * high-speed point-to-point transport
     * 避免了 SCSI 的总线竞争问题（bus contention）
 
 * SATA（Serial ATA）
@@ -1793,7 +1793,7 @@ sda        0.00     0.00   0.00    7.00   0.00  868.00   248.00     0.00    0.00
 * `r/s` 和 `w/s` 是**真实发送到设备**的请求数量
 * 由于 `avgrq-sz` 是**合并之后的平均请求大小**，因此这个值
     * 较小时（`< 16 sectors`）：**暗示有大量的随机 I/O 请求**，因为它们无法被合并
-    * 较大时：**暗示有 large I/O，或是合并之后的顺序请求**（是否是顺序请求可参考`rrqm/s`、`wrqms/`）
+    * 较大时：**暗示有 large I/O，或是合并之后的顺序请求**（是否是顺序请求可参考 `rrqm/s`、`wrqms/`）
 * **`await` 是最重要的性能指标**
     * 如果是异步写模式，`w_await` 指标参考价值不大
 * `%util` 是资源利用率和容量规划会用到的指标
