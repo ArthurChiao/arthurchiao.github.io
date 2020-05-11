@@ -2,7 +2,7 @@
 layout    : post
 title     : "[译] OKR 极简史（OReilly, 2016）"
 date      : 2020-01-17
-lastupdate: 2020-01-17
+lastupdate: 2020-05-11
 categories: okr
 ---
 
@@ -35,8 +35,12 @@ OKRs](https://www.oreilly.com/business/free/files/introduction-to-okrs.pdf)。�
     * [3.1 每周一：作出承诺（Monday Commitments）](#ch_3.1)
     * [3.2 每周五：小结和庆祝（Fridays Are for Winners）](#ch_3.2)
 
-自 20 世纪 50 年代**“管理科学”**（management science）兴起以来，商业领袖们已经拥
-抱了各种各样**提高公司效率**的管理技术。Peter Drucker 发明了 **Management by
+20 世纪 50 年代以降，**“管理科学”**（management science）兴起，商业领袖们开始
+拥抱各种各样**提高公司效率**的管理技术。
+
+### MBO
+
+Peter Drucker 发明了 **Management by
 Objectives** (MBO，目标管理制度)。MBO 是一个过程，在该过程中，管理者和员工共同设
 定一个目标，然后定义各自需要做什么才能完成这一目标。
 
@@ -44,6 +48,8 @@ MBOs 显然是 **Objectives and Key Results** (OKRs) 的前辈。在 OKR 模型�
 设定一个目标之后，不再插手细节管理（micromanaging），而是信任自己的团队能够完成
 这一目标** —— 和**工业时代**的管理方式相比，这是一种巨大和高效的转变。从很多方面
 来说，这是第一种真正与新的**信息时代**相匹配的管理哲学。
+
+### SMART 和 KPI
 
 到了 20 世纪 80 年代早期，**SMART goals** （George T. Doran 设计）和 **Key
 Performance Indicators (KPIs)** 成了大公司设置目标的流行方式。KPI 引入了基于
@@ -60,6 +66,8 @@ SMART 是下面五个单词的缩写：
 * Time-bound（有截止期限的）
 
 后来，**SMART 的组成元素进入了 OKR，尤其是 results-focused 和 time-bound**。
+
+### OKR
 
 1999 年，John Doerr 将 OKR 引入了 Google，[这个模型是他在 Intel 工作时初次接
 触的](https://blog.betterworks.com/keys-okr-success-qa-john-doerr/)。
@@ -152,7 +160,7 @@ statement）**。一个好的 Objective 要能够：
 * 拿下南湾区 direct-to-business 咖啡零售市场
 * 打造一个超级单品
 * 改变 Palo Alto 地区的优惠券使用习惯
-* 下季度再融一轮，一把梭！（使用你的团队习惯的语言，译者注）
+* 梭哈！下季度再融一轮！（使用你的团队习惯的语言，译者注）
 
 下面是几个**反面教材**（poor Objectives）：
 
@@ -209,7 +217,9 @@ KR 选择地合理，你就可以在增长和业绩，或者营收和品质之�
 
 ### KR 应当是困难的，但并非不可完成
 
-OKRs always stretch goals（OKR 永远会对**普通目标**进行延伸）。一种较好的方式是
+**OKRs always stretch goals**（OKR 永远会对**普通目标**进行延伸）。
+
+一种较好的方式是
 为每个 OKR设置一个信心值，从 5 到 10。这样就可以说，“我有 50% 的信心完成这个任务
 ”。 信心值为 1 表示，“要完成这个任务需要奇迹”。
 
@@ -255,14 +265,13 @@ OKRs always stretch goals（OKR 永远会对**普通目标**进行延伸）。�
 题：**新奇事物综合症**（shiny object syndrome）。CEO Adam Lieb 写到：
 
 > 和所有创业公司一样，我们为所有高优先级的事情而忙碌。在我们公司，也许说的最多（
-> 或过多）的说法是：“有更重要的事要办”（bigger fish to fry，直译“有更大的鱼要炸”
+> 或过多）的说法是：“有更重要的事要办”（**bigger fish to fry**，直译“有更大的鱼要炸”
 > ）。我们有两个大“鱼”：
 >
-> 第一：大家对哪个鱼是“大鱼”持有不同意见。很多情况下，这些差异显著的观点会导致冲
-> 突和低效。
-> 
-> 第二：我们的大鱼可能每周甚至每天都会变。让公司内的每个人能清楚地知道自己的核心
-> 精力应该放在哪里，变得越来越难。
+> 1. 大家对哪个鱼是“大鱼”持有不同意见。很多情况下，这些差异显著的观点会导致冲
+>   突和低效。
+> 2. 我们的大鱼可能每周甚至每天都会变。让公司内的每个人能清楚地知道自己的核心
+>   精力应该放在哪里，变得越来越难。
 > 
 > 引入 OKR 对解决这两个问题带来了明显帮助。
 
@@ -282,9 +291,13 @@ OKRs always stretch goals（OKR 永远会对**普通目标**进行延伸）。�
 > 。沟通是出了名的难。OKR 是一种让大家理解**你将如何衡量成功和战略**的良好方式。
 
 **在团结整个公司方面，OKR 要比 KPI 更加有效，因为它既包含了定性目标，又包含了定
-量目标**。Objective 是鼓励性的，它可以发动那些 less metrics-oriented 的员工，例
-如设计或客户服务。KR 让数字驱动的员工找到家的感觉，例如审计和销售。因此，一个好
-OKR 可以将整个公司团结在一个重要的目标上。
+量目标**。
+
+* Objective 是鼓励性的，它可以发动那些 less metrics-oriented 的员工，例如设计或
+  客户服务。
+* KR 让数字驱动的员工找到家的感觉，例如审计和销售。
+
+因此，一个好OKR 可以将整个公司团结在一个重要的目标上。
 
 <a name="ch_2.3"></a>
 
@@ -432,8 +445,8 @@ KR 可能完不成之前，先怀有了一个成功和庆祝的心态。
 OKR 是一种良好的设置目标的方式，但没有一个系统来辅助 OKR 的开展，它们很可能就会和其
 他流行的方式一样以失败告终。使用 OKR 应该做到：
 
-* 对你的团队做出承诺
-* 团队成员之间互相做出承诺
-* 为你们共同的未来作出承诺
+* **对你的团队**作出承诺
+* **团队成员之间**互相作出承诺
+* **为你们共同的未来**作出承诺
 
 并且每周都要更新一遍这些承诺。
