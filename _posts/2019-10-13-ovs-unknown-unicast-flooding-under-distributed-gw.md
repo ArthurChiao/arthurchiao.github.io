@@ -2,8 +2,8 @@
 layout    : post
 title     : "OVS Unknown Unicast Flooding Under Distributed L2 Gateway"
 date      : 2019-10-13
-lastupdate: 2019-10-13
-categories: ovs unicast-flooding spine-leaf
+lastupdate: 2020-05-18
+categories: ovs unicast-flooding
 ---
 
 ## TL; DR
@@ -156,22 +156,44 @@ it always uses `00:11:22:33:44:55` for both sending and receiving.
 Till now, I havn't got a definitive answer about what a distributed L2 (and L3)
 should behave.
 
+### More about physical switch ARP aging
+
+The cisco switch maintains a ARP timer for each IP, which defaults to `1500s`
+(`25` minutes) [4].
+
+```shell
+LEAF # show ip arp vrf test | in 2001
+10.6.2.227 00:01:12 fa16.xxxx.97c7 Vlan2001
+10.6.2.228 00:01:15 fa16.xxxx.97c8 Vlan2001
+10.6.2.229 00:01:33 fa16.xxxx.97c9 Vlan2001
+```
+
+If there are no frames originated from this ARP for `19`
+minutes, it will send a gratuitous ARP to this IP (host).
+
+```shell
+Host $ tcpdump -en -i eth0 ether src 00:11:22:33:44:55
+15:26:31.650401 00:11:22:33:44:55 > fa:16:xx:67, vlan 2001, ARP, Request who-has 10.6.2.241 (fa:16:xx:67) tell 10.6.2.1
+15:27:06.023959 00:11:22:33:44:55 > fa:16:xx:c5, vlan 2001, ARP, Request who-has 10.6.2.73  (fa:16:xx:c5) tell 10.6.2.1
+15:27:07.594005 00:11:22:33:44:55 > fa:16:xx:aa, vlan 2001, ARP, Request who-has 10.6.2.7   (fa:16:xx:aa) tell 10.6.2.1
+```
+
 ## 3.5 Fixup
 
 This problem was raised by the distributed L2 GW behavior, but actually it is a
 configuration error inside host: we should always **make sure intermediate
 forwarding devices (OVS bridges in our case) have a longer aging time than
-instance itself**.
+instance itself, and physical switch ARP aging time**.
 
 Linux kernel's ARP aging machanism is really complicated, rather than one or
 several parameters, it is controlled by a combination of parameters and a state
 machine, refer to [this post](http://www.programmersought.com/article/8757101780/) [3] if you are
-interested. After some testing, we are ensure that set OVS fdb aging to `600s`
+interested. Set OVS fdb aging to `1800s`
 is safe enough for us:
 
 ```shell
-$ ovs-vsctl set bridge br-int  other_config:mac-aging-time=600
-$ ovs-vsctl set bridge br-bond other_config:mac-aging-time=600
+$ ovs-vsctl set bridge br-int  other_config:mac-aging-time=1800
+$ ovs-vsctl set bridge br-bond other_config:mac-aging-time=1800
 ```
 
 (Above configurations survive OVS and system reboot.)
@@ -216,3 +238,4 @@ the OVS interfaces that containers are using.
 1. [Cisco Doc: Unicast Flooding](https://www.cisco.com/c/en/us/support/docs/switches/catalyst-6000-series-switches/23563-143.html)
 2. [Ctrip Network Architecture Evolution in the Cloud Computing Era]({% link _posts/2019-04-17-ctrip-network-arch-evolution.md %})
 3. [Analysis of ARP aging time principle implemented by Linux](http://www.programmersought.com/article/8757101780/)
+4. [Cisco Doc: ip arp timeout settings](https://www.cisco.com/c/m/en_us/techdoc/dc/reference/cli/nxos/commands/l3/ip-arp-timeout.html)
