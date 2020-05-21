@@ -1,21 +1,22 @@
 ---
-layout: post
-title:  "[笔记] Internet Routing Architecture (Cisco Press, 2000)"
-date:   2019-04-08
+layout    : post
+title     : "[笔记] Internet Routing Architecture (Cisco Press, 2000)"
+date      : 2019-04-08
+lastupdate: 2020-05-21
 categories: bgp datacenter
 ---
 
 ### 关于本文
 
-本文是我在读 [Internet Routing Architecture, 2nd Edition](https://www.amazon.com/Internet-Routing-Architectures-2nd-Halabi/dp/157870233X) （
-Cisco Press, 2000）时的读书笔记。
+本文是我在阅读 [Internet Routing Architecture, 2nd Edition](https://www.amazon.com/Internet-Routing-Architectures-2nd-Halabi/dp/157870233X) （
+Cisco Press, 2000）（直译为**“互联网路由架构”**）时所做的笔记。
 
 注意这本书是 2000 年写的，因此有些内容可能已经过时，比如说到“当前大型网络都是使
 用 xxx 协议”的时候，说的是距今 20 年前的情况，现在则并不一定。
 
-本书致力于解决实际问题，书中包含大量的架构图、拓扑图和真实场景示例，内容全面而且
-易于上手，是不可多得的良心之作。本书目的是使读者成为**将自有网络集成到全球互联网**
-（integrating your network into the global Internet）领域的专家。
+本书致力于**解决实际问题**，书中包含大量的架构图、拓扑图和真实场景示例，内容全面
+而且易于上手，是不可多得的良心之作。本书目的是使读者成为**将自有网络集成到全球互
+联网**（integrating your network into the global Internet）领域的专家。
 
 以下是笔记内容。
 
@@ -75,11 +76,11 @@ Cisco Press, 2000）时的读书笔记。
     * 10.2 BGP Stability Features
 
 
-## Introduction
+## 引言
 
-互联网（Internet）起源于 1960s 的一个学术实验。
+互联网（Internet）起源于 20 世纪 60 年代（`1960s`）的一个学术实验。
 
-一些人惊讶于网络会发生故障，另外一些人则惊讶于网络竟然会运行良好。
+**一些人惊讶于网络会发生故障，另外一些人则惊讶于网络竟然会长时间良好地运行**。
 
 ### 目标
 
@@ -95,9 +96,10 @@ into the global Internet）领域的专家。
 
 不需要太多 TCP/IP 基础。
 
-# I: The Contemporary Internet
+# I: 当代互联网（The Contemporary Internet）
 
-路由问题和方案（routing problems and solutions）的复杂性和当代互联网的增长与演进密切相关。
+路由问题和解决方案（routing problems and solutions）的复杂性和当代互联网的增长与
+演进密切相关。
 
 因此，在深入到路由协议细节之前，先了解互联网的发展历史，会对理解问题非常有帮助。
 
@@ -114,19 +116,19 @@ into the global Internet）领域的专家。
 
 #### ARPANET
 
-1969 年 12 月，四个节点、通过 56kbps 电路连接的试验网络 ARPANET。
+**1969 年 12 月**，四个节点、通过 `56kbps` 电路连接的试验网络 ARPANET。
 
-这项技术大获成功，随后几千个大型和政府机构将他们的私有网络连接到了 ARPANET。
+这项技术大获成功，随后几千个大型组织和政府机构将他们的私有网络连接到了 ARPANET。
 
 <p align="center"><img src="/assets/img/internet-routing-arch/1-1.PNG" width="60%" height="60%"></p>
-<p align="center">图 1-1 ARPANET Architecture, December 1969 </p>
+<p align="center">图 1-1 ARPANET Architecture, 1969-12 </p>
 
 <p align="center"><img src="/assets/img/internet-routing-arch/1-2.PNG" width="60%" height="60%"></p>
-<p align="center">图 1-2 ARPANET Architecture, July 1976 </p>
+<p align="center">图 1-2 ARPANET Architecture, 1976-07 </p>
 
-这就是互联网（Internet）的前身。
+**这就是互联网（Internet）的前身。**
 
-Internet 被禁止用于商业目的，不过大量的接入还是导致了扩展性和链路拥塞问题，因此
+Internet 禁止用于商业目的，不过大量的接入还是导致了扩展性和链路拥塞问题，因此
 NSF 开始研究 NSFNET。
 
 #### NSFNET
@@ -149,8 +151,8 @@ NSFNET 是为了解决 ARPANET 的拥塞问题。设计：
 
 #### The Internet Today
 
-今天的互联网是从一个核心网络（core network，也就是 NSFNET）转变成了一个由商业提
-供商运营的分布式网络，这些供应商网络通过主要的网络交换节点或直连而连接到一起。
+今天的互联网是从一个**核心网络**（core network，也就是 NSFNET）转变成的由商业提
+供商运营的**分布式网络**，这些供应商网络通过主要的网络交换节点或直连而连接到一起。
 
 <p align="center"><img src="/assets/img/internet-routing-arch/1-4.PNG" width="60%" height="60%"></p>
 <p align="center">图 1-4 The General Structure of Today's Internet</p>
@@ -165,12 +167,11 @@ ISP 在多个 region 都提供连接接入点，称为 POP（Points of Presence�
 
 ### 2.1 ISP Services
 
-For more details about switches, VLANs, and broadcast
-domains, read Interconnections: Bridges, Routers, Switches, and Internetworking
-Protocols,
-Second Edition (Addison-Wesley, 1999) by Radia Perlman, or Cisco LAN Switching
-(Cisco
-Press, 1999) by Kennedy Clark and Kevin Hamilton.
+想了解更多关于交换机、VLAN、广播域等知识，推荐下面的书：
+
+* ***Interconnections: Bridges, Routers, Switches, and Internetworking Protocols***,
+    Second Edition (Addison-Wesley, 1999) by Radia Perlman
+* ***Cisco LAN Switching*** (Cisco Press, 1999) by Kennedy Clark and Kevin Hamilton.
 
 <a name="chap_3"></a>
 
@@ -182,9 +183,9 @@ Press, 1999) by Kennedy Clark and Kevin Hamilton.
 
 CIDR: Classless Inter-domain Routing
 
-路由条目越多，所需的处理能力和内存空间就更多。
+路由条目越多，所需的处理能力和内存空间就越多。
 
-路由表规模在 1991~1995 年每 10 个月就翻一番：
+**路由表规模在 1991~1995 年期间每 10 个月就翻一番**：
 
 <p align="center"><img src="/assets/img/internet-routing-arch/3-9.PNG" width="60%" height="60%"></p>
 <p align="center">图 3-9 The Growth of Internet Routing Tables </p>
@@ -195,20 +196,20 @@ prefix 做路由聚合，大大减小路由表的规模。
 <p align="center"><img src="/assets/img/internet-routing-arch/3-11.PNG" width="60%" height="60%"></p>
 <p align="center">图 3-11 Classful Addressing Versus CIDR-Based Addressing</p>
 
-路由安装最长前缀匹配算法（LPM）选择路由。
+按照**最长前缀匹配算法（LPM）**选择路由。
 
 <p align="center"><img src="/assets/img/internet-routing-arch/3-12.PNG" width="60%" height="60%"></p>
 <p align="center">图 3-12 Longest Match</p>
 
-如图 3-12，如果因为一些原因 path 1 路由失效率，那会用到下一个最长匹配，在图中就
+如图 3-12，如果因为一些原因 path 1 路由失效了，那会用到下一个最长匹配，在图中就
 是 path 2。
 
 #### 将自己聚合的路由指向黑洞
 
-每个路由器会对外通告自己聚合的路由，表面自己到这些路由是可达的。
+每个路由器会对外通告自己聚合的路由，表明自己到这些路由是可达的。
 
-但是，为了避免出现路由环路，每个路由器在自己内部，要将自己聚合的路由指向黑洞，即
-，丢弃所有到这条路由的包。来看个具体的例子。
+但是，**为避免出现路由环路，每个路由器在内部，要将自己聚合的路由指向黑洞**，即
+，**在路由器内部，丢弃所有到自己聚合的路由的包**。来看个具体的例子。
 
 <p align="center"><img src="/assets/img/internet-routing-arch/3-13.PNG" width="60%" height="60%"></p>
 <p align="center">图 3-13 Following Less-Specific Routes of a Network's Own Aggregate Causes Loops</p>
@@ -226,10 +227,11 @@ ISP1 时，会匹配到默认路由，流量会绕回 ISP2，形成环路。
 丢弃。这样网络正常时，流量会匹配 198.32.1.0/24 这条路由；网络异常导致这条路由失
 效后，流量匹配到 198.32.0.0/13，丢弃所有流量。
 
-# II: Routing Protocol Basics
+# II: 路由协议基础（Routing Protocol Basics）
 
-本书主要介绍外部网关协议（exterior gateway protocols），即不同自治系统（AS）之间
-的路由。但先了解一下内部网关协议（internal gateway protocols）会非常有帮助。
+本书主要介绍**外部网关协议**（exterior gateway protocols），即**不同自治系统（AS
+）之间的路由**。但先了解一下内部网关协议（internal gateway protocols）会非常有帮
+助。
 
 <a name="chap_4"></a>
 
@@ -242,7 +244,7 @@ ISP1 时，会匹配到默认路由，流量会绕回 ISP2，形成环路。
 ### 4.1 路由器和路由（Routers and Routing）
 
 内部网关协议（IGP）是为**企业网**（enterprise）设计的，**不适用于大型网络**，
-例如上千个节点的、有上万条路由的网络。因此引入了外部网关协议（EGP），例如**边界
+例如上千个节点、有上万条路由的网络。因此引入了外部网关协议（EGP），例如**边界
 网关协议**（BGP）。
 
 本章介绍 IGP 基础。
@@ -324,16 +326,16 @@ interior routing）。
 
 > intra-domain 和 inter-domain routing 的主要区别
 >
-> intra-domain 主要解决技术需求，而 inter-domain 主要反映网络和公司的政治与商
-> 业关系。
+> * intra-domain 主要解决技术需求
+> * inter-domain 主要反映网络和公司的政治与商业关系
 
 ##### Autonomous Systems
 
-一个 AS 是拥有如下特点的一组路由器：
+一个 **AS 是拥有如下特点的一组路由器**：
 
-1. 共享相同的路由策略
-1. 被作为一个整体进行管理
-1. 通常路由器之间运行同一种 IGP 协议
+1. 共享相同的**路由策略**
+1. 被作为一个整体进行**管理**
+1. 通常路由器之间运行同**一种 IGP 协议**
 
 每个 AS 有一个编号，称为 ASN。AS 之间通过 BGP 交换路由。
 
@@ -361,11 +363,8 @@ interior routing）。
 
 两者都是指满足某些条件的一组路由器。
 
-Domain 一般指**运行相同路由协议**的一组路由器，例如一个 RIP domain 或一个 OSFP
-domain。
-
-AS 是**管理概念**，**作为整体统一管理的、有相同路由策略**的一组路由器是一个 AS。
-一个 AS 可能包含一个或多个 domain。
+* Domain 一般指**运行相同路由协议**的一组路由器，例如一个 RIP domain 或一个 OSFP domain。
+* AS 是**管理概念**，**作为整体统一管理的、有相同路由策略**的一组路由器是一个 AS。一个 AS 可能包含一个或多个 domain。
 
 #### BGP 是用于 AS 之间的。那用于 AS 内的 BGP 又是什么？
 
@@ -379,7 +378,7 @@ AS 内的 BGP 是 iBGP。
 
 ## 5 边界网关协议第 4 版（BGP-4）
 
-BGP-4 1993 年开始部署，是第一个支持路由聚合的 BGP 版本。
+BGP-4 `1993` 年开始部署，是第一个支持路由聚合的 BGP 版本。
 
 ### 5.1 BGP 工作原理
 
@@ -392,7 +391,7 @@ BGP 是一种**路径矢量协议（path vector protocol）**。
 * peer 之间建立连接之后交换全部路由，之后只交换更新的路由（增量更新）
 * 交换路由是 UPDATE 消息
 * 维护**路由表**的**版本号**，每次路由表有更新，版本号都会递增
-* 通告 UPDATE 消息通告和撤回路由
+* 通过 UPDATE 消息通告和撤回路由
 
 #### BGP 消息头格式
 
@@ -427,10 +426,9 @@ UPDATE 消息:
 <p align="center"><img src="/assets/img/internet-routing-arch/5-11.PNG" width="60%" height="60%"></p>
 <p align="center">图 5-11 BGP Routing Update Example</p>
 
-### 5.3 Multiprotocol Extensions for BGP
+### 5.3 多协议扩展（Multiprotocol Extensions for BGP）
 
-对 BGP-4 的兼容性扩展，支持除了 IPv4 之外的其他协议（所以叫多协议），例如 IPv6
-等等。
+对 BGP-4 的兼容性扩展，支持除了 IPv4 之外的其他协议（所以叫多协议），例如 IPv6。
 
 ### 5.4 TCP MD5 Signature Option
 
