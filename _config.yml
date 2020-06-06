@@ -22,6 +22,8 @@ navigation:
    url: /categories
  - title: About
    url: /about
+ - title: Donate
+   url: /donate
 
 social:
    github: ArthurChiao
