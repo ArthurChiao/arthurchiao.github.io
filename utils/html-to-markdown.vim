@@ -25,3 +25,7 @@
 " convert list
 %s/<li>/1. /g
 %s/<\/li>//g
+
+" convert bold fonts
+%s/<b>/**/g
+%s/<\/b>/**/g

@@ -2,7 +2,7 @@
 layout    : post
 title     : "[译] 数据中心 Fabric：Facebook 的下一代数据中心网络（2014）"
 date      : 2020-06-14
-lastupdate: 2020-06-14
+lastupdate: 2020-06-20
 categories: data-center network
 ---
 
@@ -13,8 +13,9 @@ next-generation Facebook data center network](https://engineering.fb.com/product
 
 文章介绍了 Facebook 2014 年的 fabric 设计，后来也被称为 **F4 架构**（每个 POD 连
 接到 4 个 spine 平面，因此得名）。2019 年，Facebook 又发布了 F4 之后的下一代
-fabric 网络，基于 **F16 架构**（每个 POD 连接到 16 个 spine 平面）。Facebook 的
-每一代设计，据说都指引了业界的抄作业方向（之一）。
+fabric 网络，基于 **F16 架构**（每个 POD 连接到 16 个 spine 平面）。
+
+本文后续阅读：[(译) 重新设计 Facebook 的数据中心网络（2019）]({% link _posts/2020-06-20-facebook-f16-minipack-zh.md %})。
 
 **由于译者水平有限，本文不免存在遗漏或错误之处。如有疑问，请查阅原文。**
 
@@ -76,7 +77,7 @@ Facebook 的网络基础设施需要**持续地扩展和演进** （constantly s
 
 * 一个集群是一个**大型部署单元**（a large unit of deployment）
 * 包括**几百个机柜**及相应的**置顶交换机**（TOR switches）
-* 通过一组大型、高基**集群交换机**（large, high-radix cluster switches）对 TOR 做汇聚
+* 通过一组大型、多端口**集群交换机**（large, high-radix cluster switches）对 TOR 做汇聚
 
 三年多以前，我们设计了一个可靠的**三层 “four-post” 架构**（layer3 “four-post”
 architecture），相比于之前的集群设计，该架构能够提供 `3+1` 集群交换机冗余和
