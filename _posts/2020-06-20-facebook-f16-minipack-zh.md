@@ -2,7 +2,7 @@
 layout    : post
 title     : "[译] 重新设计 Facebook 的数据中心网络（2019）"
 date      : 2020-06-20
-lastupdate: 2020-06-20
+lastupdate: 2020-06-25
 categories: data-center network
 ---
 
@@ -94,7 +94,7 @@ building blocks）。
 
 1. **电源**
 
-    * 一个 region 内的电能是固定的。
+    * 一个 region 内的功率是固定的。
     * 我们的很多 region 都有专门设计的电力设施，提供 `100MW` 以上的容量。
     * 将 building 数量翻倍，并不意味着我们能为这么多 building 提供足够的电力。
     * **更高带宽的 ASIC 和光模块（例如，`400G`）耗电也更高**。因此，网络在数据中
@@ -186,9 +186,12 @@ Broadcom TH3 芯片（ASIC）的两种使用方式：
 * 我们现有的 Wedge 100S TORs。
 
 这种方式还使得对现有 4 平面（4-plane） fabrics 进行升级更简单，为我们将来朝着
-200G 和 400G 光模块升级铺平了道路。此外，这种设计能获得更高的电能效率（
-power-usage profile），比等待适用于大规模场景的 800G 和 1.6T 链路更加现实，能快
-速地帮我们获得接下来所需的 2x 和 4x 性能提升。
+200G 和 400G 光模块升级铺平了道路。此外，这种设计能获得更高的电能使用效率（
+power-usage profile，PUE【译者注 3】），比等待适用于大规模场景的 800G 和 1.6T 链
+路更加现实，能快速地帮我们获得接下来所需的 2x 和 4x 性能提升。
+
+> 【译者注 3】
+> PUE = 数据中心总能耗（Total Facility Power）/ IT 设备总能耗（IT Equipment Power）。
 
 <p align="center"><img src="/assets/img/facebook-f16/5.jpg" width="95%" height="95%"></p>
 <p align="center">图 4. F16 架构中，服务器之间的跳数和排队点（hops and queuing points）减少了 2-3x</p>
@@ -207,12 +210,12 @@ power-usage profile），比等待适用于大规模场景的 800G 和 1.6T 链�
 
 而对于 F16，
 
-* **同一 fabric 内服务器到服务器的路径总是最优路径**【译者注 3】，只需 `6` 跳。
+* **同一 fabric 内服务器到服务器的路径总是最优路径**【译者注 4】，只需 `6` 跳。
 * building 到 building 永远是 `8` 跳。
 * intra-fabric 跳数变为原来的 `1/2`。
 * inter-fabric 服务器间的跳数变为原来的 `1/3`。
 
-> 【译者注 3】
+> 【译者注 4】
 >
 > 单芯片交换机的设计，使得任何层级中的两个设备，总是会通过更上一层的设备直连，因
 > 此跳数固定。
