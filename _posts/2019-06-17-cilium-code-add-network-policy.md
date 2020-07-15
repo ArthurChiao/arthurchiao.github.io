@@ -313,3 +313,56 @@ func (p *selectorPolicy) DistillPolicy(policyOwner PolicyOwner, npMap NamedPorts
 	return calculatedPolicy
 }
 ```
+
+# Policy Distill
+
+pkg/policy/resolve.go:
+
+```go
+// selectorPolicy is a structure which contains the resolved policy for a
+// particular Identity across all layers (L3, L4, and L7), with the policy
+// still determined in terms of EndpointSelectors.
+type selectorPolicy struct {
+	Revision uint64 // Revision is the revision of the policy repository used to generate this selectorPolicy.
+
+	SelectorCache *SelectorCache // SelectorCache managing selectors in L4Policy
+	L4Policy *L4Policy           // L4Policy contains the computed L4 and L7 policy.
+	CIDRPolicy *CIDRPolicy       // CIDRPolicy contains the L3 (not L4) CIDR-based policy.
+
+	IngressPolicyEnabled bool
+	EgressPolicyEnabled bool
+}
+```
+
+* `CIDRPolicy` is **pure L3 policy**, does not include L4 policy.
+* `L4Policy` is **L4/L7 policy**, note that it contains L7 policy.
+
+```go
+// EndpointPolicy is a structure which contains the resolved policy across all
+// layers (L3, L4, and L7), distilled against a set of identities.
+type EndpointPolicy struct {
+	// all Endpoints sharing the same identity will be referring to a shared selectorPolicy!
+	*selectorPolicy
+
+	// maps PortNames in L4Filters to port numbers. This mapping is endpoint specific.
+	NamedPortsMap NamedPortsMap
+
+	// PolicyMapState contains the state of this policy as it relates to the datapath.
+	// Maps Key -> proxy port if redirection is needed. Proxy port 0 indicates no proxy redirection.
+	// All fields within the Key and the proxy port must be in host byte-order.
+	PolicyMapState MapState
+
+	policyMapChanges MapChanges // pending changes to the PolicyMapState
+	PolicyOwner PolicyOwner     // describes any type which consumes this EndpointPolicy object.
+}
+```
+
+```
+regeneratePolicy  // pkg/endpoint/policy.go
+  Consume(GetNamedPorts())
+  DistillPolicy(NamedPortsMap)
+
+computeDirectionL4PolicyMapEntries   // pkg/policy/resolve.go
+  |-ToMapState                       // pkg/policy/l4.go
+      |-NewMapStateEntry
+```
