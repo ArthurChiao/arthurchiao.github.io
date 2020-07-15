@@ -6,24 +6,8 @@ lastupdate: 2020-05-05
 categories: trouble-shooting
 ---
 
-### Index
-
-1. [Physical Resources](#ch_1)
-    * [1.1 CPU](#ch_1.1)
-    * [1.2 Memory](#ch_1.2)
-    * [1.3 Network Interfaces](#ch_1.3)
-    * [1.4 Storage Device I/O](#ch_1.4)
-    * [1.5 Storage Capacity](#ch_1.5)
-    * [1.6 Storage Controller](#ch_1.6)
-    * [1.7 Network Controller](#ch_1.7)
-    * [1.8 CPU Interconnect](#ch_1.8)
-    * [1.9 Memory Interconnect](#ch_1.9)
-    * [1.10 I/O Interconnect](#ch_1.10)
-2. [Software Resources](#ch_2)
-    * [2.1 Kernel mutex](#ch_2.1)
-    * [2.2 User mutex](#ch_2.2)
-    * [2.3 Task Capacity](#ch_2.3)
-    * [2.4 File descriptors](#ch_2.4)
+* TOC
+{:toc}
 
 ----
 
@@ -32,11 +16,9 @@ Cloud, and author's website: [USE Method: Linux Performance Checklist](http://ww
 
 Will be updated according to my own needs.
 
-<a name="ch_1"></a>
 
 # 1. Physical Resources
 
-<a name="ch_1.1"></a>
 
 ## 1.1 CPU
 
@@ -82,7 +64,6 @@ Explainations:
 stands for: executing `sar -P ALL`, then check the `%idle` column in the output.
 The others are similar.
 
-<a name="ch_1.2"></a>
 
 ## 1.2 Memory
 
@@ -113,7 +94,6 @@ The others are similar.
 +--------+-------------+-------------------------------------------------------------------------------+
 ```
 
-<a name="ch_1.3"></a>
 
 ## 1.3 Network Interfaces
 
@@ -139,7 +119,6 @@ The others are similar.
 +------------+-------------+---------------------------------------------------------------------------+
 ```
 
-<a name="ch_1.4"></a>
 
 ## 1.4 Storage Device I/O
 
@@ -164,7 +143,6 @@ The others are similar.
 +------------+-------------+---------------------------------------------------------------------------+
 ```
 
-<a name="ch_1.5"></a>
 
 ## 1.5 Storage Capacity
 
@@ -188,7 +166,6 @@ The others are similar.
 +----------+-------------+-----------------------------------------------------------------------------+
 ```
 
-<a name="ch_1.6"></a>
 
 ## 1.6 Storage Controller
 
@@ -208,7 +185,6 @@ The others are similar.
 +------------+-------------+----------------------------------------------------------------------------+
 ```
 
-<a name="ch_1.7"></a>
 
 ## 1.7 Network Controller
 
@@ -230,7 +206,6 @@ The others are similar.
 +------------+-------------+---------------------------------------------------------------------------+
 ```
 
-<a name="ch_1.8"></a>
 
 ## 1.8 CPU Interconnect
 
@@ -250,7 +225,6 @@ The others are similar.
 +--------------+-------------+-------------------------------------------------------------------------+
 ```
 
-<a name="ch_1.9"></a>
 
 ## 1.9 Memory Interconnect
 
@@ -271,7 +245,6 @@ The others are similar.
 +--------------+-------------+-------------------------------------------------------------------------+
 ```
 
-<a name="ch_1.10"></a>
 
 ## 1.10 I/O Interconnect
 
@@ -291,11 +264,9 @@ The others are similar.
 +--------------+-------------+-------------------------------------------------------------------------+
 ```
 
-<a name="ch_2"></a>
 
 # 2. Software Resources
 
-<a name="ch_2.1"></a>
 
 ## 2.1 Kernel mutex
 
@@ -319,7 +290,6 @@ The others are similar.
 +--------+-------------+--------------------------------------------------------------------------------+
 ```
 
-<a name="ch_2.2"></a>
 
 ## 2.2 User mutex
 
@@ -339,7 +309,6 @@ The others are similar.
 +--------+-------------+--------------------------------------------------------------------------------+
 ```
 
-<a name="ch_2.3"></a>
 
 ## 2.3 Task Capacity
 
@@ -361,7 +330,6 @@ The others are similar.
 +----------+-------------+------------------------------------------------------------------------------+
 ```
 
-<a name="ch_2.4"></a>
 
 ## 2.4 File descriptors
 
@@ -385,3 +353,32 @@ The others are similar.
 |             |             |   accept(), ...).                                                         |
 +-------------+-------------+---------------------------------------------------------------------------+
 ```
+
+# 3. Tracing
+
+## 3.1 `trace-cmd` (ftrace)
+
+Trace kernel function calls.
+
+```shell
+$ trace-cmd record -p function_graph -P <PID>
+$ trace-cmd record -e sched:sched_switch <CMD>
+$ trace-cmd record -p function_graph -l do_IRQ -e irq_handler_entry sleep 10
+$ trace-cmd record -e kmalloc_node -f 'bytes_req > 1000'
+$ trace-cmd report
+
+# functions could be traced
+$ trace-cmd list -f
+
+# events could be traced
+$ cat /sys/kernel/debug/tracing/available_events
+
+# record events
+#   * -e [ <event> | <subsystem> | <subsystem:even> | all ]
+$ trace-cmd record -e sched:sched_switch
+```
+
+references:
+
+1. [ftrace: trace your kernel functions!](https://jvns.ca/blog/2017/03/19/getting-started-with-ftrace/)
+2. [LWN.net: trace-cmd: A front-end for Ftrace](https://lwn.net/Articles/410200/)
