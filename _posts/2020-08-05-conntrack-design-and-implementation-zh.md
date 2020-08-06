@@ -1,10 +1,13 @@
 ---
 layout    : post
-title     : "连接跟踪：原理及 Linux 内核实现"
+title     : "连接跟踪（conntrack）：原理、应用及 Linux 内核实现"
 date      : 2020-08-05
-lastupdate: 2020-08-05
+lastupdate: 2020-08-09
 categories: conntrack nat netfilter kernel
 ---
+
+**注：最新更新见英文版**：
+[Connection Tracking: Design and Implementation Inside Linux Kernel]({% link _posts/2020-08-09-conntrack-design-and-implementation.md %})。
 
 * TOC
 {:toc}
@@ -29,14 +32,13 @@ categories: conntrack nat netfilter kernel
 
 ### 连接跟踪（conntrack）
 
+<p align="center"><img src="/assets/img/conntrack/node-conntrack.png" width="50%" height="50%"></p>
+<p align="center">图 1.1. 连接跟踪及其内核位置示意图</p>
+
 连接跟踪，顾名思义，就是**跟踪（并记录）连接的状态**。
 
-例如，下面这是一台 IP 地址为 `10.1.1.2` 的 Linux 机器：
-
-<p align="center"><img src="/assets/img/conntrack/node-conntrack.png" width="50%" height="50%"></p>
-<p align="center">Fig. 连接跟踪及其内核位置示意图</p>
-
-我们能看到这台机器上有三条连接：
+例如，图 1.1 是一台 IP 地址为 `10.1.1.2` 的 Linux 机器，我们能看到这台机器上有三条
+连接：
 
 1. 机器访问外部 HTTP 服务的连接（目的端口 80）
 2. 外部访问机器内 FTP 服务的连接（目的端口 21）
@@ -64,14 +66,14 @@ connection oriented）的“连接”并不完全相同**，简单来说：
 
 ### 网络地址转换（NAT）
 
+<p align="center"><img src="/assets/img/conntrack/node-nat.png" width="50%" height="50%"></p>
+<p align="center">图 1.2. NAT 及其内核位置示意图</p>
+
 网络地址转换（NAT），意思也比较清楚：对（数据包的）网络地址（`IP + Port`）进行转换。
 
-例如，在下面这张图中，机器自己的 IP `10.1.1.2` 是能与外部正常通信的，但 `192.168`
+例如，图 1.2 中，机器自己的 IP `10.1.1.2` 是能与外部正常通信的，但 `192.168`
 网段是私有 IP 段，外界无法访问，也就是说源 IP 地址是 `192.168` 的包，其**应答包是无
 法回来的**。
-
-<p align="center"><img src="/assets/img/conntrack/node-nat.png" width="50%" height="50%"></p>
-<p align="center">Fig. NAT 及其内核位置示意图</p>
 
 因此当源地址为 `192.168` 网段的包要出去时，机器会先将源 IP 换成机器自己的
 `10.1.1.2` 再发送出去；收到应答包时，再进行相反的转换。这就是 NAT 的基本过程。
@@ -92,6 +94,9 @@ NAT 依赖连接跟踪的结果。连接跟踪**最重要的使用场景**就是
 
 ### 四层负载均衡（L4 LB）
 
+<p align="center"><img src="/assets/img/conntrack/nat.png" width="70%" height="70%"></p>
+<p align="center">图 1.3. L4LB: Traffic path in NAT mode [3]</p>
+
 再将范围稍微延伸一点，讨论一下 NAT 模式的四层负载均衡。
 
 四层负载均衡是根据包的四层信息（例如 `src/dst ip, src/dst port, proto`）做流量分发。
@@ -102,10 +107,7 @@ VIP（Virtual IP）是四层负载均衡的一种实现方式：
 * 客户端过来的流量先到达 VIP，再经负载均衡算法转发给某个特定的后端 IP
 
 如果在 VIP 和 Real IP 节点之间使用的 NAT 技术（也可以使用其他技术），那客户端访
-问服务端时，L4LB 节点将做双向 NAT（Full NAT），数据流如下：
-
-<p align="center"><img src="/assets/img/conntrack/nat.png" width="70%" height="70%"></p>
-<p align="center">Fig. L4LB: Traffic path in NAT mode [3]</p>
+问服务端时，L4LB 节点将做双向 NAT（Full NAT），数据流如图 1.3。
 
 ## 1.2 原理
 
@@ -131,14 +133,14 @@ VIP（Virtual IP）是四层负载均衡的一种实现方式：
 
 ## 1.3 设计：Netfilter
 
+<p align="center"><img src="/assets/img/conntrack/netfilter-design.png" width="60%" height="60%"></p>
+<p align="center">图 1.4. Netfilter architecture inside Linux kernel</p>
+
 **Linux 的连接跟踪是在 [Netfilter](https://en.wikipedia.org/wiki/Netfilter) 中实现的。**
 
 [Netfilter](https://en.wikipedia.org/wiki/Netfilter) 是 Linux 内核中一个对数据
 包进行**控制、修改和过滤**（manipulation and filtering）的框架。它在内核协议
 栈中设置了若干hook 点，以此对数据包进行拦截、过滤或其他处理。
-
-<p align="center"><img src="/assets/img/conntrack/netfilter-design.png" width="60%" height="60%"></p>
-<p align="center">Fig. Netfilter architecture inside Linux kernel</p>
 
 > 说地更直白一些，hook 机制就是在数据包的必经之路上设置若干检测点，所有到达这
 > 些检测点的包都必须接受检测，根据检测的结果决定：
@@ -161,14 +163,14 @@ Netfilter 是最古老的内核框架之一，1998 年开始开发，2000 年合
 换句话说，**只要具备了 hook 能力，能拦截到进出主机的每个包，完全可以在此基础上自
 己实现一套连接跟踪**。
 
+<p align="center"><img src="/assets/img/conntrack/cilium-conntrack.png" width="60%" height="60%"></p>
+<p align="center">图 1.5. Cilium's conntrack and NAT architectrue</p>
+
 云原生网络方案 Cilium 在 `1.7.4+` 版本就实现了这样一套独立的连接跟踪和 NAT 机制
 （完备功能需要 Kernel `4.19+`）。其基本原理是：
 
 1. 基于 BPF hook 实现数据包的拦截功能（等价于 netfilter 里面的 hook 机制）
 2. 在 BPF hook 的基础上，实现一套全新的 conntrack 和 NAT
-
-<p align="center"><img src="/assets/img/conntrack/cilium-conntrack.png" width="60%" height="60%"></p>
-<p align="center">Fig. Cilium's conntrack and NAT architectrue</p>
 
 因此，即便卸载掉 Netfilter（似乎看到过 Cilium 文档有这样的表述，但写作本文时没搜
 到），也不会影响 Cilium 对 Kubernetes ClusterIP、NodePort、ExternalIPs 和
@@ -185,6 +187,10 @@ $ cilium bpf ct list global
 
 配置也是独立的，需要在 Cilium 里面配置，例如命令行选项 `--bpf-ct-tcp-max`。
 
+另外，本文会多次提到连接跟踪模块和 NAT 模块独立，但出于性能考虑，具体实现中
+二者代码可能是有耦合的。例如 Cilium 做 conntrack 的垃圾回收（GC）时就会顺便把
+NAT 里相应的 entry 回收掉，而非为 NAT 做单独的 GC。
+
 以上是理论篇，接下来看一下内核实现。
 
 # 2 Netfilter hook 机制实现
@@ -199,7 +205,10 @@ CT 模块独立于 NAT 模块，但主要目的是服务于后者。
 
 ### 5 个 hook 点
 
-Netfilter 在内核协议栈的包处理路径上提供了 5 个 hook 点，分别是：
+<p align="center"><img src="/assets/img/cracking-k8s-node-proxy/hooks.png" width="60%" height="60%"></p>
+<p align="center"> 图 2.1. The 5 hook points in netfilter framework</p>
+
+如上图所示，Netfilter 在内核协议栈的包处理路径上提供了 5 个 hook 点，分别是：
 
 ```c
 // include/uapi/linux/netfilter_ipv4.h
@@ -211,11 +220,6 @@ Netfilter 在内核协议栈的包处理路径上提供了 5 个 hook 点，分�
 #define NF_IP_POST_ROUTING   4 /* Packets about to hit the wire. */
 #define NF_IP_NUMHOOKS       5
 ```
-
-如下图所示：
-
-<p align="center"><img src="/assets/img/cracking-k8s-node-proxy/hooks.png" width="60%" height="60%"></p>
-<p align="center"> Fig. The 5 hook points in netfilter framework</p>
 
 用户可以在这些 hook 点注册自己的处理函数（handlers）。当有数据包经过 hook 点时，
 就会调用相应的 handlers。
