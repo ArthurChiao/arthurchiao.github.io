@@ -1,6 +1,6 @@
 ---
 layout    : post
-title     : "Cilium code walk through: BPF handlers (entrypoints)"
+title     : "Cilium Code Walk Through: BPF Handlers (entrypoints)"
 date      : 2020-08-16
 lastupdate: 2020-08-16
 categories: cilium bpf

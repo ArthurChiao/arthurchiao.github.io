@@ -239,9 +239,8 @@ of the impelentation:
 1. Hook packets based on BPF hook points (BPF's equivalent part of the Netfilter hooks)
 2. Implement completely new conntrack and NAT modules based on BPF hooks (relies on kernel `4.19+` to be fully functionaly on itself)
 
-So, you could even remove the entire Netfilter module (remembered that i've seen
-descriptions like this in the recent release notes, but quick searching didn't
-find them when writing this post), and Cilium will still work properly for
+So, you could even [remove the entire Netfilter module](https://github.com/cilium/cilium/issues/12879)
+, and Cilium will still work properly for
 Kubernetes functionalities such as ClusterIP, NodePort, ExternalIPs and
 LoadBalancer [2].
 

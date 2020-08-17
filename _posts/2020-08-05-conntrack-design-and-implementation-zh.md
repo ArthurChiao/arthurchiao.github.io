@@ -172,8 +172,8 @@ Netfilter 是最古老的内核框架之一，1998 年开始开发，2000 年合
 1. 基于 BPF hook 实现数据包的拦截功能（等价于 netfilter 里面的 hook 机制）
 2. 在 BPF hook 的基础上，实现一套全新的 conntrack 和 NAT
 
-因此，即便卸载掉 Netfilter（似乎看到过 Cilium 文档有这样的表述，但写作本文时没搜
-到），也不会影响 Cilium 对 Kubernetes ClusterIP、NodePort、ExternalIPs 和
+因此，即便[卸载掉 Netfilter](https://github.com/cilium/cilium/issues/12879)
+，也不会影响 Cilium 对 Kubernetes ClusterIP、NodePort、ExternalIPs 和
 LoadBalancer 等功能的支持 [2]。
 
 由于这套连接跟踪机制是独立于 Netfilter 的，因此它的 conntrack 和 NAT 信息也没有
