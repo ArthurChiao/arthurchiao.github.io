@@ -178,7 +178,7 @@ LoadBalancer 等功能的支持 [2]。
 
 由于这套连接跟踪机制是独立于 Netfilter 的，因此它的 conntrack 和 NAT 信息也没有
 存储在内核的（也就是 Netfilter 的）conntrack table 和 NAT table。所以常规的
-`netstats/ss/lsof` 等工具是看不到的，要使用 Cilium 的命令，例如：
+`conntrack/netstats/ss/lsof` 等工具是看不到的，要使用 Cilium 的命令，例如：
 
 ```shell
 $ cilium bpf nat list

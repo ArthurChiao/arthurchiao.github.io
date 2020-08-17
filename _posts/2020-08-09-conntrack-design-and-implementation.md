@@ -248,7 +248,7 @@ LoadBalancer [2].
 As this connction tracking mechanism is independent from Netfilter, its
 conntrack and NAT entries are not stored in system's (namely, Netfilter's)
 conntrack table and NAT table. So frequently used network tools
-`netstats/ss/lsof` could not list them, you must use Cilium's commands, e.g:
+`conntrack/netstats/ss/lsof` could not list them, you must use Cilium's commands, e.g:
 
 ```shell
 $ cilium bpf nat list
