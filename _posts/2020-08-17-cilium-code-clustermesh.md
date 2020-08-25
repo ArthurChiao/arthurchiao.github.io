@@ -2,9 +2,17 @@
 layout    : post
 title     : "Cilium Code Walk Through: ClusterMesh"
 date      : 2020-08-17
-lastupdate: 2020-08-17
+lastupdate: 2020-09-01
 categories: cilium clustermesh
 ---
+
+This post walks through the ClusterMesh implementation in cilium.
+Code bases on `1.8.2`.
+
+This post belongs to
+[Cilium Code Walk Through Series]({% link _posts/2019-06-17-cilium-code-series.md %}).
+
+----
 
 * TOC
 {:toc}
