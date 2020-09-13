@@ -11,6 +11,7 @@ categories: ebpf kernel k8s networking
 本文翻译自 2020 年 Daniel Borkmann 在 KubeCon 的一篇分享:
 [eBPF and Kubernetes: Little Helper Minions for Scaling Microservices](https://kccnceu20.sched.com/event/ZemQ/ebpf-and-kubernetes-little-helper-minions-for-scaling-microservices-daniel-borkmann-cilium)，
 视频见[油管](https://www.youtube.com/watch?v=99jUcLt3rSk)。
+翻译已获得 Daniel 授权。
 
 Daniel 是 eBPF 两位 maintainer 之一，目前在 eBPF commits
 榜单上排名第一，也是 Cilium 的核心开发者之一。
@@ -193,10 +194,10 @@ agent 来生成。
 9. Netfilter：在 `PREROUTING` hook 点处理 `nat` table 的 iptables 规则。
 10. 进行**路由判断**（FIB：Forwarding Information Base，路由条目的内核表示，译者注）
     。接下来又是四个 Netfilter 处理点。
-11. Netfilter：在 `FORWARD` hook 点处理 `mangle` table 里的iptables 规则。
-12. Netfilter：在 `FORWARD` hook 点处理 `filter` table 里的iptables 规则。
-13. Netfilter：在 `POSTROUTING` hook 点处理 `mangle` table 里的iptables 规则。
-14. Netfilter：在 `POSTROUTING` hook 点处理 `nat` table 里的iptables 规则。
+11. Netfilter：在 `FORWARD` hook 点处理 `mangle` table 里的 iptables 规则。
+12. Netfilter：在 `FORWARD` hook 点处理 `filter` table 里的 iptables 规则。
+13. Netfilter：在 `POSTROUTING` hook 点处理 `mangle` table 里的 iptables 规则。
+14. Netfilter：在 `POSTROUTING` hook 点处理 `nat` table 里的 iptables 规则。
 15. 包到达 TC egress hook 点，会进行出方向（egress）的判断，例如判断这个包是到本
     地设备，还是到主机外。
 16. 对大包进行分片。根据 step 15 判断的结果，这个包接下来可能会：
@@ -253,7 +254,7 @@ eBPF 是如何诞生的呢？我最初开始讲起。这里“最初”我指的
 回顾一下当时的 “SDN” 蓝图。
 
 1. 当时有 OpenvSwitch（OVS）、`tc`（Traffic control），以及内核中的 Netfilter 子系
-   统（包括 `iptables`、`ipvs`、`nftalbes` 工具），可以用这些工具对datapath 进行“
+   统（包括 `iptables`、`ipvs`、`nftalbes` 工具），可以用这些工具对 datapath 进行“
    编程”：。
 2. BPF 当时用于 `tcpdump`，**在内核中尽量前面的位置抓包**，它不会 crash 内核；此
    外，它还用于 seccomp，**对系统调用进行过滤**（system call filtering），但当时
@@ -275,7 +276,7 @@ eBPF 是如何诞生的呢？我最初开始讲起。这里“最初”我指的
 1. tc、OVS、netfilter 可以对 datapath 进行“编程”：但前提是 datapath 知道你想做什
    么（but only if the datapath knows what you want to do）。
     * 只能利用这些工具或模块提供的既有功能。
-2. eBPF 能够让你**创建新的 datapahth**（eBPF lets you create the datapath instead）。
+2. eBPF 能够让你**创建新的 datapath**（eBPF lets you create the datapath instead）。
 
 > * eBPF 就是内核本身的代码，想象空间无限，并且热加载到内核；换句话说，一旦加
 >   载到内核，内核的行为就变了。
@@ -618,7 +619,7 @@ $ kubectl -n kube-system delete ds kube-proxy
 
 * 将 Service 的 `IP:Port` 映射到具体的 backend pods，并做负载均衡。
 * 当应用发起 **connect、sendmsg、recvmsg 等请求（系统调用）时，拦截这些请求**，
-  并根据请求的`IP:Port` 映射到后端 pod，直接发送过去。反向进行相反的变换。
+  并根据请求的 `IP:Port` 映射到后端 pod，直接发送过去。反向进行相反的变换。
 
 这里实现的好处：性能更高。
 
@@ -650,7 +651,7 @@ $ kubectl -n kube-system delete ds kube-proxy
 在前面 `Cilium eBPF 包转发路径` 讲过了。
 
 这里 BPF 做的事情：执行 DNAT。**这个功能可以在 XDP 层做，也可以在 TC 层做**，但
-在XDP 层代价更小，性能也更高。
+在 XDP 层代价更小，性能也更高。
 
 总结起来，这里的**核心理念**就是：
 

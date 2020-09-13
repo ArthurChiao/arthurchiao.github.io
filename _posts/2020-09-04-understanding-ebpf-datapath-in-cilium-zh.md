@@ -179,7 +179,7 @@ datapath 上 Cilium 重度使用 BPF 程序的地方。
 网卡收包简要流程：
 
 1. 网卡驱动初始化。
-    1. 网卡获得一块物理内存，作用收发包的缓冲区（ring-buffer）。这种方式成为 DMA（直接内存访问）。
+    1. 网卡获得一块物理内存，作用收发包的缓冲区（ring-buffer）。这种方式称为 DMA（直接内存访问）。
     2. 驱动向内核 NAPI（New API）注册一个轮询（poll ）方法。
 2. 网卡从云上收到一个包，将包放到 ring-buffer。
 3. 如果此时 NAPI 没有在执行，网卡就会触发一个硬件中断（HW IRQ），告诉处理器
@@ -429,7 +429,7 @@ datapath 和数据流。但不是说 TCP 不重要，Linux TCP 状态机还是�
 <p align="center"><img src="/assets/img/ebpf-datapath-in-cilium/userspace-sample.png" width="100%" height="100%"></p>
 
 由于大家还是对 TCP 熟悉一些，因此在这里我假设这是一段 TCP 代码。**事实上当我们调
-用`recvmsg()` 方法时，内核所做的事情就和上面这段代码差不多**。对照右边的图：
+用 `recvmsg()` 方法时，内核所做的事情就和上面这段代码差不多**。对照右边的图：
 
 1. 首先初始化一个 epoll 实例和一个 UDP socket，然后告诉 epoll 实例我们想
    监听这个 socket 上的 receive 事件，然后等着事件到来。
