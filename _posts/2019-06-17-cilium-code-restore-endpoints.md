@@ -51,23 +51,29 @@ runDaemon                                                                    // 
     |-for ev := range q.events                                                     
         metadata.Handle                                                            
          |-EndpointRegenerationEvent.Handle                                  //    pkg/endpoint/events.go
-           |-regenerate                                                      //   
+           |-regenerate                                                      // -> pkg/endpoint/policy.go
               |-regenerateBPF                                                //    pkg/endpoint/bpf.go
                 |-realizeBPFState                                            //    pkg/endpoint/bpf.go
                    |-if   CompileAndLoad                                     //    pkg/datapath/loader/loader.go
                            |-compileDatapath                                 // -> pkg/datapath/loader/compile.go
                            |-reloadDatapath                                  //    pkg/datapath/loader/loader.go
                               |-replaceDatapath                              //    pkg/datapath/loader/loader.go
+                                 |-cmd.exec("cilium-map-migrate -s <objPath>")
                                  |-cmd.exec("tc filter replace xx ..")
+                                 |-cmd.exec("cilium-map-migrate -e <objPath> -r <retCode>")
                      elif CompileOrLoad                                      //    pkg/datapath/loader/loader.go
                            |-ReloadDatapath                                  //    pkg/datapath/loader/loader.go
                               |-reloadDatapath                               //    pkg/datapath/loader/loader.go
                                 |-replaceDatapath
+                                   |-cmd.exec("cilium-map-migrate -s <objPath>")
                                    |-cmd.exec("tc filter replace xx ..")
+                                   |-cmd.exec("cilium-map-migrate -e <objPath> -r <retCode>")
                      else ReloadDatapath                                     //    pkg/datapath/loader/loader.go
                            |-reloadDatapath                                  //    pkg/datapath/loader/loader.go
                               |-replaceDatapath
+                                 |-cmd.exec("cilium-map-migrate -s <objPath>")
                                  |-cmd.exec("tc filter replace xx ..")
+                                 |-cmd.exec("cilium-map-migrate -e <objPath> -r <retCode>")
 ```
 
 Major steps:
@@ -337,6 +343,9 @@ regeneration. As this call stack is fairly deep, we list them in a dedicated
 section in the below.
 
 ## 4.5 From `regenerateBPF()` to the eventual `clang/tc` commands
+
+`ReloadDatapath()` (or `compileAndLoad()`) occupies **most of the total endpoint regeneration time**,
+recorded as `scope=bpfLoadProg` in metric `cilium_endpoint_regeneration_time_stats_seconds_bucket`.
 
 ```go
 // pkg/endpoint/bpf.go
