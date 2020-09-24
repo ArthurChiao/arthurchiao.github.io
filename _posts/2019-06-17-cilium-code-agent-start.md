@@ -485,10 +485,6 @@ func (d *Daemon) syncEndpointsAndHostIPs() error {
 
 ```go
     loader.RestoreTemplates(Config.StateDir) // restore previous BPF templates
-
-    // Start watcher for endpoint IP --> identity mappings in key-value store.
-    ipcache.InitIPIdentityWatcher()
-    identitymanager.Subscribe(d.policy)
 ```
 
 ```go
@@ -501,10 +497,24 @@ func RestoreTemplates(stateDir string) error {
 }
 ```
 
+## 2.12 Start identity watcher
+
+```go
+    // Start watcher for endpoint IP --> identity mappings in key-value store.
+    ipcache.InitIPIdentityWatcher()
+    identitymanager.Subscribe(d.policy)
+```
+
+This will listen to the `ip -> identity` mapping changes in kvstore, to be specific,
+it will listen to `cilium/state/ip/v1/` resource in kvstore, an example:
+
+* key: `cilium/state/ip/v1/default/192.168.1.2`.
+* value: `{"IP":"192.168.1.2","Mask":null,"HostIP":"xx","ID":44827,"Key":0,"Metadata":"cilium-global:default:node1:2191","K8sNamespace":"default","K8sPodName":"pod-1"}`,
+  note that the `ID` field is just the identity.
+
 ```go
 // pkg/ipcache/kvstore.go
 
-// InitIPIdentityWatcher initializes the watcher for ip-identity mapping events in the key-value store.
 func InitIPIdentityWatcher() {
     go func() {
         watcher = NewIPIdentityWatcher(kvstore.Client())
@@ -512,15 +522,12 @@ func InitIPIdentityWatcher() {
     }()
 }
 
-// When events are received from the kvstore, All IPIdentityMappingListener are notified.
 func (iw *IPIdentityWatcher) Watch(ctx context.Context) {
-    watcher := iw.backend.ListAndWatch(ctx, "endpointIPWatcher", IPIdentitiesPath, 512)
+    watcher := iw.backend.ListAndWatch(ctx, "endpointIPWatcher", IPIdentitiesPath) // cilium/state/ip/v1/
 
     for {
         select {
         case event, ok := <-watcher.Events:
-            // Synchronize local caching of endpoint IP to ipIDPair mapping with
-            // operation key-value store has informed us about.
             switch event.Typ {
             case EventTypeListDone:
                 for listener := range IPIdentityCache.listeners
@@ -530,8 +537,7 @@ func (iw *IPIdentityWatcher) Watch(ctx context.Context) {
                 json.Unmarshal(event.Value, &ipIDPair)
                 IPIdentityCache.Upsert(ip, HostIP, ipIDPair.Key, k8sMeta, Identity{ipIDPair.ID, source.KVStore})
 
-            case kvstore.EventTypeDelete:
-                ...
+            case kvstore.EventTypeDelete: ...
             }
         }
     }
