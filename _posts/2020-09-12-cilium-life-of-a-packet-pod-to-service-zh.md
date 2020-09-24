@@ -524,11 +524,16 @@ handle_to_container                                            //    bpf/bpf_lxc
   |-tail_ipv4_to_endpoint                                      //    bpf/bpf_lxc.c
       |-ipv4_policy                                            //    bpf/bpf_lxc.c
           |-policy_can_access_ingress                          //    bpf/lib/policy.h
-              |-__policy_can_access_ingress                    //    bpf/lib/policy.h
-                  |-policy = map_lookup_elem()
-                    if policy exists
-                        return TC_ACK_OK;
-                    return DROP_POLICY;
+              |-__policy_can_access                            //    bpf/lib/policy.h
+                  |-if p = map_lookup_elem(l3l4_key); p     // L3+L4 policy
+                  |    return TC_ACK_OK
+                  |-if p = map_lookup_elem(l4only_key); p   // L4-Only policy
+                  |    return TC_ACK_OK
+                  |-if p = map_lookup_elem(l3only_key); p   // L3-Only policy
+                  |    return TC_ACK_OK
+                  |-if p = map_lookup_elem(allowall_key); p // Allow-all policy
+                  |    return TC_ACK_OK
+                  |-return DROP_POLICY;                     // DROP
 ```
 
 所做的事情也很清楚：

@@ -1,53 +1,44 @@
 ---
 layout    : post
-title     : "What's inside Cilium Etcd (kvstore)"
+title     : "What's Inside Cilium's KVStore (and What's Not)"
 date      : 2020-05-20
-lastupdate: 2020-05-20
-author    : ArthurChiao
+lastupdate: 2020-09-27
 categories: cilium etcd
 ---
 
-As shown in the below, in each Kubernetes cluster, Cilium needs a **central**
-policy repository (kvstore) to be deployed, and all Cilium agents ("CILIUM
-DAEMON" in the picture) in this cluster will connect to this kvstore:
+* TOC
+{:toc}
 
-<p align="center"><img src="/assets/img/whats-inside-cilium-etcd/cilium-components.png" width="60%" height="60%"></p>
-<p align="center">Fig. Cilium Components (image from official doc [1])</p>
+---
 
-While Cilium supports several types of kvstores, the most often used is etcd.
+In a large Cilium-powered Kubernetes cluster, there is a **central**
+repository (kvstore) that all Cilium agents will connect to.
+While Cilium supports several types of kvstores, the most oftenly used is etcd.
 
-Then the question is: **what data is stored in this kvstore**? From the [official
-documentation](https://docs.cilium.io/en/v1.7/concepts/overview/#key-value-store):
+<p align="center"><img src="/assets/img/whats-inside-cilium-etcd/cilium-powered-k8s-cluster.png" width="70%" height="70%"></p>
+<p align="center">Fig. Cilium Components [1]</p>
 
-> The Key-Value (KV) Store is used for the following state:
->
-> * Policy Identities: list of labels <=> policy identity identifier
-> * Global Services: global service id to VIP association (optional)
-> * Encapsulation VTEP mapping (optional)
+Then you may wonder: **what exactly stuffs are stored in this kvstore**? 
+We will dig inside in this post.
 
-In this post, we will dig inside by some command line tools.
+# 1 Preparation
 
-### Environment
+## 1.1 Environment
 
 Software version:
 
 1. Kubernetes: `1.17+`
-1. Cilium: `1.7.0`
-1. Etcd as cilium's kvstore: `3.2.24`
+1. Cilium: `1.8.2`
+1. Etcd (cilium kvstore): `3.2.24`
 
 other configurations:
 
 1. Cilium networking solution: direct routing via BGP [2]
-1. Cilium network policy: not used yet
 
-## Attention
-
-Note that some command line outputs in this post are re-formatted for better
-human viewing.
-
-**Do not rely on the output formats in this post if you are automating something.**
-
-# 1 Preparation
+> Note that some command line outputs in this post are re-formatted for better
+> human viewing.
+>
+> **Do not rely on the output formats in this post if you are automating something.**
 
 We will execute commands on the following types of nodes:
 
@@ -55,14 +46,14 @@ We will execute commands on the following types of nodes:
 * k8s master nodes
 * cilium-etcd nodes
 
-## 1.1 Check cilium-etcd information
+## 1.2 Cilium-etcd information
 
 On k8s worker node:
 
 ```shell
 (k8s node) $ cilium status
-KVStore:      Ok   etcd: 3/3 connected, ... https://10.5.2.10:2379; https://10.5.2.11:2379; https://10.5.2.12:2379 (Leader)
-Kubernetes:   Ok   1.17+ [linux/amd64]
+KVStore:    Ok  etcd: 3/3 connected, ... https://10.5.2.10:2379; https://10.5.2.11:2379; https://10.5.2.12:2379 (Leader)
+Kubernetes: Ok  1.17+ [linux/amd64]
 ...
 ```
 
@@ -78,7 +69,7 @@ CID=`sudo docker ps | awk '/cilium-agent/ {print $1}'`
 sudo docker exec $CID cilium $@
 ```
 
-## 1.2 Setup `etcdctl`
+## 1.3 Setup `etcdctl`
 
 On etcd node:
 
@@ -105,7 +96,7 @@ d0c026e8a84e61d4, started, etcd-node2, https://10.5.2.12:2380, https://10.5.2.12
 f13a3cd92f97eadd, started, etcd-node3, https://10.5.2.11:2380, https://10.5.2.11:2379
 ```
 
-# 2 List keys in cilium-etcd
+# 2 What's inside cilium-etcd
 
 First, have a glimpse of all keys in etcd:
 
@@ -125,15 +116,13 @@ Strip blank lines and redirect to file:
 $ etcdctl get "" --prefix --keys-only | grep -v "^$" > keys.txt
 ```
 
-# 3 Data in cilium-etcd: dig inside
-
 In my environment, those dumped keys group into 3 types:
 
 * pod identities
 * pod ip addresses
 * k8s nodes
 
-## 3.1 Identity
+## 2.1 Identity
 
 Dump the content (value) of a specific identity:
 
@@ -194,7 +183,9 @@ Besides, it also adds its own labels:
 Note that pod label `pod-template-hash=6bdbdbf7dc` is not stored into etcd
 (ignored by Cilium).
 
-## 3.2 IP Address
+## 2.2 Labels -> Identity
+
+## 2.3 Pod IP Address
 
 In the `k describe pod` output, we get some additional information:
 
@@ -218,7 +209,7 @@ $ etcdctl get cilium/state/ip/v1/default/10.6.6.43
 }
 ```
 
-## 3.3 Kubernetes Node
+## 2.4 Kubernetes Node
 
 Dump the node information:
 
@@ -246,15 +237,15 @@ Where:
 * `CiliumInternalIP`: Cilium's gateway IP (configured on `cilium_host`) on this node, allocated from PodCIDR
 * `IPv4HealthIP`: Cilium's health check IP address on this node, allocated from PodCIDR
 
-### 3.3.1 IPv4AllocCIDR
+### 2.4.1 IPv4AllocCIDR
 
 ```shell
-(k8s master) $ k describe node k8s-node1 | grep PodCIDR
+(k8s master) $ kubectl describe node k8s-node1 | grep PodCIDR
 PodCIDR:                      10.6.6.0/24
 PodCIDRs:                     10.6.6.0/24
 ```
 
-### 3.3.2 CiliumInternalIP
+### 2.4.2 CiliumInternalIP
 
 ```shell
 (k8s-node1) $ ifconfig cilium_host
@@ -263,7 +254,7 @@ cilium_host: flags=4291<UP,BROADCAST,RUNNING,NOARP,MULTICAST>  mtu 1500
         ...
 ```
 
-### 3.3.3 IPv4HealthIP
+### 2.4.3 IPv4HealthIP
 
 ```shell
 (k8s-node1) $ cilium endpoint list | awk 'NR == 1 || /reserved:health/'
@@ -271,15 +262,146 @@ ENDPOINT   POLICY (ingress)   POLICY (egress)   IDENTITY   LABELS (source:key[=v
 3030       Disabled           Disabled          4          reserved:health               10.6.6.79    ready
 ```
 
+# 3 What's NOT inside cilium-etcd
+
+Re-depict the above picture for better illustration:
+
+<p align="center"><img src="/assets/img/whats-inside-cilium-etcd/cilium-powered-k8s-cluster.png" width="70%" height="70%"></p>
+
+## 3.1 Cilium network policy (CNP)
+
+Cilium network policy (CNP) stores in k8s apiserver.
+
+```shell
+(k8s master) $ kubelet get cnp
+NAME        AGE
+cnp-test    10d
+```
+
+Cilium agents listen to apiserver, and cache them locally:
+
+```shell
+(node) $ cilium policy get
+[
+  {
+    "endpointSelector": {
+      "matchLabels": {
+        "any:cnp": "test",
+        "k8s:io.kubernetes.pod.namespace": "default"
+      }
+    },
+    "ingress": [
+      {
+        "fromEndpoints": [
+          {
+            "matchLabels": {
+              "any:io.kubernetes.pod.namespace": "default",
+              "any:cnp": "apitest"
+            }
+          }
+        ],
+...
+```
+
+```shell
+(node) $ cilium bpf policy get --all
+/sys/fs/bpf/tc/globals/cilium_policy_02489:
+
+DIRECTION   LABELS (source:key[=value])   PORT/PROTO   PROXY PORT   BYTES         PACKETS
+Ingress     reserved:unknown              ANY          NONE         10359922482   1736082
+Ingress     reserved:host                 ANY          NONE         0             0
+Ingress     reserved:remote-node          ANY          NONE         0             0
+Egress      reserved:unknown              ANY          NONE         2106265974    13269635
+...
+```
+
+On agent restart or node reboot, Cilium agents will recreate them from apiserver.
+
+## 3.2 Endpoint
+
+Cilium's `Endpoint` is a node-local concept, that is, EndpointID is meaningless
+out of the node that created it, and EndpointIDs are overlapping among different
+nodes.
+
+```shell
+(node1) $ cilium endpoint list
+ENDPOINT   IDENTITY   LABELS (source:key[=value])                    IPv4       STATUS
+2489       42222      k8s:app=redis                                  10.2.2.2   ready
+                      k8s:io.kubernetes.pod.namespace=default
+```
+
+```shell
+(node2) $ cilium endpoint list
+ENDPOINT   IDENTITY   LABELS (source:key[=value])                    IPv4       STATUS
+2489       43333      k8s:app=mongo                                  10.2.3.3   ready
+                      k8s:io.kubernetes.pod.namespace=default
+```
+
+## 3.3 CiliumEndpoint (CEP)
+
+For each Endpoint, cilium-agent will create a corresponding CiliumEndpoint
+custom resource in Kubernetes:
+
+```shell
+(master) $ k describe cep web1-0
+Name:         web1-0
+Namespace:    default
+Labels:       <none>
+Annotations:  <none>
+API Version:  cilium.io/v2
+Kind:         CiliumEndpoint
+Metadata:
+  Creation Timestamp:  2020-09-16T10:25:56Z
+  Generation:          1
+  Resource Version:    2164268066
+  Self Link:           /apis/cilium.io/v2/namespaces/default/ciliumendpoints/web1-0
+  UID:                 9881196e-359a-4bd2-bcb8-a357e17a9441
+Status:
+  Encryption:
+  External - Identifiers:
+    Container - Id:  34722eeca1019e273c158f2ef94bfd80c36d45f8afd48d8f547c12989ae69348
+    k8s-namespace:   default
+    k8s-pod-name:    web1-0
+    Pod - Name:      default/web1-0
+  Id:                3139
+  Identity:
+    Id:  8419
+    Labels:
+      k8s:io.kubernetes.pod.namespace=default
+      k8s:statefulset.kubernetes.io/pod-name=web1-0
+  Named - Ports:
+    Name:      web
+    Port:      80
+    Protocol:  TCP
+  Networking:
+    Addressing:
+      ipv4:  10.6.2.2
+    Node:    10.5.6.60
+  State:     ready
+Events:      <none>
+```
+
+For each endpoint, there will be a dedicated controller to synchronize local Endpoint states to Kubernetes CEP.
+For more details, see [Cilium Code Walk Through: CNI Create Network]({% link _posts/2019-06-17-cilium-code-cni-create-network.md %}).
+
 # 4. Summary
 
-Cilium's kvstore is mainly intended for storing network policies, unfortunately
-network policy is not used in this cluster yet. However, with `etcdctl` commands
-and the steps provided in this post, it's not difficult to dig further.
+What's inside cilium-etcd (key -> value):
 
-May update this post later for the missing network policy part.
+1. `IdentityID` -> `IdentityLabels` (PodLabels)
+2. `IdentityLabels` + `/` + `NodeIP` -> `IdentityID`
+3. `PodIP` -> `PodIPDetails` (e.g. identity, host, etc)
+4. `NodeName` -> `NodeDetails`
+5. `ClusterMeshNodeName` -> `ClusterMeshNodeDetails`
 
-## References
+What's **NOT** inside cilium-etcd:
 
-1. [Cilium Documentation](https://docs.cilium.io/en/v1.7/concepts/overview/)
+1. CiliumNetworkPolicy (CNP): stores in k8s
+2. Endpoint (node local): stores in node-local files
+3. CiliumEndpoint (CEP): stores in k8s
+
+# References
+
+1. [Cilium ClusterMesh: A Hands-on Guide]({% link _posts/2020-08-17-cilium-code-clustermesh.md %})
 2. [Trip.com: First Step towards Cloud-native Networking]({% link _posts/2020-01-19-trip-first-step-towards-cloud-native-networking.md %})
+3. [Cilium Code Walk Through: CNI Create Network]({% link _posts/2019-06-17-cilium-code-cni-create-network.md %})

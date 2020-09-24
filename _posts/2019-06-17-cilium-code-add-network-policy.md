@@ -65,9 +65,11 @@ EndpointRegenerationEvent.Handle                                              //
        |  |  |     |              |-mergePortProto                            //    pkg/policy/rule.go
        |  |  |     |-cip.setPolicy(selPolicy)                                 //    pkg/policy/distillery.go
        |  |  |-e.selectorPolicy.Consume                                       //    pkg/policy/distillery.go
-       |  |       |-DistillPolicy                                             //    pkg/policy/resolve.go
-       |  |          |-computeDesiredL4PolicyMapEntries                       //    pkg/policy/resolve.go
-       |  |             |-computeDirectionL4PolicyMapEntries                  //    pkg/policy/resolve.go
+       |  |     |-if !IngressPolicyEnabled || !EgressPolicyEnabled
+       |  |     |  |-AllowAllIdentities(!IngressPolicyEnabled, !EgressPolicyEnabled)
+       |  |     |-DistillPolicy                                               //    pkg/policy/resolve.go
+       |  |        |-computeDesiredL4PolicyMapEntries                         //    pkg/policy/resolve.go
+       |  |           |-computeDirectionL4PolicyMapEntries                    //    pkg/policy/resolve.go
        |  |-updateNetworkPolicy                                               //    pkg/endpoint/policy.go
        |  |  |-e.proxy.UpdateNetworkPolicy                                    //    pkg/proxy/proxy.go
        |  |      |-p.XDSServer.UpdateNetworkPolicy                            //    pkg/envoy/server.go

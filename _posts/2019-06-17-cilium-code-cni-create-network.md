@@ -57,7 +57,7 @@ cmdAdd                                         // plugins/cilium-cni/cilium-cni.
          |     |-RunIdentityResolver            // pkg/endpoint/endpoint.go
          |        |-identityLabelsChanged       // pkg/endpoint/endpoint.go
          |           |-AllocateIdentity         // kvstore: reuse existing or create new one
-         |           |-forcePolicyComputation
+         |           |-forcePolicyComputation   // pkg/endpoint/endpoint.go
          |           |-SetIdentity
          |              |-runIPIdentitySync     // pkg/endpoint/policy.go
          |                 |-UpsertIPToKVStore  // pkg/ipcache/kvstore.go
