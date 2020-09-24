@@ -1,9 +1,9 @@
 ---
-layout: post
-title:  "[译] Linux 网络栈监控和调优：发送数据（2017）"
-date:   2018-12-17
-lastupdate: 2019-10-12
-author: ArthurChiao
+layout    : post
+title     :  "[译] Linux 网络栈监控和调优：发送数据（2017）"
+date      : 2018-12-17
+lastupdate: 2020-09-29
+author    : ArthurChiao
 categories: network-stack kernel monitoring tuning
 ---
 
@@ -12,14 +12,14 @@ categories: network-stack kernel monitoring tuning
 本文翻译自 2017 年的一篇英文博客
 [Monitoring and Tuning the Linux Networking Stack: Sending Data](https://blog.packagecloud.io/eng/2017/02/06/monitoring-tuning-linux-networking-stack-sending-data)。**如果能看懂英文，建议阅读原文，或者和本文对照看。**
 
-这篇文章写的是 **“Linux networking stack"**，这里的 ”stack“ 并不仅仅是内核协议栈，
+这篇文章写的是 **“Linux networking stack"**，这里的 ”stack“ 不仅仅是内核协议栈，
 而是包括内核协议栈在内的，从应用程序通过系统调用**写数据到 socket**，到数据被组织
 成一个或多个数据包最终被物理网卡发出去的整个路径。所以文章有三方面，交织在一起，
 看起来非常累（但是很过瘾）：
 
-1. 原理及代码实现：网络各层，包括驱动、硬中断、软中断、内核协议栈、socket 等等
-2. 监控：对代码中的重要计数进行监控，一般在`/proc` 或`/sys` 下面有对应输出
-3. 调优：修改网络配置参数
+1. 原理及代码实现：网络各层，包括驱动、硬中断、软中断、内核协议栈、socket 等等。
+2. 监控：对代码中的重要计数进行监控，一般在`/proc` 或`/sys` 下面有对应输出。
+3. 调优：修改网络配置参数。
 
 本文的另一个特色是，几乎所有讨论的内核代码，都在相应的地方给出了 github 上的链接，
 具体到行。
@@ -27,13 +27,13 @@ categories: network-stack kernel monitoring tuning
 网络栈非常复杂，原文太长又没有任何章节号，看起来非常累。因此本文翻译时添加了适当
 的章节号，以期按图索骥。
 
-以下是翻译。
-
 ----
 
-## 2020 更新
+**2020 更新**:
 
-基于 Prometheus+Grafana 监控网络栈：[Monitoring Network Stack]({% link _posts/2020-04-22-monitoring-network-stack.md %})。
+* 基于 Prometheus+Grafana 监控网络栈：[Monitoring Network Stack]({% link _posts/2020-04-22-monitoring-network-stack.md %})。
+
+以下是翻译。
 
 ----
 
@@ -48,63 +48,15 @@ tuning）这一路径上的各个网络栈组件。
 Data](https://blog.packagecloud.io/eng/2016/06/22/monitoring-tuning-linux-networking-stack-receiving-data/)
 。
 
-
-1. [监控和调优网络栈：常规建议](#chap_1)
-2. [发包过程俯瞰](#chap_2)
-3. [协议层注册](#chap_3)
-4. [通过 socket 发送网络数据](#chap_4)
-    * [4.1 `sock_sendmsg`, `__sock_sendmsg`, `__sock_sendmsg_nosec`](#chap_4.1)
-    * [4.2 `inet_sendmsg`](#chap_4.2)
-5. [UDP 协议层](#chap_5)
-    * [5.1 `udp_sendmsg`](#chap_5.1)
-    * [5.2 `udp_send_skb`](#chap_5.2)
-    * [5.3 监控：UDP 层统计](#chap_5.3)
-    * [5.4 调优：socket 发送队列内存大小](#chap_5.4)
-6. [IP 协议层](#chap_6)
-    * [6.1 `ip_send_skb`](#chap_6.1)
-    * [6.2 `ip_local_out` and `__ip_local_out`](#chap_6.2)
-    * [6.3 netfilter and nf_hook](#chap_6.3)
-    * [6.4 目的（路由）缓存](#chap_6.4)
-    * [6.5 `ip_output`](#chap_6.5)
-    * [6.6 `ip_finish_output`](#chap_6.6)
-    * [6.7 `ip_finish_output2`](#chap_6.7)
-    * [6.8 `dst_neigh_output`](#chap_6.8)
-    * [6.9 `neigh_hh_output`](#chap_6.9)
-    * [6.10 `n->output`](#chap_6.10)
-    * [6.11 监控: IP 层](#chap_6.11)
-7. [Linux netdevice 子系统](#chap_7)
-    * [7.1 Linux traffic control（流量控制）](#chap_7.1)
-    * [7.2 `dev_queue_xmit` and `__dev_queue_xmit`](#chap_7.2)
-    * [7.3 继续`__dev_queue_xmit`](#chap_7.3)
-    * [7.4 `__dev_xmit_skb`](#chap_7.4)
-    * [7.5 调优: Transmit Packet Steering (XPS)](#chap_7.5)
-8. [Queuing Disciplines（排队规则）](#chap_8)
-    * [8.1 `qdisc_run_begin` and `qdisc_run_end`](#chap_8.1)
-    * [8.2 `__qdisc_run`](#chap_8.2)
-    * [8.3 `qdisc_restart`](#chap_8.3)
-    * [8.4 Reminder, while loop in `__qdisc_run`](#chap_8.4)
-    * [8.5 最终来到 `dev_hard_start_xmit`](#chap_8.5)
-    * [8.6 Monitoring qdiscs](#chap_8.6)
-    * [8.7 Tuning qdiscs](#chap_8.7)
-9. [网络设备驱动](#chap_9)
-    * [9.1 驱动回调函数注册](#chap_9.1)
-    * [9.2 通过 `ndo_start_xmit` 发送数据](#chap_9.2)
-    * [9.3 `igb_tx_map`](#chap_9.3)
-    * [9.4 发送完成（Transmit completions）](#chap_9.4)
-    * [9.5 监控网络设备](#chap_9.5)
-    * [9.6 监控 DQL](#chap_9.6)
-    * [9.7 调优网络设备](#chap_9.7)
-10. [网络栈之旅：结束](#chap_10)
-11. [Extras](#chap_11)
-12. [结论](#chap_12)
-13. [额外帮助](#chap_13)
+* TOC
+{:toc}
 
 想对 Linux 网络栈进行监控或调优，必须对其正在发生什么有一个深入的理解，
 而这离不开读内核源码。希望本文可以给那些正准备投身于此的人提供一份参考。
 
 <a name="chap_1"></a>
 
-# 1 监控和调优网络栈：常规建议
+# 1 网络栈监控和调优：常规建议
 
 正如我们前一篇文章提到的，网络栈很复杂，没有一种方式适用于所有场景。如果性能和网络
 健康状态对你或你的业务非常重要，那你没有别的选择，只能花大量的时间、精力和金钱去
@@ -1143,7 +1095,7 @@ $ cat /proc/net/udp
 $ sudo sysctl -w net.core.wmem_max=8388608
 ```
 
-`sk->sk_write_queue` 用 `net.core.wmem_default` 初始化, 这个值也可以调整。
+`sk->sk_write_queue` 用 `net.core.wmem_default` 初始化， 这个值也可以调整。
 
 调整初始发送 buffer 大小：
 
@@ -2360,18 +2312,18 @@ static inline int __dev_xmit_skb(struct sk_buff *skb, struct Qdisc *q,
 
 # 8 Queuing Disciplines（排队规则）
 
-至此，我们需要先查看一些 qdisc 代码。本文不打算涵盖发送队列的每个选项的具体细节。
-如果你对此感兴趣，可以查看[这篇](http://lartc.org/howto/index.html)很棒的指南。
+至此，我们需要先看一些 qdisc 代码。本文不打算涵盖 TX 所有选项的具体细节。
+如果对此感兴趣，可以查看[这篇](http://lartc.org/howto/index.html)很棒的指南。
 
-我们接下来将查看**通用的数据包调度程序**（generic packet scheduler）是如何工作的
-。特别地，我们将研究 `qdisc_run_begin`、`qdisc_run_end`、`__ qdisc_run` 和
-`sch_direct_xmit` 是如何将数据移动到更靠近驱动程序的地方，以进行发送的。
+接下来将查看**通用的数据包调度程序**（generic packet scheduler）是如何工作的
+。特别地，我们将分析 `qdisc_run_begin()`、`qdisc_run_end()`、`__ qdisc_run()` 和
+`sch_direct_xmit()` 函数是如何一层层将数据传递给驱动程序的。
 
-让我们从 `qdisc_run_begin` 的工作原理开始。
+从 `qdisc_run_begin()` 的工作原理开始。
 
 <a name="chap_8.1"></a>
 
-## 8.1 `qdisc_run_begin` and `qdisc_run_end`
+## 8.1 `qdisc_run_begin()` and `qdisc_run_end()`：仅设置 qdisc 状态位
 
 定义在[include/net/sch_generic.h](https://github.com/torvalds/linux/blob/v3.13/include/net/sch_generic.h#L101-L107):
 
@@ -2383,26 +2335,23 @@ static inline bool qdisc_run_begin(struct Qdisc *qdisc)
         qdisc->__state |= __QDISC___STATE_RUNNING;
         return true;
 }
-```
 
-这个函数很简单：检查 qdisc 的`__state` 字段是否设置了`__QDISC___STATE_RUNNING` 标记
-位。如果设置了，直接返回 `false`；否则，标记位置 1，然后返回 `true`。
-
-类似地， `qdisc_run_end` 执行相反的操作，将此标记位置 0：
-
-```c
 static inline void qdisc_run_end(struct Qdisc *qdisc)
 {
         qdisc->__state &= ~__QDISC___STATE_RUNNING;
 }
 ```
 
-需要注意的是，这两个函数都只是设置标记位，并没有真正处理数据。真正的处理过程是从
-`__qdisc_run` 开始的。
+* `qdisc_run_begin()` 检查 qdisc 是否设置了`__QDISC___STATE_RUNNING` 状态
+   位。如果设置了，直接返回 `false`；否则，设置此状态位，然后返回 `true`。
+* `qdisc_run_end()` 执行相反的操作，清除此状态位。
+
+需要注意的是，这两个函数都**只是设置状态位，并没有真正干活**。真正的处理过程是从
+`__qdisc_run()` 开始的。
 
 <a name="chap_8.2"></a>
 
-## 8.2 `__qdisc_run`
+## 8.2 `__qdisc_run()`：真正的 qdisc 执行入口
 
 这个函数乍看非常简单，甚至让人产生错觉：
 
@@ -2411,162 +2360,143 @@ void __qdisc_run(struct Qdisc *q)
 {
         int quota = weight_p;
 
-        while (qdisc_restart(q)) {
-                /*
-                 * Ordered by possible occurrence: Postpone processing if
-                 * 1. we've exceeded packet quota
-                 * 2. another process needs the CPU;
-                 */
+        while (qdisc_restart(q)) { // 从队列取出一个 skb 并发送，剩余队列不为空时返回非零，见 8.3
+
+                // 如果发生下面情况之一，则延后处理：
+                // 1. quota 用尽
+                // 2. 其他进程需要 CPU
                 if (--quota <= 0 || need_resched()) {
                         __netif_schedule(q);
                         break;
                 }
         }
 
-        qdisc_run_end(q);
+        qdisc_run_end(q);          // 清除 RUNNING 状态位
 }
 ```
 
 函数首先获取 `weight_p`，这个变量通常是通过 sysctl 设置的，收包路径也会用到。我们稍
 后会看到如何调整此值。这个循环做两件事：
 
-1. 在 `while` 循环中调用 `qdisc_restart`，直到它返回 `false`（或触发下面的中断）
-1. 判断 quota 是否小于等于零，或 `need_resched()`是否返回 `true`。其中任何一个为真，
-   将调用`__netif_schedule` 然后跳出循环
+1. 在 `while` 循环中调用 `qdisc_restart()`，直到它返回 `false`（或触发下面的中断）。
+1. 判断是否还有 quota，或 `need_resched()` 是否返回 `true`。其中任何一个为真，
+   将调用 `__netif_schedule()` 然后跳出循环。
 
-注意：用户程序调用 `sendmsg` 系统调用之后，**内核便接管了执行过程，一路执行到这里;
-用户程序一直在累积系统时间（system time）**。如果用户程序在内核中用完其时间 quota
-，`need_resched` 将返回 `true`。 如果仍有可用 quota，且用户程序的时间片尚未使用，则
-将再次调用 `qdisc_restart`。
+> 注意：用户程序调用 `sendmsg` **系统调用之后，内核便接管了执行过程，一路执行到
+> 这里;用户程序一直在累积系统时间（system time）**。
 
-让我们先来看看 `qdisc_restart(q)`是如何工作的，然后将深入研究`__netif_schedule(q)`。
+* 如果用户程序在内核中用完其 time quota，`need_resched()` 将返回 `true`。 
+* 如果仍有 quota，且用户程序的时间片尚未使用，则将再次调用 `qdisc_restart()`。
+
+先来看看 `qdisc_restart(q)`是如何工作的，然后将深入研究`__netif_schedule(q)`。
 
 <a name="chap_8.3"></a>
 
-## 8.3 `qdisc_restart`
+## 8.3 `qdisc_restart`：从 qdisc 队列中取包，发送给网络驱动
 
-[qdisc_restart](https://github.com/torvalds/linux/blob/v3.13/net/sched/sch_generic.c#L156-L192):
+[qdisc_restart()](https://github.com/torvalds/linux/blob/v3.13/net/sched/sch_generic.c#L156-L192):
 
 ```c
 /*
  * NOTE: Called under qdisc_lock(q) with locally disabled BH.
  *
  * __QDISC_STATE_RUNNING guarantees only one CPU can process
- * this qdisc at a time. qdisc_lock(q) serializes queue accesses for
- * this queue.
+ * this qdisc at a time. qdisc_lock(q) serializes queue accesses for this queue.
  *
  *  netif_tx_lock serializes accesses to device driver.
  *
  *  qdisc_lock(q) and netif_tx_lock are mutually exclusive,
  *  if one is grabbed, another must be free.
  *
- * Note, that this procedure can be called by a watchdog timer
- *
  * Returns to the caller:
  *                                0  - queue is empty or throttled.
  *                                >0 - queue is not empty.
- *
  */
 static inline int qdisc_restart(struct Qdisc *q)
 {
-        struct netdev_queue *txq;
-        struct net_device *dev;
-        spinlock_t *root_lock;
-        struct sk_buff *skb;
+        struct sk_buff      *skb = dequeue_skb(q);
+        if (!skb)
+            return 0;
 
-        /* Dequeue packet */
-        skb = dequeue_skb(q);
-        if (unlikely(!skb))
-                return 0;
-        WARN_ON_ONCE(skb_dst_is_noref(skb));
-        root_lock = qdisc_lock(q);
-        dev = qdisc_dev(q);
-        txq = netdev_get_tx_queue(dev, skb_get_queue_mapping(skb));
+        spinlock_t          *root_lock = qdisc_lock(q);
+        struct net_device   *dev = qdisc_dev(q);
+        struct netdev_queue *txq = netdev_get_tx_queue(dev, skb_get_queue_mapping(skb));
 
         return sch_direct_xmit(skb, q, dev, txq, root_lock);
 }
 ```
 
-`qdisc_restart` 函数开头的注释非常有用，描述了此函数用到的三个锁：
+`qdisc_restart()` 函数开头的注释非常有用，描述了用到的三个锁：
 
-1. `__QDISC_STATE_RUNNING` 保证了同一时间只有一个 CPU 可以处理这个 qdisc
-1. `qdisc_lock(q)`将访问此 qdisc 的操作顺序化
-1. `netif_tx_lock` 将访问设备驱动的操作顺序化
+1. `__QDISC_STATE_RUNNING` 保证了同一时间只有一个 CPU 可以处理这个 qdisc。
+1. `qdisc_lock(q)` 将**访问此 qdisc** 的操作顺序化。
+1. `netif_tx_lock` 将**访问设备驱动**的操作顺序化。
 
-函数首先通过 `dequeue_skb` 从 qdisc 中取出下一个要发送的 skb。如果队列为空，
-`qdisc_restart` 将返回 `false`（导致上面`__qdisc_run` 中的循环退出）。
+函数逻辑：
 
-如果 skb 不为空，代码将获取 qdisc 队列锁，然后拿到相关的发送设备 `dev` 和发送队列 `txq`
-，最后带着这些参数调用 `sch_direct_xmit`。
+1. 首先调用 `dequeue_skb()` 从 qdisc 中取出要发送的 skb。如果队列为空，返回 0，
+   这将导致上层的 `qdisc_restart()` 返回 `false`，继而退出 `while` 循环。
+2. 如果 skb 不为空，接下来获取 qdisc 队列锁，然后找到相关的发送设备 `dev` 和发送
+   队列 `txq`，最后带着这些参数调用 `sch_direct_xmit()`。
 
-我们来先看 `dequeue_skb`，然后再回到 `sch_direct_xmit`。
+先来看 `dequeue_skb()`，然后再回到 `sch_direct_xmit()`。
 
-### 8.3.1 `dequeue_skb`
+### 8.3.1 `dequeue_skb()`：从 qdisc 队列取待发送 skb
 
-我们来看看定义在 [net/sched/sch_generic.c](https://github.com/torvalds/linux/blob/v3.13/net/sched/sch_generic.c#L59-L78)中的 `dequeue_skb`。
-
-函数首先声明一个 `struct sk_buff * `类型的局部变量 `skb`，用这个变量表示接下来要处
-理的数据。这个变量后面会依的不同情况而被赋不同的值，最后作为函数的返回值被返回给
-调用方。
-
-变量 `skb` 被初始化为 qdisc 的 `gso_skb` 成员变量（`q->gso_skb`），后者指向之前由于无
-法发送而重新入队的数据。
-
-接下来分为两种情况，根据 `q->gso_skb` 是否为空：
-
-1. 如果不为空，会将之前重新入队的 skb 出队，作为待处理数据返回
-1. 如果为空，则从要处理的 qdisc 中取出一个新 skb，作为待处理数据返回
-
-先看第一种情况，如果 `q->gso_skb` 不为空：
+定义在 [net/sched/sch_generic.c](https://github.com/torvalds/linux/blob/v3.13/net/sched/sch_generic.c#L59-L78)。
 
 ```c
 static inline struct sk_buff *dequeue_skb(struct Qdisc *q)
 {
-        struct sk_buff *skb = q->gso_skb;
-        const struct netdev_queue *txq = q->dev_queue;
+    struct sk_buff      *skb = q->gso_skb;   // 待发送包
+    struct netdev_queue *txq = q->dev_queue; // 之前发送失败的包所在的队列
 
-        if (unlikely(skb)) {
-                /* check the reason of requeuing without tx lock first */
-                txq = netdev_get_tx_queue(txq->dev, skb_get_queue_mapping(skb));
-                if (!netif_xmit_frozen_or_stopped(txq)) {
-                        q->gso_skb = NULL;
-                        q->q.qlen--;
-                } else
-                        skb = NULL;
+    if (unlikely(skb)) {
+        /* check the reason of requeuing without tx lock first */
+        txq = netdev_get_tx_queue(txq->dev, skb_get_queue_mapping(skb));
+
+        if (!netif_xmit_frozen_or_stopped(txq)) {
+            q->gso_skb = NULL;
+            q->q.qlen--;
+        } else
+            skb = NULL;
+    } else {
+        if (!(q->flags & TCQ_F_ONETXQUEUE) || !netif_xmit_frozen_or_stopped(txq))
+            skb = q->dequeue(q);
+    }
+
+    return skb;
 ```
 
-代码将检查数据的发送队列是否已停止。如果队列未停止工作，则清除 `gso_skb` 字段，并
-将队列长度减 1。如果队列停止工作，则数据扔留在 gso_skb，但将局部变量 `skb` 置空。
+函数首先声明一个 `struct sk_buff *skb` 变量，这是接下来要处理的数据。这个变量后
+面会依不同情况而被赋不同的值，最后作为返回值返回给调用方。
 
-第二种情况，如果 `q->gso_skb` 为空，即之前没有数据被重新入队：
+变量 `skb` 初始化为 qdisc 的 `gso_skb` 字段，这是**之前由于发送失败而重新入队的数据**。
 
-```c
-        } else {
-                if (!(q->flags & TCQ_F_ONETXQUEUE) || !netif_xmit_frozen_or_stopped(txq))
-                        skb = q->dequeue(q);
-        }
+接下来分为两种情况，根据 `skb = q->gso_skb` 是否为空：
 
-        return skb;
-}
-```
+1. 如果不为空，会将之前重新入队的 skb 出队，作为待处理数据返回。
 
-进入另一个 tricky 的 if 语句，如果：
+    1. 检查发送队列是否已停止。
+    2. 如果队列未停止，则 `gso_skb` 字段置空，队列长度减 1，返回 skb。
+    3. 如果队列已停止，则 `gso_skb` 不动，返回空。
 
-1. qdisc 不是单发送队列，或
-1. 发送队列未停止工作
+2. 如果为空（即之前没有数据重新入队），则从要处理的 qdisc 中取出一个新 skb，作为待处理数据返回。
 
-则将调用 qdisc 的 `dequeue` 函数以获取新数据，赋值给局部变量 `skb`。dequeue 的内部实现
-依 qdisc 的实现和功能而有所不同。
+    进入另一个 tricky 的 if 语句，如果：
 
-该函数最后返回局部变量 `skb`，这是接下来要处理的数据包。
+    1. qdisc 不是单发送队列，或
+    1. 发送队列未停止工作
 
-### 8.3.2 `sch_direct_xmit`
+    则调用 qdisc 的 `dequeue()` 方法获取新数据并返回。dequeue 的内部实现依 qdisc 的实现和功能而有所不同。
 
-现在来到 `sch_direct_xmit`（定义在
+该函数最后返回变量 `skb`，这是接下来要处理的数据包。
+
+### 8.3.2 `sch_direct_xmit()`：发送给网卡驱动
+
+现在来到 `sch_direct_xmit()`（定义在
 [net/sched/sch_generic.c](https://github.com/torvalds/linux/blob/v3.13/net/sched/sch_generic.c#L109-L154)
-），这是将数据向下发送到网络设备的重要参与者。
-
-我们一段一段地看：
+），这是将数据向下发送到网络设备的重要一步。
 
 ```c
 /*
@@ -2584,88 +2514,47 @@ int sch_direct_xmit(struct sk_buff *skb, struct Qdisc *q,
 {
         int ret = NETDEV_TX_BUSY;
 
-        /* And release qdisc */
         spin_unlock(root_lock);
-
-        HARD_TX_LOCK(dev, txq, smp_processor_id());
         if (!netif_xmit_frozen_or_stopped(txq))
-                ret = dev_hard_start_xmit(skb, dev, txq);
-
-        HARD_TX_UNLOCK(dev, txq);
-```
-
-这段代码首先释放 qdisc（发送队列）锁，然后获取（设备驱动的）发送锁。注意
-`HARD_TX_LOCK` 这个宏：
-
-```c
-#define HARD_TX_LOCK(dev, txq, cpu) {                   \
-        if ((dev->features & NETIF_F_LLTX) == 0) {      \
-                __netif_tx_lock(txq, cpu);              \
-        }                                               \
-}
-```
-
-这个宏检查设备是否设置了 `NETIF_F_LLTX` flag，这个 flag 已经弃用，不推荐使用，新设
-备驱动程序不应使用此标志。内核中的大多数驱动程序也不使用此标志，因此这个 if 语句
-将为 `true`，接下来获取此数据的发送队列的锁。
-
-接下来，如果发送队列没有停止，就会调用 `dev_hard_start_xmit`，并保存其返回值，以
-确定发送是否成功。正如我们稍后将看到的，`dev_hard_start_xmit` 会将数据从 Linux 内核
-的网络设备子系统发送到设备驱动程序。
-
-`dev_hard_start_xmit` 执行之后，（或因发送队列停止而跳过执行），队列的发送锁定就会被释放。
-
-让我们继续：
-
-```c
+            ret = dev_hard_start_xmit(skb, dev, txq);
         spin_lock(root_lock);
 
-        if (dev_xmit_complete(ret)) {
-                /* Driver sent out skb successfully or skb was consumed */
-                ret = qdisc_qlen(q);
-        } else if (ret == NETDEV_TX_LOCKED) {
-                /* Driver try lock failed */
-                ret = handle_dev_cpu_collision(skb, txq, q);
-```
-
-接下来，再次获取此 qdisc 的锁，然后通过调用 `dev_xmit_complete` 检查 `dev_hard_start_xmit` 的返回值。
-
-
-1. 如果 `dev_xmit_complete` 返回 `true`，数据已成功发送，则将 qdisc 队列长度设置为返回值，否则
-1. 如果 `dev_hard_start_xmit` 返回的是 `NETDEV_TX_LOCKED`，调用 `handle_dev_cpu_collision` 来处理锁竞争
-
-当驱动程序尝试锁定发送队列并失败时，支持 `NETIF_F_LLTX` 功能的设备可以返回 `NETDEV_TX_LOCKED`。 
-我们稍后会仔细研究 `handle_dev_cpu_collision`。
-
-现在，让我们继续关注 `sch_direct_xmit` 并查看，以上两种情况都不满足时的情况：
-
-```c
-        } else {
-                /* Driver returned NETDEV_TX_BUSY - requeue skb */
-                if (unlikely(ret != NETDEV_TX_BUSY))
-                        net_warn_ratelimited("BUG %s code %d qlen %d\n",
-                                             dev->name, ret, q->q.qlen);
-
-                ret = dev_requeue_skb(skb, q);
+        if (dev_xmit_complete(ret)) {                    // 1. 驱动发送成功
+            ret = qdisc_qlen(q);                         //    将 qdisc 队列的剩余长度作为返回值
+        } else if (ret == NETDEV_TX_LOCKED) {            // 2. 驱动获取发送锁失败
+            ret = handle_dev_cpu_collision(skb, txq, q);
+        } else {                                         // 3. 驱动发送“正忙”，当前无法发送
+            ret = dev_requeue_skb(skb, q);               //    将数据重新入队，等下次发送。
         }
-```
 
-如果发送失败，而且不是以上两种情况，那还有第三种可能：由于 `NETDEV_TX_BUSY`。驱动
-程序可以返回 `NETDEV_TX_BUSY` 表示设备或驱动程序“忙”并且数据现在无法发送。在这种情
-况下，通过调用 `dev_requeue_skb` 将数据重新入队，等下次继续发送。
-
-最后，函数（可能）调整返回值，然后返回：
-
-```c
         if (ret && netif_xmit_frozen_or_stopped(txq))
-                ret = 0;
+            ret = 0;
 
         return ret;
 ```
 
-我们来深入地看一下 `handle_dev_cpu_collision` 和 `dev_requeue_skb`。
+这段代码首先释放 qdisc（发送队列）锁，然后获取（设备驱动的）发送锁。
 
-### 8.3.3 `handle_dev_cpu_collision`
+接下来，如果发送队列没有停止，就会调用 `dev_hard_start_xmit()`。稍后将看到，
+后者会把数据从 Linux 内核的网络设备子系统发送到设备驱动程序。
+
+`dev_hard_start_xmit()` 执行之后，（或因发送队列停止而跳过执行），队列的发送锁就会被释放。
+
+接下来，再次获取此 qdisc 的锁，然后通过调用 `dev_xmit_complete()` 检查 `dev_hard_start_xmit()` 的返回值。
+
+1. 如果 `dev_xmit_complete()` 返回 `true`，数据已成功发送，则将 qdisc 队列长度设置为返回值，否则
+1. 如果 `dev_hard_start_xmit()` 返回的是 `NETDEV_TX_LOCKED`，调用 `handle_dev_cpu_collision()` 来处理锁竞争。
+
+    当驱动程序锁定发送队列失败时，支持 `NETIF_F_LLTX` 功能的设备会返回 `NETDEV_TX_LOCKED`。 稍后会仔细研究 `handle_dev_cpu_collision`。
+
+现在，让我们继续关注 `sch_direct_xmit()` 并查看，以上两种情况都不满足时的情况。
+如果发送失败，而且不是以上两种情况，那还有第三种可能：由于 `NETDEV_TX_BUSY`。驱动
+程序返回 `NETDEV_TX_BUSY` 表示设备或驱动程序“正忙”，数据现在无法发送。这种情
+况下，调用 `dev_requeue_skb()` 将数据重新入队，等下次发送。
+
+来深入地看一下 `handle_dev_cpu_collision()` 和 `dev_requeue_skb()`。
+
+### 8.3.3 `handle_dev_cpu_collision()`
 
 定义在 [net/sched/sch_generic.c](https://github.com/torvalds/linux/blob/v3.13/net/sched/sch_generic.c#L80-L107)，处理两种情况：
 
@@ -2712,7 +2601,7 @@ static inline int handle_dev_cpu_collision(struct sk_buff *skb,
 
 接下来看看 `dev_requeue_skb` 做了什么，后面会看到，`sch_direct_xmit` 会调用它.
 
-### 8.3.4 `dev_requeue_skb`
+### 8.3.4 `dev_requeue_skb()`：重新压入 qdisc 队列，等待下次发送
 
 这个函数很简短，[net/sched/sch_generic.c](https://github.com/torvalds/linux/blob/v3.13/net/sched/sch_generic.c#L39-L57):
 
@@ -2725,140 +2614,113 @@ static inline int handle_dev_cpu_collision(struct sk_buff *skb,
  * - ingress filtering is also serialized via qdisc root lock
  * - updates to tree and tree walking are only done under the rtnl mutex.
  */
-
 static inline int dev_requeue_skb(struct sk_buff *skb, struct Qdisc *q)
 {
-        skb_dst_force(skb);
-        q->gso_skb = skb;
-        q->qstats.requeues++;
-        q->q.qlen++;        /* it's still part of the queue */
-        __netif_schedule(q);
+        skb_dst_force(skb);   // skb 上强制增加一次引用计数
+        q->gso_skb = skb;     // 回想一下，dequeue_skb() 中取出一个 skb 时会检查该字段
+        q->qstats.requeues++; // 更新 `requeue` 计数
+        q->q.qlen++;          // 更新 qdisc 队列长度
 
+        __netif_schedule(q);  // 触发 softirq
         return 0;
 }
 ```
 
-这个函数做了一些事情：
-
-1. 在 skb 上强制增加一次引用计数
-1. 将 skb 添加到 qdisc 的 `gso_skb` 字段。回想一下，之前我们看到在从 qdisc 的队列中取出数据之前，在 dequeue_skb 中检查了该字段
-1. 更新 `requque` 统计计数
-1. 更新队列长度
-1. 调用`__netif_schedule`
-
-简单明了。
-
-接下来我们再回忆一遍我们一步步到达这里的过程，然后检查`__netif_schedule`。
+接下来再回忆一遍我们一步步到达这里的过程，然后查看 `__netif_schedule()`。
 
 <a name="chap_8.4"></a>
 
-## 8.4 Reminder, while loop in `__qdisc_run`
+## 8.4 复习：`__qdisc_run()` 主逻辑
 
-回想一下，我们是在查看`__qdisc_run` 的时候到达这里的：
+回想一下，我们是从 `__qdisc_run()` 开始到达这里的：
 
 ```c
 void __qdisc_run(struct Qdisc *q)
 {
         int quota = weight_p;
-
-        while (qdisc_restart(q)) {
-                /*
-                 * Ordered by possible occurrence: Postpone processing if
-                 * 1. we've exceeded packet quota
-                 * 2. another process needs the CPU;
-                 */
-                if (--quota <= 0 || need_resched()) {
-                        __netif_schedule(q);
-                        break;
-                }
+        while (qdisc_restart(q)) { // dequeue skb, send it
+            if (--quota <= 0 || need_resched()) {// Ordered by possible occurrence: Postpone processing if
+                    __netif_schedule(q);         // 1. we've exceeded packet quota
+                    break;                       // 2. another process needs the CPU
+            }                                    
         }
-
         qdisc_run_end(q);
 }
 ```
 
-代码在 `while` 循环中调用 `qdisc_restart`，循环内部使 skb 出队，尝试通过
-`sch_direct_xmit` 来发送它们，`sch_direct_xmit` 调用 `dev_hard_start_xmit` 来向驱动
-程序进行实际发送。任何无法发送的 skb 都将被重新入队，以便在 `NET_TX` softirq 中进行
+`while` 循环调用 `qdisc_restart()`，后者取出一个 skb，然后尝试通过
+`sch_direct_xmit()` 来发送；`sch_direct_xmit` 调用 `dev_hard_start_xmit` 来向驱动
+程序进行实际发送。任何无法发送的 skb 都重新入队，将在 `NET_TX` softirq 中进行
 发送。
 
-发送过程的下一步是查看 `dev_hard_start_xmit`，了解如何调用驱动程序来发送数据。但
-在此之前，我们应该先查看`__netif_schedule` 以完全理解`__qdisc_run` 和
-`dev_requeue_skb` 的工作方式。
+发送过程的下一步是查看 `dev_hard_start_xmit()`，了解如何调用驱动程序来发送数据。但
+在此之前，应该先查看 `__netif_schedule()` 以完全理解 `__qdisc_run()` 和
+`dev_requeue_skb()` 的工作方式。
 
 ### 8.4.1 `__netif_schedule`
 
-现在我们来看`__netif_schedule`，
+现在来看 `__netif_schedule()`，
 [net/core/dev.c](https://github.com/torvalds/linux/blob/v3.13/net/core/dev.c#L2127-L2146):
 
 ```c
 void __netif_schedule(struct Qdisc *q)
 {
-        if (!test_and_set_bit(__QDISC_STATE_SCHED, &q->state))
-                __netif_reschedule(q);
+    if (!test_and_set_bit(__QDISC_STATE_SCHED, &q->state))
+            __netif_reschedule(q);
 }
 EXPORT_SYMBOL(__netif_schedule);
-```
 
-此代码检查 qdisc 状态中的`__QDISC_STATE_SCHED` 位，如果为该位为 0，会将其置 1。如果置
-位成功（意味着之前不在`__QDISC_STATE_SCHED` 状态），代码将调用
-`__netif_reschedule`，这个函数不长，但做的事情非常重要。让我们来看看：
-
-```c
 static inline void __netif_reschedule(struct Qdisc *q)
 {
-        struct softnet_data *sd;
-        unsigned long flags;
+    struct softnet_data *sd;
+    unsigned long flags;
 
-        local_irq_save(flags);
-        sd = &__get_cpu_var(softnet_data);
-        q->next_sched = NULL;
-        *sd->output_queue_tailp = q;
-        sd->output_queue_tailp = &q->next_sched;
-        raise_softirq_irqoff(NET_TX_SOFTIRQ);
-        local_irq_restore(flags);
+    local_irq_save(flags);                  // 保存硬中断状态，并禁用硬中断（IRQ）
+    sd = &__get_cpu_var(softnet_data);      // 获取当前 CPU 的 struct softnet_data 实例
+    q->next_sched = NULL;
+    *sd->output_queue_tailp = q;            // 将 qdisc 添加到 softnet_data 的 output 队列中
+    sd->output_queue_tailp = &q->next_sched;
+    raise_softirq_irqoff(NET_TX_SOFTIRQ);   // 重要步骤：触发 NET_TX_SOFTIRQ 类型软中断（softirq）
+    local_irq_restore(flags);               // 恢复 IRQ 状态并重新启用硬中断
 }
 ```
 
-这个函数做了几件事：
+`test_and_set_bit()` 检查 `q->state` 中的 `__QDISC_STATE_SCHED` 位，如果为该位为 0，会将其置 1。
+如果置位成功（意味着之前处于非 `__QDISC_STATE_SCHED` 状态），代码将调用
+`__netif_reschedule()`，这个函数不长，但做的事情非常重要。
 
-1. 保存当前的硬中断（IRQ）状态，并通过调用 `local_irq_save` 禁用 IRQ
-1. 获取当前 CPU 的 `struct softnet_data` 实例
-1. 将 qdisc 添加到 `struct softnet_data` 实例的 output 队列中
-1. 触发 `NET_TX_SOFTIRQ` 类型软中断（softirq）
-1. 恢复 IRQ 状态并重新启用硬中断
+> 更多有关 `struct softnet_data` 初始化的内容，可参考我们之前关于网络栈接收数据的
+> [文章](https://blog.packagecloud.io/eng/2016/06/22/monitoring-tuning-linux-networking-stack-receiving-data/#linux-network-device-subsystem)。
 
-你可以阅读我们之前关于网络栈接收数据的[文章](https://blog.packagecloud.io/eng/2016/06/22/monitoring-tuning-linux-networking-stack-receiving-data/#linux-network-device-subsystem)，了解更多有关 `softnet_data` 初始化的信息。
-
-这个函数中的重要代码是：`raise_softirq_irqoff`，它触发 `NET_TX_SOFTIRQ` 类型
-softirq。 softirqs 及其注册也包含在我们之前的[文章
+`__netif_reschedule()` 中的重要步骤是 `raise_softirq_irqoff()`，它触发一次 `NET_TX_SOFTIRQ` 类型
+softirq。 softirqs 及其注册过程也包含在我们之前的[文章
 ](https://blog.packagecloud.io/eng/2016/06/22/monitoring-tuning-linux-networking-stack-receiving-data/#softirqs)
-中。简单来说，你可以认为 softirqs 是以非常高的优先级在执行的内核线程，并代表内核处
-理数据，它们用于网络数据的收发处理（incoming 和 outgoing）。
+中。简单来说，可以认为 **softirqs 是以很高优先级在执行的内核线程，并代表内核处理数据**，
+用于网络数据的收发处理（incoming 和 outgoing）。
 
 正如在[上一篇]()文章中看到的，`NET_TX_SOFTIRQ` softirq 有一个注册的回调函数
-`net_tx_action`，这意味着有一个内核线程将会执行 `net_tx_action`。该线程偶尔会被暂
-停（pause），`raise_softirq_irqoff` 会恢复（resume）其执行。让我们看一下
-`net_tx_action` 的作用，以便了解内核如何处理发送数据请求。
+`net_tx_action()`，这意味着有一个内核线程将会执行 `net_tx_action()`。该线程偶尔会被暂
+停（pause），`raise_softirq_irqoff()` 会恢复（resume）其执行。让我们看一下
+`net_tx_action()` 的作用，以便了解内核如何处理发送数据请求。
 
-### 8.4.2 `net_tx_action`
+### 8.4.2 `net_tx_action()`
 
 定义在
 [net/core/dev.c](https://github.com/torvalds/linux/blob/v3.13/net/core/dev.c#L3297-L3353)
-，由两个 if 组成，分别处理 executing CPU 的 `softnet_data` 实例的两个 queue：
+，由两个 if 组成，分别处理 executing CPU 的 **`softnet_data` 实例的两个 queue**：
 
 1. completion queue
 1. output queue
 
 让我们分别来看这两种情况，注意，**这段代码在 softirq 上下文中作为一个独立的内核线
-程执行**。网络栈发送侧的热路径中不适合执行的代码，将被延后（defer），然
-后由执行 `net_tx_action` 的线程处理。
+程执行**。网络栈发送侧的**热路径中不适合执行的代码，将被延后（defer），然
+后由执行 `net_tx_action()` 的线程处理**。
 
-#### 8.4.3 net_tx_action completion queue
+### 8.4.3 `net_tx_action()` completion queue：待释放 skb 队列
 
-`softnet_data` 的 completion queue 存放等待释放的 skb。函数 `dev_kfree_skb_irq` 可以将
-skbs 添加到队列中以便稍后释放。 设备驱动程序通常使用它来推迟释放消耗的 skbs。 驱动
-程序想要推迟释放 skb 而不是直接释放的原因是，释放内存可能需要时间，而且有些代码（如 hardirq 处理程序）
+`softnet_data` 的 completion queue 存放**等待释放的 skb**。函数 `dev_kfree_skb_irq` 可以将
+skbs 添加到队列中以便稍后释放。设备驱动程序通常使用它来推迟释放已经发送成功的 skbs。驱动
+程序推迟释放 skb 的原因是，释放内存可能需要时间，而且有些代码（如 hardirq 处理程序）
 需要尽可能快的执行并返回。
 
 看一下 `net_tx_action` 第一段代码，该代码处理 completion queue 中等待释放的 skb：
@@ -2875,9 +2737,6 @@ skbs 添加到队列中以便稍后释放。 设备驱动程序通常使用它�
                 while (clist) {
                         struct sk_buff *skb = clist;
                         clist = clist->next;
-
-                        WARN_ON(atomic_read(&skb->users));
-                        trace_kfree_skb(skb, net_tx_action);
                         __kfree_skb(skb);
                 }
         }
@@ -2887,97 +2746,85 @@ skbs 添加到队列中以便稍后释放。 设备驱动程序通常使用它�
 用的内存。**牢记，此代码在一个名为 softirq 的独立“线程”中运行 - 它并没有占用用
 户程序的系统时间（system time）**。
 
-#### 8.4.4 net_tx_action output queue
+### 8.4.4 `net_tx_action` output queue：待发送 skb 队列
 
-output queue 存储待发送 skb。如前所述，`__netif_reschedule` 将数据添加到 output
-queue 中，通常从`__netif_schedule` 调用过来。目前，`__netif_schedule` 函数在我们
-看到的两个地方被调用：
+output queue 存储 **待发送的 skb**。如前所述，`__netif_reschedule()` 将数据添加到 output
+queue 中，通常从`__netif_schedule` 调用过来。
 
-1. `dev_requeue_skb`：正如我们所看到的，如果驱动程序返回 `NETDEV_TX_BUSY` 或者存在
-   CPU 冲突，则可以调用此函数
-1. `__qdisc_run`：我们之前也看过这个函数。 一旦超出 quota 或者需要 reschedule，它也
-   会调用`__netif_schedule`
+目前，我们看到 `__netif_schedule()` 函数在两个地方被调用：
 
-在任何一种情况下，都会调用`__netif_schedule` 函数，它会将 qdisc 添加到 softnet_data
-的 output queue 进行处理。 这里将输出队列处理代码拆分为三个块。我们来看看第一块：
+1. `dev_requeue_skb()`：如果驱动程序返回 `NETDEV_TX_BUSY` 或者存在 CPU 冲突，可以调用此函数。
+1. `__qdisc_run()`：一旦超出 quota 或者需要 reschedule，会调用`__netif_schedule`。
+
+这个函数会将 qdisc 添加到 softnet_data 的 output queue 进行处理。 这里将输出队列处理代码拆分为三个块。
+
+我们来看看第一块：
 
 ```c
-        if (sd->output_queue) {
-                struct Qdisc *head;
+    if (sd->output_queue) {       // 如果 output queue 上有 qdisc
+        struct Qdisc *head;
 
-                local_irq_disable();
-                head = sd->output_queue;
-                sd->output_queue = NULL;
-                sd->output_queue_tailp = &sd->output_queue;
-                local_irq_enable();
+        local_irq_disable();
+        head = sd->output_queue;  // 将 head 指向第一个 qdisc
+        sd->output_queue = NULL;
+        sd->output_queue_tailp = &sd->output_queue; // 更新队尾指针
+        local_irq_enable();
 ```
 
-这一段代码仅确保 output queue 上有 qdisc，如果有，则将 `head` 变量指向第一个 qdisc，并
+如果 output queue 上有 qdisc，则将 `head` 变量指向第一个 qdisc，并
 更新队尾指针。
 
-接下来，一个 `while` 循环开始遍历 qdsics 列表：
+接下来，一个 **`while` 循环开始遍历 qdsics 列表**：
 
 ```c
-                while (head) {
-                        struct Qdisc *q = head;
-                        spinlock_t *root_lock;
+    while (head) {
+        struct Qdisc *q = head;
+        head = head->next_sched;
 
-                        head = head->next_sched;
+        spinlock_t *root_lock = qdisc_lock(q);
 
-                        root_lock = qdisc_lock(q);
-                        if (spin_trylock(root_lock)) {
-                                smp_mb__before_clear_bit();
-                                clear_bit(__QDISC_STATE_SCHED,
-                                          &q->state);
-                                qdisc_run(q);
-                                spin_unlock(root_lock);
-```
+        if (spin_trylock(root_lock)) {                 // 非阻塞：尝试获取 qdisc root lock
+            smp_mb__before_clear_bit();
+            clear_bit(__QDISC_STATE_SCHED, &q->state); // 清除 q->state SCHED 状态位
 
-上面的代码段拿到 qdisc 锁 `root_lock`。`spin_trylock` 尝试锁定;请注意，这里是有意使
-用的 spin lock（自旋锁），因为它不会阻塞。如果 spin lock 已经被别人获得，则
-`spin_trylock` 将立即返回，而不是等待获取。
+            qdisc_run(q);                              // 执行 qdisc 规则，这会设置 q->state 的 RUNNING 状态位
 
-`spin_trylock` 锁定成功将返回非零值。在这种情况下，qdisc 的状态的
-`__QDISC_STATE_SCHED` 位被置 0，然后调用 qdisc_run，它会再将
-`__QDISC___STATE_RUNNING` 位置 1，并开始执行`__qdisc_run`。
-
-这里很重要。这里发生的是，我们之前跟下来的处理循环是代表用户进行的，从发送系统调
-用开始；现在它再次运行，但是，在 softirq 上下文中，因为这个 qdisc 的 skb 之前没有被发
-送出去发。这种区别非常重要，因为它会影响你监控发送大量数据的应用程序的 CPU 使用情
-况。让我以另一种方式陈述：
-
-1. 无论发送完成还是驱动程序返回错误，程序的系统时间都将包括调用驱动程序尝试发送
-   数据所花费的时间
-1. 如果发送在驱动层不成功（例如因为设备正在忙于发送其他内容），则 qdisc 将被添加到
-   output quue 并稍后由 softirq 线程处理。在这种情况下，将会额外花费一些 softirq（
-   `si`）时间在发送数据上
-
-因此，发送数据所花费的总时间是发送相关（send-related）的**系统调用的系统时间**和
-**`NET_TX` 类型 softirq 时间**的组合。
-
-代码最后释放 qdisc 锁。
-
-如果上面的 `spin_trylock` 调用失败，则执行以下代码：
-
-```c
-                        } else {
-                                if (!test_bit(__QDISC_STATE_DEACTIVATED,
-                                              &q->state)) {
-                                        __netif_reschedule(q);
-                                } else {
-                                        smp_mb__before_clear_bit();
-                                        clear_bit(__QDISC_STATE_SCHED,
-                                                  &q->state);
-                                }
-                        }
-                }
+            spin_unlock(root_lock);                    // 释放 qdisc 锁
+        } else {
+            if (!test_bit(__QDISC_STATE_DEACTIVATED, &q->state)) { // qdisc 还在运行
+                __netif_reschedule(q);                 // 重新放入 queue，稍后继续尝试获取 root lock
+            } else {                                   // qdisc 已停止运行，清除 SCHED 状态位
+                smp_mb__before_clear_bit();
+                clear_bit(__QDISC_STATE_SCHED, &q->state);
+            }
         }
+    }
 ```
 
-通过检查 qdisc 状态的`__QDISC_STATE_DEACTIVATED` 标记位，处理两种情况：
+`spin_trylock()` 获得 root lock 后，
 
-1. 如果 qdisc 未停用，调用`__netif_reschedule`，这会将 qdisc 放回到原 queue 中，稍后会再次尝试获取 qdisc 锁
-1. 如果 qdisc 已停用，则确保`__QDISC_STATE_SCHED` 状态也被清除
+1. 调用 `clear_bit()` 清除 qdisc 的 `__QDISC_STATE_SCHED` 状态位。
+2. 然后执行 `qdisc_run()`，这会将 `__QDISC___STATE_RUNNING` 状态位置 1，并执行`__qdisc_run()`。
+
+这里很重要。从系统调用开始的发送过程代表 applition 执行，花费的是系统时间；但接
+下来它将转入 softirq 上下文中执行（这个 qdisc 的 skb 之前没有被发送出去发），花
+费的是 softirq 时间。这种区分非常重要，因为这**直接影响着应用程序的 CPU 使用量监
+控**，尤其是发送大量数据的应用。换一种陈述方式：
+
+1. 无论发送完成还是驱动程序返回错误，程序的系统时间都包括调用驱动程序发送数据所花的时间。
+1. 如果驱动层发送失败（例如，设备忙于发送其他内容），则会将 qdisc 添加到
+   output queue，稍后由 softirq 线程处理。在这种情况下，将会额外花费一些 softirq（
+   `si`）时间在发送数据上。
+
+因此，发送数据花费的总时间是下面二者之和：
+
+1. **系统调用的系统时间**（sys time）
+2. **`NET_TX` 类型的 softirq 时间**（softirq time）
+
+如果 `spin_trylock()` 失败，则检查 qdisc 是否已经停止运行（`__QDISC_STATE_DEACTIVATED` 状态位），两种情况：
+
+1. qdisc 未停用：调用 `__netif_reschedule()`，这会将 qdisc 放回到原 queue 中，稍后再次尝试获取 qdisc 锁。
+1. qdisc 已停用：清除 `__QDISC_STATE_SCHED` 状态位。
 
 <a name="chap_8.5"></a>
 

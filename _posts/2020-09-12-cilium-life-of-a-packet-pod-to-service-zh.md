@@ -436,6 +436,48 @@ Address                  HWtype  HWaddress           Flags Mask            Iface
 <p align="center"><img src="/assets/img/cilium-life-of-a-packet/step-6.png" width="100%" height="100%"></p>
 <p align="center">Fig. Step 6.</p>
 
+以 Intel 10G 网卡为例，从驱动开始，接收方向调用栈，
+
+```
+// kernel source tree, 4.19
+
+ixgbe_poll
+ |-ixgbe_clean_rx_irq
+    |-if support XDP offload
+    |    skb = ixgbe_run_xdp()
+    |-skb = ixgbe_construct_skb()
+    |-ixgbe_rx_skb
+       |-napi_gro_receive
+          |-napi_skb_finish(dev_gro_receive(skb))
+             |-netif_receive_skb_internal
+                |-if generic XDP
+                |  |-if do_xdp_generic() != XDP_PASS
+                |       return NET_RX_DROP
+                |-__netif_receive_skb(skb)
+                   |-__netif_receive_skb_one_core
+                      |-__netif_receive_skb_core(&pt_prev)
+                         |-for tap in taps:
+                         |   deliver_skb
+                         |-sch_handle_ingress                     // net/core/dev.c
+                            |-tcf_classify                        // net/sched/cls_api.c
+                               |-for tp in tps:
+                                   tp->classify
+                                       |-cls_bpf_classify         // net/sched/cls_bpf.c
+```
+
+大致过程：
+
+1. 网卡收包
+2. 如果网卡支持 XDP offload，并且有 XDP 程序，就会执行 XDP 程序。我们这里没有启
+   用 XDP。
+3. 创建 skb。
+4. GRO，对分片的包进行重组。
+5. Generic XDP 处理：如果网卡不支持 XDP offload，那 XDP 程序会从 step 2 延后到这里执行。
+6. Tap 处理（此处没有）。
+7. TC ingress 处理，支持包括 BPF 在内的 TC 程序。
+
+其中的 `sch_handle_ingress()` 会进入 TC ingress hook 执行处理。
+
 ## 6.1 查看加载的 BPF 程序
 
 查看 ingress 方向加载的 BPF：

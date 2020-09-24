@@ -43,32 +43,32 @@ steps to create the above network topology:
 
 ```shell
 (a) Create two network namespaces - ns0, ns1
-	ip netns add ns0
-	ip netns add ns1
+    ip netns add ns0
+    ip netns add ns1
 
 (b) Create two ipvlan slaves on eth0 (master device)
-	ip link add link eth0 ipvl0 type ipvlan mode l2
-	ip link add link eth0 ipvl1 type ipvlan mode l2
+    ip link add link eth0 ipvl0 type ipvlan mode l2
+    ip link add link eth0 ipvl1 type ipvlan mode l2
 
 (c) Assign slaves to the respective network namespaces
-	ip link set dev ipvl0 netns ns0
-	ip link set dev ipvl1 netns ns1
+    ip link set dev ipvl0 netns ns0
+    ip link set dev ipvl1 netns ns1
 
 (d) Now switch to the namespace (ns0 or ns1) to configure the slave devices
-	- For ns0
-		(1) ip netns exec ns0 bash
-		(2) ip link set dev ipvl0 up
-		(3) ip link set dev lo up
-		(4) ip -4 addr add 127.0.0.1 dev lo
-		(5) ip -4 addr add $IPADDR dev ipvl0
-		(6) ip -4 route add default via $ROUTER dev ipvl0
-	- For ns1
-		(1) ip netns exec ns1 bash
-		(2) ip link set dev ipvl1 up
-		(3) ip link set dev lo up
-		(4) ip -4 addr add 127.0.0.1 dev lo
-		(5) ip -4 addr add $IPADDR dev ipvl1
-		(6) ip -4 route add default via $ROUTER dev ipvl1
+    - For ns0
+        (1) ip netns exec ns0 bash
+        (2) ip link set dev ipvl0 up
+        (3) ip link set dev lo up
+        (4) ip -4 addr add 127.0.0.1 dev lo
+        (5) ip -4 addr add $IPADDR dev ipvl0
+        (6) ip -4 route add default via $ROUTER dev ipvl0
+    - For ns1
+        (1) ip netns exec ns1 bash
+        (2) ip link set dev ipvl1 up
+        (3) ip link set dev lo up
+        (4) ip -4 addr add 127.0.0.1 dev lo
+        (5) ip -4 addr add $IPADDR dev ipvl1
+        (6) ip -4 route add default via $ROUTER dev ipvl1
 ```
 
 # 2 Design (TODO)
@@ -88,21 +88,20 @@ In `drivers/net/ipvlan/ipvlan_main.c`:
 
 ```c
 static struct notifier_block ipvlan_notifier_block = {
-	.notifier_call = ipvlan_device_event,    // -> register netfilter hooks
+    .notifier_call = ipvlan_device_event,    // -> register netfilter hooks
 };
 
 static struct rtnl_link_ops ipvlan_link_ops = {
-	.kind		= "ipvlan",
-
-	.setup		= ipvlan_link_setup,
-	.newlink	= ipvlan_link_new,
-	.dellink	= ipvlan_link_delete,
+    .kind       = "ipvlan",
+    .setup      = ipvlan_link_setup,
+    .newlink    = ipvlan_link_new,
+    .dellink    = ipvlan_link_delete,
 };
 
 static int __init ipvlan_init_module(void)
 {
-	register_netdevice_notifier(&ipvlan_notifier_block); // register netfilter handlers
-	ipvlan_link_register(&ipvlan_link_ops);              // register RX/TX handlers
+    register_netdevice_notifier(&ipvlan_notifier_block); // register netfilter handlers
+    ipvlan_link_register(&ipvlan_link_ops);              // register RX/TX handlers
 }
 
 module_init(ipvlan_init_module);
@@ -120,24 +119,24 @@ will further register the IPVLAN device's:
 
 ```c
 static const struct net_device_ops ipvlan_netdev_ops = {
-	.ndo_init		= ipvlan_init,
-	.ndo_uninit		= ipvlan_uninit,
-	.ndo_open		= ipvlan_open,
-	.ndo_start_xmit		= ipvlan_start_xmit,
-	.ndo_set_rx_mode	= ipvlan_set_multicast_mac_filter,
-	.ndo_vlan_rx_add_vid	= ipvlan_vlan_rx_add_vid,
-	...
+    .ndo_init        = ipvlan_init,
+    .ndo_uninit        = ipvlan_uninit,
+    .ndo_open        = ipvlan_open,
+    .ndo_start_xmit        = ipvlan_start_xmit,
+    .ndo_set_rx_mode    = ipvlan_set_multicast_mac_filter,
+    .ndo_vlan_rx_add_vid    = ipvlan_vlan_rx_add_vid,
+    ...
 };
 
 void
 ipvlan_link_setup(struct net_device *dev)
 {
-	ether_setup(dev);
+    ether_setup(dev);
 
-	dev->priv_flags |= IFF_UNICAST_FLT | IFF_NO_QUEUE;
-	dev->netdev_ops = &ipvlan_netdev_ops;
-	dev->ethtool_ops = &ipvlan_ethtool_ops;
-	...
+    dev->priv_flags |= IFF_UNICAST_FLT | IFF_NO_QUEUE;
+    dev->netdev_ops = &ipvlan_netdev_ops;
+    dev->ethtool_ops = &ipvlan_ethtool_ops;
+    ...
 }
 ```
 
@@ -160,43 +159,43 @@ implementations:
 static int
 ipvlan_init(struct net_device *dev)
 {
-	struct ipvl_dev *ipvlan = netdev_priv(dev);
-	struct net_device *phy_dev = ipvlan->phy_dev;
-	struct ipvl_port *port;
+    struct ipvl_dev *ipvlan = netdev_priv(dev);
+    struct net_device *phy_dev = ipvlan->phy_dev;
+    struct ipvl_port *port;
 
-	dev->state = (dev->state & ~IPVLAN_STATE_MASK) |
-		     (phy_dev->state & IPVLAN_STATE_MASK);
-	dev->features = phy_dev->features & IPVLAN_FEATURES;
-	dev->features |= NETIF_F_LLTX | NETIF_F_VLAN_CHALLENGED;
+    dev->state = (dev->state & ~IPVLAN_STATE_MASK) |
+             (phy_dev->state & IPVLAN_STATE_MASK);
+    dev->features = phy_dev->features & IPVLAN_FEATURES;
+    dev->features |= NETIF_F_LLTX | NETIF_F_VLAN_CHALLENGED;
 
-	netdev_lockdep_set_classes(dev);
+    netdev_lockdep_set_classes(dev);
 
-	if (!netif_is_ipvlan_port(phy_dev)) {
-		ipvlan_port_create(phy_dev);
-	}
-	port = ipvlan_port_get_rtnl(phy_dev);
-	port->count += 1;
+    if (!netif_is_ipvlan_port(phy_dev)) {
+        ipvlan_port_create(phy_dev);
+    }
+    port = ipvlan_port_get_rtnl(phy_dev);
+    port->count += 1;
 }
 
 static int
 ipvlan_port_create(struct net_device *dev)
 {
-	struct ipvl_port *port;
+    struct ipvl_port *port;
 
-	port = kzalloc(sizeof(struct ipvl_port), GFP_KERNEL);
+    port = kzalloc(sizeof(struct ipvl_port), GFP_KERNEL);
 
-	write_pnet(&port->pnet, dev_net(dev));
-	port->dev = dev;
-	port->mode = IPVLAN_MODE_L3;
-	INIT_LIST_HEAD(&port->ipvlans);
-	for (idx = 0; idx < IPVLAN_HASH_SIZE; idx++)
-		INIT_HLIST_HEAD(&port->hlhead[idx]);
+    write_pnet(&port->pnet, dev_net(dev));
+    port->dev = dev;
+    port->mode = IPVLAN_MODE_L3;
+    INIT_LIST_HEAD(&port->ipvlans);
+    for (idx = 0; idx < IPVLAN_HASH_SIZE; idx++)
+        INIT_HLIST_HEAD(&port->hlhead[idx]);
 
-	skb_queue_head_init(&port->backlog);
-	ida_init(&port->ida);
-	port->dev_id_start = 1;
+    skb_queue_head_init(&port->backlog);
+    ida_init(&port->ida);
+    port->dev_id_start = 1;
 
-	netdev_rx_handler_register(dev, ipvlan_handle_frame, port);
+    netdev_rx_handler_register(dev, ipvlan_handle_frame, port);
 }
 ```
 
@@ -207,42 +206,42 @@ int
 ipvlan_link_new(struct net *src_net, struct net_device *dev, struct nlattr *tb[],
     struct nlattr *data[], struct netlink_ext_ack *extack)
 {
-	struct ipvl_dev *ipvlan = netdev_priv(dev);
-	u16 mode = IPVLAN_MODE_L3;
+    struct ipvl_dev *ipvlan = netdev_priv(dev);
+    u16 mode = IPVLAN_MODE_L3;
 
-	phy_dev = __dev_get_by_index(src_net, ...);
-	ipvlan->phy_dev = phy_dev;
-	ipvlan->dev = dev;
+    phy_dev = __dev_get_by_index(src_net, ...);
+    ipvlan->phy_dev = phy_dev;
+    ipvlan->dev = dev;
 
-	memcpy(dev->dev_addr, phy_dev->dev_addr, ETH_ALEN);
-	dev->priv_flags |= IFF_NO_RX_HANDLER;
-	register_netdevice(dev);
+    memcpy(dev->dev_addr, phy_dev->dev_addr, ETH_ALEN);
+    dev->priv_flags |= IFF_NO_RX_HANDLER;
+    register_netdevice(dev);
 
-	/* ipvlan_init() would have created the port, if required */
-	port = ipvlan_port_get_rtnl(phy_dev);
-	ipvlan->port = port;
+    /* ipvlan_init() would have created the port, if required */
+    port = ipvlan_port_get_rtnl(phy_dev);
+    ipvlan->port = port;
 
-	/* Since L2 address is shared among all IPvlan slaves including
-	 * master, use unique 16 bit dev-ids to diffentiate among them.
-	 * Assign IDs between 0x1 and 0xFFFE (used by the master) to each slave link */
-	err = ida_simple_get(&port->ida, port->dev_id_start, 0xFFFE, GFP_KERNEL);
-	dev->dev_id = err;
+    /* Since L2 address is shared among all IPvlan slaves including
+     * master, use unique 16 bit dev-ids to diffentiate among them.
+     * Assign IDs between 0x1 and 0xFFFE (used by the master) to each slave link */
+    err = ida_simple_get(&port->ida, port->dev_id_start, 0xFFFE, GFP_KERNEL);
+    dev->dev_id = err;
 
-	port->dev_id_start = err + 1; /* for the future assignment */
+    port->dev_id_start = err + 1; /* for the future assignment */
 
-	netdev_upper_dev_link(phy_dev, dev, extack);
+    netdev_upper_dev_link(phy_dev, dev, extack);
 
-	if (data && data[IFLA_IPVLAN_FLAGS])
-		port->flags = nla_get_u16(data[IFLA_IPVLAN_FLAGS]);
+    if (data && data[IFLA_IPVLAN_FLAGS])
+        port->flags = nla_get_u16(data[IFLA_IPVLAN_FLAGS]);
 
-	if (data && data[IFLA_IPVLAN_MODE])
-		mode = nla_get_u16(data[IFLA_IPVLAN_MODE]);
+    if (data && data[IFLA_IPVLAN_MODE])
+        mode = nla_get_u16(data[IFLA_IPVLAN_MODE]);
 
-	ipvlan_set_port_mode(port, mode);
+    ipvlan_set_port_mode(port, mode);
 
-	list_add_tail_rcu(&ipvlan->pnode, &port->ipvlans);
-	netif_stacked_transfer_operstate(phy_dev, dev);
-	return 0;
+    list_add_tail_rcu(&ipvlan->pnode, &port->ipvlans);
+    netif_stacked_transfer_operstate(phy_dev, dev);
+    return 0;
 }
 ```
 
@@ -281,24 +280,24 @@ ipvlan_init_module
 
 ```c
 static const struct nf_hook_ops ipvl_nfops[] = {
-	{
-		.hook     = ipvlan_nf_input,
-		.hooknum  = NF_INET_LOCAL_IN,
-	},
+    {
+        .hook     = ipvlan_nf_input,
+        .hooknum  = NF_INET_LOCAL_IN,
+    },
 };
 
 static int
 ipvlan_register_nf_hook(struct net *net)
 {
-	struct ipvlan_netns *vnet = net_generic(net, ipvlan_netid);
+    struct ipvlan_netns *vnet = net_generic(net, ipvlan_netid);
 
-	if (!vnet->ipvl_nf_hook_refcnt) {
-		err = nf_register_net_hooks(net, ipvl_nfops, ARRAY_SIZE(ipvl_nfops));
-		if (!err)
-			vnet->ipvl_nf_hook_refcnt = 1;
-	} else {
-		vnet->ipvl_nf_hook_refcnt++;
-	}
+    if (!vnet->ipvl_nf_hook_refcnt) {
+        err = nf_register_net_hooks(net, ipvl_nfops, ARRAY_SIZE(ipvl_nfops));
+        if (!err)
+            vnet->ipvl_nf_hook_refcnt = 1;
+    } else {
+        vnet->ipvl_nf_hook_refcnt++;
+    }
 }
 ```
 
@@ -306,24 +305,24 @@ ipvlan_register_nf_hook(struct net *net)
 
 ```c
 static const struct l3mdev_ops ipvl_l3mdev_ops = {
-	.l3mdev_l3_rcv = ipvlan_l3_rcv,
+    .l3mdev_l3_rcv = ipvlan_l3_rcv,
 };
 
 static int
 ipvlan_set_port_mode(struct ipvl_port *port, u16 nval)
 {
-	if (port->mode != nval) {
-		if (nval == IPVLAN_MODE_L3S) { /* New mode is L3S */
-			ipvlan_register_nf_hook(read_pnet(&port->pnet));
-			mdev->l3mdev_ops = &ipvl_l3mdev_ops;
-			mdev->priv_flags |= IFF_L3MDEV_MASTER;
-		} else if (port->mode == IPVLAN_MODE_L3S) { /* Old mode was L3S */
-			mdev->priv_flags &= ~IFF_L3MDEV_MASTER;
-			ipvlan_unregister_nf_hook(read_pnet(&port->pnet));
-			mdev->l3mdev_ops = NULL;
-		}
-		port->mode = nval;
-	}
+    if (port->mode != nval) {
+        if (nval == IPVLAN_MODE_L3S) { /* New mode is L3S */
+            ipvlan_register_nf_hook(read_pnet(&port->pnet));
+            mdev->l3mdev_ops = &ipvl_l3mdev_ops;
+            mdev->priv_flags |= IFF_L3MDEV_MASTER;
+        } else if (port->mode == IPVLAN_MODE_L3S) { /* Old mode was L3S */
+            mdev->priv_flags &= ~IFF_L3MDEV_MASTER;
+            ipvlan_unregister_nf_hook(read_pnet(&port->pnet));
+            mdev->l3mdev_ops = NULL;
+        }
+        port->mode = nval;
+    }
 }
 ```
 
@@ -377,37 +376,37 @@ processing logic:
 static int
 ipvlan_xmit_mode_l2(struct sk_buff *skb, struct net_device *dev)
 {
-	const struct ipvl_dev *ipvlan = netdev_priv(dev);
-	struct ethhdr *eth = eth_hdr(skb);
+    const struct ipvl_dev *ipvlan = netdev_priv(dev);
+    struct ethhdr *eth = eth_hdr(skb);
 
-	// if not in VEPA mode, and SRC_MAC == DST_MAC, target may be
-	//    1. another slave on the same master device
-	//    2. master device itself
-	if (!is_vepa && ether_addr_equal(eth->h_dest, eth->h_source)) {
-		void *l3hdr = ipvlan_get_L3_hdr(ipvlan->port, skb);
-		if (l3hdr) {
-			struct ipvl_addr *addr = ipvlan_addr_lookup(ipvlan->port, l3hdr);
-			if (addr) {
-				if (ipvlan_is_private(ipvlan->port)) {
-					consume_skb(skb);
-					return NET_XMIT_DROP;
-				}
+    // if not in VEPA mode, and SRC_MAC == DST_MAC, target may be
+    //    1. another slave on the same master device
+    //    2. master device itself
+    if (!is_vepa && ether_addr_equal(eth->h_dest, eth->h_source)) {
+        void *l3hdr = ipvlan_get_L3_hdr(ipvlan->port, skb);
+        if (l3hdr) {
+            struct ipvl_addr *addr = ipvlan_addr_lookup(ipvlan->port, l3hdr);
+            if (addr) {
+                if (ipvlan_is_private(ipvlan->port)) {
+                    consume_skb(skb);
+                    return NET_XMIT_DROP;
+                }
 
-				return ipvlan_rcv_frame(addr, &skb, true); // forward to another slave
-			}
-		}
+                return ipvlan_rcv_frame(addr, &skb, true); // forward to another slave
+            }
+        }
 
-		return dev_forward_skb(ipvlan->phy_dev, skb);      // forward to master device
-	}
+        return dev_forward_skb(ipvlan->phy_dev, skb);      // forward to master device
+    }
 
-	if (is_multicast(eth->h_dest)) {
-		ipvlan_skb_crossing_ns(skb, NULL);
-		ipvlan_multicast_enqueue(ipvlan->port, skb, true);
-		return NET_XMIT_SUCCESS;
-	}
+    if (is_multicast(eth->h_dest)) {
+        ipvlan_skb_crossing_ns(skb, NULL);
+        ipvlan_multicast_enqueue(ipvlan->port, skb, true);
+        return NET_XMIT_SUCCESS;
+    }
 
-	skb->dev = ipvlan->phy_dev;
-	return dev_queue_xmit(skb);
+    skb->dev = ipvlan->phy_dev;
+    return dev_queue_xmit(skb);
 }
 ```
 
@@ -459,62 +458,62 @@ From `Documentation/networking/ipvlan.txt`:
 static int
 ipvlan_xmit_mode_l3(struct sk_buff *skb, struct net_device *dev)
 {
-	const struct ipvl_dev *ipvlan = netdev_priv(dev);
+    const struct ipvl_dev *ipvlan = netdev_priv(dev);
 
-	void *l3hdr = ipvlan_get_L3_hdr(ipvlan->port, skb, &addr_type);
-	if (!l3hdr)
-		goto out;
+    void *l3hdr = ipvlan_get_L3_hdr(ipvlan->port, skb, &addr_type);
+    if (!l3hdr)
+        goto out;
 
-	if (!is_vepa) {
-		struct ipvl_addr *addr = ipvlan_addr_lookup(ipvlan->port, l3hdr);
-		if (addr) {
-			if (ipvlan_is_private(ipvlan->port)) {
-				consume_skb(skb);
-				return NET_XMIT_DROP;
-			}
+    if (!is_vepa) {
+        struct ipvl_addr *addr = ipvlan_addr_lookup(ipvlan->port, l3hdr);
+        if (addr) {
+            if (ipvlan_is_private(ipvlan->port)) {
+                consume_skb(skb);
+                return NET_XMIT_DROP;
+            }
 
-			return ipvlan_rcv_frame(addr, &skb, true);
-		}
-	}
+            return ipvlan_rcv_frame(addr, &skb, true);
+        }
+    }
 out:
-	ipvlan_skb_crossing_ns(skb, ipvlan->phy_dev);
-	return ipvlan_process_outbound(skb);
+    ipvlan_skb_crossing_ns(skb, ipvlan->phy_dev);
+    return ipvlan_process_outbound(skb);
 }
 
 static int
 ipvlan_process_outbound(struct sk_buff *skb)
 {
-	struct ethhdr *ethh = eth_hdr(skb);
+    struct ethhdr *ethh = eth_hdr(skb);
 
-	/* The ipvlan is a pseudo-L2 device, so the packets that we receive
-	 * will have L2; which need to discarded and processed further
-	 * in the net-ns of the main-device.  */
-	if (skb_mac_header_was_set(skb)) {
-		skb_pull(skb, sizeof(*ethh));
-		skb->mac_header = (typeof(skb->mac_header))~0U;
-		skb_reset_network_header(skb);
-	}
+    /* The ipvlan is a pseudo-L2 device, so the packets that we receive
+     * will have L2; which need to discarded and processed further
+     * in the net-ns of the main-device.  */
+    if (skb_mac_header_was_set(skb)) {
+        skb_pull(skb, sizeof(*ethh));
+        skb->mac_header = (typeof(skb->mac_header))~0U;
+        skb_reset_network_header(skb);
+    }
 
-	ipvlan_process_v4_outbound(skb);
+    ipvlan_process_v4_outbound(skb);
 }
 
 static int
 ipvlan_process_v4_outbound(struct sk_buff *skb)
 {
-	const struct iphdr *ip4h = ip_hdr(skb);
-	struct net_device *dev = skb->dev;
-	struct net *net = dev_net(dev);
+    const struct iphdr *ip4h = ip_hdr(skb);
+    struct net_device *dev = skb->dev;
+    struct net *net = dev_net(dev);
 
-	struct flowi4 fl4 = {
-		.flowi4_oif = dev->ifindex,
-		.daddr = ip4h->daddr,
-		.saddr = ip4h->saddr,
-	};
+    struct flowi4 fl4 = {
+        .flowi4_oif = dev->ifindex,
+        .daddr = ip4h->daddr,
+        .saddr = ip4h->saddr,
+    };
 
-	struct rtable *rt = ip_route_output_flow(net, &fl4, NULL);
+    struct rtable *rt = ip_route_output_flow(net, &fl4, NULL);
 
-	skb_dst_set(skb, &rt->dst);
-	ip_local_out(net, skb->sk, skb); // net/ipv4/ip_output.c
+    skb_dst_set(skb, &rt->dst);
+    ip_local_out(net, skb->sk, skb); // net/ipv4/ip_output.c
 }
 ```
 
@@ -542,30 +541,30 @@ ipvlan_handle_frame                            //    ipvlan_core.c
 static rx_handler_result_t
 ipvlan_handle_mode_l2(struct sk_buff **pskb, struct ipvl_port *port)
 {
-	struct sk_buff *skb = *pskb;
-	struct ethhdr *eth = eth_hdr(skb);
-	rx_handler_result_t ret = RX_HANDLER_PASS;
+    struct sk_buff *skb = *pskb;
+    struct ethhdr *eth = eth_hdr(skb);
+    rx_handler_result_t ret = RX_HANDLER_PASS;
 
-	if (is_multicast_ether_addr(eth->h_dest)) {
-		if (ipvlan_external_frame(skb, port)) {
-			struct sk_buff *nskb = skb_clone(skb, GFP_ATOMIC);
+    if (is_multicast_ether_addr(eth->h_dest)) {
+        if (ipvlan_external_frame(skb, port)) {
+            struct sk_buff *nskb = skb_clone(skb, GFP_ATOMIC);
 
-			/* External frames are queued for device local
-			 * distribution, but a copy is given to master
-			 * straight away to avoid sending duplicates later
-			 * when work-queue processes this frame. This is
-			 * achieved by returning RX_HANDLER_PASS.  */
-			if (nskb) {
-				ipvlan_skb_crossing_ns(nskb, NULL);
-				ipvlan_multicast_enqueue(port, nskb, false);
-			}
-		}
-	} else {
-		/* Perform like l3 mode for non-multicast packet */
-		ret = ipvlan_handle_mode_l3(pskb, port);
-	}
+            /* External frames are queued for device local
+             * distribution, but a copy is given to master
+             * straight away to avoid sending duplicates later
+             * when work-queue processes this frame. This is
+             * achieved by returning RX_HANDLER_PASS.  */
+            if (nskb) {
+                ipvlan_skb_crossing_ns(nskb, NULL);
+                ipvlan_multicast_enqueue(port, nskb, false);
+            }
+        }
+    } else {
+        /* Perform like l3 mode for non-multicast packet */
+        ret = ipvlan_handle_mode_l3(pskb, port);
+    }
 
-	return ret;
+    return ret;
 }
 ```
 
@@ -575,22 +574,22 @@ ipvlan_handle_mode_l2(struct sk_buff **pskb, struct ipvl_port *port)
 static rx_handler_result_t
 ipvlan_handle_mode_l3(struct sk_buff **pskb, struct ipvl_port *port)
 {
-	void *l3hdr;
-	int addr_type;
-	struct ipvl_addr *addr;
-	struct sk_buff *skb = *pskb;
-	rx_handler_result_t ret = RX_HANDLER_PASS;
+    void *l3hdr;
+    int addr_type;
+    struct ipvl_addr *addr;
+    struct sk_buff *skb = *pskb;
+    rx_handler_result_t ret = RX_HANDLER_PASS;
 
-	l3hdr = ipvlan_get_L3_hdr(port, skb, &addr_type);
-	if (!l3hdr)
-		goto out;
+    l3hdr = ipvlan_get_L3_hdr(port, skb, &addr_type);
+    if (!l3hdr)
+        goto out;
 
-	addr = ipvlan_addr_lookup(port, l3hdr, addr_type, true);
-	if (addr)
-		ret = ipvlan_rcv_frame(addr, pskb, false);
+    addr = ipvlan_addr_lookup(port, l3hdr, addr_type, true);
+    if (addr)
+        ret = ipvlan_rcv_frame(addr, pskb, false);
 
 out:
-	return ret;
+    return ret;
 }
 ```
 
@@ -598,41 +597,41 @@ out:
 static int
 ipvlan_rcv_frame(struct ipvl_addr *addr, struct sk_buff **pskb, bool local)
 {
-	struct ipvl_dev *ipvlan = addr->master;
-	struct net_device *dev = ipvlan->dev;
-	unsigned int len;
-	rx_handler_result_t ret = RX_HANDLER_CONSUMED;
-	bool success = false;
-	struct sk_buff *skb = *pskb;
+    struct ipvl_dev *ipvlan = addr->master;
+    struct net_device *dev = ipvlan->dev;
+    unsigned int len;
+    rx_handler_result_t ret = RX_HANDLER_CONSUMED;
+    bool success = false;
+    struct sk_buff *skb = *pskb;
 
-	len = skb->len + ETH_HLEN;
-	/* Only packets exchanged between two local slaves need to have
-	 * device-up check as well as skb-share check.  */
-	if (local) {
-		if (unlikely(!(dev->flags & IFF_UP))) {
-			kfree_skb(skb);
-			goto out;
-		}
+    len = skb->len + ETH_HLEN;
+    /* Only packets exchanged between two local slaves need to have
+     * device-up check as well as skb-share check.  */
+    if (local) {
+        if (un!(dev->flags & IFF_UP))) {
+            kfree_skb(skb);
+            goto out;
+        }
 
-		skb = skb_share_check(skb, GFP_ATOMIC);
-		if (!skb)
-			goto out;
+        skb = skb_share_check(skb, GFP_ATOMIC);
+        if (!skb)
+            goto out;
 
-		*pskb = skb;
-	}
+        *pskb = skb;
+    }
 
-	if (local) {
-		skb->pkt_type = PACKET_HOST;
-		if (dev_forward_skb(ipvlan->dev, skb) == NET_RX_SUCCESS) // -> net/core/dev.c
-			success = true;
-	} else {
-		skb->dev = dev;
-		ret = RX_HANDLER_ANOTHER;
-		success = true;
-	}
+    if (local) {
+        skb->pkt_type = PACKET_HOST;
+        if (dev_forward_skb(ipvlan->dev, skb) == NET_RX_SUCCESS) // -> net/core/dev.c
+            success = true;
+    } else {
+        skb->dev = dev;
+        ret = RX_HANDLER_ANOTHER;
+        success = true;
+    }
 
 out:
-	return ret;
+    return ret;
 }
 ```
 

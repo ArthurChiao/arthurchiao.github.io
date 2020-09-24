@@ -484,6 +484,45 @@ As **NODE2 has already announced that `PodCIDR2` via BGP, and `POD4_IP` falls in
 <p align="center"><img src="/assets/img/cilium-life-of-a-packet/step-6.png" width="100%" height="100%"></p>
 <p align="center">Fig. Step 6.</p>
 
+Take Intel 10G ixgbe NIC as example, the calling stack starting from driver,
+
+```
+// kernel source tree, 4.19
+
+ixgbe_poll
+ |-ixgbe_clean_rx_irq
+    |-if support XDP offload
+    |    skb = ixgbe_run_xdp()
+    |-skb = ixgbe_construct_skb()
+    |-ixgbe_rx_skb
+       |-napi_gro_receive
+          |-napi_skb_finish(dev_gro_receive(skb))
+             |-netif_receive_skb_internal
+                |-if generic XDP
+                |  |-if do_xdp_generic() != XDP_PASS
+                |       return NET_RX_DROP
+                |-__netif_receive_skb(skb)
+                   |-__netif_receive_skb_one_core
+                      |-__netif_receive_skb_core(&pt_prev)
+                         |-for tap in taps:
+                         |   deliver_skb
+                         |-sch_handle_ingress                     // net/core/dev.c
+                            |-tcf_classify                        // net/sched/cls_api.c
+                               |-for tp in tps:
+                                   tp->classify
+                                       |-cls_bpf_classify         // net/sched/cls_bpf.c
+```
+
+Main steps:
+
+1. NIC received a packet.
+2. Execute XDP programs if there are XDP programs and NIC supports XDP offload (not our case here).
+3. Create `skb`.
+4. Do GRO, assemble fragemented packets.
+5. Generic XDP processing: if NIC doesn't support XDP offload, then XDP programs will be delayed to execute here from step 2.
+6. Tap processing (not our case here).
+7. TC ingress processing, execute TC programs, and tc BPF program is one kind.
+
 ## 6.1 Check the loaded BPF program
 
 Check the BPF program loaded at tc ingress hook:

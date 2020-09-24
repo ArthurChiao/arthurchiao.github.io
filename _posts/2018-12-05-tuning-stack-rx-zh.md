@@ -26,13 +26,13 @@ categories: network-stack kernel monitoring tuning
 网络栈非常复杂，原文太长又没有任何章节号，看起来非常累。因此本文翻译时添加了适当
 的章节号，以期按图索骥。
 
-以下是翻译。
-
 ----
 
-## 2020 更新
+**2020 更新：**
 
 基于 Prometheus+Grafana 监控网络栈：[Monitoring Network Stack]({% link _posts/2020-04-22-monitoring-network-stack.md %})。
+
+以下是翻译。
 
 ----
 
@@ -50,7 +50,7 @@ categories: network-stack kernel monitoring tuning
 理有深入的理解，而这是离不开读内核源码的。希望本文可以给那些正准备投身于此的人提
 供一份参考。
 
-## 特别鸣谢
+**特别鸣谢**
 
 特别感谢 [Private Internet Access](https://privateinternetaccess.com/) 的各位同
 僚。公司雇佣我们做一些包括本文主题在内的网络研究，并非常慷慨地允许我们将研究成果
@@ -61,134 +61,25 @@ categories: network-stack kernel monitoring tuning
 ](https://www.privateinternetaccess.com/blog/2016/01/linux-networking-stack-from-the-ground-up-part-1/)
 的形式出现。
 
-## 目录
-
-1. [监控和调优网络栈：常规建议](#chap_1)
-2. [收包过程俯瞰](#chap_2)
-3. [网络设备驱动](#chap_3)
-    * 3.1 [初始化](#chap_3.1)
-    * 3.2 [网络设备初始化](#chap_3.2)
-    * 3.3 [网络设备启动](#chap_3.3)
-       * 3.3.1 `struct net_device_ops`
-       * 3.3.2 ethtool 函数注册
-       * 3.3.3 软中断（IRQ）
-       * 3.3.4 NAPI
-       * 3.3.5 `igb` 驱动的 NAPI 初始化
-    * 3.4 [启用网卡 (Bring Up)](#chap_3.4)
-       * 3.4.1 准备从网络接收数据
-       * 3.4.2 Enable NAPI
-       * 3.4.3 注册中断处理函数
-       * 3.4.4 Enable Interrupts
-    * 3.5 [网卡监控](#chap_3.5)
-       * 3.5.1 使用 `ethtool -S`
-       * 3.5.2 使用 `sysfs`
-       * 3.5.3 使用 `/proc/net/dev`
-    * 3.6 [网卡调优](#chap_3.6)
-       * 3.6.1 查看 RX 队列数量
-       * 3.6.2 调整 RX queues
-       * 3.6.3 调整 RX queue 的大小
-       * 3.6.4 调整 RX queue 的权重
-       * 3.6.5 调整 RX hash fields for network flows
-       * 3.6.6 ntuple filtering for steering network flows
-4. [软中断（SoftIRQ）](#chap_4)
-    * 4.1 [软中断是什么](#chap_4.1)
-    * 4.2 [`ksoftirqd`](#chap_4.2)
-    * 4.3 [`__do_softirq`](#chap_4.3)
-    * 4.4 [监控](#chap_4.4)
-5. [Linux 网络设备子系统](#chap_5)
-    * 5.1 [网络设备子系统的初始化](#chap_5.1)
-    * 5.2 [数据来了](#chap_5.2)
-        * 5.2.1 中断处理函数
-        * 5.2.2 NAPI 和 `napi_schedule`
-        * 5.2.3 关于 CPU 和网络数据处理的一点笔记
-        * 5.2.4 监控网络数据到达
-        * 5.2.5 数据接收调优
-    * 5.3 [网络数据处理：开始](#chap_5.3)
-        * 5.3.1 `net_rx_action` 处理循环
-        * 5.3.2 NAPI poll function and weight
-        * 5.3.3 NAPI 和设备驱动的合约
-        * 5.3.4 Finishing the `net_rx_action` loop
-        * 5.3.5 到达 limit 时退出循环
-        * 5.3.6 监控网络数据处理
-        * 5.3.7 网络数据处理调优
-    * 5.4 [GRO（Generic Receive Offloading）](#chap_5.4)
-    * 5.5 [`napi_gro_receive`](#chap_5.5)
-    * 5.6 [`napi_skb_finish`](#chap_5.6)
-6. [RPS (Receive Packet Steering)](#chap_6)
-    * RPS 调优
-7. [RFS (Receive Flow Steering)](#chap_7)
-    * 调优：打开 RFS
-8. [aRFS (Hardware accelerated RFS)](#chap_8)
-    * 调优: 启用 aRFS
-9. [从 `netif_receive_skb` 进入协议栈](#chap_9)
-    * 9.1 调优: 收包打时间戳（RX packet timestamping）
-10. [`netif_receive_skb`](#chap_10)
-    * [10.1 不使用 RPS（默认）](#chap_10.1)
-    * [10.2 使用 RPS](#chap_10.2)
-    * [10.3 `enqueue_to_backlog`](#chap_10.3)
-        * Flow limits
-        * 监控：由于 `input_pkt_queue` 打满或 flow limit 导致的丢包
-        * 调优
-            * Adjusting netdev_max_backlog to prevent drops
-            * Adjust the NAPI weight of the backlog poll loop
-            * Enabling flow limits and tuning flow limit hash table size
-    * [10.4 处理 backlog 队列：NAPI poller](#chap_10.4)
-    * [10.5 `process_backlog`](#chap_10.5)
-    * [10.6 `__netif_receive_skb_core`：将数据送到抓包点（tap）或协议层](#chap_10.6)
-    * [10.7 送到抓包点（tap）](#chap_10.7)
-    * [10.8 送到协议层](#chap_10.8)
-11. [协议层注册](#chap_11)
-    * [11.1 IP 协议层](#chap_11.1)
-        * 11.1.1 `ip_rcv`
-            * netfilter and iptables
-        * 11.1.2 `ip_rcv_finish`
-            * 调优: 打开或关闭 IP 协议的 early demux 选项
-        * 11.1.3 `ip_local_deliver`
-        * 11.1.4 `ip_local_deliver_finish`
-            * Monitoring: IP protocol layer statistics
-    * [11.2 高层协议注册](#chap_11.2)
-    * [11.3 UDP 协议层](#chap_11.3)
-        * 11.3.1 `udp_rcv`
-        * 11.3.2 `__udp4_lib_rcv`
-        * 11.3.3 `udp_queue_rcv_skb`
-        * 13.3.4 `sk_rcvqueues_full`
-            * 调优: Socket receive queue memory
-        * 11.3.5 `udp_queue_rcv_skb`
-        * 11.3.7 `__udp_queue_rcv_skb`
-        * 11.3.8 Monitoring: UDP protocol layer statistics
-            * 监控 UDP 协议统计：`/proc/net/snmp`
-            * 监控 UDP socket 统计：`/proc/net/udp`
-    * [11.4 将数据放到 socket 队列](#chap_11.4)
-12. [其他](#chap_12)
-    * [12.1 打时间戳 (timestamping)](#chap_12.1)
-    * [12.2 socket 低延迟选项：busy polling](#chap_12.2)
-    * [12.3 Netpoll：特殊网络场景支持](#chap_12.3)
-    * [12.4 `SO_INCOMING_CPU`](#chap_12.4)
-    * [12.5 DMA 引擎](#chap_12.5)
-        * Intel’s I/O Acceleration Technology (IOAT)
-            * 直接缓存访问 (DCA, Direct cache access)
-            * Monitoring IOAT DMA engine
-            * Tuning IOAT DMA engine
-13. [总结](#chap_13)
-14. [额外讨论和帮助](#chap_14)
-15. [相关文章](#chap_15)
+* TOC
+{:toc}
 
 <a name="chap_1"></a>
 
-# 1 监控和调优网络栈：常规建议
+# 1 网络栈监控和调优：常规建议
 
-网络栈很复杂，没有适用于所有场景通用的方式。如果网络的性能和健康（
-performance and health）对你或你的业务非常关键，那你别无选择，只能投入大量的时
-间、精力以及资金去深入理解系统的各个部分是如何交互的。
+网络栈很复杂，没有一种适用于所有场景的通用方式。如果网络的性能和健康状况对你来说
+非常重要，那你别无选择，只能投入大量的时间、精力和资源去深入理解系统的各个部分是
+如何工作的。
 
-理想情况下，你应该考虑在网络栈的各层测量丢包状况，这样就可以缩小范围，确定哪个组
-件需要调优。
+理想情况下，你应该考虑在网络栈的各个层级测量丢包状况，这样就可以缩小范围，确定哪
+个组件需要调优。
 
 **然而，这也是一些网络管理员开始走偏的地方**：他们想当然地认为通过一波 `sysctl`
-或 `/proc` 操作可以解决问题，并且这些配置适用于所有场景。在某些场景下，可能确实
-如此；但是，整个系统是如此细微而精巧地交织在一起，如果想做有意义的监控和调优
-，你必须得努力在更深层次搞清系统是如何工作的。否则，你虽然可以使用默认配置，并在
-相当长的时间内运行良好，但终会到某个时间点，你不得不（投时间、精力和资金研究这些
+或 `/proc` 操作就可以解决问题，并且认为这些配置适用于所有场景。在某些场景下，可能确实
+如此；但是，考虑到整个系统是如此细微而精巧地交织在一起的，如果想做有意义的监控和调优
+，就必须得在更深层次搞清系统是如何工作的。否则，你虽然可以使用默认配置，并在
+相当长的时间内运行良好，但终会到某个时间点，你不得不（投时间、精力和资源研究这些
 配置，然后）做优化。
 
 本文中的一些示例配置仅为了方便理解（效果），并不作为任何特定配置或默认配置的建议
