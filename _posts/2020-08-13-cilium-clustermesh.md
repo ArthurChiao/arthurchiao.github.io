@@ -2,8 +2,8 @@
 layout    : post
 title     : "Cilium ClusterMesh: A Hands-on Guide"
 date      : 2020-08-13
-lastupdate: 2020-08-13
-categories: cilium k8s
+lastupdate: 2020-10-29
+categories: cilium clustermesh k8s
 ---
 
 * TOC
@@ -128,7 +128,9 @@ cilium agents:
 
 1. `cluster-name`: unique string across all clusters
 1. `cluster-id`: unique integer between 0~255 across all clusters
-1. `clustermesh-config`: directory containing all cilium-etcd configuration files of other clusters
+1. `clustermesh-config`: directory containing all cilium-etcd configuration
+   files of other clusters (note that the **configuration file name** of each
+   cluster must be the same as the **cluster name**)
 
 The **ideas behind these configurations** are:
 
@@ -161,26 +163,26 @@ $ cilium-agent --config-dir=/tmp/cilium/config-map
 
 # now
 $ cilium-agent --config-dir=/tmp/cilium/config-map \
-    --cluster-id=101 --cluster-name=cluster1 --clustermesh-config=/var/lib/clustermesh
+    --cluster-id=101 --cluster-name=cluster1 --clustermesh-config=/var/lib/cilium/clustermesh
 ```
 
-where `/var/lib/clustermesh` is mounted from host path `mount/var/lib/clustermesh/`
+where `/var/lib/cilium/clustermesh` is mounted from host path `mount/var/lib/cilium/clustermesh/`
 (specified in `docker-compose.yaml` in our case):
 
 ```shell
-(cluster1 node1) $ ls mount/var/lib/clustermesh/
-cluster2-cilium-etcd.config
+(cluster1 node1) $ ls mount/var/lib/cilium/clustermesh/
+cluster2
 cluster2-etcd-client-ca.crt
 cluster2-etcd-client.crt
 cluster2-etcd-client.key
 
-(cluster1 node1) $ cat mount/var/lib/clustermesh/cluster2-cilium-etcd.config
+(cluster1 node1) $ cat mount/var/lib/cilium/clustermesh/cluster2
 endpoints:
   - https://10.2.2.2:2379
 
-ca-file:   '/var/lib/clustermesh/cluster2-etcd-client-ca.crt'
-key-file:  '/var/lib/clustermesh/cluster2-etcd-client.key'
-cert-file: '/var/lib/clustermesh/cluster2-etcd-client.crt'
+ca-file:   '/var/lib/cilium/clustermesh/cluster2-etcd-client-ca.crt'
+key-file:  '/var/lib/cilium/clustermesh/cluster2-etcd-client.key'
+cert-file: '/var/lib/cilium/clustermesh/cluster2-etcd-client.crt'
 ```
 
 After cilium-agent restarted, we could see logs like this:
@@ -188,8 +190,8 @@ After cilium-agent restarted, we could see logs like this:
 ```
 (cluster1 node1) $ docker logs -f cilium-agent
 ...
-level=info msg="Successfully verified version of etcd endpoint" config=/var/lib/clustermesh/cluster2.config endpoints="[https://10.2.2.2:2379]" etcdEndpoint="https://10.2.2.2:2379"
-level=info msg="Connection to remote cluster established" clusterName=cluster2 config=/var/lib/clustermesh/cluster2-cilium-etcd.config kvstoreErr="<nil>"
+level=info msg="Successfully verified version of etcd endpoint" config=/var/lib/cilium/clustermesh/cluster2 endpoints="[https://10.2.2.2:2379]" etcdEndpoint="https://10.2.2.2:2379"
+level=info msg="Connection to remote cluster established" clusterName=cluster2 config=/var/lib/cilium/clustermesh/cluster2 kvstoreErr="<nil>"
 ```
 
 ### 3.1.2 Configure cluster2
@@ -198,25 +200,25 @@ Similar as 3.1.1, cilium-agent CLI:
 
 ```shell
 $ cilium-agent --config-dir=/tmp/cilium/config-map \
-    --cluster-id=102 --cluster-name=cluster2 --clustermesh-config=/var/lib/clustermesh
+    --cluster-id=102 --cluster-name=cluster2 --clustermesh-config=/var/lib/cilium/clustermesh
 ```
 
-and files in `/var/lib/clustermesh` (mounted from host path `mount/var/lib/clustermesh/`):
+and files in `/var/lib/cilium/clustermesh` (mounted from host path `mount/var/lib/cilium/clustermesh/`):
 
 ```shell
-(cluster2 node1) $ ls mount/var/lib/clustermesh/
-cluster1-cilium-etcd.config
+(cluster2 node1) $ ls mount/var/lib/cilium/clustermesh/
+cluster1
 cluster1-etcd-client-ca.crt
 cluster1-etcd-client.crt
 cluster1-etcd-client.key
 
-(cluster2 node1) $ cat mount/var/lib/clustermesh/cluster1-cilium-etcd.config
+(cluster2 node1) $ cat mount/var/lib/cilium/clustermesh/cluster1
 endpoints:
   - https://10.1.1.1:2379
 
-ca-file:   '/var/lib/clustermesh/cluster1-etcd-client-ca.crt'
-key-file:  '/var/lib/clustermesh/cluster1-etcd-client.key'
-cert-file: '/var/lib/clustermesh/cluster1-etcd-client.crt'
+ca-file:   '/var/lib/cilium/clustermesh/cluster1-etcd-client-ca.crt'
+key-file:  '/var/lib/cilium/clustermesh/cluster1-etcd-client.key'
+cert-file: '/var/lib/cilium/clustermesh/cluster1-etcd-client.crt'
 ```
 
 Logs after restarting cilium-agent:
@@ -224,25 +226,60 @@ Logs after restarting cilium-agent:
 ```
 (cluster2 node1) $ docker logs -f cilium-agent
 ...
-level=info msg="Successfully verified version of etcd endpoint" config=/var/lib/clustermesh/cluster1.config endpoints="[https://10.1.1.1:2379]" etcdEndpoint="https://10.1.1.1:2379"
-level=info msg="Connection to remote cluster established" clusterName=cluster1 config=/var/lib/clustermesh/cluster1-cilium-etcd.config kvstoreErr="<nil>"
+level=info msg="Successfully verified version of etcd endpoint" config=/var/lib/cilium/clustermesh/cluster1 endpoints="[https://10.1.1.1:2379]" etcdEndpoint="https://10.1.1.1:2379"
+level=info msg="Connection to remote cluster established" clusterName=cluster1 config=/var/lib/cilium/clustermesh/cluster1 kvstoreErr="<nil>"
 ```
 
 ## 3.2 Verify clustermesh syncing
 
+Check cluster status:
+
+```shell
+(cluster1 node1) $ cilium status
+KVStore:                Ok   etcd: ...
+Kubernetes:             Ok   1.17+ (v1.17.6-3) [linux/amd64]
+...
+ClusterMesh:            2/2 clusters ready, 0 global-services
+```
+
+More verbose:
+
+```shell
+(cluster1 node1) $ cilium status --verbose
+KVStore:                Ok   etcd: ...
+Kubernetes:             Ok   1.17+ (v1.17.6-3) [linux/amd64]
+...
+ClusterMesh:   1/1 clusters ready, 0 global-services
+   cluster2: ready, 23 nodes, 2618 identities, 0 services, 0 failures (last: never)
+   └  etcd: 1/1 connected, ...
+```
+
+List all nodes of all clusters in the mesh:
+
 ```shell
 (cluster1 node1) $ cilium node list
-Name             IPv4 Address    Endpoint CIDR     IPv6 Address   Endpoint CIDR
-cluster1/node1   10.xx.xx.xx     10.60.xx.0/24
-cluster1/node2   10.xx.xx.xx     10.60.xx.0/24
+Name               IPv4 Address   Endpoint CIDR    IPv6 Address   Endpoint CIDR
+cluster1/node1     10.xx.xx.xx   10.xx.xx.xx/24
+cluster1/node2     10.xx.xx.xx   10.xx.xx.xx/24
 ...
-cluster2/node1   10.xx.xx.xx     10.70.xx.0/24
-cluster2/node2   10.xx.xx.xx     10.70.xx.0/24
+cluster2/node1     10.xx.xx.xx   10.xx.xx.xx/24
+cluster2/node2     10.xx.xx.xx   10.xx.xx.xx/24
+...
 ```
+
+Check identities:
 
 ```shell
 (cluster1 node1) $ cilium identity list
 ... # all identities in both cluster1 and cluster2
+```
+
+```shell
+(cluster1 node1) $ cilium identity list | awk 'NF>1  {print $1}' | sort | uniq -c | awk '$1>1 {print $0}'
+      2 10575 # -> same identity ID appears more than once, indicating at least one is from remote clusters
+      2 10876
+      2 11091
+      ...
 ```
 
 # 4 Network policy test
@@ -460,7 +497,7 @@ daemonset+configmap.
 
 If you want to add more clusters into the mesh, just add the cilium-etcd's
 config file and corresponding certificates of the new clusters to
-`/var/lib/clustermesh` directory as shown in the post, and they will form a
+`/var/lib/cilium/clustermesh` directory as shown in the post, and they will form a
 point-to-point cluster mesh.
 
 # References
