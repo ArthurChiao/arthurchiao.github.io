@@ -2,7 +2,7 @@
 layout    : post
 title     : "tcpdump/wireshark 抓包及分析（2019）"
 date      : 2018-12-14
-lastupdate: 2019-09-24
+lastupdate: 2020-10-29
 author    : ArthurChiao
 categories: tcpdump wireshark
 ---
@@ -227,8 +227,8 @@ wget 是基于 HTTP 协议，因此它在下载文件之前，必定要和服务
 
 1. client -> server: FIN （我们看到的是 FIN+ACK，这是因为这个 FIN 包除了正常的关闭连接功能之外，还被用于应答 client 发过来的前一个包）
 1. server -> client: ACK
-1. client -> server: FIN+ACK
-1. server -> client: ACK
+1. server -> client: FIN+ACK
+1. client -> server: ACK
 
 ```shell
 10 02:52:44.874705 IP 172.17.0.9.41038 > 93.184.216.34.80: Flags [F.], seq 3310420215, ack 1353237162, length 0
