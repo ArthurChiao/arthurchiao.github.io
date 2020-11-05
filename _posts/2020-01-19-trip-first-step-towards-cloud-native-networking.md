@@ -141,7 +141,7 @@ After several POC verifications, we decicded to adopt Cilium as our next generat
 networking solution. This is a 10-year leap for us in terms of networking stack.
 
 <p align="center"><img src="/assets/img/trip-first-step-towards-cloud-native-networking/network-evolution-2.png" width="60%" height="60%"></p>
-<p align="center">Fig 2-2. Network evolutions</p>
+<p align="center">Fig 2-3. Network evolutions</p>
 
 ## 2.2 Cloud-native solution
 
@@ -151,7 +151,7 @@ Cilium as our next generation networking plan.
 The high level topology looks like this:
 
 <p align="center"><img src="/assets/img/trip-first-step-towards-cloud-native-networking/new-solution-topo.png" width="70%" height="70%"></p>
-<p align="center">Fig 2-3. High level topology of the new solution</p>
+<p align="center">Fig 2-4. High level topology of the new solution</p>
 
 * for intra-host networking: all instances connects to Cilium
 * for inter-host networking

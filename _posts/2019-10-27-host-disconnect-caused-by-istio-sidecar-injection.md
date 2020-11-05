@@ -356,9 +356,7 @@ spec:
                 - node1
       tolerations:
       - effect: NoSchedule
-        key: smoke
-        operator: Equal
-        value: test
+        operator: Exists   # this will effectively tolerate any taint
       containers:
       - name: nginx
         image: nginx-slim:0.8
