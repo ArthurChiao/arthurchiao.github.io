@@ -9,12 +9,13 @@ title: ArthurChiao's Blog
     {% for post in paginator.posts %}
       <li>
         <span class="date">{{ post.date | date: "%Y-%m-%d" }}</span>
-        <h3><a class="post-link" href="{{ post.url | prepend: site.baseurl }}">{{ post.title }}</a></h3>
+        <h3><a class="post-link" href="{{ post.url | prepend: site.baseurl }}">{{
+            post.title }}</a></h3>
         <p class="description">
         {% if post.description %}
-          {{ post.description | strip_html | strip_newlines | truncate: 250 }}
+          {{ post.description | strip_html | strip_newlines | truncate: 270 }}
         {% else %}
-          {{ post.content | strip_html | strip_newlines | truncate: 250 }}
+          {{ post.content | strip_html | strip_newlines | truncate: 270 }}
         {% endif %}
         </p>
       </li>
