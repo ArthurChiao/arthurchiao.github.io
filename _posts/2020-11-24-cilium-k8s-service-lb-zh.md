@@ -1,9 +1,9 @@
 ---
 layout    : post
-title     : "[译] Cilium：基于 BPF/XDP 实现 K8s Service 负载均衡 (LPC, 2020)"
+title     : "[译] 基于 BPF/XDP 实现 K8s Service 负载均衡 (LPC, 2020)"
 date      : 2020-11-24
 lastupdate: 2020-11-24
-categories: cilium k8s load-balancing
+categories: cilium bpf k8s load-balancing
 ---
 
 ### 译者序
@@ -26,7 +26,9 @@ categories: cilium k8s load-balancing
 ----
 
 去年我们也参加了这个大会（LPC），并做了题为
-[Making the Kubernetes Service Abstraction Scale using eBPF](https://linuxplumbersconf.org/event/4/contributions/458/) 的分享。
+[Making the Kubernetes Service Abstraction Scale using eBPF](https://linuxplumbersconf.org/event/4/contributions/458/) 
+（中译 [利用 eBPF 支撑大规模 K8s Service (LPC, 2019)]({% link _posts/2020-11-29-cilium-scale-k8s-service-with-bpf-zh.md %})）
+的分享。
 今天的内容是去年内容的延续，具体分为三个部分：
 
 1. Kubernetes 网络模型
