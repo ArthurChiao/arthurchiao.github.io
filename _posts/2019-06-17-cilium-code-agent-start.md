@@ -625,7 +625,7 @@ See [Cilium Code Walk Through: ClusterMesh]({% link _posts/2020-08-17-cilium-cod
 
 ## 6.1 Init health checks
 
-See [Cilium Code Walk Through: Cilium Health]({% link _posts/2019-06-17-cilium-code-cilium-health.md %}).
+See [Cilium Code Walk Through: Node & Endpoint Health Probe]({% link _posts/2020-12-31-cilium-code-health-probe.md %}).
 
 ## 6.2 Init status collector
 
