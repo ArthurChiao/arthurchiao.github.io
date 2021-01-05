@@ -27,10 +27,12 @@ Google 虽有官方中文版，但机器翻译痕迹略重，相比原文反而�
 ----
 
 > Google 此前的几篇白皮书已经介绍我们内部开发的一些增强安全性的项目。从命名来说
-> ，BeyondProd 是有意让人回想起我们先前的另一个概念 BeyondCorp —— 就像**边界安全
-> 模型**（perimeter security model）不再适用于**终端用户**（end users）一样，它
-> 也不再适用于**微服务场景**。因此，套用最初 [BeyondCorp 论文](http://cloud.google.com/beyondcorp)
-> 中的句子，我们可以说：“... 本模型的核心假设不再成立：**边界不再仅限于企业的
+> ，BeyondProd 是有意让人想起我们先前的另一个概念 BeyondCorp —— 正如**边界安全模型**
+> （perimeter security model）不仅不再适用于**终端用户**（end users）一样，我们
+> 将在本文中论述：边界安全模型同样不再适用于**微服务场景**。
+>
+> 因此，套用最初 [BeyondCorp](http://cloud.google.com/beyondcorp)
+> 中的措辞，我们可以说：“... 本模型的核心假设不再成立：**边界不再仅限于企业的
 > ~~物理位置~~ [数据中心]，边界内的东西不再是免检的（blessed），边界内也不再
 > 是一个能够安全地存放 ~~个人计算设备和企业应用~~ [微服务]的地方**。”
 >
@@ -79,8 +81,8 @@ Google 虽有官方中文版，但机器翻译痕迹略重，相比原文反而�
 
 * Google 基础设施中，**每个 workload 都作为独立的微服务部署**（deploys workloads
   as individual microservices），在虚拟化层使用容器，并使用我们的容器编排系统
-  Borg 来管理这些 workloads。如今火爆业界的“云原生”架构，就是从 Borg 得到灵感
-  ，并参考了其设计。
+  Borg 来管理这些 workloads。<mark>如今火爆业界的“云原生”架构，就是从 Borg 得到
+  灵感，并参考了其设计</mark>。
 
 * Google 基础设施**在设计时就考虑了安全**，而不是事后加的。
 
@@ -89,7 +91,7 @@ Google 虽有官方中文版，但机器翻译痕迹略重，相比原文反而�
 * Google **基于名为 BeyondProd 的方案保护微服务安全**。该方案包括代码如何变更
   ，以及如何访问微服务内的用户数据。
 
-  BeyondProd 应用了如下概念：
+  BeyondProd 应用了如下<mark>概念</mark>：
 
   * 双向认证微服务端点（mutually authenticated service endpoints）
   * 传输安全（transport security）
@@ -97,23 +99,21 @@ Google 虽有官方中文版，但机器翻译痕迹略重，相比原文反而�
   * 端到端代码来源验证（end-to-end code provenance）
   * 运行时沙盒（runtime sandboxing）
 
-* 从传统安全模型**迁移到云原生安全模型，主要涉及两方面改动：基础设施和开发过程**
+* 从传统安全模型**迁移到云原生安全模型**，主要涉及两方面改动：**基础设施和开发流程**
   （infrastructure and development process）
 
-  将**共享的组件**（components）打造成一个**共享的交换网格**（fabric，在数据中心
-  网络中通常表示全连接的交换矩阵，译者注），用这个 fabric 将所有微服务的通信连接
-  起来（enveloping and connecting），**即所谓的 service mesh**，会使得发布变更（roll
-  out changes）和获得一致的安全性（consistent security across services）更加容易。
+  将**共享的组件**（components）打造成一个**共享的交换网格**（fabric），用这个
+  fabric 将所有微服务的通信连接起来（enveloping and connecting），**即所谓的
+  service mesh**，会使得发布变更（roll out changes）和获得一致的安全性（
+  consistent security across services）更加容易。
 
 # 3 设计动机（Motivation）
 
-出于下面几个原因：
+出于下面几个原因，我们迁移到了容器和容器编排平台：
 
 * 获得更高的资源利用率
 * 构建高可用的应用
 * 简化 Google 开发者的工作
-
-我们迁移到了容器和容器编排平台。
 
 此外，迁移到容器化的基础设施还有一个初衷：**将安全控制与架构对齐**
 （align our security controls with our architecture）。
@@ -129,10 +129,10 @@ Google 虽有官方中文版，但机器翻译痕迹略重，相比原文反而�
 * 管理更简单
 * 可扩展性更好
 
-这种**云原生架构需要一种不同的安全模型，以及不同的工具来保护应用部署**，以便与微
+这种**云原生架构需要一种不同的安全模型**，以及不同的工具来保护应用部署，以便与微
 服务的管理和扩展性收益相匹配。
 
-**本文描述 Google 是如何实现云原生安全（即 BeyondProd）的**，包括：
+<mark>本文描述 Google 是如何实现云原生安全（即 BeyondProd）的</mark>，包括：
 
 * 向云原生的转变，对安全意味着什么（what the change to cloud-native means for security）
 * 云原生安全的安全原则（security principles）
@@ -151,10 +151,10 @@ Google 在初期就有意识地用价格低廉的普通服务器而非昂贵的�
 的成果之一是：我们开发了容器、微服务和容器编排系统**，以便可扩展地管理这些高冗
 余和分布式系统的部署。
 
-容器化的基础设施意味着，每个 workload 都自成一体，作为一组容器部署，这些容器具有
+**容器化的基础设施意味着**，每个 workload 都自成一体，作为一组容器部署，这些容器具有
 不可变（immutable）、可移动（moveable）、可调度（scheduleable）的特点。为了管理
 这些容器，我们开发了一个称为 [Borg](https://research.google.com/pubs/pub43438.html?hl=es) [1]
-的容器编排系统，现在我们仍然在使用，每周部署几十亿个容器。
+的容器编排系统，现在仍然在使用，**每周部署几十亿个容器**。
 
 容器的部署方式使得 workload 二进制文件打包（bin pack）和在机器间重调度（
 reschedule across machines）更方便。微服务使得开发和调试应用的某个部分更方便。这
@@ -165,9 +165,9 @@ reschedule across machines）更方便。微服务使得开发和调试应用的
 服务都运行在容器内，由 Borg 部署。这种架构能根据 workload 大小自动扩缩容：如果某
 个 workload 请求量很大，可能就会扩出多个实例来分担请求。
 
-**Google 做得比较出色的一点是：安全作为重要组成部分，在历次架构演进过程中都会考
-虑到**。比如我们已经使用多年的保护基础设施安全的 BeyondCorp 模型，以及近期的云原
-生安全（cloud-native security）概念。
+<mark>Google 做得比较出色的一点是</mark>：安全作为重要组成部分，在历次架构演进过
+程中都会考虑到。比如我们已经使用多年的保护基础设施安全的 BeyondCorp 模型，以及近
+期的云原生安全（cloud-native security）概念。
 
 采用这种**微服务架构和开发流程的目标是：在开发和部署生命周期中，尽量早地解决安全
 问题** —— 越早解决代价越小 ——并且解决安全问题的方式要标准和一致（standardized
@@ -231,7 +231,7 @@ BeyondCorp 中提到，
 * 单体应用
 * 部署在私有的企业数据中心
 * 数据中心采用传统“接入-汇聚-核心”三级网络架构（three-tier architecture）
-* 应用和物理资源都有足够的容量，能抗住突发事件的峰值负载
+* 应用和物理资源都有足够的容量，能扛住突发事件的峰值负载
 
 这种有特殊硬件和网络需求的应用，都会特意部署到特殊的机器，通常情况下，这些机器都
 有固定的 IP 地址。在这种情况下，应用的
@@ -258,8 +258,8 @@ BeyondCorp 中提到，
 ### 4.2.2 给安全工作带来的启示（Implications for security）
 
 我们已经讨论了很多边界内部非受信（untrusted interior）的情况，即 BeyondCorp 中的
-用户，也适用于 BeyondProd 中的微服务 —— 但这需要安全做出哪些变化？表 1 列出了传
-统基础设施安全和云原生架构安全的对比。表中还给出了从前者迁移后者需要做哪些事情。
+用户，也适用于 BeyondProd 中的微服务 —— 但这需要安全工作做出哪些变化？表 1 列出了
+**传统基础设施安全**和**云原生架构安全**的对比。表中还给出了从前者迁移后者需要做哪些事情。
 
 <p align="center">表 1：迁移到云原生架构面临的安全需求</p>
 
@@ -301,7 +301,7 @@ production network）。
 #### 4.2.2.2 从 “固定 IP 和硬件” 到 “更多地共享资源”
 
 在传统安全模型中，应用都是部署到特定的机器上，这些机器的 IP 地址很少发生变化。这
-意味着安全工具看到的是一个**相对静态的架构地图**（architecture map），其中的应用
+意味着安全工具看到的是一个**相对静态的架构**，其中的应用
 都是以可预知的方式联系到一起的 —— 因此防火墙这类的工具中，安全策略可以用 IP 地址
 作为标识符（identifiers）。
 
@@ -354,7 +354,7 @@ local development）的耦合更高，这意味着如果一个变更会影响到
 ### 4.2.3 安全原则
 
 在设计云原生架构的过程中，我们希望在多个方面同时加固我们的安全（concurrently
-strengthen our security） —— 因此我们制定和优化了下面的这些安全原则：
+strengthen our security） —— 因此制定和优化了下面的这些安全原则：
 
 * **在边界保护网络**：能够在网络攻击和来自公网的未授权流量面前保护 workload。
 
@@ -383,7 +383,7 @@ strengthen our security） —— 因此我们制定和优化了下面的这些�
 * **在共享操作系统的 workloads 之间做隔离**：一个服务被入侵后，不会影响同宿
   主机上其他服务的安全。这限制了潜在入侵后的“爆炸半径”。
 
-我们的**最终目标**是：实现整个基础设施之上的自动化安全控制，不依赖人工参与。
+我们的**最终目标**是：<mark>实现整个基础设施之上的自动化安全控制</mark>，不依赖人工参与。
 
 * 安全应当能以**与服务一样的方式进行扩展**。
 * 对于服务来说，**安全是日常，不安全是例外**（secure by default and insecure by exception）。
@@ -470,7 +470,7 @@ strengthen our security） —— 因此我们制定和优化了下面的这些�
 
 表 2 列出了 Google 基础设施中，前面提到的各种安全原则所对应的工具。
 
-<p align="center">表 2：安全原则和对应的 Google 内部工具</p>
+<p align="center">表 2：<mark>安全原则和对应的 Google 内部工具</mark></p>
 
 | 安全原则 | Google 内部安全工具/服务 |
 |:---------|:-------------------------|
@@ -633,8 +633,8 @@ BeyondProd 方法描述了一个云原生安全架构，其：
 **BeyondProd 架构促使 Google 研发了几个新系统来满足这些需求**。
 
 实际中，我们经常看到**安全总是在最后时刻才被人们记起**（security is ‘called in’
-last）——在迁移到新架构的决定已经做出之后。更早地让你们的安全团队参与进来，并且关
-注于新的安全模型带来的收益，例如更简单的补丁管理和更强的访问控制，云原生架构就能
+last）——在迁移到新架构的决定已经做出之后。<mark>尽早让安全团队参与进来</mark>，
+并关注于新的安全模型带来的收益，例如更简单的补丁管理和更强的访问控制，云原生架构就能
 为应用研发团队和安全团队带来巨大收益。
 
 将本文描述的安全原则应用到你们的基础设施中，就能增强 workloads 的部署、
