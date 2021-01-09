@@ -2,8 +2,8 @@
 layout    : post
 title     : "[译] 《Linux 高级路由与流量控制手册（2012）》第九章：用 tc qdisc 管理 Linux 网络带宽"
 date      : 2020-10-08
-lastupdate: 2020-10-08
-categories: tc
+lastupdate: 2021-01-09
+categories: tc qdisc
 ---
 
 ### 译者序
@@ -15,6 +15,7 @@ categories: tc
 这份文档年代略久，但 qdisc 部分整体并未过时，并且是我目前看过的内容最详实、可读
 性最好的 tc qdisc 教程。
 
+另外，看到 [1] 中几张 qdisc 图画的非常不错，形象直观，易于理解，因此拿来插入到译文中。
 
 tc/qdisc 是 Cilium/eBPF 依赖的最重要的网络基础设施之一。
 
@@ -29,7 +30,7 @@ tc/qdisc 是 Cilium/eBPF 依赖的最重要的网络基础设施之一。
 
 ----
 
-初次发现 Linux 的这些功能时，我感到无比震惊。Linux 的**带宽管理**能力足以媲美许多
+初识 Linux 的这些功能时，我感到无比震惊。Linux 的**带宽管理**能力足以媲美许多
 **高端、专用的带宽管理系统**（high-end dedicated bandwidth management systems）。
 
 ## 9.1 队列（Queues）和排队规则（Queueing Disciplines）
@@ -45,7 +46,7 @@ which data is SENT）。但理解下面这一点非常重要：我们**只能对
 但与实际生活不同的是，互联网基于 TCP/IP 协议栈，这多少会带来一些帮助。TCP/IP
 无法提前知道两台主机之间的网络带宽，因此开始时它会以越来越快的速度发送数据（慢启
 动），直到开始出现丢包，这时它知道已经没有可用空间来存储这些待发送的包了，因此就会
-降低发送速度。TCP/IP 的实际工作过程比这个更智能一点，我们后面会再讨论。
+降低发送速度。TCP/IP 的实际工作过程比这个更智能一点，后面会再讨论。
 
 这就好比你留下一半的信件在实体邮箱里不取，期望别人知道这个状况后会停止给你寄新的信件。
 但不幸的是，**这种方式只对互联网管用，对你的实体邮箱无效** :-)
@@ -56,8 +57,8 @@ which data is SENT）。但理解下面这一点非常重要：我们**只能对
 
 此外，还要确保链路瓶颈（bottleneck of the link）也在你的控制范围内。例如，如果网
 卡是 100Mbps，但路由器的链路带宽是 256Kbps，那首先应该确保不要发送过多数据给路由
-器，因为它可能扛不住。否则，**链路控制和带宽整形的决定权就不在主
-机侧而到路由器侧了**。要达到限速目的，我们需要对**“发送队列”**有完全的把控（"own the
+器，因为它扛不住。否则，**链路控制和带宽整形的决定权就不在主
+机侧而到路由器侧了**。要达到限速目的，需要对**“发送队列”**有完全的把控（"own the
 queue"），这里的“发送队列”也就是**整条链路上最慢的一段**（slowest link in the chain）。
 幸运的是，大多数情况下这个条件都是能满足的。
 
@@ -78,16 +79,19 @@ queue"），这里的“发送队列”也就是**整条链路上最慢的一段
 classful qdisc。
 
 目前最常用的 classless qdisc 是 **`pfifo_fast qdisc`，这也是默认排队规则**。
-这也解释了为什么这些高级功能如此健壮：本质上来说，它们只不过是“另一个队列”而
-已（nothing more than 'just another queue'）。
+<mark>这也解释了为什么这些高级功能如此健壮</mark>：本质上来说，它们不过是
+“另一个队列”而已（nothing more than 'just another queue'）。
 
-每种队列都有自己的优缺点。其中一些可能测试的并不全面。
+每种队列都有自己的优缺点。某些队列可能并未充分测试。
 
 <a name="pfifo_fast"></a>
 
 ### 9.2.1 pfifo_fast（先入先出队列）
 
 如名字所示，这是一个先入先出队列（First In, First Out），因此对所有包都一视同仁。
+
+<p align="center"><img src="/assets/img/lartc-qdisc/pfifo_fast-qdisc.png" width="40%" height="40%"></p>
+<p align="center">图片来自 [1]</p>
 
 **pfifo_fast 有三个所谓的 “band”**（可理解为三个队列），编号分别为 0、1、2：
 
@@ -202,9 +206,11 @@ classful qdisc。
 
 TBF 是一个简单 qdisc，对于**没有超过预设速率的流量直接透传**，但也能容忍**超过预
 设速率的短时抖动**（short bursts in excess of this rate）。
-
 TBF 非常简洁，对网络和处理器都很友好（network- and processor friendly）。
 **如果只是想实现接口限速，那 TBF 是第一选择。**
+
+<p align="center"><img src="/assets/img/lartc-qdisc/tbf-qdisc.png" width="50%" height="50%"></p>
+<p align="center">图片来自 [1]</p>
 
 TBF 实现包括几部分：
 
@@ -314,9 +320,12 @@ cable modem，而且用一个快速设备（例如以太网接口）连接到这
 随机公平排队（SFQ）是公平排队算法族的一个简单实现。相比其他算法，**SFQ 精准性要差
 一些，但它所需的计算量也更少**，而结果几乎是完全公平的（almost perfectly fair）。
 
+<p align="center"><img src="/assets/img/lartc-qdisc/sfq-qdisc.png" width="45%" height="45%"></p>
+<p align="center">图片来自 [1]</p>
+
 **SFQ 中的核心是 conversion（会话）或 flow（流）**，大部分情况下都对应一个 TCP
 session 或 UDP stream。**每个 conversion 对应一个 FIFO queue**，然后将流量分到不
-同 queue。发送数据时，按照 round robin 方式，每个 session 轮流发送。
+同 queue。<mark>发送数据时，按照 round robin 方式，每个 session 轮流发送</mark>。
 
 这种机制会产生非常公平的结果，不会因为单个 conversion 太大而把其他 conversion 的带宽都
 挤占掉。**SFQ 被称为“随机的”（stochastic）是因为它其实并没有为每个 session
@@ -1155,6 +1164,9 @@ Martin Devera (devik) 意识到 CBQ 太复杂了，并且没有针对很多典�
 * 每个部分的带宽是有保证的（guaranteed bandwidth）
 * 还可以指定每个部分向其他部分借带宽
 
+<p align="center"><img src="/assets/img/lartc-qdisc/htb-borrow.png" width="60%" height="60%"></p>
+<p align="center">图片来自 [1]</p>
+
 **HTB 的工作方式与 CBQ 类似，但不是借助于计算空闲时间（idle time）来实现整形**。
 在内部，它其实是一个 classful TBF（令牌桶过滤器）—— 这也是它叫层级令牌桶（HTB）
 的原因。HTB 的参数并不多，在它的[网站](http://luxik.cdi.cz/~devik/qos/htb/)文档
@@ -1442,3 +1454,7 @@ enum nf_ip_hook_priorities {
 
 IMQ patch 及其更多信息见 [~~IMQ 网站~~](http://luxik.cdi.cz/~patrick/imq/)（原始
 链接已失效，可移步参考[这篇](https://github.com/imq/linuximq)，译者注）。
+
+# 译文用到的资料
+
+1. [Traffic-Control-HOWTO, linux-ip.net](http://linux-ip.net/articles/Traffic-Control-HOWTO/classless-qdiscs.html)
