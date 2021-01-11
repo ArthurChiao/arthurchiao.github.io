@@ -2,27 +2,26 @@
 layout    : post
 title     : "Connection Tracking (conntrack): Design and Implementation Inside Linux Kernel"
 date      : 2020-08-09
-lastupdate: 2020-08-09
+lastupdate: 2021-01-11
 categories: conntrack nat netfilter kernel
 ---
 
 > Note: this post also provides a
-> [Chinese version]({% link _posts/2020-08-05-conntrack-design-and-implementation-zh.md %}),
-> but may update less timely as this one.
+> [Chinese version]({% link _posts/2020-08-05-conntrack-design-and-implementation-zh.md %}).
 
 * TOC
 {:toc}
 
 ## Abstract
 
-This post talks about connection tracking (conntrack, CT), and the design
+This post talks about connection tracking (conntrack, CT), as well as its design
 and implementation inside Linux kernel.
 
-Code analysis bases on `4.19`. For illustration purposes, only the core
-logics are preserved in all pasted code. We have attched the source file names
-in kernel source tree for each code piece, refer to them if you need it.
+Code analysis based on `4.19`. For illustration purposes, only the core
+logics are preserved in all pasted code. Source files are provided for
+each code piece, refer to them if you need.
 
-Note that I'm not a kernel developer, so there may be some mistakes in this
+Note that I'm not a kernel developer, so there may be mistakes in this
 post. Glad if anyone corrects me.
 
 # 1 Introduction
@@ -34,17 +33,14 @@ software layer 4 load balancer (L4LB) [LVS/IPVS](https://en.wikipedia.org/wiki/L
 [Docker network](https://docs.docker.com/network/bridge/),
 [OpenvSwitch (OVS)](http://docs.openvswitch.org/en/latest/tutorials/ovs-conntrack/),
 OpenStack [security group](https://docs.openstack.org/nova/queens/admin/security-groups.html) (host firewall),
-etc, all rely on the functionalities of connection tracking.
+etc, all rely on it.
 
 ## 1.1 Concepts
 
-### Connection tracking (conntrack)
+As the name illustrates itself, connection tracking **tracks (and maintains) connections and their states**.
 
-<p align="center"><img src="/assets/img/conntrack/node-conntrack.png" width="50%" height="50%"></p>
+<p align="center"><img src="/assets/img/conntrack/node-conntrack.png" width="40%" height="40%"></p>
 <p align="center">Fig 1.1 Connection tracking example on a Linux node</p>
-
-Connection tracking, as the name illustrates itself, **tracks (and maintains)
-connections' states**.
 
 For example, in Fig 1.1, the Linux node has an IP address `10.1.1.2`,
 we could see 3 connections on this node:
@@ -53,17 +49,17 @@ we could see 3 connections on this node:
 2. `10.3.3.3:23456 <-> 10.3.3.2.:21`: **externally originated** connection for accessing FTP/TCP service in this node
 3. `10.1.1.2:33987 <-> 10.4.4.4.:53`: **locally originated** connection for accessing external DNS/UDP service
 
-Conntrack module's responsibility is to **discover and record these connections
-and their statuses**, which include:
+Conntrack module is responsible for **discovering and recording these connections
+and their statuses**, including:
 
 * Extract `tuple` from packets, distinguish `flow` and the related `connection`.
-* Maintain a **"database"** (`conntrack table`) for all connections, store
+* Maintain a **"database"** (`conntrack table`) for all connections, deposit
   information such as connection's created time, packets sent, bytes sent, etc.
 * Garbage collecting (GC) stale connection info
-* Serve for upper layer functionalities, e.g. as the foundation of NAT module
+* Serve for upper layer functionalities, e.g. NAT
 
 But note that, the term **"connection" in "connection tracking"** is different
-from the **"connection" concept that we mean in TCP/IP stack**. Put it simply,
+from the **"connection" concept that we usually mean in TCP/IP stack**. Put it simply,
 
 * In TCP/IP stack, "connection" is a layer 4 (transport layer) concept.
     * TCP is a connection-oriented protocol, all packets need to be acknowledged
@@ -78,38 +74,150 @@ from the **"connection" concept that we mean in TCP/IP stack**. Put it simply,
 When refering to the term "connection", we mean the latter one in most cases,
 namely, the "connection" in "connection tracking" context.
 
-### Network address translation (NAT)
+## 1.2 Thoery
 
-<p align="center"><img src="/assets/img/conntrack/node-nat.png" width="50%" height="50%"></p>
-<p align="center">Fig 1.2 NAT for node local IP addresses</p>
+With the above concepts in mind, let's reasons about the underlying theory of
+connction tracking.
+
+To track the states of all connections on a node, we need to,
+
+1. **Hook (or filter) every packet** that passes through this node, and **analyze the packet**.
+2. **Setup a "database"** for recoding the status of those connections (conntrack table).
+3. **Update connection status timely** to database based on the extracted information from hooked packets.
+
+For example, 
+
+1. When hooked a TCP `SYNC` packet, we could confirm that a new connection
+   attempt is under the way, so we need to create a new conntrack entry to
+   record this connection.
+2. When got a packet that belongs to an existing connection, we need to update
+   the conntrack entry statistics, e.g. bytes sent, packets sent, timeout
+   value, e.g.
+3. When no packets match a conntrack entry for more than 30 minutes, we
+   consider to delete this entry from the database.
+
+Except the above functional requirements, performance requirements also
+also deserve our concern, as conntrack module filters and analyzes every single
+packet. Performance considerations are fairly important, but they are beyond the
+scope of this post. We will come back to performance issues again when walking through
+the kernel conntrack implementation later.
+
+Besides, it's better to have some management tools to faciliate the using of
+conntrack.
+
+## 1.3 Design: Netfilter
+
+Connction tracking in Linux kernel is **implemented as a module** in [Netfilter](https://en.wikipedia.org/wiki/Netfilter) framework.
+
+<p align="center"><img src="/assets/img/conntrack/netfilter-design.png" width="50%" height="50%"></p>
+<p align="center">Fig 1.2 Netfilter architecture inside Linux kernel</p>
+
+[Netfilter](https://en.wikipedia.org/wiki/Netfilter) is a packet manipulating
+and filtering framework inside the kernel. It provides several hooking
+points inside the kernel, so packet hooking, filtering and many other processings
+could be done.
+
+> Put it more clearly, hooking is a mechanism that places several checking points
+> in the travesal path of packets. When a packet arrives a hooking point, it
+> first gets checked, and the checking result could be one of:
+>
+> 1. let it go: no modifications to the packet, push it back to the original travesal path and let it go
+> 2. modify it: e.g. replace network address (NAT), then push back to the original travesal path and let it go
+> 3. drop it: e.g. by firewall rules configured at this checking (hooking) point
+>
+> Note that conntrack module only extracts connection information and maintains
+> its database, it does not modify or drop a packet. Modification and dropping
+> are done by other modules, e.g. NAT.
+
+Netfilter is one of the earliest networking frameworks inside Linux kernel, it
+initially got developed in 1998, and merged into `2.4.x` kernel mainline in
+2000.
+
+After more than 20 years' evolvement, it gets so complicated that results
+to **degraded performance** in certain scenarios, we will talk a little more
+about this later.
+
+## 1.4 Design: further considerations
+
+From our discussions in the previous section, **the concept of connection tracking is
+independent from Netfilter**, and the latter is only one of the implementations
+of connection tracking.
+
+In other words, **as long as the hooking capability is possessed** - the ability to
+hook every single packet that goes through the system -  **we could implement
+our own connection trakcing**.
+
+<p align="center"><img src="/assets/img/conntrack/cilium-conntrack.png" width="50%" height="50%"></p>
+<p align="center">Fig 1.3. Cilium's conntrack and NAT architectrue</p>
+
+[Cilium](https://github.com/cilium/cilium), a cloud native networking solution
+for Kubernetes, implements such a conntrack and NAT mechanism. The underlyings
+of the impelentation:
+
+1. Hook packets based on BPF hooking points (BPF's equivalent part of the Netfilter hooks)
+2. Implement a completely new conntrack & NAT module based on BPF hooks (need kernel `4.19+` to be fully functional)
+
+So, one could even [remove the entire Netfilter module](https://github.com/cilium/cilium/issues/12879)
+, and Cilium would still work for
+Kubernetes functionalities such as ClusterIP, NodePort, ExternalIPs and
+LoadBalancer [2].
+
+As this connction tracking implementation is independent from Netfilter, its
+conntrack and NAT entries are not stored in system's (namely, Netfilter's)
+conntrack table and NAT table. So frequently used network tools
+`conntrack/netstats/ss/lsof` could not list them, you must use Cilium's
+alternatives, e.g:
+
+```shell
+$ cilium bpf nat list
+$ cilium bpf ct list global
+```
+
+Also, configurations are also independent, you need to specify Cilium's
+configuration parameters, such as command line argument `--bpf-ct-tcp-max`.
+
+We clarified that conntrack concept is independent from NAT module, but **for
+performance considerations, the code may be coupled**. For
+example, when performing GC for conntrack table, it will efficiently remove
+related entries in NAT table, rather than maintaining a separate GC loop for NAT
+table.
+
+## 1.5 Use cases
+
+Let's see some specific network applications/functions that are on top of
+conntrack.
+
+### 1.5.1 Network address translation (NAT)
 
 As the name illustrates, **NAT** translates (packets') network addresses (`IP + Port`).
 
-For example, in Fig 1.2, assume node IP `10.1.1.2` is reachable from other
-nodes, while IP addresses within network `192.168.1.0/24` is not reachable, this
-indicates that:
+<p align="center"><img src="/assets/img/conntrack/node-nat.png" width="40%" height="40%"></p>
+<p align="center">Fig 1.4 NAT for node local IP addresses</p>
 
-1. packets with source IP within network range `192.168.1.0/24` **could be sent
-   out**, as egress routing only relies on destination IP.
-2. but, the **reply packets** (with destination IP falls into `192.168.1.0/24`)
-   **could not come back**, as `192.168.1.0/24` is not routable within hosts.
+For example, in the above Fig, assume node IP `10.1.1.2` is reachable from other
+nodes, while IP addresses within network `192.168.1.0/24` are not reachable. This
+indicates:
 
-So, one of a solution for this scenario is:
+1. Packets with source IPs in `192.168.1.0/24` **could be sent out**, as egress routing only relies on destination IP.
+2. But, the **reply packets** (with destination IPs falling into `192.168.1.0/24`)
+   **could not come back**, as `192.168.1.0/24` is not routable within nodes.
 
-1. when packets with source IP belongs to `192.168.1.0/24` are going to be sent
-   , the node replaces these source IP (and/or port) with its own IP `10.1.1.2` then send out.
-2. when reply packets arrive, node does the reverse conversion, then forwards
-   to the original sender.
+One solution for this scenario:
 
-This is the underlying working mechanism of NAT.
+1. On sending packets with source IPs falling into `192.168.1.0/24`,
+   replace these source IPs (and/or ports) with node IP `10.1.1.2`, then send out.
+2. On receiving reply packets, do the reverse translation, then forward traffic
+   to the original senders.
+
+This is just the underlying working mechanism of NAT.
 
 The default network mode of Docker, `bridge` network mode, uses NAT in the same
 way as above [4]. Within the node, each Docker container allocates a
 node local IP address. This address enables communications between containers
-within the node, but when containers communicate with services outside the node,
+within the node, but when communicates with services outside the node,
 the traffic will be NAT-ed.
 
-> NAT may replace the source ports as well. It's easy to understand: each
+> NAT may replace the source ports as well. It's not too hard to understand: each
 > IP address can use the full port range (e.g. 1~65535). So assume
 > we have two connections:
 >
@@ -135,133 +243,75 @@ NAT can be further categorized as:
 Our above examples falls into SNAT case.
 
 **NAT relies on the results of connection tracking**, and, NAT the most
-important users of connection tracking.
+important use case of connection tracking.
 
-### Layer 4 load balancing (L4 LB)
+#### Layer 4 load balancing (L4LB)
 
-<p align="center"><img src="/assets/img/conntrack/nat.png" width="70%" height="70%"></p>
-<p align="center">Fig 1.3 L4LB: traffic path in NAT mode [3]</p>
-
-Let's enlarge our discussing scope slightly, to the topic of layer 4 load
+Let's step a little further from above discussions, to the topic of layer 4 load
 balancing **(L4LB) under NAT mode**.
 
 L4 LB distributes traffic acorrding to packets' L3+L4 info, e.g. `src/dst ip, src/dst port, proto`.
 
-**VIP (Virtual IP)** is an mechanism/design to implement L4LB:
+**VIP (Virtual IP)** is one of the mechanisms/designs to implement L4LB:
 
-* Multiple backend nodes with distinct Real IPs registered to the same virtual IP (VIP)
-* Traffic from clients will first arrive at VIP, then be load balanced to specific
+* Multiple backend nodes with distinct Real IPs register to the same virtual IP (VIP)
+* Traffic from clients first arrives VIP, then be load balanced to specific
   backend IPs
 
-If L4LB uses NAT mode (between VIP and Real IPs), then L4LB will perform full
-NAT between client-server traffic, the data flow depicted as Fig 1.3.
+If L4LB uses NAT mode (between VIP and Real IPs), L4LB will perform full
+NAT between client-server traffic, the data flow depicted as picture below:
 
-## 1.2 Thoery
+<p align="center"><img src="/assets/img/conntrack/nat.png" width="60%" height="60%"></p>
+<p align="center">Fig 1.5 L4LB: traffic path in NAT mode [3]</p>
 
-With the above concepts in mind, let's reasons about the underlying theory of
-connction tracking.
+### 1.5.2 Stateful firewall
 
-To track the states of all connections on a node, we need to,
+Stateful firewall is relative to the **stateless firewall** in the early days.
+With stateless firewall, one could only apply simple rules like
+`drop syn` or `allow syn`, and it has no concept of flow. It's impossible to
+configure a rule like **"allow this `ack` if `syn` has been seen, otherwise drop
+it"**, so the funtionality was quite limited [6].
 
-1. **Hook (or filter) every packet** passes through this node, and **analyze the packet**.
-2. **Setup a "database"** for recoding the status of those connections (conntrack table).
-3. **Update connection status timely** to database based on the extracted information from hooked packets.
+Apparently, to provide a stateful firewall, one must track flow and states -
+which is just what conntrack is doing.
 
-For example, 
+Let's see a more specific example: OpenStack security group - its host firewall solution.
 
-1. When hooked a TCP `SYNC` packet, we could confirm that a new connection
-   attempt is under the way, so we need to create a new conntrack entry to
-   record this connection.
-2. When got a packet that belongs to an existing connection, we need to update
-   the connctrack entry statistics, e.g. bytes sent, packets sent, timeout
-   value, e.g.
-3. When no packets has matches a conntrack entry for more than 30 minutes, we
-   need to consider deleting this entry from connection database.
+#### OpenStack security group
 
-Besides the above functional requirements, performance requirements also
-need to concern, as conntrack module needs filter and analyze every single
-packet. Performance considerations are fairly important, but it is beyond the
-scope of this post. We will refer to performance issues again when walking through
-the kernel conntrack implementation later.
+Security group provides **VM-level** security isolation, which is realized by
+applying stateful firewall rules on the host-side network devices of the VMs.
+And at that time, the most mature candicates for stateful firewalling might be
+Netfilter/iptables.
 
-Further, it's better to have some management tools for faciliating the using of
-conntrack module.
+Now back to the network topology inside each compute node: each compute node
+connects (integrates) all VMs inside it with an OVS bridge (`br-int`).
+If only considering network connectivity, each VM should attach to `br-int`
+directly. But here comes the problem [7]:
 
-## 1.3 Design: Netfilter
+* OVS has **no conntrack module**,
+* Linux kernel has conntrack, but the firewall based on this **works at IP layer (L3)**, manipulated via iptables,
+* **OVS is a L2 module**, which means it could not utilize L3 modules,
 
-<p align="center"><img src="/assets/img/conntrack/netfilter-design.png" width="60%" height="60%"></p>
-<p align="center">Fig 1.4 Netfilter architecture inside Linux kernel</p>
+Thus, firewalling at the OVS (node-side) network devices of VMs is impossible.
 
-**Linux's connction tracking is implemented as a module in [Netfilter](https://en.wikipedia.org/wiki/Netfilter) framework.**
+OpenStack solved this problem by **inserting a Linux
+bridge between every VM and `br-int`**, as shown below:
 
-[Netfilter](https://en.wikipedia.org/wiki/Netfilter) is a packet manipulating
-and filtering framework inside Linux kernel. It provides several hooking
-positions inside kernel, so packet hooking, filtering and many other processings
-could be done.
+<p align="center"><img src="/assets/img/conntrack/ovs-compute.png" width="60%" height="60%"></p>
+<p align="center">Fig 1.6. Network topology within an OpenStack compute node,
+picture from <a href="https://thesaitech.wordpress.com/2017/09/24/how-to-trace-the-tap-interfaces-and-linux-bridges-on-the-hypervisor-your-openstack-vm-is-on/"> Sai's Blog</a></p>
 
-> Put it more clearly, hook is a mechanism that places several checking points
-> in the travesal path of packets. When a packet arrives a hooking point, it
-> first get checked, the checking result could be one of:
->
-> 1. let it go: no modifications to the packet, push it back to the original travesal path and let it go
-> 2. modify it: e.g. replace network address (NAT), then push back to the original travesal path and let it go
-> 3. drop it: e.g. by security firewall rules configured at this checking (hooking) point
->
-> Note that conntrack module only extracts connection information and maintains
-> its database, it does not modify or drop a packet. Modification and dropping
-> are done by other modules, e.g. NAT.
+<mark>Linux bridge is also a L2 module, so it could not use iptables</mark>.
+But, **it has a L2 filtering machanism
+called ebtables, which could jump to iptables rules**, and thus makes
+Netfilter/iptables workable.
 
-Netfilter is one of the earliest networking frameworks inside Linux kernel, it
-initially got developed in 1998, and merged into `2.4.x` kernel mainline in
-2000.
+But this workaround is ugly, and leads to performance problems. So in 2016, RedHat
+proposed an OVS conntrack solution [7]. Since then, people could turn off
+Linux bridge while still keeping security group funtion.
 
-After more than 20 years evolvement, it gets so complicated that could result
-to **degraded performance** in certain scenarios, we will talk a little more
-about this later.
-
-## 1.4 Design: further considerations
-
-From our discussion in section 1.2, we know that **connection tracking concept is
-independent from Netfilter**, the latter is only one of the implementations for
-connection tracking.
-
-In other words, **as long as we have the hooking capability** - the ability to
-hook every single packet that goes through the system -  **we could implement
-our own connection trakcing mechanism**.
-
-<p align="center"><img src="/assets/img/conntrack/cilium-conntrack.png" width="60%" height="60%"></p>
-<p align="center">Fig 1.5. Cilium's conntrack and NAT architectrue</p>
-
-[Cilium](https://github.com/cilium/cilium), a cloud native networking solution
-for Kubernetes, implements such a conntrack and NAT mechanism. The underlyings
-of the impelentation:
-
-1. Hook packets based on BPF hook points (BPF's equivalent part of the Netfilter hooks)
-2. Implement completely new conntrack and NAT modules based on BPF hooks (relies on kernel `4.19+` to be fully functionaly on itself)
-
-So, you could even [remove the entire Netfilter module](https://github.com/cilium/cilium/issues/12879)
-, and Cilium will still work properly for
-Kubernetes functionalities such as ClusterIP, NodePort, ExternalIPs and
-LoadBalancer [2].
-
-As this connction tracking mechanism is independent from Netfilter, its
-conntrack and NAT entries are not stored in system's (namely, Netfilter's)
-conntrack table and NAT table. So frequently used network tools
-`conntrack/netstats/ss/lsof` could not list them, you must use Cilium's commands, e.g:
-
-```shell
-$ cilium bpf nat list
-$ cilium bpf ct list global
-```
-
-Also, the configurations are also independent, you need to specify Cilium's
-configuration parameters, such as command line argument `--bpf-ct-tcp-max`.
-
-We say that conntrack module is independent from NAT module, but **for
-performance considerations**, their code may have certain couplings. For
-example, when performing GC for conntrack table, it will efficiently remove
-related entries in NAT table, rather than maintaining a separate GC loop for NAT
-table.
+## 1.6 Summary
 
 This ends our discussion on the theory of connection tracking, and 
 in the following, we will dig into the kernel implementation.
@@ -1128,3 +1178,5 @@ interval is too large, or even there are [bugs in conntrack GC](https://github.c
 3. [L4LB for Kubernetes: Theory and Practice with Cilium+BGP+ECMP]({% link _posts/2020-04-10-k8s-l4lb.md %})
 4. [Docker bridge network mode](https://docs.docker.com/network/bridge/)
 5. [Wikipedia: Netfilter](https://en.wikipedia.org/wiki/Netfilter)
+6. [Conntrack tales - one thousand and one flows](https://blog.cloudflare.com/conntrack-tales-one-thousand-and-one-flows/)
+7. [How connection tracking in Open vSwitch helps OpenStack performance](https://www.redhat.com/en/blog/how-connection-tracking-open-vswitch-helps-openstack-performance)

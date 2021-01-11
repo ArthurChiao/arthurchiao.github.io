@@ -2,12 +2,11 @@
 layout    : post
 title     : "连接跟踪（conntrack）：原理、应用及 Linux 内核实现"
 date      : 2020-08-05
-lastupdate: 2020-08-09
+lastupdate: 2021-01-11
 categories: conntrack nat netfilter kernel
 ---
 
-**注：最新更新见英文版**：
-[Connection Tracking: Design and Implementation Inside Linux Kernel]({% link _posts/2020-08-09-conntrack-design-and-implementation.md %})。
+> This post also provides an [English version]({% link _posts/2020-08-09-conntrack-design-and-implementation.md %}).
 
 * TOC
 {:toc}
@@ -30,14 +29,12 @@ categories: conntrack nat netfilter kernel
 
 ## 1.1 概念
 
-### 连接跟踪（conntrack）
-
-<p align="center"><img src="/assets/img/conntrack/node-conntrack.png" width="50%" height="50%"></p>
-<p align="center">图 1.1. 连接跟踪及其内核位置示意图</p>
-
 连接跟踪，顾名思义，就是**跟踪（并记录）连接的状态**。
 
-例如，图 1.1 是一台 IP 地址为 `10.1.1.2` 的 Linux 机器，我们能看到这台机器上有三条
+<p align="center"><img src="/assets/img/conntrack/node-conntrack.png" width="40%" height="40%"></p>
+<p align="center">Fig 1.1. 连接跟踪及其内核位置示意图</p>
+
+例如，上图是一台 IP 地址为 `10.1.1.2` 的 Linux 机器，我们能看到这台机器上有三条
 连接：
 
 1. 机器访问外部 HTTP 服务的连接（目的端口 80）
@@ -64,51 +61,6 @@ connection oriented）的“连接”并不完全相同**，简单来说：
 
 本文中用到“连接”一词时，大部分情况下指的都是后者，即“连接跟踪”中的“连接”。
 
-### 网络地址转换（NAT）
-
-<p align="center"><img src="/assets/img/conntrack/node-nat.png" width="50%" height="50%"></p>
-<p align="center">图 1.2. NAT 及其内核位置示意图</p>
-
-网络地址转换（NAT），意思也比较清楚：对（数据包的）网络地址（`IP + Port`）进行转换。
-
-例如，图 1.2 中，机器自己的 IP `10.1.1.2` 是能与外部正常通信的，但 `192.168`
-网段是私有 IP 段，外界无法访问，也就是说源 IP 地址是 `192.168` 的包，其**应答包是无
-法回来的**。
-
-因此当源地址为 `192.168` 网段的包要出去时，机器会先将源 IP 换成机器自己的
-`10.1.1.2` 再发送出去；收到应答包时，再进行相反的转换。这就是 NAT 的基本过程。
-
-Docker 默认的 `bridge` 网络模式就是这个原理 [4]。每个容器会分一个私有网段的 IP
-地址，这个 IP 地址可以在宿主机内的不同容器之间通信，但容器流量出宿主机时要进行 NAT。
-
-NAT 又可以细分为几类：
-
-* SNAT：对源地址（source）进行转换
-* DNAT：对目的地址（destination）进行转换
-* Full NAT：同时对源地址和目的地址进行转换
-
-以上场景属于 SNAT，将不同私有 IP 都映射成同一个“公有 IP”，以使其能访问外部网络服
-务。这种场景也属于正向代理。
-
-NAT 依赖连接跟踪的结果。连接跟踪**最重要的使用场景**就是 NAT。
-
-### 四层负载均衡（L4 LB）
-
-<p align="center"><img src="/assets/img/conntrack/nat.png" width="70%" height="70%"></p>
-<p align="center">图 1.3. L4LB: Traffic path in NAT mode [3]</p>
-
-再将范围稍微延伸一点，讨论一下 NAT 模式的四层负载均衡。
-
-四层负载均衡是根据包的四层信息（例如 `src/dst ip, src/dst port, proto`）做流量分发。
-
-VIP（Virtual IP）是四层负载均衡的一种实现方式：
-
-* 多个后端真实 IP（Real IP）挂到同一个虚拟 IP（VIP）上
-* 客户端过来的流量先到达 VIP，再经负载均衡算法转发给某个特定的后端 IP
-
-如果在 VIP 和 Real IP 节点之间使用的 NAT 技术（也可以使用其他技术），那客户端访
-问服务端时，L4LB 节点将做双向 NAT（Full NAT），数据流如图 1.3。
-
 ## 1.2 原理
 
 了解以上概念之后，我们来思考下连接跟踪的技术原理。
@@ -133,10 +85,10 @@ VIP（Virtual IP）是四层负载均衡的一种实现方式：
 
 ## 1.3 设计：Netfilter
 
-<p align="center"><img src="/assets/img/conntrack/netfilter-design.png" width="60%" height="60%"></p>
-<p align="center">图 1.4. Netfilter architecture inside Linux kernel</p>
-
 **Linux 的连接跟踪是在 [Netfilter](https://en.wikipedia.org/wiki/Netfilter) 中实现的。**
+
+<p align="center"><img src="/assets/img/conntrack/netfilter-design.png" width="50%" height="50%"></p>
+<p align="center">Fig 1.2. Netfilter architecture inside Linux kernel</p>
 
 [Netfilter](https://en.wikipedia.org/wiki/Netfilter) 是 Linux 内核中一个对数据
 包进行**控制、修改和过滤**（manipulation and filtering）的框架。它在内核协议
@@ -157,14 +109,14 @@ Netfilter 是最古老的内核框架之一，1998 年开始开发，2000 年合
 
 ## 1.4 设计：进一步思考
 
-现在提到连接跟踪（conntrack），可能首先都会想到 Netfilter。但由 1.2 节的讨论可知，
+现在提到连接跟踪（conntrack），可能首先都会想到 Netfilter。但由上节讨论可知，
 连接跟踪概念是独立于 Netfilter 的，**Netfilter 只是 Linux 内核中的一种连接跟踪实现**。
 
 换句话说，**只要具备了 hook 能力，能拦截到进出主机的每个包，完全可以在此基础上自
 己实现一套连接跟踪**。
 
-<p align="center"><img src="/assets/img/conntrack/cilium-conntrack.png" width="60%" height="60%"></p>
-<p align="center">图 1.5. Cilium's conntrack and NAT architectrue</p>
+<p align="center"><img src="/assets/img/conntrack/cilium-conntrack.png" width="50%" height="50%"></p>
+<p align="center">Fig 1.3. Cilium's conntrack and NAT architectrue</p>
 
 云原生网络方案 Cilium 在 `1.7.4+` 版本就实现了这样一套独立的连接跟踪和 NAT 机制
 （完备功能需要 Kernel `4.19+`）。其基本原理是：
@@ -172,7 +124,7 @@ Netfilter 是最古老的内核框架之一，1998 年开始开发，2000 年合
 1. 基于 BPF hook 实现数据包的拦截功能（等价于 netfilter 里面的 hook 机制）
 2. 在 BPF hook 的基础上，实现一套全新的 conntrack 和 NAT
 
-因此，即便[卸载掉 Netfilter](https://github.com/cilium/cilium/issues/12879)
+因此，即便[卸载 Netfilter](https://github.com/cilium/cilium/issues/12879)
 ，也不会影响 Cilium 对 Kubernetes ClusterIP、NodePort、ExternalIPs 和
 LoadBalancer 等功能的支持 [2]。
 
@@ -187,9 +139,104 @@ $ cilium bpf ct list global
 
 配置也是独立的，需要在 Cilium 里面配置，例如命令行选项 `--bpf-ct-tcp-max`。
 
-另外，本文会多次提到连接跟踪模块和 NAT 模块独立，但出于性能考虑，具体实现中
-二者代码可能是有耦合的。例如 Cilium 做 conntrack 的垃圾回收（GC）时就会顺便把
+另外，本文会多次提到连接跟踪模块和 NAT 模块独立，但**出于性能考虑，具体实现中
+二者代码可能是有耦合的**。例如 Cilium 做 conntrack 的垃圾回收（GC）时就会顺便把
 NAT 里相应的 entry 回收掉，而非为 NAT 做单独的 GC。
+
+## 1.5 应用
+
+来看几个 conntrack 的具体应用。
+
+### 1.5.1 网络地址转换（NAT）
+
+网络地址转换（NAT），名字表达的意思也比较清楚：对（数据包的）网络地址（`IP + Port`）进行转换。
+
+<p align="center"><img src="/assets/img/conntrack/node-nat.png" width="40%" height="40%"></p>
+<p align="center">Fig 1.4. NAT 及其内核位置示意图</p>
+
+例如上图中，机器自己的 IP `10.1.1.2` 是能与外部正常通信的，但 `192.168`
+网段是私有 IP 段，外界无法访问，也就是说源 IP 地址是 `192.168` 的包，其**应答包是无
+法回来的**。因此，
+
+* 当源地址为 `192.168` 网段的包要出去时，机器会先将源 IP 换成机器自己的 `10.1.1.2` 再发送出去；
+* 收到应答包时，再进行相反的转换。
+
+这就是 NAT 的基本过程。
+
+Docker 默认的 `bridge` 网络模式就是这个原理 [4]。每个容器会分一个私有网段的 IP
+地址，这个 IP 地址可以在宿主机内的不同容器之间通信，但容器流量出宿主机时要进行 NAT。
+
+NAT 又可以细分为几类：
+
+* SNAT：对源地址（source）进行转换
+* DNAT：对目的地址（destination）进行转换
+* Full NAT：同时对源地址和目的地址进行转换
+
+以上场景属于 SNAT，将不同私有 IP 都映射成同一个“公有 IP”，以使其能访问外部网络服
+务。这种场景也属于正向代理。
+
+NAT 依赖连接跟踪的结果。连接跟踪**最重要的使用场景**就是 NAT。
+
+#### 四层负载均衡（L4LB）
+
+再将范围稍微延伸一点，讨论一下 NAT 模式的四层负载均衡。
+
+四层负载均衡是根据包的四层信息（例如 `src/dst ip, src/dst port, proto`）做流量分发。
+
+VIP（Virtual IP）是四层负载均衡的一种实现方式：
+
+* 多个后端真实 IP（Real IP）挂到同一个虚拟 IP（VIP）上
+* 客户端过来的流量先到达 VIP，再经负载均衡算法转发给某个特定的后端 IP
+
+如果在 VIP 和 Real IP 节点之间使用的 NAT 技术（也可以使用其他技术），那客户端访
+问服务端时，L4LB 节点将做双向 NAT（Full NAT），数据流如下图所示：
+
+<p align="center"><img src="/assets/img/conntrack/nat.png" width="60%" height="60%"></p>
+<p align="center">Fig 1.5. L4LB: Traffic path in NAT mode [3]</p>
+
+### 1.5.2 有状态防火墙
+
+有状态防火墙（stateful firewall）是相对于早期的**无状态防火墙**（stateless
+firewall）而言的：早期防火墙只能写 `drop syn` 或者 `allow syn` 这种非常简单直接
+的规则，**没有 flow 的概念**，因此无法实现诸如 **“如果这个 ack 之前已经有 syn，
+就 allow，否则 drop”** 这样的规则，使用非常受限 [6]。
+
+显然，要实现有状态防火墙，就必须记录 flow 和状态，这正是 conntrack 做的事情。
+
+来看个更具体的防火墙应用：OpenStack 主机防火墙解决方案 —— 安全组（security group）。
+
+#### OpenStack 安全组
+
+简单来说，安全组实现了**虚拟机级别**的安全隔离，具体实现是：在 node 上连接 VM 的 
+网络设备上做有状态防火墙。在当时，最能实现这一功能的可能就是 Netfilter/iptables。
+
+回到宿主机内网络拓扑问题：
+OpenStack 使用 OVS bridge 来连接一台宿主机内的所有 VM。
+如果只从网络连通性考虑，那每个 VM 应该直接连到 OVS bridge `br-int`。但这里问题
+就来了 [7]：
+
+* OVS 没有 conntrack 模块，
+* Linux 中有 conntrack 模块，但基于 conntrack 的防火墙**工作在 IP 层**（L3），通过 iptables 控制，
+* 而 **OVS 是 L2 模块**，无法使用 L3 模块的功能，
+
+因此无法在 OVS （连接虚拟机）的设备上做防火墙。
+
+所以，2016 之前 OpenStack 的解决方案是，在每个 OVS 和 VM 之间再加一个 Linux bridge
+，如下图所示，
+
+<p align="center"><img src="/assets/img/conntrack/ovs-compute.png" width="60%" height="60%"></p>
+<p align="center">Fig 1.6. Network topology within an OpenStack compute node,
+picture from <a href="https://thesaitech.wordpress.com/2017/09/24/how-to-trace-the-tap-interfaces-and-linux-bridges-on-the-hypervisor-your-openstack-vm-is-on/"> Sai's Blog</a></p>
+
+Linux bridge 也是 L2 模块，按道理也无法使用 iptables。但是，**它有一个 L2 工具
+ebtables，能够跳转到 iptables**，因此间接支持了 iptables，也就能用到
+Netfilter/iptables 防火墙的功能。
+
+这种 workaround 不仅丑陋、增加网络复杂性，而且会导致性能问题。因此，
+RedHat 在 2016 年提出了一个 OVS conntrack 方案 [7]，从那以后，才有可能干掉 Linux
+bridge 而仍然具备安全组的功能。
+
+## 1.6 小结
 
 以上是理论篇，接下来看一下内核实现。
 
@@ -978,3 +1025,5 @@ table 被打爆。此时的现象是：
 3. [L4LB for Kubernetes: Theory and Practice with Cilium+BGP+ECMP]({% link _posts/2020-04-10-k8s-l4lb.md %})
 4. [Docker bridge network mode](https://docs.docker.com/network/bridge/)
 5. [Wikipedia: Netfilter](https://en.wikipedia.org/wiki/Netfilter)
+6. [Conntrack tales - one thousand and one flows](https://blog.cloudflare.com/conntrack-tales-one-thousand-and-one-flows/)
+7. [How connection tracking in Open vSwitch helps OpenStack performance](https://www.redhat.com/en/blog/how-connection-tracking-open-vswitch-helps-openstack-performance)
