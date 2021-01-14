@@ -15,7 +15,7 @@ categories: tc qdisc
 这份文档年代略久，但 qdisc 部分整体并未过时，并且是我目前看过的内容最详实、可读
 性最好的 tc qdisc 教程。
 
-另外，看到 [1] 中几张 qdisc 图画的非常不错，形象直观，易于理解，因此拿来插入到译文中。
+另外，看到 [1,2] 中几张 qdisc 图画的非常不错，形象直观，易于理解，因此拿来插入到译文中。
 
 tc/qdisc 是 Cilium/eBPF 依赖的最重要的网络基础设施之一。
 
@@ -178,18 +178,18 @@ classful qdisc。
     TELNET                   1000           (minimize delay)
     FTP     Control          1000           (minimize delay)
             Data             0100           (maximize throughput)
-    
+
     TFTP                     1000           (minimize delay)
-    
+
     SMTP    Command phase    1000           (minimize delay)
             DATA phase       0100           (maximize throughput)
-    
+
     DNS     UDP Query        1000           (minimize delay)
             TCP Query        0000
             Zone Transfer    0100           (maximize throughput)
-    
+
     NNTP                     0001           (minimize monetary cost)
-    
+
     ICMP    Errors           0000
             Requests         0000 (mostly)
             Responses        <same as request> (mostly)
@@ -370,8 +370,8 @@ SFQ 大部分情况下默认参数就够了，
 $ tc qdisc add dev ppp0 root sfq perturb 10
 
 $ tc -s -d qdisc ls
-qdisc sfq 800c: dev ppp0 quantum 1514b limit 128p flows 128/1024 perturb 10sec 
- Sent 4812 bytes 62 pkts (dropped 0, overlimits 0) 
+qdisc sfq 800c: dev ppp0 quantum 1514b limit 128p flows 128/1024 perturb 10sec
+ Sent 4812 bytes 62 pkts (dropped 0, overlimits 0)
 ```
 
 解释：
@@ -553,7 +553,7 @@ CBQ），但实际并非如此。
 ### 9.5.1 Classful qdisc & class 中的 flow
 
 当流量进入一个 classful qdisc 时，该 qdisc 需要将其发送到内部的某个 class —— 即
-需要**对这个包进行“分类”**。而要这个判断过程，，实际上是**查询所谓的“过滤器”**（
+需要**对这个包进行“分类”**。而要这个判断过程，实际上是**查询所谓的“过滤器”**（
 'filters'）。**过滤器是在 qdisc 中被调用的，而不是其他地方**，理解一点非常重要！
 
 **过滤器返回一个判决结果给 qdisc，qdisc 据此将包 enqueue 到合适的 class**。
@@ -565,22 +565,26 @@ CBQ），但实际并非如此。
 当高速设备（例如，以太网）连接到一个低速设备（例如一个调制解调器）时，会用到这个
 功能。
 
-**如果只运行 SFQ，那将什么事情都不会发生**，因为包会无延迟地进入和离开你的路由
+**如果只运行 SFQ，那接下来不会发生什么事情**，因为包会无延迟地进入和离开路由
 器：**网卡的发送速度要远大于真实的链路速度。瓶颈不在主机中，就无法用“队列”（queue
 ）来调度这些流量**。
 
 ### 9.5.2 qdisc 大家庭：roots, handles, siblings and parents
 
-* **每个接口都有一个 egress "root qdisc"**。默认情况下，这个 root qdisc 就是前
-面提到的 classless `pfifo_fast` qdisc。
-* **每个 qdisc 和 class 都会分配一个相应的 handle（句柄）**，可以指定 handle 对 qdisc 进行配置。
-* **每个接口可能还会有一个 ingress qdisc**，用来对入向流量执行策略（which polices traffic coming in）。
+* <mark>每个接口都有一个 egress "root qdisc"</mark>。默认情况下，这个 root qdisc 就是前面提到的 classless `pfifo_fast` qdisc。
+
+    > 回忆前面实体邮箱的类比。理论上 egress 流量是本机可控的，所以需要配备一个 qdisc 来提供这种控制能力。译注。
+
+* <mark>每个 qdisc 和 class 都会分配一个相应的 handle（句柄）</mark>，可以指定 handle 对 qdisc 进行配置。
+* <mark>每个接口可能还会有一个 ingress qdisc</mark>，用来对入向流量执行策略（which polices traffic coming in）。
+
+    > 理论上 ingress 基本是不受本机控制的，主动权在外部，所以不一定会有 qdisc。译注。
 
 关于 handle：
 
-* 每个 **handle 由两部分组成，`<major>:<minor>`**。
-* 按照惯例，root qdisc 的 handle 为 `1:`，这是 `1:0` 的简写。
-* **每个 qdisc 的 minor number 永远是 `0`**。
+* <mark>每个 handle 由两部分组成</mark>，`<major>:<minor>`。
+* 按照惯例，<mark>root qdisc 的 handle 为</mark> `1:`，这是 `1:0` 的简写。
+* <mark>每个 qdisc 的 minor number 永远是</mark> `0`。
 
 关于 class：
 
@@ -588,7 +592,7 @@ CBQ），但实际并非如此。
 * major number 在一个 egress 或 ingress 内必须唯一。
 * minor number 在一个 qdisc 或 class 内必须唯一。
 
-> 上面的解释有点模糊，可对照 [tc(8) man page](https://man7.org/linux/man-pages/man8/tc.8.html) 的解释：
+> <mark>上面的解释有点模糊</mark>，可对照 [tc(8) man page](https://man7.org/linux/man-pages/man8/tc.8.html) 的解释：
 >
 > 所有 qdiscs、classes 和 filters 都有 ID，这些 ID 可以是指定的，也可以是自动分的。
 >
@@ -628,9 +632,9 @@ CBQ），但实际并非如此。
                  /    |    \
                  /    |    \
               1:10  1:11  1:12   child classes
-               |      |     | 
+               |      |     |
                |     11:    |    leaf class
-               |            | 
+               |            |
                10:         12:   qdisc
               /   \       /   \
            10:1  10:2   12:1  12:2   leaf classes
@@ -667,7 +671,7 @@ node）上都 attach 了一个 filter，每个 filter 都会给出一个判断�
 **在这个例子中，内核需要遍历整棵树，因为只有 `12:2` 中有数据包**。
 
 简单来说，**嵌套类（nested classes）只会和它们的 parent qdiscs 通信，而永远不会直
-接和接口交互**。**内核只会调用 root qdisc 的 `dequeue()` 方法！**
+接和接口交互**。<mark>内核只会调用 root qdisc 的</mark> `dequeue()` 方法！
 
 最终结果是，**classes dequeue 的速度永远不会超过它们的 parents 允许的速度**。而这正
 是我们所期望的：这样就能在内层使用一个 SFQ 做纯调度，它不用做任何整形的工作
@@ -675,10 +679,16 @@ node）上都 attach 了一个 filter，每个 filter 都会给出一个判断�
 
 ### 9.5.3 `PRIO` qdisc（优先级排队规则）
 
-**`PRIO` qdisc 实际上不会整形，只会根据设置的过滤器对流量进行分类**。
+`PRIO` qdisc 实际上**不会整形行**，只会根据设置的过滤器**对流量分类**。
+
+<p align="center"><img src="/assets/img/lartc-qdisc/prio-qdisc-1.gif" width="70%" height="70%"></p>
+<p align="center">图片来自 [2]</p>
 
 **可以将 `PRIO` qdisc 理解为 `pfifo_fast` qdisc 的升级版**，它也有多个 band，但
 每个 band 都是一个独立的 class，而不是简单的 FIFO。
+
+<p align="center"><img src="/assets/img/lartc-qdisc/prio-qdisc-2.gif" width="70%" height="70%"></p>
+<p align="center">图片来自 [2]</p>
 
 当一个包 enqueue 到 PRIO qdisc 之后，它会根据设置的 filters 选择一个 class
 ，并将包送到这个 class。默认情况下会创建三个 class。每个 class 默认情况下都包含一
@@ -691,7 +701,7 @@ node）上都 attach 了一个 filter，每个 filter 都会给出一个判断�
 有用。还可以向这三个预置的 classes 添加额外的 qdisc，毕竟 `pfifo_fast` 只能提供简
 单的 FIFO qdisc。
 
-由于 **`PRIO` 没有流量整形功能**，因此针对 `SFQ` 的忠告也适用于这里：
+由于 `PRIO` <mark>没有流量整形功能</mark>，因此针对 `SFQ` 的<mark>忠告也适用于这里</mark>：
 
 1. 如果你的物理链路已经打满了，可以用 `PRIO` qdisc （对流量进行分类），或者
 2. 在外层嵌套一个 classful qdisc，后者负责流量整形。
@@ -725,7 +735,7 @@ PRIO qdisc 里面的 band 都是 class，默认情况下名字分别为 `major:1
 
 ```
           1:   root qdisc
-         / | \ 
+         / | \
         /  |  \
        /   |   \
      1:1  1:2  1:3    classes
@@ -741,27 +751,27 @@ band  0    1    2
 
 ```shell
 $ tc qdisc add dev eth0 root handle 1: prio # This *instantly* creates classes 1:1, 1:2, 1:3
-  
+
 $ tc qdisc add dev eth0 parent 1:1 handle 10: sfq
 $ tc qdisc add dev eth0 parent 1:2 handle 20: tbf rate 20kbit buffer 1600 limit 3000
-$ tc qdisc add dev eth0 parent 1:3 handle 30: sfq                                
+$ tc qdisc add dev eth0 parent 1:3 handle 30: sfq
 ```
 
 然后查看创建出来的 qdisc：
 
 ```shell
-# tc -s qdisc ls dev eth0 
-qdisc sfq 30: quantum 1514b 
- Sent 0 bytes 0 pkts (dropped 0, overlimits 0) 
+$ tc -s qdisc ls dev eth0
+qdisc sfq 30: quantum 1514b
+ Sent 0 bytes 0 pkts (dropped 0, overlimits 0)
 
- qdisc tbf 20: rate 20Kbit burst 1599b lat 667.6ms 
- Sent 0 bytes 0 pkts (dropped 0, overlimits 0) 
+ qdisc tbf 20: rate 20Kbit burst 1599b lat 667.6ms
+ Sent 0 bytes 0 pkts (dropped 0, overlimits 0)
 
- qdisc sfq 10: quantum 1514b 
- Sent 132 bytes 2 pkts (dropped 0, overlimits 0) 
+ qdisc sfq 10: quantum 1514b
+ Sent 132 bytes 2 pkts (dropped 0, overlimits 0)
 
  qdisc prio 1: bands 3 priomap  1 2 2 2 1 2 0 0 1 1 1 1 1 1 1 1
- Sent 174 bytes 3 pkts (dropped 0, overlimits 0) 
+ Sent 174 bytes 3 pkts (dropped 0, overlimits 0)
 ```
 
 可以看到，band 0 已经有了一些流量，而且在执行这条命令的过程中，刚好又发送了一个
@@ -771,21 +781,21 @@ qdisc sfq 30: quantum 1514b
 
 ```
 $ scp tc ahu@10.0.0.11:./
-ahu@10.0.0.11's password: 
-tc                   100% |*****************************|   353 KB    00:00    
+ahu@10.0.0.11's password:
+tc                   100% |*****************************|   353 KB    00:00
 
 $ tc -s qdisc ls dev eth0
-qdisc sfq 30: quantum 1514b 
- Sent 384228 bytes 274 pkts (dropped 0, overlimits 0) 
+qdisc sfq 30: quantum 1514b
+ Sent 384228 bytes 274 pkts (dropped 0, overlimits 0)
 
- qdisc tbf 20: rate 20Kbit burst 1599b lat 667.6ms 
- Sent 2640 bytes 20 pkts (dropped 0, overlimits 0) 
+ qdisc tbf 20: rate 20Kbit burst 1599b lat 667.6ms
+ Sent 2640 bytes 20 pkts (dropped 0, overlimits 0)
 
- qdisc sfq 10: quantum 1514b 
- Sent 2230 bytes 31 pkts (dropped 0, overlimits 0) 
+ qdisc sfq 10: quantum 1514b
+ Sent 2230 bytes 31 pkts (dropped 0, overlimits 0)
 
  qdisc prio 1: bands 3 priomap  1 2 2 2 1 2 0 0 1 1 1 1 1 1 1 1
- Sent 389140 bytes 326 pkts (dropped 0, overlimits 0) 
+ Sent 389140 bytes 326 pkts (dropped 0, overlimits 0)
 ```
 
 可以看到，所有的流量都进入了优先级最低的 handle `30:`，这正是我们期望的。为了验
@@ -794,17 +804,17 @@ qdisc sfq 30: quantum 1514b
 
 ```shell
 # tc -s qdisc ls dev eth0
-qdisc sfq 30: quantum 1514b 
- Sent 384228 bytes 274 pkts (dropped 0, overlimits 0) 
+qdisc sfq 30: quantum 1514b
+ Sent 384228 bytes 274 pkts (dropped 0, overlimits 0)
 
- qdisc tbf 20: rate 20Kbit burst 1599b lat 667.6ms 
- Sent 2640 bytes 20 pkts (dropped 0, overlimits 0) 
+ qdisc tbf 20: rate 20Kbit burst 1599b lat 667.6ms
+ Sent 2640 bytes 20 pkts (dropped 0, overlimits 0)
 
- qdisc sfq 10: quantum 1514b 
- Sent 14926 bytes 193 pkts (dropped 0, overlimits 0) 
+ qdisc sfq 10: quantum 1514b
+ Sent 14926 bytes 193 pkts (dropped 0, overlimits 0)
 
  qdisc prio 1: bands 3 priomap  1 2 2 2 1 2 0 0 1 1 1 1 1 1 1 1
- Sent 401836 bytes 488 pkts (dropped 0, overlimits 0) 
+ Sent 401836 bytes 488 pkts (dropped 0, overlimits 0)
 ```
 
 正如预期 —— 所有额外流量都进入了 `10:`，这是我们优先级最高的 qdisc。handle `30:`
@@ -896,7 +906,7 @@ exponential weighted moving average，EWMA）来计算，这个算法假设包�
 
 * minidle
 
-    如果 `avgidle < 0`，那说明 overlimits，需要等到 `avgidle` 足够大才能发送下一个包。 
+    如果 `avgidle < 0`，那说明 overlimits，需要等到 `avgidle` 足够大才能发送下一个包。
     为防止突然的 burst 打爆链路带宽，当 avgidle 降到一个非常小的值之后，会 reset 到 `minidle`。
     `minidle` 的单位是负微秒（negative microseconds），因此 `10` 就表示 idle
     time 下限是 `-10us`。
@@ -904,7 +914,7 @@ exponential weighted moving average，EWMA）来计算，这个算法假设包�
 * mpu
 
     最小包长（Minimum packet size）—— 需要这个参数是因为，即使是零字节的包在以太
-    网上传输时也会被填充到 64 字节，因此总会有一个发送耗时。 
+    网上传输时也会被填充到 64 字节，因此总会有一个发送耗时。
     CBQ 需要这个参数来精确计算 idle time。
 
 * rate
@@ -1015,7 +1025,7 @@ $ tc class add dev eth0 parent 1:0 classid 1:1 cbq bandwidth 100Mbit  \
 ```shell
 $ tc class add dev eth0 parent 1:1 classid 1:3 cbq bandwidth 100Mbit  \
   rate 5Mbit weight 0.5Mbit prio 5 allot 1514 cell 8 maxburst 20      \
-  avpkt 1000                       
+  avpkt 1000
 $ tc class add dev eth0 parent 1:1 classid 1:4 cbq bandwidth 100Mbit  \
   rate 3Mbit weight 0.3Mbit prio 5 allot 1514 cell 8 maxburst 20      \
   avpkt 1000
@@ -1078,7 +1088,7 @@ clearer:
 ```shell
 $ tc qdisc add dev eth1 root handle 1: cbq bandwidth 10Mbit allot 1514 \
   cell 8 avpkt 1000 mpu 64
- 
+
 $ tc class add dev eth1 parent 1:0 classid 1:1 cbq bandwidth 10Mbit    \
   rate 10Mbit allot 1514 cell 8 weight 1Mbit prio 8 maxburst 20        \
   avpkt 1000
@@ -1091,12 +1101,12 @@ Standard CBQ preamble. I never get used to the sheer amount of numbers required!
 ```
 TC_PRIO..          Num  Corresponds to TOS
 -------------------------------------------------
-BESTEFFORT         0    Maximize Reliablity        
-FILLER             1    Minimize Cost              
-BULK               2    Maximize Throughput (0x8)  
-INTERACTIVE_BULK   4                               
-INTERACTIVE        6    Minimize Delay (0x10)      
-CONTROL            7                               
+BESTEFFORT         0    Maximize Reliablity
+FILLER             1    Minimize Cost
+BULK               2    Maximize Throughput (0x8)
+INTERACTIVE_BULK   4
+INTERACTIVE        6    Minimize Delay (0x10)
+CONTROL            7
 ```
 
 关于 TOS bits 如何映射到 priorities，参考 [pfifo_fast](#pfifo_fast) 小结。
@@ -1265,7 +1275,7 @@ bandwidth），并且总带宽中还有很多剩余，它们还可以 `5:3` 的�
 class，我们想将所有端口 22 的流量都导向优先级最高的 band，那 filters 将如下：
 
 ```shell
-$ tc filter add dev eth0 protocol ip parent 10: prio 1 u32 match \ 
+$ tc filter add dev eth0 protocol ip parent 10: prio 1 u32 match \
   ip dport 22 0xffff flowid 10:1
 $ tc filter add dev eth0 protocol ip parent 10: prio 1 u32 match \
   ip sport 80 0xffff flowid 10:1
@@ -1287,7 +1297,7 @@ $ tc filter add dev eth0 protocol ip parent 10: prio 2 flowid 10:2
 要**精确匹配单个 IP 地址**，使用下面的命令：
 
 ```shell
-$ tc filter add dev eth0 parent 10:0 protocol ip prio 1 u32 \ 
+$ tc filter add dev eth0 parent 10:0 protocol ip prio 1 u32 \
   match ip dst 4.3.2.1/32 flowid 10:1
 $ tc filter add dev eth0 parent 10:0 protocol ip prio 1 u32 \
   match ip src 1.2.3.4/32 flowid 10:1
@@ -1343,7 +1353,7 @@ $ tc filter add dev eth0 parent 1:0 protocol ip prio 1 u32 ..
     注意这里用的已经不是 `u32` 匹配了！
 
     对包打标（mark）：
-    
+
     ```shell
     $ iptables -A PREROUTING -t mangle -i eth0 -j MARK --set-mark 6
     ```
@@ -1354,7 +1364,7 @@ $ tc filter add dev eth0 parent 1:0 protocol ip prio 1 u32 ..
 
     iptables 还可以打印统计信息，有助于判断你设置的规则是否生效。下面的命令会打
     印 `mangle` 表内所有的 mark 规则，已经每个规则已经匹配到多少包和字节数：
-    
+
     ```shell
     $ iptables -L -t mangle -n -v
     ```
@@ -1458,3 +1468,4 @@ IMQ patch 及其更多信息见 [~~IMQ 网站~~](http://luxik.cdi.cz/~patrick/im
 # 译文用到的资料
 
 1. [Traffic-Control-HOWTO, linux-ip.net](http://linux-ip.net/articles/Traffic-Control-HOWTO/classless-qdiscs.html)
+2. [Practical IP Network QoS](http://softwareopal.com/qos/default.php?p=ds-23)
