@@ -1,10 +1,16 @@
 ---
-layout: post
-title:  "Traffic Mirroring With OVS"
-date:   2018-11-10
-author: ArthurChiao
+layout    : post
+title     : "Traffic Mirroring With OVS"
+date      : 2018-11-10
+lastupdate: 2021-01-23
+author    : ArthurChiao
 categories: traffic-mirror ovs container
 ---
+
+* TOC
+{:toc}
+
+----
 
 Traffic mirroring, or port mirroring, is a technique to send a copy of the
 network traffic to a backend system. It is commonly used by network
@@ -21,13 +27,13 @@ software-based and vendor-agnostic solutions emerge.
 In this article, we will investigate the feasibility of traffic mirroring based
 on OVS [2].
 
-## 1 Preliminary Knowledge
+# 1 Preliminary Knowledge
 
-### 1.1 OVS Bridge
+## 1.1 OVS Bridge
 
 An OVS bridge is a software implemented Layer 2 (L2) bridge.
 
-### 1.2 OVS Port
+## 1.2 OVS Port
 
 A port is a virtual device which could be used as a NIC by applications to
 send/receive packets.
@@ -39,32 +45,32 @@ An OVS port could be many types, for example:
 1. a veth pair
 1. OVS internal port, patch port
 
-### 1.3 OVS Port Mirroring
+## 1.3 OVS Port Mirroring
 
 OVS provides a [way](http://docs.openvswitch.org/en/latest/faq/configuration/)
 to duplicate network traffic of specified ports to a dedicated output port.
 The duplication could be in single direction (ingress/egress) or both.
 
-### 1.4 Container Network Basics
+## 1.4 Container Network Basics
 
 This article needs some container basics, see our previous post
 [Play With Container Network Interface]({% link _posts/2018-11-07-play-with-container-network-if.md %})
 if you are unfamilir with this topic.
 
-## 2 Mirror Traffic With OVS
+# 2 Mirror Traffic With OVS
 
 This post referenced an earlier blog [Port mirroring with Linux bridges](https://backreference.org/2014/06/17/port-mirroring-with-linux-bridges/). Some syntax sugar of OVS CLI got well explained there, we do not repeat them here.
 
 For simplicity, we wrapped some shell commands into (really) simple scripts. You
 could find them in the appendix.
 
-### 2.1 Prepare Environment
+## 2.1 Prepare Environment
 
 Refer to appendix A or our post [4] for how to setup a test environment like this:
 
-<p align="center"><img src="/assets/img/traffic-mirror-with-ovs/net-topo.png" width="45%" height="45%"></p>
+<p align="center"><img src="/assets/img/traffic-mirror-with-ovs/net-topo.png" width="50%" height="50%"></p>
 
-### 2.2 Create Mirror
+## 2.2 Create Mirror
 
 First, add a device as the output port of mirrored traffic. We use OVS internal
 port here:
@@ -95,7 +101,7 @@ select_src_port     : []
 statistics          : {tx_bytes=0, tx_packets=0}
 ```
 
-### 2.3 Add Traffic Source
+## 2.3 Add Traffic Source
 
 Mirror only the egress traffic:
 
@@ -132,11 +138,11 @@ $ ./add-traffic-source.sh mirror0 vnic-1 all
 
 Now our network topology:
 
-<p align="center"><img src="/assets/img/traffic-mirror-with-ovs/net-topo-with-output.png" width="45%" height="45%"></p>
+<p align="center"><img src="/assets/img/traffic-mirror-with-ovs/net-topo-with-output.png" width="50%" height="50%"></p>
 
-## 3 Test
+# 3 Test
 
-### 3.1 Setup Capture
+## 3.1 Setup Capture
 
 To test the mirror, we will generate and capture ICMP packets.
 
@@ -160,7 +166,7 @@ listening on mirror0-output, link-type EN10MB (Ethernet), capture size 65535 byt
 
 **No packets on both.**
 
-### 3.2 Generate Traffic
+## 3.2 Generate Traffic
 
 Now ping `ctn-2` (`192.168.1.4`) from `ctn-1` (`192.168.1.3`), which will send
 ICMP echo request and receive ICMP echo reply packets:
@@ -201,7 +207,7 @@ $ tcpdump -n -i mirror0-output 'icmp'
 
 If you chose `ingress` or `both` in Section 3.2, results will be diffrent accordingly.
 
-### 3.3 Performance Test
+## 3.3 Performance Test
 
 The ICMP traffic we generated here is just used to verify the mirror works.
 
@@ -220,7 +226,7 @@ $ tcpreplay --limit=100 -i eth1 test.pcap
 $ tcpreplay --loop=10 -x 2 -i eth1 test.pcap
 ```
 
-### 3.4 Add More Traffic Source
+## 3.4 Add More Traffic Source
 
 Several ports may be mirrored to the same output, for example, to add `vnic-2`'s
 egress to the mirror:
@@ -238,7 +244,7 @@ select_src_port     : [29a6d786-5ad2-4e8a-afdb-2f099fbe0de1, e1ba2b63-f492-4f88-
 statistics          : {tx_bytes=448, tx_packets=7}
 ```
 
-### 3.4 Cleanup
+## 3.4 Cleanup
 
 Delete all mirrors on a bridge, run:
 
@@ -253,12 +259,15 @@ Delete output port:
 $ ovs-vsctl del-port mirror0-output
 ```
 
-## 4 Summary
+# 4 Summary
 
 In this post, we showed how to implement a simply traffic mirror environment
 with OVS port mirroring function.
 
-## References
+2021 Update: new post
+[Traffic Mirroring: Theory and Practice (with tc and Tunneling)]({% link _posts/2021-01-23-traffic-mirror-with-tc-and-tunneling.md %}).
+
+# References
 
 1. [Wikipedia: Port Mirroring](https://en.wikipedia.org/wiki/Port_mirroring)
 2. [OpenvSwitch]()
@@ -269,7 +278,7 @@ with OVS port mirroring function.
 7. [Pktgen-DPDK](https://pktgen-dpdk.readthedocs.io/en/latest/)
 8. [iperf3](https://iperf.fr/iperf-download.php)
 
-## Appendix A: Setup Environment
+# Appendix A: Setup Environment
 
 Create OVS Bridge:
 
@@ -310,7 +319,7 @@ $ ovs-vsctl show
                 type: internal
 ```
 
-## Appendix B: Scripts Used In This Article
+# Appendix B: Scripts Used In This Article
 
 1. [add-mirror.sh](/assets/img/traffic-mirror-with-ovs/add-mirror.sh)
 1. [add-port.sh](/assets/img/traffic-mirror-with-ovs/add-port.sh)
