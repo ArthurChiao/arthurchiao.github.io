@@ -5,7 +5,7 @@ date:   2019-03-06
 categories: spine-leaf network architecture
 ---
 
-### 译者序
+## 译者序
 
 本文内容翻译自 Cisco 的白皮书 [***Cisco Data Center Spine-and-Leaf Architecture:
 Design
@@ -27,7 +27,12 @@ Overview***](https://www.cisco.com/c/en/us/products/collateral/switches/nexus-70
 
 ----
 
-## 1 数据中心演进
+* TOC
+{:toc}
+
+----
+
+# 1 数据中心演进
 
 数据中心是现代软件技术的基石，在扩展企业能力的过程中扮演着关键角色。传统的数据中
 心使用三层架构（three-tier architecture），根据物理位置将服务器划分为不同 pod，
@@ -75,7 +80,7 @@ east-west-traffic）越来越大**。这些流量需要被高效地处理，并�
 构**（Clos network-based Spine-and-Leaf architecture）。事实已经证明，这种架构可
 以提供高带宽、低延迟、非阻塞的服务器到服务器连接。
 
-## 2 Spine-Leaf 架构
+# 2 Spine-Leaf 架构
 
 图 4 是一个典型的两级 Spine-and-Leaf 拓扑。
 
@@ -98,7 +103,7 @@ fabric 中的每个 leaf 都会连接到每个 spine，如果一个 spine 挂了
 的设备（除非这两个服务器在同一 leaf 下面），这保证了延迟是可预测的**，因为一个包
 只需要经过一个 spine 和另一个 leaf 就可以到达目的端。
 
-## 3 Overlay 网络
+# 3 Overlay 网络
 
 现代虚拟化数据中心的网络要加速应用部署和支持 DevOps，必须满足特定的前提
 条件。例如，需要支持扩展转发表、扩展网段、L2 segment
@@ -157,7 +162,7 @@ Spine-and-Leaf 架构设计，这些设计都是为了解决现代虚拟化数�
 1. underlay 和 overlay 控制平面
 1. 多租户支持
 
-## 4 Cicso FabricPath Spine-and-Leaf 网络
+# 4 Cicso FabricPath Spine-and-Leaf 网络
 
 Cisco 在 2010 年推出了 FabricPath 技术。FabricPath 提供的新特性和设计选项使得网
 络管理员可以创建**以太网 fabrics**，后者可以提高带宽可用性、提供设计灵活性，以及
@@ -175,46 +180,46 @@ FabricPath 交换机作为目的端，**最短路径优先**（shortest path fir
 1. 快速收敛
 1. 像典型的 L3 路由环境一样**使用多个并行路径（multiple parallel paths）的能力**
 
-### 4.1 封装格式和标准兼容
+## 4.1 封装格式和标准兼容
 
 FabricPath spine-and-leaf 网络是 Cisco 的专利，但基于 TRILL 标准。它使用
 FabricPath **MAC-in-MAC** 帧封装。
 
-#### 4.1.1 Underlay 网络
+### 4.1.1 Underlay 网络
 
 数据平面使用 L2 FabricPath MAC-in-MAC 封装，控制面在 underlay 网络中使用
 FabricPath IS-IS。每个 FabricPath 交换机都有一个 FabricPath switch ID。**Fabric
 IS-IS 控制平面构建可达性信息**（reachability information），即 FabricPath 交换机
 如何连接到其它 FabricPath 交换机。
 
-#### 4.1.2 Overlay 网络
+### 4.1.2 Overlay 网络
 
 **FabricPath 没有 overlay 控制平面。overlay 网络中的 end-host 信息是通过带会话学
 习功能的“泛洪-学习”机制学习的**（flood-and-learn mechanism with conversational
 learning）。
 
-### 4.2 广播和未知单播流量
+## 4.2 广播和未知单播流量
 
-### 4.3 主机检测和可达性
+## 4.3 主机检测和可达性
 
-### 4.4 组播流量
+## 4.4 组播流量
 
-### 4.5 L3 路由功能
+## 4.5 L3 路由功能
 
-#### 4.5.1 在 Spine 层做内部和外部路由
-
-
-#### 4.5.2 在 Border Leaf 做内部和外部路由
+### 4.5.1 在 Spine 层做内部和外部路由
 
 
-### 4.6 多租户
+### 4.5.2 在 Border Leaf 做内部和外部路由
 
-### 4.7 总结
+
+## 4.6 多租户
+
+## 4.7 总结
 
 <p align="center"><img src="/assets/img/spine-leaf-design/table-1-fabricpath.PNG" width="95%" height="95%"></p>
 <p align="center">表 1 Cisco FabricPath 网络特性</p>
 
-## 5 Cicso VXLAN Flood-and-Learn Spine-Leaf 网络
+# 5 Cicso VXLAN Flood-and-Learn Spine-Leaf 网络
 
 VXLAN 是网络虚拟化 overlay 技术之一，有一些自己的优势。它是一个工业标准（
 industry-standard）协议，使用 underlay IP 网络。它将 L2 网络进行扩展，在 L3
@@ -226,14 +231,14 @@ Cisco 从 2014 年开始，陆续在多个 Nexus 系列（例如 Nexus 5600、70
 换机上支持 VXLAN flood-and-learn spine-and-leaf 技术。本节介绍这些硬件交换机
 的 Cisco VXLAN flood-and-learn 特性。
 
-### 5.1 封装格式和标准兼容
+## 5.1 封装格式和标准兼容
 
 Cisco VXLAN flood-and-learn 技术兼容 IETF VXLAN 标准（RFC 7348），后者定义了**无控
 制平面的基于组播的泛洪-学习 VXLAN**（multicast-based flood-and-learn VXLAN without
 a control plane）。原始的 L2 帧封装一个 VXLAN 头，然后放到 UDP IP 包通过 IP 网络
 进行传输。
 
-#### 5.1.1 Underlay 网络
+### 5.1.1 Underlay 网络
 
 使用 L3 IP 网络作为 underlay 网络。
 
@@ -248,7 +253,7 @@ a control plane）。原始的 L2 帧封装一个 VXLAN 头，然后放到 UDP I
 
 Cisco 9000 特色介绍：略（TODO）。
 
-#### 5.1.2 Overlay 网络
+### 5.1.2 Overlay 网络
 
 这种设计**没有 overlay 网络的控制平面**。
 
@@ -258,18 +263,18 @@ Cisco 9000 特色介绍：略（TODO）。
 <p align="center"><img src="/assets/img/spine-leaf-design/11-vxlan-overlay.PNG" width="60%" height="60%"></p>
 <p align="center">图 11 VXLAN overlay 网络</p>
 
-### 5.2 广播和未知单播流量
+## 5.2 广播和未知单播流量
 
 使用 underlay IP PIM 或 ingress replication 发送广播和未知的单播（unknown
 unicast）流量。注意 ingress replication 只有 Cisco Nexus 9000 系列交换机才支持。
 
-### 5.3 主机检测和可达性
+## 5.3 主机检测和可达性
 
 依赖初始的数据平面泛洪，每个 VXLAN segment 的 VTEP 能发现其他主机，学习远端主机
 的 MAC 和 MAC-to-VTEP 映射。MAC-to-VTEP 映射完成后，VTEP 接下来就通过单播转发
 VXLAN 流量。
 
-### 5.4 组播流量
+## 5.4 组播流量
 
 通过 underlay IP PIM 或 ingress replication 可以支持 overlay 租户的 **L2 组播**。
 
@@ -277,7 +282,7 @@ VXLAN 流量。
 
 略。
 
-### 5.5 L3 路由功能
+## 5.5 L3 路由功能
 
 在一个传统的 VLAN 环境中，很多情况下需要 VXLAN segment 和 VLAN segment 之间的路由。
 典型的 VXLAN flood-and-learn spine-and-leaf 网络设计中，leaf ToR (top-of-rack)
@@ -288,7 +293,7 @@ VXLAN 和 VLAN 之间的 二层流量转发时，VTEP 作为 L2 VXLAN 网关；�
 spine 层，或内部和外部路由在 leaf 层。这两种设计都是集中式路由（centralized
 routing），即：三层的内部和外部路由功能都集中在特定的交换机上做。
 
-#### 5.5.1 在 Spine 层做内部和外部路由
+### 5.5.1 在 Spine 层做内部和外部路由
 
 <p align="center"><img src="/assets/img/spine-leaf-design/12-routing-on-spine.PNG" width="60%" height="60%"></p>
 <p align="center">图 12 在 spine 上做内部和外部路由</p>
@@ -305,7 +310,7 @@ routing），即：三层的内部和外部路由功能都集中在特定的交�
 active-active 网关的最大数量是两个。另外，**spine L3 VXLAN 网关会学习主机 MAC
 地址**，所以需要考虑 MAC 地址的规模，以免超出硬件的限制。
 
-#### 5.5.2 在 Border Leaf 做内部和外部路由
+### 5.5.2 在 Border Leaf 做内部和外部路由
 
 <p align="center"><img src="/assets/img/spine-leaf-design/13-routing-on-border-leaf.PNG" width="60%" height="60%"></p>
 <p align="center">图 13 在 Border Leaf 上做内部和外部路由</p>
@@ -323,14 +328,14 @@ leaf）到达 border leaf，然后才能被路由到外部网络。
 个。另外，**border leaf L3 VXLAN 网关会学习主机 MAC 地址**，所以需要考虑 MAC 地
 址的规模，以免超出硬件的限制。
 
-### 5.6 多租户
+## 5.6 多租户
 
-### 5.7 总结
+## 5.7 总结
 
 <p align="center"><img src="/assets/img/spine-leaf-design/table-2-vxlan.PNG" width="95%" height="95%"></p>
 <p align="center">表 2 Cisco VXLAN flood-and-learn 网络特性</p>
 
-## 6 Cicso VXLAN MP-BGP EVPN Spine-Leaf 网络
+# 6 Cicso VXLAN MP-BGP EVPN Spine-Leaf 网络
 
 RFC 7348 定义的 VXLAN flood-and-learn 模型中，**end-host（终端主机）学习**和
 **VTEP 发现**都是基于数据平面，并没有控制平面来在 VTEP 之间分发 end-host 可达性
@@ -341,21 +346,21 @@ RFC 7348 定义的 VXLAN flood-and-learn 模型中，**end-host（终端主机�
 一的控制平面。本节介绍这种方案中 Cisco 硬件交换机（例如 Cisco Nexus 5600
 、7000、9000 系列）上的应用。
 
-### 6.1 封装格式和标准兼容
+## 6.1 封装格式和标准兼容
 
 使用 VXLAN 封装，原始 L2 帧加一层 VXLAN 头然后封装到 UDP-IP 包进行传输。
 
 与 IETF RFC 7348 和 draft-ietf-bess-evpn-overlay 标准是兼容的。
 
-#### 6.1.1 Underlay 网络
+### 6.1.1 Underlay 网络
 
 使用 L3 IP 网络作为 underlay 网络。
 
-#### 6.1.2 Overlay 网络
+### 6.1.2 Overlay 网络
 
 使用 MP-BGP EVPN 作为 VXLAN overlay 网络的控制平面协议。
 
-### 6.2 广播和未知单播流量
+## 6.2 广播和未知单播流量
 
 使用 underlay IP PIM 或 ingress replication 特性发送**广播**和**未知单播**流量。
 
@@ -368,7 +373,7 @@ distribution tree）。
 的 IP 地址发送广播和未知单播流量。这些 IP 地址是通过 BGP EVPN 控制平面在 VTEP 之
 间交换的，或者通过静态配置。
 
-### 6.3 主机检测和可达性
+## 6.3 主机检测和可达性
 
 MP-BGP EVPN 控制平面提供内置的路由和转发（功能），它会对 VXLAN overlay 网络内的
 end-host 的 L2/L3 可达性信息进行分发（distribution）。
@@ -378,21 +383,21 @@ end-host 的 L2/L3 可达性信息进行分发（distribution）。
 控制平面同步过来的。这种方式避免了通过网络泛洪学习远端主机信息的问题，为
 end-host 可达性信息的分发提供了更好的控制。
 
-### 6.4 组播流量
+## 6.4 组播流量
 
 使用 underlay IP 组播或 ingress replication 特性，可以支持 overlay 租户的 L2 组
 播。
 
 通过外部路由器上 L3 PIM-based multicast 路由，可以支持 overlay 租户的 L3 组播。
 
-### 6.5 L3 路由功能
+## 6.5 L3 路由功能
 
 L3 路由需要解决两个问题：
 
 1. **VXLAN 网络内部**的路由：使用**分布式任播网关**（distributed anycast gateways）解决
 1. **VXLAN 网络和外部网络**（包括园区网、WAN 和互联网）的路由：在几个特定交换机上实现
 
-#### 6.5.1 分布式任播网关：解决 VXLAN 网络内部路由
+### 6.5.1 分布式任播网关：解决 VXLAN 网络内部路由
 
 在 MP-BGP EVPN 网络中，一个 VNI 内的任意一个 VTEP 都可以作为它所在子网的分布式
 任播网关，对它们配置相同的虚拟网关 IP 和虚拟网关 MAC 即可，如图 16 所示。
@@ -406,7 +411,7 @@ EVPN 的这种任播网关功能，使得 VNI 内的主机可以将本地 VTEP �
 <p align="center"><img src="/assets/img/spine-leaf-design/16-distributed-anycast-gw.PNG" width="70%" height="70%"></p>
 <p align="center">图 16 内部路由的分布式任播网关</p>
 
-#### 6.5.2 在 Border Leaf 做外部路由
+### 6.5.2 在 Border Leaf 做外部路由
 
 <p align="center"><img src="/assets/img/spine-leaf-design/17-external-routing-at-border-leaf.PNG" width="70%" height="70%"></p>
 <p align="center">图 17 Border Leaf 做外部路由的设计</p>
@@ -424,7 +429,7 @@ spine 到 border leaf）到达外部网络。然而，这种情况下 spine 只�
 制平面和 IP 路由，无需支持 VXLAN VTEP 功能（即，无需支持 VXLAN 的封装和解封装，
 译者注）。
 
-#### 6.5.3 在 Border Spine 做外部路由
+### 6.5.3 在 Border Spine 做外部路由
 
 <p align="center"><img src="/assets/img/spine-leaf-design/18-external-routing-with-border-spine.PNG" width="70%" height="70%"></p>
 <p align="center">图 18 Border Spine 做外部路由的设计</p>
@@ -442,7 +447,7 @@ VXLAN 网络的流量。
 spine）就可以到达外部网络。然而，这种情况下 spine 需要运行 BGP-EVPN
 控制平面和 IP 路由，以及支持 VXLAN VTEP 功能。
 
-### 6.6 多租户
+## 6.6 多租户
 
 作为 MP-BGP 的扩展，MP-BGP EVPN 继承了 VPN 通过 VRF 实现的对多租户的支持。
 
@@ -458,7 +463,7 @@ VNI 边界。类似地，**VXLAN 租户的三层 segment 是通过 VRF 技术隔
 租户的 VNI 的不同子网，都属于同一个 L3 VRF 实例，这个 VRF 将租户的三层路由与其他
 租户的路由隔离开来。
 
-### 6.7 总结
+## 6.7 总结
 
 控制平面学习到 end-host 的 L2 和 L3 可达性信息（MAC 和 IP），然后通过 EVPN 地址
 族分发这些信息，因此提供了 VXLAN overlay 网络的桥接和路由功能。这种方案减少了网
@@ -468,11 +473,11 @@ VNI 边界。类似地，**VXLAN 租户的三层 segment 是通过 VRF 技术隔
 <p align="center"><img src="/assets/img/spine-leaf-design/table-3-mp-bgp-evpn.PNG" width="95%" height="95%"></p>
 <p align="center">表 3 Cisco VXLAN MP BGP EVPN 网络特性</p>
 
-## 7 Cicso MSDC Layer 3 Spine-Leaf 网络
+# 7 Cicso MSDC Layer 3 Spine-Leaf 网络
 
-## 8 数据中心 Fabric 管理和自动化
+# 8 数据中心 Fabric 管理和自动化
 
-## 9 总结
+# 9 总结
 
-## 10 更多信息
+# 10 更多信息
 

@@ -6,21 +6,19 @@ lastupdate:   2019-04-27
 categories: network datacenter cilium
 ---
 
-This post also
-provides an English version: [***Ctrip Network Architecture Evolution in the
-Cloud Computing Era***]({% link _posts/2019-04-17-ctrip-network-arch-evolution.md %}).
+This post also provides an [English version]({% link _posts/2019-04-17-ctrip-network-arch-evolution.md %}).
 
 ### 前言
 
-本文内容来自我在 [GOPS 2019 深圳站
-](https://www.bagevent.com/event/GOPS2019-shenzhen) 的同名分享。
-和演讲的版本相比，本文叙述方式稍有调整，以更适合阅读，另外对内容做了少量更新。
-
-以下是正文。
+本文来自我在 [GOPS 2019 深圳站](https://www.bagevent.com/event/GOPS2019-shenzhen) 
+的分享，但叙述方式稍有调整，以更适合阅读，另外对内容做了少量更新。
 
 ----
 
-### 正文
+* TOC
+{:toc}
+
+----
 
 本文介绍云计算时代以来携程在私有云和公有云上的几代网络解决方案。希望这些内容可以
 给业内同行，尤其是那些设计和维护同等规模网络的团队提供一些参考。
@@ -29,7 +27,7 @@ Cloud Computing Era***]({% link _posts/2019-04-17-ctrip-network-arch-evolution.m
 于 VLAN 的二层网络，到基于 SDN 的大二层网络，再到容器和混合云场景下的网络，最后是
 cloud native 时代的一些探索。
 
-## 0 携程云平台简介
+# 0 携程云平台简介
 
 携程 Cloud 团队成立于 2013 年左右，最初是基于 OpenStack 做私有云，后来又开发了自
 己的 baremetal（BM）系统，集成到 OpenStack，最近几年又陆续落地了 Mesos 和 K8S 平
@@ -44,7 +42,7 @@ cloud native 时代的一些探索。
 UCloud 等供应商，给应用部门提供虚拟机和容器。所有这些资源都通过 CDOS API 统一管
 理。
 
-### 网络演进时间线
+## 网络演进时间线
 
 <p align="center"><img src="/assets/img/ctrip-net-evolution/2.jpg" width="70%" height="70%"></p>
 <p align="center">Fig 2. Timeline of the Network Architecture Evolution</p>
@@ -63,12 +61,12 @@ UCloud 等供应商，给应用部门提供虚拟机和容器。所有这些资�
 
 最后是 2019 年，针对 Cloud Native 时代面临的一些新挑战，我们在调研一些新方案。
 
-## 1 基于 VLAN 的二层网络
+# 1 基于 VLAN 的二层网络
 
 2013 年我们开始基于 OpenStack 做私有云，给公司的业务部门提供虚拟机和应用物理机资
 源。
 
-### 1.1 需求
+## 1.1 需求
 
 网络方面的需求有：
 
@@ -82,7 +80,7 @@ UCloud 等供应商，给应用部门提供虚拟机和容器。所有这些资�
 第四，安全的优先级可以稍微放低一点。如果可以通过牺牲一点安全性带来比较大的性能提
 升，在当时也是可以接受的。而且在私有云上，还是有其他方式可以弥补安全性的不足。
 
-### 1.2 解决方案：OpenStack Provider Network 模型
+## 1.2 解决方案：OpenStack Provider Network 模型
 
 经过一些调研，我们最后选择了 OpenStack ***provider network*** 模型 [1]。
 
@@ -111,7 +109,7 @@ UCloud 等供应商，给应用部门提供虚拟机和容器。所有这些资�
 1. 没有 floating ip 的需求
 1. 出于性能考虑，我们去掉了 security group
 
-### 1.3 硬件网络拓扑
+## 1.3 硬件网络拓扑
 
 图 4 是我们的物理网络拓扑，最下面是服务器机柜，上面的网络是典型的**接入-汇聚-核
 心**三层架构。
@@ -126,7 +124,7 @@ UCloud 等供应商，给应用部门提供虚拟机和容器。所有这些资�
 1. 所有 OpenStack 网关配置在核心层路由器
 1. 防火墙和核心路由器直连，做一些安全策略
 
-### 1.4 宿主机内部网络拓扑
+## 1.4 宿主机内部网络拓扑
 
 再来看宿主机内部的网络拓扑。图 5 是一个计算节点内部的拓扑。
 
@@ -155,11 +153,11 @@ iptables 的。OVS port 不支持 `iptables` 规则，而 Linux bridge port 支�
 OpenStack 在每个实例和 OVS 之间都插入了一个 Linux Bridge。在这种情况下，`inst1
 -> inst2` 总共是 24 跳，比刚才多出 6 跳。
 
-### 1.5 小结
+## 1.5 小结
 
 最后总结一下我们第一代网络方案。
 
-#### 优点
+### 优点
 
 首先，我们去掉了一些不用的 OpenStack 组件，例如 L3 agent、HDCP agent, Neutron
 meta agent 等等，简化了系统架构。对于一个刚开始做 OpenStack、经验还不是很丰
@@ -172,7 +170,7 @@ meta agent 等等，简化了系统架构。对于一个刚开始做 OpenStack�
 
 第四，实例的 IP 可路由，给跟踪、监控等外围系统带来很大便利。
 
-#### 缺点
+### 缺点
 
 首先，去掉了 security group，没有了主机防火墙的功能，因此安全性变弱。我们通
 过硬件防火墙部分地补偿了这一问题。
@@ -183,12 +181,12 @@ meta agent 等等，简化了系统架构。对于一个刚开始做 OpenStack�
 。虽然说这种操作频率还是很低的，但操作核心路由器风险很大，核心发生故障会影响整张
 网络。
 
-## 2 基于 SDN 的大二层网络
+# 2 基于 SDN 的大二层网络
 
 以上就是我们在云计算时代的第一代网络方案，设计上比较简单直接，相应地，功能也比较
 少。随着网络规模的扩大和近几年我们内部微服务化的推进，这套方案遇到了一些问题。
 
-### 2.1 面临的新问题
+## 2.1 面临的新问题
 
 首先来自硬件。做**数据中心网络**的同学比较清楚，三层网络架构的可扩展性比较差，
 而且我们所有的 OpenStack 网关都配置在核心上，使得核心成为潜在的性能瓶颈，而核心
@@ -205,12 +203,12 @@ meta agent 等等，简化了系统架构。对于一个刚开始做 OpenStack�
 
 另外，我们想让网络配置和网络资源交付更加自动化，减少运维成本与运维风险。
 
-### 2.2 解决方案: OpenStack + SDN
+## 2.2 解决方案: OpenStack + SDN
 
 针对以上问题和需求，数据中心网络团队和我们 cloud 网络团队一起设计了第二代网络方
 案：一套**基于软件+硬件、OpenStack+SDN** 的方案，从二层网络演进到大二层网络。
 
-#### 硬件拓扑
+### 硬件拓扑
 
 在硬件拓扑上，从传统三层网络模型换成了近几年比较流行的 Spine-Leaf 架构，如图 7
 所示。
@@ -232,7 +230,7 @@ Spine-Leaf 是 full-mesh 连接，它可以带来如下几个好处：
 
 宿主机方面，我们升级到了 10G 和 25G 的网卡。
 
-#### SDN: 控制平面和数据平面
+### SDN: 控制平面和数据平面
 
 数据平面基于 VxLAN，控制平面基于 MP-BGP EVPN 协议，在设备之间同步控制平面信息。
 网关是分布式的，每个 leaf 节点都是网关。VxLAN 和 MP-BGP EVPN 都是 RFC 标准协议，
@@ -242,7 +240,7 @@ VxLAN 的封装和解封装都在 leaf 完成，leaf 以下是 VLAN 网络，以
 
 另外，这套方案在物理上支持真正的租户隔离。
 
-#### SDN: 组件和实现
+### SDN: 组件和实现
 
 开发集中在以下几个方面。
 
@@ -264,7 +262,7 @@ Neutron 的主要改造：
 <p align="center"><img src="/assets/img/ctrip-net-evolution/8.png" width="40%" height="40%"></p>
 <p align="center">Fig 8. Monitoring Panel for Neutron Port States</p>
 
-### 2.3 软件+硬件网络拓扑
+## 2.3 软件+硬件网络拓扑
 
 <p align="center"><img src="/assets/img/ctrip-net-evolution/9.png" width="90%" height="90%"></p>
 <p align="center">Fig 9. HW + SW Topology of the Designed SDN Solution</p>
@@ -275,7 +273,7 @@ Neutron 的主要改造：
 2. underlay 由 neutron、OVS 和 neutron OVS agent 控制；overlay 是 CNC 控制
 3. Neutron 和 CNC 之间通过 plugin 集成
 
-### 2.4 创建实例涉及的网络配置流程
+## 2.4 创建实例涉及的网络配置流程
 
 这里简单来看一下创建一个实例后，它的网络是怎么通的。图 10 中黑色的线是 OpenStack
 原有的逻辑，蓝色的是我们新加的。
@@ -306,27 +304,27 @@ Neutron 的主要改造：
 在我们的系统里看，这时 port 就是一个 `ACTIVE_ACTIVE` 的状态，表示 underlay 和
 overlay 配置都是正常的，网络应该是通的。
 
-### 2.5 小结
+## 2.5 小结
 
 总结一下我们这套方案。
 
-#### 硬件
+### 硬件
 
 首先，我们从三层网络架构演进到 Spine-Leaf 两级架构。Spine-Leaf 的 full-mesh 使得
 服务器之间延迟更低、容错性更好、更易水平扩展。另外，Spine-Leaf 还支持分布式网
 关，缓解了集中式网关的性能瓶颈和单点问题。
 
-#### 软件
+### 软件
 
 自研 SDN 控制器并与 OpenStack 集成，实现了网络的动态配置。
 
 这套方案同时支持虚拟机和应用物理机部署系统，限于篇幅这里只介绍了虚拟机。
 
-#### 多租户
+### 多租户
 
 有硬多租户（hard-multitenancy）支持能力。
 
-## 3 容器和混合云网络
+# 3 容器和混合云网络
 
 以上方案最开始还是针对虚拟机和应用物理机设计的。到了 2017 年，我们开始在私有云和
 公有云上落地容器平台，将一部分应用从虚拟机或应用物理机迁移到容器。
@@ -340,11 +338,11 @@ overlay 配置都是正常的，网络应该是通的。
    时候已经把失败当做预期情况处理，例如将挂掉的容器在本机或其他宿主机再拉起来，
    后者就是一次漂移
 
-### 3.1 私有云的 K8S 网络方案
+## 3.1 私有云的 K8S 网络方案
 
 容器平台的这些特点对网络提出了新的需求。
 
-#### 3.1.1 网络需求
+### 3.1.1 网络需求
 
 首先，网络服务的 API 必须要快，而且支持较大的并发。
 
@@ -358,7 +356,7 @@ overlay 配置都是正常的，网络应该是通的。
 网络方案都是无法支持这个功能的，因为在容器平台的设计哲学里，IP 地址已经是一个被
 弱化的概念，用户更**应该关心的是实例暴露的服务，而不是 IP**。
 
-#### 3.1.2 解决方案：扩展现有 SDN 方案，接入 Mesos/K8S
+### 3.1.2 解决方案：扩展现有 SDN 方案，接入 Mesos/K8S
 
 在私有云中，我们最终决定对现有的为虚拟机和应用物理机设计的 SDN 方案进行扩展，将
 容器网络也统一由 Neutron/CNC 管理。具体来说，会复用已有的网络基础设施，包括
@@ -367,7 +365,7 @@ Neutron、CNC、OVS、Neutron-OVS-Agent 等待，然后开发一个针对 Neutro
 
 一些核心改动或优化如下。
 
-##### Neutron 改动
+#### Neutron 改动
 
 首先是增加了一些新的 API。比如，原来的 neutron 是按 network id 分配 IP，我们给
 network 添加了 label 属性，相同 label 的 network 我们认为是无差别的。这样，CNI 申
@@ -382,7 +380,7 @@ prod-env” label 的 network 中任选一个还没用完的，从中分一个 I
 级了，都是按需 backport。例如，其中一个对运维和 trouble shooting 非常友好的功能
 是 Graceful OVS agent restart。
 
-##### K8S CNI for Neutron 插件
+#### K8S CNI for Neutron 插件
 
 开发了一个 CNI plugin 对接 neutron。CNI 插件的功能比较常规：
 
@@ -394,7 +392,7 @@ prod-env” label 的 network 中任选一个还没用完的，从中分一个 I
 1. 向 neutron（global IPAM）申请分配和释放 IP，而不是宿主机的本地服务分配（local IPAM）
 2. 将 port 信息更新到 neutron server
 
-##### 基础网络服务升级
+#### 基础网络服务升级
 
 另外进行了一些基础架构的升级，比如 OVS 在过去几年的使用过程中发现老版本的几个
 bug，后来发现这几个问题在社区也是有记录的：
@@ -405,7 +403,7 @@ bug，后来发现这几个问题在社区也是有记录的：
 注意到最新的 LTS 版本已经解决了这些问题，因此我们将 OVS 升级到了最新的 LTS。
 大家如果有遇到类似问题，可以参考 [3, 4]。
 
-#### 3.1.3 容器漂移
+### 3.1.3 容器漂移
 
 创建一个容器后，容器网络配置的流程和图 10 类似，Nova 和 K8S 只需做如下的组件对应：
 
@@ -426,7 +424,7 @@ name，然后拿 name 去 neutron 里获取 port 详细信息。port name 是唯
 <p align="center"><img src="/assets/img/ctrip-net-evolution/11.png" width="80%" height="80%"></p>
 <p align="center">Fig 11. Pod drifting with the same IP within a K8S cluster </p>
 
-#### 3.1.4 小结
+### 3.1.4 小结
 
 简单总结一下：
 
@@ -440,7 +438,7 @@ name，然后拿 name 去 neutron 里获取 port 详细信息。port name 是唯
 3. 单个 K8S 节点最多会有 500+ pod（测试环境的超分比较高）
 4. 最大的可用区有 2+ 万个实例，其中主要是容器实例
 
-#### 3.1.5 进一步演进方向
+### 3.1.5 进一步演进方向
 
 以上就是到目前为止我们私有云上的网络方案演讲，下面这张图是我们希望将来能达到的一
 个架构。
@@ -456,11 +454,11 @@ name，然后拿 name 去 neutron 里获取 port 详细信息。port name 是唯
 服务接口，例如 Ingress，现在我们还没有做到这一步，因为涉及到很多老环境的软件和硬
 件改造。
 
-### 3.2 公有云上的 K8S
+## 3.2 公有云上的 K8S
 
 接下来看一下我们在公有云上的网络。
 
-#### 3.2.1 需求
+### 3.2.1 需求
 
 随着携程国际化战略的开展，我们需要具备在海外部署应用的能力。自建数据中心肯定是来
 不及的，因此我们选择在公有云上购买虚拟机或 baremetal 机器，并搭建和维护自己的
@@ -471,7 +469,7 @@ K8S 集群（非厂商托管方案，例如 AWS EKS [10]）。
 网络方面主要涉及两方面工作：一是 K8S 的网络方案，这个可能会因厂商而已，因为不同
 厂商提供的网络模型和功能可能不同；二是打通私有云和公有云。
 
-#### 3.2.2 AWS 上的 K8S 网络方案
+### 3.2.2 AWS 上的 K8S 网络方案
 
 以 AWS 为例来看下我们在公有云上的 K8S 网络方案。
 
@@ -487,7 +485,7 @@ neutron 类似。它会调用 AWS API 实现网络资源的申请、释放和管
 另外，我们的 CNI 还支持 attach/detach floating IP 到容器。还有就是和私有云一样，
 容器漂移的时候 IP 保持不变。
 
-#### 3.2.3 全球 VPC 拓扑
+### 3.2.3 全球 VPC 拓扑
 
 图 14 是我们现在在全球的 VPC 分布示意图。
 
@@ -500,7 +498,7 @@ neutron 类似。它会调用 AWS API 实现网络资源的申请、释放和管
 这些 VPC 使用的网段是经过规划的，目前不会跟内网网段重合。因此通过专线打通后，IP
 可以做到可路由。
 
-## 4 Cloud Native 方案探索
+# 4 Cloud Native 方案探索
 
 以上就是我们在私有云和混合云场景下的网络方案演进。目前的方案可以支持
 业务未来一段的发展，但也有一些新的挑战。
@@ -523,7 +521,7 @@ neutron 类似。它会调用 AWS API 实现网络资源的申请、释放和管
 针对以上问题和需求，我们进行了一些新方案的调研，包括 Calico，Cilium 等等。Calico
 大家应该已经比较熟悉了，这里介绍下 Cilium。
 
-### 4.1 Cilium Overview
+## 4.1 Cilium Overview
 
 Cilium [7]是近两年新出现的网络方案，它使用了很多内核新技术，因此对内核版本要求比
 较高，需要 4.8 以上支持。
@@ -542,7 +540,7 @@ Cilium 组件：
 <p align="center"><img src="/assets/img/ctrip-net-evolution/15.png" width="60%" height="60%"></p>
 <p align="center">Fig 15. Cilium</p>
 
-### 4.2 宿主机内部网络通信（Host Networking）
+## 4.2 宿主机内部网络通信（Host Networking）
 
 每个网络方案都需要解决两个主要问题：
 
@@ -569,7 +567,7 @@ Linux bridge 这样的二层转发设备，也没有 iptables 规则或者 ARP �
 类似地，容器和宿主机的通信走宿主机内部的三层路由和 BPF 转发，其中 BPF 程序连接容
 器的 veth pair 和它的网关设备，因为容器和宿主机是两个网段。
 
-### 4.3 跨宿主机网络通信（Multi-Host Networking）
+## 4.3 跨宿主机网络通信（Multi-Host Networking）
 
 跨宿主机的通信和主流的方案一样，支持两种常见方式：
 
@@ -585,11 +583,11 @@ node 上起一个 BGP agent 来和外部网络交换路由，涉及 BGP agent �
 统）的设计等额外工作。如果是内网，一般就是 BGP agent 与硬件网络做 peering；如果
 是在 AWS 之类的公有云上，还可以调用厂商提供的 BGP API。
 
-### 4.4 优劣势比较（Pros & Cons）
+## 4.4 优劣势比较（Pros & Cons）
 
 最后总结一下 Cilium 方案的优劣势。
 
-#### Pros
+### Pros
 
 首先，原生支持 K8S L4-L7 安全策略，例如在 yaml 指定期望的安全效果，Cilium 会自动
 将其转化为 BPF 规则。
@@ -609,7 +607,7 @@ IPv4 的支持，因为他们一开始就是作为下一代技术为超大规模
 最后，非常活跃的社区。Cilium 背后是一家公司在支持，一部分核心开发者来自内核社区
 ，而且同时也是 eBPF 的开发者。
 
-#### Cons
+### Cons
 
 首先是内核版本要求比较高，至少 4.8+，最好 4.14+，相信很多公司的内核版本是没有
 这么高的。
@@ -625,7 +623,7 @@ IPv4 的支持，因为他们一开始就是作为下一代技术为超大规模
 总体来说，Cilium/eBPF 是近几年出现的最令人激动的项目之一，而且还在快速发展之中。
 我推荐大家有机会都上手玩一玩，发现其中的乐趣。
 
-## References
+# References
 
 1. [OpenStack Doc: Networking Concepts](https://docs.openstack.org/neutron/rocky/admin/intro-os-networking.html)
 2. [Cisco Data Center Spine-and-Leaf Architecture: Design Overview](https://www.cisco.com/c/en/us/products/collateral/switches/nexus-7000-series-switches/white-paper-c11-737022.pdf)

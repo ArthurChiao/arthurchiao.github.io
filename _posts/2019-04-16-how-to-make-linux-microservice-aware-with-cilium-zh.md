@@ -6,7 +6,7 @@ lastupdate: 2019-09-24
 categories: cilium bpf microservice
 ---
 
-### 译者序
+## 译者序
 
 本文内容来自 2019 年的一个技术分享 [How to Make Linux Microservice-Aware with
 Cilium and eBPF](https://www.infoq.com/presentations/linux-cilium-ebpf)
@@ -17,6 +17,11 @@ Cilium and eBPF](https://www.infoq.com/presentations/linux-cilium-ebpf)
 些错误，会影响对内容的理解，所以有需要还是建议观看原视频。
 
 以下是译文。
+
+----
+
+* TOC
+{:toc}
 
 ----
 
@@ -45,7 +50,7 @@ Cilium and eBPF](https://www.infoq.com/presentations/linux-cilium-ebpf)
 * 微服务时代 Linux 内核存在的问题
 * BPF 和 Cilium
 
-## 应用运行方式的演进
+# 应用运行方式的演进
 
 <p align="center"><img src="/assets/img/how-to-make-linux-microservice-aware-with-cilium/4.PNG" width="70%" height="70%"></p>
 
@@ -73,13 +78,13 @@ Cilium and eBPF](https://www.infoq.com/presentations/linux-cilium-ebpf)
 巨大的转变。这和单任务到多任务的转变还不一样。突然间，我们开始有一些只会持续几
 十秒的应用，这导致完全不同的需求。另外，还有多租户系统，以及其他非常不同的场景。
 
-## 微服务时代 Linux 内核的问题
+# 微服务时代 Linux 内核的问题
 
 <p align="center"><img src="/assets/img/how-to-make-linux-microservice-aware-with-cilium/5.PNG" width="70%" height="70%"></p>
 
 在这种情况下，Linux 内核有哪些问题？显然，它不是为这个时代设计的。
 
-### 问题一：抽象
+## 问题一：抽象
 
 <p align="center"><img src="/assets/img/how-to-make-linux-microservice-aware-with-cilium/6.PNG" width="70%" height="70%"></p>
 
@@ -104,7 +109,7 @@ shaping）、以太网层、IP 层等等才能到达应用。上下都需要经�
 1. **很难绕过（bypass）这些层**：虽然有一些场景可以做到 bypass，但大部分都是
    bypass 不掉的
 
-### 问题二：每个子系统都有自己的 API
+## 问题二：每个子系统都有自己的 API
 
 <p align="center"><img src="/assets/img/how-to-make-linux-microservice-aware-with-cilium/7.PNG" width="70%" height="70%"></p>
 
@@ -123,7 +128,7 @@ shaping）、以太网层、IP 层等等才能到达应用。上下都需要经�
 所以我们看到，每个子系统都有自己的 API，这意味着如果要自动化这些东西，必须单独的
 使用这些工具。有一些工具这样做了，但这种方式意味着我们需要了解其中的每一层。
 
-### 问题三：开发过程
+## 问题三：开发过程
 
 <p align="center"><img src="/assets/img/how-to-make-linux-microservice-aware-with-cilium/8.PNG" width="70%" height="70%"></p>
 
@@ -155,7 +160,7 @@ backport。如果你运行的是 Android，那你运行的是 Linux，具体的�
 和上游的 Linux 还是不太一样的，而只是上游的一个 fork。因此，大家都在运行自己的
 Linux。
 
-### 问题四：Linux 感知不到容器
+## 问题四：Linux 感知不到容器
 
 <p align="center"><img src="/assets/img/how-to-make-linux-microservice-aware-with-cilium/9.PNG" width="70%" height="70%"></p>
 
@@ -207,7 +212,7 @@ REST、GRPC 等方式了。内核无法感知到后者**。内核知道的仅仅
 程到进程、服务到服务通信。而 service mesh —— 我不知道在坐有多少人正在关注
 service mesh—— 内核无法感知到 service mesh。很多东西都是内核不知道的。
 
-### 解决办法
+## 解决办法
 
 <p align="center"><img src="/assets/img/how-to-make-linux-microservice-aware-with-cilium/10.PNG" width="70%" height="70%"></p>
 
@@ -233,7 +238,7 @@ Rumprun 等等。每个应用自带自己的操作系统，而不是共享同一
 多少预算，这是给出的数字：`$1,372,340,206`。我不清楚计算所用的工资水平跟现在比是
 否已经过时，但我们已经看出来：重写 Linux 内核基本上是不可行的。
 
-## BPF 是什么？
+# BPF 是什么？
 
 <p align="center"><img src="/assets/img/how-to-make-linux-microservice-aware-with-cilium/11.PNG" width="70%" height="70%"></p>
 
@@ -318,7 +323,7 @@ BPF 是目前内核最活跃的子系统之一。
 谁在使用 BPF？用来做什么？这个领域正在发生革命性的变化，但目前大家看到的还比较少
 。
 
-### Use case 1：Facebook
+## Use case 1：Facebook
 
 Facebook 用 BPF 重写了他们的大部分基础设施。
 
@@ -328,18 +333,18 @@ network filter。这个分享肯定会在线直播的。如果你对此感兴趣
 BPF。他们已经将 BPF 用在流量优化（traffic optimization），在分享中，它们也将会介
 绍他们在网络安全方面的工作。
 
-### Use case 2：Google
+## Use case 2：Google
 
 Google 已经开始用 BPF 做 **profiling**，找出在分布式系统中应用消耗多少 CPU。而且，他
 们也开始将 BPF 的使用范围扩展到**流量优化和网络安全**。
 
-### Use case 3：Redhat
+## Use case 3：Redhat
 
 Redhat 正在开发一个叫 `bpffilter` 的上游项目，将来会替换掉内核里的 iptables，也
 就是说，内核里基于 iptables 做包过滤的功能，以后都会用 BPF 替换。另外还有一些论文
 和项目，关于 XDP 和 BPF+NFV 的场景。
 
-### Use case 4：Netflix
+## Use case 4：Netflix
 
 如果你听说过 DPF，那你估计是看过 Brendan Gregg 的分享。他介绍了如何在大规模生产
 环境中使用 BPF 定位 CPU 消耗问题，这个问题用传统方式是很难做的，需要特别轻量级的
@@ -348,7 +353,7 @@ Redhat 正在开发一个叫 `bpffilter` 的上游项目，将来会替换掉内
 
 另外还有大量的与 BPF 相关的项目。
 
-### BPF 程序长什么样？
+## BPF 程序长什么样？
 
 <p align="center"><img src="/assets/img/how-to-make-linux-microservice-aware-with-cilium/20.PNG" width="70%" height="70%"></p>
 
@@ -359,7 +364,7 @@ BPF 程序使用高级语言编写，例如 C 语言。以上这个例子中，�
 可以监控你的系统。非常非常简单的例子，但这就是基于 BPF 的 profiling 和
 monitoring 系统的工作原理。
 
-## Cilium 是什么？
+# Cilium 是什么？
 
 <p align="center"><img src="/assets/img/how-to-make-linux-microservice-aware-with-cilium/21.PNG" width="70%" height="70%"></p>
 
@@ -370,7 +375,7 @@ Cilium 是一个开源项目，目标是为微服务环境提供网络、负载�
 是容器平台。这个项目本身并不需要容器环境，但目前我们提供的是容器化的安装方式。
 Cilium 基于 BPF。
 
-### 目标
+## 目标
 
 <p align="center"><img src="/assets/img/how-to-make-linux-microservice-aware-with-cilium/22.PNG" width="70%" height="70%"></p>
 
@@ -395,7 +400,7 @@ exec` 可以到一个容器里去执行命令，但是，谁来保证这个通�
 
 最后一点就是 BPF 的性能。
 
-### Cilium Use Cases
+## Cilium Use Cases
 
 <p align="center"><img src="/assets/img/how-to-make-linux-microservice-aware-with-cilium/23.PNG" width="70%" height="70%"></p>
 

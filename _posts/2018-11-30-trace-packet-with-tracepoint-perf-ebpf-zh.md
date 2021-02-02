@@ -2,9 +2,9 @@
 layout    : post
 title     : "[译] 使用 Linux tracepoint、perf 和 eBPF 跟踪数据包 (2017)"
 date      : 2018-11-30
-lastupdate: 2019-07-27
+lastupdate: 2021-01-24
 author    : ArthurChiao
-categories: bpf perf tracepoint
+categories: bpf tracing perf
 ---
 
 ### 译者序
@@ -12,10 +12,7 @@ categories: bpf perf tracepoint
 本文翻译自 2017 年的一篇英文博客 [Tracing a packet's journey using Linux
 tracepoints, perf and
 eBPF](https://blog.yadutaf.fr/2017/07/28/tracing-a-packet-journey-using-linux-tracepoints-perf-ebpf/)
-。为方便阅读，对其添加了适当的章节号。
-
-为避免过于生硬，本文不会逐词逐句翻译，技术领域的过度翻译会带来交流障碍。**如果能
-看懂英文，我建议你阅读原文，或者和本文对照看。**
+，并添加了章节号以方便阅读。
 
 **由于译者水平有限，本文不免存在遗漏或错误之处。如有疑问，请查阅原文。**
 
@@ -23,17 +20,22 @@ eBPF](https://blog.yadutaf.fr/2017/07/28/tracing-a-packet-journey-using-linux-tr
 
 ----
 
+* TOC
+{:toc}
+
+----
+
 一段时间以来，我一直在寻找 Linux 上的底层网络调试（debug）工具。
 
 Linux 允许在主机上用**虚拟网卡**（virtual interface）和**网络命名空间**（network
 namespace）构建复杂的网络。但出现故障时，排障（troubleshooting）相当痛苦。如果是
-3 层路由问题，`mtr` 可以排上用场。但如果是更底层的问题，我通常只能手动检查每个网
-卡/网桥/网络命名空间/iptables 规则，用 tcpdump 抓一些包，以确定到底是什么状况。如
-果不了解故障之前的网络设置，那感觉就像在走迷宫。
+3 层路由问题，`mtr` 可以排上用场。但如果是更底层的问题，通常只能手动检查每个网
+卡/网桥/网络命名空间/iptables 规则，用 tcpdump 抓一些包，以确定到底是什么状况。
+**如果不了解故障之前的网络配置，那排障时的感觉就像在走迷宫**。
 
-## 1 开篇
+# 1 破局
 
-### 1.1 逃离迷宫：上帝视角
+## 1.1 逃离迷宫：上帝视角
 
 逃离迷宫的一种方式是在**迷宫内**不断左右尝试（exploring），寻找通往出口的路
 。当你在玩迷宫游戏（置身迷宫内）时，你只能如此。不过，如果不是在游戏内，那还有另
@@ -46,7 +48,7 @@ namespace）构建复杂的网络。但出现故障时，排障（troubleshootin
 > **原文注**：上面的 "containers" 我加了引号，因为从技术上说，网络命名空间是
 > 构成 Linux 容器的核心部件之一。
 
-### 1.2 网络跟踪：渴求利器
+## 1.2 网络跟踪：渴求利器
 
 所以我想要的是这样一个工具，它可以直接告诉我 “嗨，我看到你的包了：它从**属于这个
 网络命名空间**的**这个网卡**上发出来，然后**依次经过这些函数**”。
@@ -66,7 +68,7 @@ namespace）构建复杂的网络。但出现故障时，排障（troubleshootin
 [  4026531957]          docker0   reply #17146.001 172.17.0.2 -> 172.17.0.1
 ```
 
-### 1.3 巨人肩膀：perf/eBPF
+## 1.3 巨人肩膀：perf/eBPF
 
 在本文中，我将聚焦两个跟踪工具：`perf` 和 `eBPF`。
 
@@ -83,7 +85,7 @@ Gregg](http://www.brendangregg.com/perf.html)的博客。
 行之前必须验证内存访问合法性，而且要能证明程序会在有限时间内退出。如果内核无法验
 证这些条件，那即使 eBPF 代码是安全的并且确定会退出，它也仍然会被拒绝。
 
-eBPF 程序可用于 **QOS 网络分类器**（network classifier）、**XDP**（eXpress Data Plane）
+eBPF 程序可用于 **QoS 网络分类器**（network classifier）、**XDP**（eXpress Data Plane）
 很底层的网络功能和过滤功能组件、**跟踪代理**（tracing agent），以及其他很多方面。
 **任何在 `/proc/kallsyms` 导出的符号（内核函数）或者跟踪点（tracepoints），
 都可以插入 eBPF 跟踪点**（tracing probes）。
@@ -94,11 +96,11 @@ tracepoints）。如果想看一些在内核函数埋点进行跟踪的例子，
 ](https://blog.yadutaf.fr/2016/03/30/turn-any-syscall-into-event-introducing-ebpf-kernel-probes/)
 ，[中文翻译](/blog/ebpf-turn-syscall-to-event-zh)。
 
-## 2 Perf
+# 2 Perf
 
 本文只会使用 perf 做非常简单的内核跟踪。
 
-### 2.1 安装 perf
+## 2.1 安装 perf
 
 我的环境基于 Ubuntu 17.04 （Zesty）：
 
@@ -107,7 +109,7 @@ $ sudo apt install linux-tools-generic
 $ perf # test perf
 ```
 
-### 2.2 测试环境
+## 2.2 测试环境
 
 我们将使用 4 个 IP，其中 2 个为外部可路由网段（`192.168`）：
 
@@ -116,7 +118,7 @@ $ perf # test perf
 1. 我的手机，通过 USB 连接，IP `192.168.42.129`
 1. 我的手机，通过 WiFi 连接，IP `192.168.43.1`
 
-### 2.3 初体验：跟踪 ping 包
+## 2.3 初体验：跟踪 ping 包
 
 `perf trace` 是 `perf` 子命令，能够跟踪 packet 路径，默认输出类似于 `strace`（头
 信息少很多）。
@@ -178,7 +180,7 @@ netif_receive_skb       dev=docker0     skbaddr=0xffff96d481988b00
 
 **至此，虽然我们还没有看到网络命名空间，但已经得到了一个不错的全局视图。**
 
-### 2.4 进阶：选择跟踪点
+## 2.4 进阶：选择跟踪点
 
 上面的信息有些杂，还有很多重复。我们可以选择几个最合适的跟踪点，使得输出看起来
 更清爽。要查看所有可用的网络跟踪点，执行 `perf list`：
@@ -214,13 +216,13 @@ $ sudo perf trace --no-syscalls           \
 
 漂亮！
 
-## 3 eBPF
+# 3 eBPF
 
 前面介绍的内容已经可以满足大部分 tracing 场景的需求了。如果你只是想学习如何在
 Linux 上跟踪一个 packet 的传输路径，那到此已经足够了。但如果想跟更进一步，学习如
 何写一个自定义的过滤器，跟踪网络命名空间、源 IP、目的 IP 等信息，请继续往下读。
 
-### 3.1 eBPF 和 kprobes
+## 3.1 eBPF 和 kprobes
 
 从 Linux 内核 4.7 开始，eBPF 程序可以 attach 到内核跟踪点（kernel tracepoints）
 。在此之前，要完成类似的工作，只能用 kprobes 之类的工具 attach 到**导出的内核函
@@ -237,9 +239,9 @@ Linux 上跟踪一个 packet 的传输路径，那到此已经足够了。但如
 ](https://blog.yadutaf.fr/2016/03/30/turn-any-syscall-into-event-introducing-ebpf-kernel-probes/)
 ，[中文翻译](/blog/ebpf-turn-syscall-to-event-zh)。
 
-### 3.2 安装
+## 3.2 安装
 
-我不是徒手汇编控（fans of handwritten assembly），因此接下来将使用 `bcc`。`bcc`
+我不是一个徒手汇编迷（fans of handwritten assembly），因此接下来将使用 `bcc`。`bcc`
 是一个灵活强大的工具，允许用受限的 C 语法（restricted C）写内核探测代码，然后用
 Python 在用户态做控制。这种方式对于生产环境算是重量级，但对开发来说非常完美。
 
@@ -260,7 +262,7 @@ $ make
 $ sudo make install
 ```
 
-### 3.3 自定义跟踪器：Hello World
+## 3.3 自定义跟踪器：Hello World
 
 接下来我们从一个简单的 hello world 例子展示如何在底层打点。我们还是用上一篇
 文章里选择的四个点：
@@ -317,12 +319,12 @@ TRACEPOINT_PROBE(net, netif_receive_skb_entry) {
 ```
 
 可以看到，程序 attach 到 4 个 tracepoint，并会访问 `skbaddr` 字段，将其传给处理
-逻辑函数，这个函数现在只是将程序名字发送出来。你可能会有疑问，`args->skbaddr` 是
-哪里来的？答案是，每次用 `TRACEPONT_PROBE` 定义一个 tracepoint，`bcc` 就会为其自
-动生成 `args` 参数，由于它是动态生成的，因此要查看它的定义不太容易。
+逻辑函数，这个函数现在只是将程序名字发送出来。大家可能会有疑问：**`args->skbaddr` 是
+哪里来的**？答案是，每次用 `TRACEPONT_PROBE` 定义一个 tracepoint，**`bcc` 就会为其自
+动生成 `args` 参数**，由于它是动态生成的，因此要查看它的定义不太容易。
 
-不过，有另外一种简单的方式可以查看。在 Linux 上每个 tracepoint 都对应一个
-`/sys/kernel/debug/tracing/events` 条目。例如，查看 `net:netif_rx`：
+不过，有另外一种简单的方式可以查看。在 Linux 上**每个 tracepoint 都对应一个
+`/sys/kernel/debug/tracing/events` 条目**。例如，查看 `net:netif_rx`：
 
 ```shell
 $ cat /sys/kernel/debug/tracing/events/net/netif_rx/format
@@ -341,7 +343,7 @@ format:
 print fmt: "dev=%s skbaddr=%p len=%u", __get_str(name), REC->skbaddr, REC->len
 ```
 
-注意最后一行 `print fmt`，这正是 `perf trace` 打印相应消息的格式。
+注意**最后一行** `print fmt`，这正是 `perf trace` 打印相应消息的格式。
 
 在底层插入这样的探测点之后，我们再写个 Python 脚本，接收内核发出来的消息，每个
 eBPF 发出的数据都打印一行：
@@ -380,7 +382,7 @@ if __name__ == "__main__":
 
 现在可以测试了，注意需要 root 权限。
 
-**注意：现在的代码没有对包做任何过滤，因此即便你的机器网络流量很小，输出也很可能刷屏。**
+**注意：现在的代码没有对包做任何过滤，因此即便你的机器网络流量很小，输出也很可能刷屏！**
 
 ```shell
 $> sudo python ./tracepkt.py
@@ -394,18 +396,18 @@ Just got a packet from irq/46-iwlwifi
 
 上面的输出显示，我正在使用 ping 和 ping6，另外 WiFi 驱动也收到了一些包。
 
-### 3.4 自定义跟踪器：改进
+## 3.4 自定义跟踪器：改进
 
 接下来添加一些有用的数据/过滤条件。
 
-#### 3.4.1 添加网卡信息
+### 3.4.1 添加网卡信息
 
 首先，可以安全地删除前面代码中的 `comm` 字段，它在这里没什么用处。然后，include
 `net/inet_sock.h` 头文件，这里有我们所需要的函数声明。最后给 `event` 结构体添加
 `char ifname[IFNAMSIZ]` 字段。
 
-现在可以从 `device` 结构体中访问 device name 字段。这里开始展示出**代码的强
-大之处：我们可以访问任何受控范围内的字段。**
+现在可以从 `device` 结构体中访问 device name 字段。这里开始展示出 **eBPF 代码的
+强大之处**：我们可以访问任何受控范围内的字段。
 
 ```c
 // Get device pointer, we'll need it to get the name and network namespace
@@ -423,7 +425,7 @@ bpf_probe_read(&evt.ifname, IFNAMSIZ, dev->name);
 的网络包中将网卡名字拷贝到 `dev`，第二个将其接力复制到 `evt.ifname`。
 
 不要忘了，eBPF 的目标是允许安全地编写在内核运行的脚本。这意味着，随机内存访问是绝
-对不允许的。所有的内存访问都要经过验证。除非你要访问的内存在协议栈，否则你需要通
+对不允许的。所有的内存访问都要经过验证。**除非要访问的内存在协议栈**，否则都需要通
 过 `bpf_probe_read` 读取数据。这会使得代码看起来很繁琐，但非常安全。`bpf_probe_read`
 像是 `memcpy` 的一个更安全的版本，它定义在内核源文件
 [bpf_trace.c](http://elixir.free-electrons.com/linux/v4.10.17/source/kernel/trace/bpf_trace.c#L64)
@@ -452,7 +454,7 @@ bpf_probe_read(&evt.ifname, IFNAMSIZ, dev->name);
 member_read(&dev, skb, dev);
 ```
 
-#### 3.4.2 添加网络命名空间 ID
+### 3.4.2 添加网络命名空间 ID
 
 采集网络命名空间信息非常有用，但是实现起来要复杂一些。原理上可以从两个地方访问：
 
@@ -465,7 +467,7 @@ member_read(&dev, skb, dev);
 方消失了。这个字段全是 0，很明显是有非法内存访问时的返回值（回忆前面介绍的
 `bpf_probe_read` 如何处理错误）。
 
-幸好，device 结构体工作正常。想象一下，我们可以问一个 `packet` 它在哪个`网卡`，进而
+幸好 device 结构体工作正常。想象一下，我们可以问一个 `packet` 它在哪个`网卡`，进而
 问这个网卡它在哪个`网络命名空间`。
 
 ```c
@@ -509,7 +511,7 @@ $> sudo python ./tracepkt.py
 
 至此，功能是实现了，不过还太粗糙，继续改进。
 
-#### 3.4.3 只跟踪 ICMP echo request/reply 包
+### 3.4.3 只跟踪 ICMP echo request/reply 包
 
 这次我们将读取包的 IP 信息，这里我只展示 IPv4 的例子，IPv6 的与此类似。
 
@@ -517,8 +519,8 @@ $> sudo python ./tracepkt.py
 开，这意味着，变量的很多字段是没有初始化的。我们只能从 MAC 头开始，用 offset 的方式
 计算 IP 头和 ICMP 头的位置。
 
-首先从 MAC 头地址推导 IP 头地址。这里我们不(从 `skb` 的相应字段)加载 MAC 头长度信息，就认为
-它是固定的 14 字节。
+首先从 MAC 头地址推导 IP 头地址。这里我们不（从 `skb` 的相应字段）加载 MAC 头长
+度信息，而假设它就是固定的 14 字节。
 
 
 ```c
@@ -534,9 +536,8 @@ member_read(&mac_header, skb, mac_header);
 char* ip_header_address = head + mac_header + MAC_HEADER_SIZE;
 ```
 
-这表示我们假设 IP 头开始的地方在：`skb->head + skb->mac_header + MAC_HEADER_SIZE`
-。
-现在，我们可以解析 IP 头第一个字节的前 4 个 bit：
+这假设了 IP 头从 `skb->head + skb->mac_header + MAC_HEADER_SIZE` 处开始。
+现在可以解析 IP 头第一个字节的前 4 个 bit 了：
 
 ```c
 // Load IP protocol version
@@ -569,7 +570,7 @@ if (iphdr.protocol != IPPROTO_ICMP) {
 }
 ```
 
-最后，我们加载 ICMP 头，如果是 ICMP echo request 或 reply，就读取序列号：
+最后，加载 ICMP 头，如果是 ICMP echo request 或 reply，就读取序列号：
 
 ```c
 // Compute ICMP header address and load ICMP header
@@ -594,12 +595,12 @@ evt.icmpseq = be16_to_cpu(evt.icmpseq);
 
 这就是全部工作了。
 
-如果你想过滤特定的 ping 进程的包，你可以认为 `evt.icmpid` 就是相应 ping 进程的进程号，
+如果想过滤特定的 ping 进程的包，那可以认为 `evt.icmpid` 就是相应 ping 进程的进程号，
 至少 Linux 上如此。
 
-### 3.5 最终效果
+## 3.5 最终效果
 
-再写一些比较简单的 Python 程序配合，我们就可以测试我们的跟踪器在多种场景下的用途。
+再写一些比较简单的 Python 程序配合，就可以测试我们的跟踪器在多种场景下的用途。
 以 root 权限启动这个程序，在不同终端发起几个 ping 进程，就会看到：
 
 ```shell
@@ -623,12 +624,12 @@ reply 原路回到了这个 loopback。这个环回接口既是发送网卡又�
 
 可以看到，这种情况下走的是 WiFi 网卡，也没问题。
 
-另外，让我们的话题稍微偏一下，还记得刚开始我们只打印程序名字的版本吗？在
-上面这种情况下，ICMP 请求的程序名字会是 ping，而应答包的程序的名字会是 WiFi 驱动，因
-为是驱动发的应答包，至少 Linux 上是如此。
+另外说点题外话：还记得刚开始只打印程序名的版本吗？如果在上面这种情况下执行，ICMP
+请求打印的程序名会是 ping，而应答包打印的程序名会是 WiFi 驱动，因为是驱动发的应答包，至
+少 Linux 上是如此。
 
-最后还是拿我最喜欢的例子：ping 容器。之所以最喜欢并不是因为 Docker，而是它展示了
-eBPF 的强大，**就像给 ping 过程做了一次 X 射线检查**。
+最后还是拿我最喜欢的例子来做测试：ping 容器。之所以最喜欢并不是因为 Docker，而是
+它展示了eBPF 的强大，**就像给 ping 过程做了一次 X 射线检查**。
 
 ```shell
 # ping -4 172.17.0.2
@@ -649,25 +650,25 @@ eBPF 的强大，**就像给 ping 过程做了一次 X 射线检查**。
 +---------------------------+-----------------+
 ```
 
-## 4 结束语
+# 4 结束语
 
 在 eBPF/bcc 出现之前，要深入的排查和追踪很多网络问题，只能靠给内核打补丁。现在，我
-们可以比较方便地用 eBPF/bcc 编写一些工具来完成这些事情。跟踪点(tracepoint)也很方便
-，它们提示了我们可以在哪些地方进行探测，避免了去看繁杂的内核代码。kprobe 无法探测
+们可以比较方便地用 eBPF/bcc 编写一些工具来完成这些事情。tracepoint 也很方便
+，提醒了我们可以在哪些地方进行探测，从而避免了去看繁杂的内核代码。即使是 kprobe 无法探测
 的一些地方，例如一些内联函数和静态函数，eBPF/bcc 也可以探测。
 
-本文的例子要添加对 IPv6 的支持也非常简单，我就留给读者作为练习。
+本文的例子要添加对 IPv6 的支持也非常简单，就留给读者作为练习。
 
-如果要使本文更加完善的话，我需要对我们的程序做性能测试。但考虑到文章本身已经非常
+要使本文更加完善的话，需要对我们的程序做性能测试。但考虑到文章本身已经非常
 长，这里就不做了。
 
-对我们的代码进行改进，用在跟踪路由和 iptables 判决，或是 ARP 包，也是很有意思的。
+对本文代码进行改进，然后用在跟踪路由和 iptables 判决，或是 ARP 包，也是很有意思的。
 这将会把它变成一个完美的 X 射线跟踪器，对像我这样需要经常处理复杂网络问题的
 人来说将非常有用。
 
-完整的（包含 IPv6 支持）代码可以访问：
+完整的（包含 IPv6 支持）代码：
 [https://github.com/yadutaf/tracepkt](https://github.com/yadutaf/tracepkt)。
 
 最后，我要感谢 [@fcabestre](https://twitter.com/fcabestre)帮我将这篇文章的草稿从
-一个异常的硬盘上恢复出来，感谢[@bluxte](https://twitter.com/bluxte)的耐心审读，
-以及技术上使得本文成为可能的[bcc](https://github.com/iovisor/bcc)团队。
+一个异常的硬盘上恢复出来，感谢 [@bluxte](https://twitter.com/bluxte)的耐心审读，
+以及技术上使得本文成为可能的 [bcc](https://github.com/iovisor/bcc) 团队。

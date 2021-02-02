@@ -2,11 +2,11 @@
 layout    : post
 title     : "[译] Linux 系统调用权威指南（2016）"
 date      : 2019-01-30
-lastupdate: 2019-05-08
+lastupdate: 2021-01-31
 categories: system-call
 ---
 
-### 译者序
+## 译者序
 
 本文翻译自 2016 年的一篇英文博客 [The Definitive Guide to Linux System
 Calls](https://blog.packagecloud.io/eng/2016/04/05/the-definitive-guide-to-linux-system-calls/)
@@ -16,7 +16,7 @@ Calls](https://blog.packagecloud.io/eng/2016/04/05/the-definitive-guide-to-linux
 
 ----
 
-### 太长不看（TL;DR）
+## 太长不读（TL;DR）
 
 本文介绍了 Linux 程序是如何调用内核函数的。包括：
 
@@ -27,7 +27,12 @@ Calls](https://blog.packagecloud.io/eng/2016/04/05/the-definitive-guide-to-linux
 * 系统调用相关的内核 bug
 * 其他更多内容
 
-## 1 系统调用是什么?
+----
+
+* TOC
+{:toc}
+
+# 1 系统调用是什么?
 
 当程序调用到 `open`、`for`、`read`、`write` 等函数时，就是在进行系统调用。
 
@@ -42,9 +47,9 @@ page](http://man7.org/linux/man-pages/man2/syscalls.2.html) 可以查看完整�
 
 在开始研究系统调用之前先定义一些术语，并介绍几个后面将会用到的核心理念。
 
-## 2 预备知识
+# 2 预备知识
 
-### 2.1 硬件和软件
+## 2.1 硬件和软件
 
 本文将基于如下假设：
 
@@ -56,7 +61,7 @@ page](http://man7.org/linux/man-pages/man2/syscalls.2.html) 可以查看完整�
 
 x86-64 在本文中将指基于 x86 架构的 64 位 Intel 或 AMD CPU。
 
-### 2.2 用户程序、内核和 CPU 特权级别
+## 2.2 用户程序、内核和 CPU 特权级别
 
 用户程序（例如编辑器、终端、ssh daemon 等）需要和 Linux 内核交互，内核代替它们完
 成一些它们自身无法完成的操作。
@@ -75,7 +80,7 @@ x86-64 在本文中将指基于 x86 架构的 64 位 Intel 或 AMD CPU。
 用户程序要进行特权操作必须触发一次**特权级别切换**（从 “Ring 3” 到 “Ring 0”），
 由内核（替它）执行。触发特权级别切换有多种方式，我们先从最常见的方式开始：中断。
 
-### 2.3 中断
+## 2.3 中断
 
 可以将中断想象成**硬件或软件产生（或“触发”）的事件**。
 
@@ -106,7 +111,7 @@ x86-64 在本文中将指基于 x86 架构的 64 位 Intel 或 AMD CPU。
 处理硬件和软件中断时还有其他一些复杂之处，例如中断号冲突（collision）和重映射
 （remapping）。在本篇中我们不考虑这些方面。
 
-### 2.4 型号特定寄存器（MSR）
+## 2.4 型号特定寄存器（MSR）
 
 （CPU）型号特定寄存器（Model Specific Registers， MSR）是用于特殊目的的控制寄存
 器，可以控制 CPU 的特定特性。CPU 文档里列出了每个 MSR 的地址。
@@ -126,7 +131,7 @@ $ sudo rdmsr
 
 本文接下来的一些系统调用使用了 MSR。
 
-### 2.5 不要手写汇编代码发起系统调用
+## 2.5 不要手写汇编代码发起系统调用
 
 **手写汇编代码来发起系统调用并不是一个好主意**。其中一个重要原因是，`glibc` 中有
 一些额外代码在系统调用之前或之后执行（而你自己写的汇编代码没有做这些类似的工作）
@@ -140,7 +145,7 @@ $ sudo rdmsr
 
 然而，徒手写汇编来调系统调用是一次很好的学习方式。
 
-## 3 传统系统调用（Legacy system calls）
+# 3 传统系统调用（Legacy system calls）
 
 根据前面的知识我们知道了两件事情：
 
@@ -191,7 +196,7 @@ void __init trap_init(void)
 现在我们知道了如何发起系统调用，也知道了系统调用的参数应该放到哪里，接下来就写一
 些内联汇编来试试。
 
-### 3.1 用户程序端：写汇编发起传统系统调用
+## 3.1 用户程序端：写汇编发起传统系统调用
 
 发起一次传统系统调用只需要少量内联汇编。虽然从学习的角度来说很有趣，但是我建议读
 者永远不要（在生产环境）这样做。
@@ -243,7 +248,7 @@ $ echo $?
 
 成功！我们通过触发一个软中断完成了一次传统系统调用。
 
-### 3.2 内核端：`int $0x80` 入口
+## 3.2 内核端：`int $0x80` 入口
 
 上面看到了如何从用户端触发一个系统调用，接下来看内核端是如何实现的。
 
@@ -282,7 +287,7 @@ const sys_call_ptr_t ia32_sys_call_table[__NR_ia32_syscall_max+1] = {
 
 这就是通过 **传统系统调用方式**进入内核的过程。
 
-### 3.3 `iret`: 系统调用返回
+## 3.3 `iret`: 系统调用返回
 
 至此我们已经看到了如何通过软中断进入内核，那么，系统调用结束后，内核又是如何释放
 特权级别回到用户空间的呢？
@@ -324,7 +329,7 @@ irq_return:
 
 **以上就是传统系统调用如何工作的。**
 
-## 4 快速系统调用
+# 4 快速系统调用
 
 传统系统调用看起来合情合理，但也有新的方式，它们不需要软中断，因此更快。
 
@@ -337,9 +342,9 @@ irq_return:
 1. 在 32bit 系统上：使用 `sysenter` 和 `sysexit`
 1. 在 64bit 系统上：使用 `syscall` 和 `sysret`
 
-### 4.1 32-bit 快速系统调用
+## 4.1 32-bit 快速系统调用
 
-#### 4.1.1 `sysenter`/`sysexit`
+### 4.1.1 `sysenter`/`sysexit`
 
 使用 `sysenter` 发起系统调用比使用传统中断方式复杂很多，涉及更多用户程序（通过
 `glibc`）和内核之间的协作。
@@ -415,7 +420,7 @@ convention ）。内核的 [arch/x86/ia32/ia32entry.S](https://github.com/torval
 执行内核代码**。我们后面会深入介绍 vDSO 的原理和用途。现在，先看
 `__kernel_vsyscall` 的实现。
 
-#### 4.1.2 `__kernel_vsyscall` 实现
+### 4.1.2 `__kernel_vsyscall` 实现
 
 内核函数 `__kernel_vsyscall` 封装了 `sysenter` 调用约定（calling convention）,见
 [arch/x86/vdso/vdso32/sysenter.S](https://github.com/torvalds/linux/blob/v3.13/arch/x86/vdso/vdso32/sysenter.S#L31-L40)
@@ -459,7 +464,7 @@ auxiliary vector 有多种方式：
 随着时间在变，最终你的代码会变得不可用。应该永远使用 `__kernel_vsyscall` 进入
 `sysenter`。
 
-#### 4.1.3 用户程序端：写汇编调用 `sysenter`
+### 4.1.3 用户程序端：写汇编调用 `sysenter`
 
 和传统系统调用的例子一样，我们手动调用 `exit` ，设置返回值为 `42`。
 
@@ -528,7 +533,7 @@ $ echo $?
 
 成功！我们使用 `sysenter` 方法调用了 `exit` 系统调用，而不是通过触发软件中断的方式。
 
-#### 4.1.4 内核端：`sysenter` 入口
+### 4.1.4 内核端：`sysenter` 入口
 
 现在已经看到了如何在用户程序中通过 `__kernel_vsyscall` 以 `sysenter` 方式进入系
 统调用，接下来看一下内核端的实现。
@@ -550,7 +555,7 @@ sysenter_dispatch:
 
 这就是通过 **`sysenter` 系统调用方式**进入内核的原理。
 
-#### 4.1.5 `sysexit`：从 `sysenter` 返回
+### 4.1.5 `sysexit`：从 `sysenter` 返回
 
 内核使用 `sysexit` 指令恢复用户程序的执行。
 
@@ -586,12 +591,12 @@ sysexit_from_sys_call:
 
 这就是 **32 位系统上的快速系统调用**是如何工作的。
 
-### 4.2 64-bit 快速系统调用
+## 4.2 64-bit 快速系统调用
 
 接下来看 64 位系统的快速系统调用的工作原理，它用到了 `syscall` 和 `sysret` 两个
 指令。
 
-#### 4.2.1 `syscall`/`sysret`
+### 4.2.1 `syscall`/`sysret`
 
 [Intel Instruction Set
 Reference](http://www.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-vol-2b-manual.pdf)
@@ -638,7 +643,7 @@ void syscall_init(void)
 
 接下来写汇编试验一下。
 
-#### 4.2.2 用户空间：发起系统调用
+### 4.2.2 用户空间：发起系统调用
 
 还是前面的例子，手动写代码调用 `exit` 系统调用，设置返回值为 `42` 。
 
@@ -685,7 +690,7 @@ $ echo $?
 
 成功！我们通过 **`syscall` 方式**完成了一次系统调用，避免了软中断，从而速度更快。
 
-#### 4.2.3 内核空间：`syscall` 入口
+### 4.2.3 内核空间：`syscall` 入口
 
 接下来看内核端是如何实现的。
 
@@ -721,7 +726,7 @@ asmlinkage const sys_call_ptr_t sys_call_table[__NR_syscall_max+1] = {
 
 这就是如何通过 `syscall` 方式的系统调用进入内核的过程。
 
-#### 4.2.4 `sysret`：系统调用返回
+### 4.2.4 `sysret`：系统调用返回
 
 内核通过 `sysret` 指令将执行过程返还给用户程序。`sysret` 比 `sysexit` 要简单，因
 为当执行 `syscall` 的时候，恢复执行的地址复制到了 `rcx`。只要将值缓存到某处，在
@@ -746,7 +751,7 @@ USERGS_SYSRET64
 
 这就是 **64 位系统上快速系统调用**如何工作的。
 
-## 5 通过 `syscall(2)` 半手动发起系统调用
+# 5 通过 `syscall(2)` 半手动发起系统调用
 
 现在，我们已经看到如何手动写汇编通过几种不同方式触发系统调用了。通常不需要自己写
 汇编程序，`glibc` 已经提供了 wrapper 函数处理这些事情。然而，有些系统调用 `glibc`
@@ -789,7 +794,7 @@ $ echo $?
 
 成功！我们用 `glibc` 提供的 `syscall` wrapper 发起了 `exit` 系统调用。
 
-### `glibc` `syscall` wrapper 内部实现
+## `glibc` `syscall` wrapper 内部实现
 
 代码 [sysdeps/unix/sysv/linux/x86_64/syscall.S](https://github.molgen.mpg.de/git-mirror/glibc/blob/glibc-2.15/sysdeps/unix/sysv/linux/x86_64/syscall.S#L24-L42)：
 
@@ -823,7 +828,7 @@ L(pseudo_end):
 
 这就是 `glibc` wrapper 如何工作的。
 
-## 6 虚拟系统调用
+# 6 虚拟系统调用
 
 到目前为止，我们已经展示了通过多种触发系统调用的方式从用户空间进入内核的过程。
 
@@ -850,7 +855,7 @@ $ ldd `which bash`
 
 接下来看 vDSO 在内核是如何实现的。
 
-### 6.1 vDSO 在内核中的实现
+## 6.1 vDSO 在内核中的实现
 
 vDSO 的代码位于
 [arch/x86/vdso/](https://github.com/torvalds/linux/tree/v3.13/arch/x86/vdso)，由
@@ -897,7 +902,7 @@ alias](https://gcc.gnu.org/onlinedocs/gcc-4.3.5/gcc/Function-Attributes.html)。
 ](https://github.com/torvalds/linux/blob/v3.13/arch/x86/vdso/vclock_gettime.c#L260-L280)
 中，当用户程序调用 `gettimeofday` 时，实际执行的是 `__vdso_gettimeofday`。
 
-### 6.2 在内存中定位 vDSO
+## 6.2 在内存中定位 vDSO
 
 由于[地址空间布局随机化
 ](https://en.wikipedia.org/wiki/Address_space_layout_randomization)（address
@@ -924,7 +929,7 @@ header，它包含了 vDSO 的 ELF 头的内存地址。
 [Documentation/vDSO/](https://github.com/torvalds/linux/tree/v3.13/Documentation/vDSO)
 提供了一个解析和调用 vDSO 中函数的例子。
 
-### 6.3 `glibc` 中的 vDSO
+## 6.3 `glibc` 中的 vDSO
 
 很多情况下大家已经用到了 vDSO，只是没意识到，这是因为 `glibc` 使用我们前面介绍的
 接口对它做了封装。
@@ -965,7 +970,7 @@ indirect function）来优雅地完成这一过程。
 
 **以上就是 Linux 32 和 64 位系统上所有的发起系统调用的方法**，适用于 Intel 和 AMD CPU。
 
-## 7 `glibc` 系统调用 wrappers
+# 7 `glibc` 系统调用 wrappers
 
 前面讨论的都是 Linux 系统调用本身，接下来将范围稍微向外一些，看一看 `glibc` 作为
 更上层库是如何处理系统调用的。
@@ -995,13 +1000,13 @@ chmod           -       chmod           i:si    __chmod         chmod
 
 我们将来的博客会针对有趣的系统调用来探索 `glibc` 的实现以及 Linux 内核相关的内容。
 
-## 8 `syscall` 相关的有趣 bugs
+# 8 `syscall` 相关的有趣 bugs
 
 如果不趁此机会介绍几个与 `syscall` 相关的著名的 bug，就未免太过遗憾了。
 
 我们来看两个。
 
-### 8.1 CVE-2010-3301
+## 8.1 CVE-2010-3301
 
 [这个安全漏洞](http://cve.mitre.org/cgi-bin/cvename.cgi?name=2010-3301)允许本地
 用户获取 root 权限。
@@ -1016,7 +1021,7 @@ root 级。
 call *ia32_sys_call_table(,%rax,8)
 ```
 
-### 8.2 Android `sysenter` ABI hardcode
+## 8.2 Android `sysenter` ABI hardcode
 
 还记得前面说过，不要在应用程序中 hardcode `sysenter` ABI 吗？
 
@@ -1033,7 +1038,7 @@ call *ia32_sys_call_table(,%rax,8)
 记住：永远不要自己写 `sysenter` 汇编代码。如果出于某些原因不得不自己实现，请使
 用和我们上面给出的例子类似的代码，至少要经过 `__kernel_vsyscall` API。
 
-## 9 结束语
+# 9 结束语
 
 Linux 内核的系统调用基础架构相当复杂。有多种方式可以发起系统调用，各有优缺点。
 
@@ -1045,7 +1050,7 @@ wrapper，或者尝试 vDSO 提供的 `__kernel_vsyscall`。
 
 保持关注本博客，我们将来会针对单个系统调用及其实现进行研究。
 
-## 10 我们的相关文章
+# 10 相关文章
 
 如果对本文感兴趣，那么你可能对我们的以下文章也感兴趣：
 

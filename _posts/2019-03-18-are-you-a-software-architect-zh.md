@@ -5,7 +5,7 @@ date:   2019-03-18
 categories: architect architecture
 ---
 
-### 译者序
+## 译者序
 
 本文翻译自 2019 年的一篇英文博客 [Are You A Software Architect?](https://www.infoq.com/articles/brown-are-you-a-software-architect)
 。
@@ -13,6 +13,11 @@ categories: architect architecture
 **由于译者水平有限，本文不免存在遗漏或错误之处。如有疑问，请查阅原文。**
 
 以下是译文。
+
+----
+
+* TOC
+{:toc}
 
 ----
 
@@ -31,7 +36,7 @@ holistic view）、能看到更大的图，以理解软件系统作为一个整�
 架构。进一步地，它无助于识别哪些人将会成为出色的架构师、如果你是 HR 你如何寻找这
 些人，以及**你是否是一个架构师**。
 
-## 经验（Experience）
+# 经验（Experience）
 
 **经验是一个很好的衡量指标，但你应该看地更深**（**Experience is a good gauge but
 you need to look deeper**）。
@@ -47,7 +52,7 @@ you need to look deeper**）。
 宽泛地说，大部分项目的软件架构过程可以分成两个阶段：**定义阶段**和**交付阶段**（
 the architecture is defined and then it's delivered）。
 
-## 软件架构的定义（definition）
+# 软件架构的定义（definition）
 
 架构的定义过程似乎相当直接：**确定需求，然后设计一个满足这些需求的系统**。但实际
 中并没有这样简单，随着你的参与程度（how engaged you are）和你对待自己角色的认真程
@@ -56,7 +61,7 @@ the architecture is defined and then it's delivered）。
 
 <p align="center"><img src="/assets/img/are-you-a-software-architect/role-definition.png" width="40%" height="40%"></p>
 
-### 1 非功能（non-functional）需求的管理
+## 1 非功能（non-functional）需求的管理
 
 软件项目经常将注意力放在用户的**功能需求**（features）上，而很少问用户有什么
 **非功能需求**（或系统性能）。有时需求方会告诉我们说“系统必须足够快”，但这种
@@ -69,7 +74,7 @@ the architecture is defined and then it's delivered）。
 
 <p align="center"><img src="/assets/img/are-you-a-software-architect/architecture-definition-1.png" width="60%" height="60%"></p>
 
-### 2 架构定义（architecture definition）
+## 2 架构定义（architecture definition）
 
 弄清了非功能需求后，下一步就要思考如何定义架构，解决需求方提出的问题。
 **我们可以说每个软件系统都有架构，但是，不是每个软件系统都有定义出来的架构**（
@@ -81,7 +86,7 @@ defined architecture）。这才是关键点。
 
 <p align="center"><img src="/assets/img/are-you-a-software-architect/architecture-definition-2.png" width="60%" height="60%"></p>
 
-### 3 技术选择（technology selection）
+## 3 技术选择（technology selection）
 
 技术选择通常是一个愉快的过程，但是，当考虑到成本、授权、供应商关系、技术策略
 、兼容性、互操作性、支持、部署、升级策略、终端用户环境等等问题时，挑战也是很大的。
@@ -98,7 +103,7 @@ risk）；在高复杂度或不确定性的地方减少风险，在可能带来�
 
 <p align="center"><img src="/assets/img/are-you-a-software-architect/architecture-definition-3.png" width="60%" height="60%"></p>
 
-### 4 架构评估（architecture evaluation）
+## 4 架构评估（architecture evaluation）
 
 如果是你设计软件，你需要问自己：我的架构能否工作？
 
@@ -114,7 +119,7 @@ risk）；在高复杂度或不确定性的地方减少风险，在可能带来�
 
 <p align="center"><img src="/assets/img/are-you-a-software-architect/architecture-definition-4.png" width="60%" height="60%"></p>
 
-### 5 架构合作（architecture collaboration）
+## 5 架构合作（architecture collaboration）
 
 与世隔绝的软件系统很少见，大部分软件系统都是需要人去理解它的。开发人员需要理解它
 ，并按照架构实现它；需求方出于安全、数据库、运维、支持等角度，也可能对它的实现感
@@ -123,14 +128,14 @@ risk）；在高复杂度或不确定性的地方减少风险，在可能带来�
 
 <p align="center"><img src="/assets/img/are-you-a-software-architect/architecture-definition-5.png" width="60%" height="60%"></p>
 
-## 软件架构的交付（delivery）
+# 软件架构的交付（delivery）
 
 架构交付的部分也是类似，软件架构的角色会随着参与度（level of engagement）的不同
 而不同。
 
 <p align="center"><img src="/assets/img/are-you-a-software-architect/role-delivery.png" width="40%" height="40%"></p>
 
-### 1 把控更大的图（ownership of the bigger picture）
+## 1 把控更大的图（ownership of the bigger picture）
 
 要确保架构成功落地，必须得有人在软件开发的整个生命周期内把握整张大图、向大家描绘
 前景（sells the vision）。如有必要，要跟随项目一起演进，承担将它成功交付的责任
@@ -139,7 +144,7 @@ risk）；在高复杂度或不确定性的地方减少风险，在可能带来�
 
 <p align="center"><img src="/assets/img/are-you-a-software-architect/architecture-delivery-1.png" width="60%" height="60%"></p>
 
-### 2 领导力（leadership）
+## 2 领导力（leadership）
 
 把控大图是技术领导力的一部分，但软件项目的交付期间，还有其它一些事情要做。包括：
 向大家介绍责任（的重要性）、提供技术规范、做技术决策，以及具备做这种决策的权威。
@@ -151,7 +156,7 @@ risk）；在高复杂度或不确定性的地方减少风险，在可能带来�
 
 <p align="center"><img src="/assets/img/are-you-a-software-architect/architecture-delivery-2.png" width="60%" height="60%"></p>
 
-### 3 培训团队和指导下属（coaching and mentoring）
+## 3 培训团队和指导下属（coaching and mentoring）
 
 培训团队和指导下属是大部分软件开发项目中容易被忽视的一项活动，导致的后果就是，一
 些团队成员并没有得到他们应该得到的帮助。虽然技术领导力是关于对项目整体进行掌舵（
@@ -164,7 +169,7 @@ remit of the software architect），而且很显然，给你的团队培训架�
 
 <p align="center"><img src="/assets/img/are-you-a-software-architect/architecture-delivery-3.png" width="60%" height="60%"></p>
 
-### 4 质量保障（quality assurance）
+## 4 质量保障（quality assurance）
 
 如果交付工作做的太差的话，那即使有世界上最好的架构和最强的领导力，项目仍然会失败。
 
@@ -179,7 +184,7 @@ practices）。从软件开发的角度讲，这包括：编码标准、设计�
 
 <p align="center"><img src="/assets/img/are-you-a-software-architect/architecture-delivery-4.png" width="60%" height="60%"></p>
 
-### 5 设计、开发和测试（design，development and testing）
+## 5 设计、开发和测试（design，development and testing）
 
 软件架构师角色的最后任务就是设计、开发和测试。作为一名工作在一线的架构师并不意味
 着你必须参与每天的写代码任务，而是说你要持续的参与到项目中，积极主动地去帮助打造
@@ -196,7 +201,7 @@ practices）。从软件开发的角度讲，这包括：编码标准、设计�
 
 <p align="center"><img src="/assets/img/are-you-a-software-architect/architecture-delivery-5.png" width="60%" height="60%"></p>
 
-## 你是一名软件架构师吗？
+# 你是一名软件架构师吗？
 
 不管将软件开发和软件架构之间的那条线看作是神话还是鸿沟，本文讨论的内容都说明：软
 件架构师在这个角色上的经验都随着他们参与到项目的程度和他们对待自己角色的认真程度

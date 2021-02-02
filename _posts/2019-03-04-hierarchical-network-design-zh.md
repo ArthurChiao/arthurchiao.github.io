@@ -5,7 +5,7 @@ date:   2019-03-04
 categories: network architecture design
 ---
 
-### 译者序
+## 译者序
 
 本文内容翻译自 Cisco 的一门叫 [***Connecting Networks***](http://www.ciscopress.com/store/connecting-networks-companion-guide-9781587133329) 的教材（2014），
 英文版可以在官网[在线阅读](http://www.ciscopress.com/store/connecting-networks-companion-guide-9781587133329)
@@ -25,7 +25,12 @@ categories: network architecture design
 
 ----
 
-## 1.0 引言
+* TOC
+{:toc}
+
+----
+
+# 1.0 引言
 
 网络不仅要满足企业的当前需求，还要能演进以支持新的技术。网络设计原则和模型能帮助
 网络工程师设计和建造灵活、有弹性和方便管理的网络。
@@ -33,20 +38,20 @@ categories: network architecture design
 本章将介绍网络设计的概念、原则、模型和架构，以及遵循系统的设计方法（systematic
 design approach）所带来的收益。
 
-## 1.1 分层网络设计综述
+# 1.1 分层网络设计综述
 
 思科的**分层（三层）互连网络模型**（hierarchical internetworking model）是工业界
 设计可靠、可扩展、高性价比的互连网络时广泛采用的模型。在本章中，你将学习到接入层
 、分发层（思科这里称作 distribution layer，但更通用的称呼是 aggregation layer，
 即汇聚层。译者注）、核心层，以及它们在分层网络模型中承担的角色。
 
-### 1.1.1 企业网络设计
+## 1.1.1 企业网络设计
 
 **对网络规模的了解**，以及**良好的结构化工程原则**（an understanding of
 network scale and knowledge of good structured engineering principles），对讨论
 网络设计非常有帮助。
 
-#### 1.1.1.1 网络需求
+### 1.1.1.1 网络需求
 
 讨论网络设计时，通常根据设备数量将网络分成几类：
 
@@ -66,7 +71,7 @@ network scale and knowledge of good structured engineering principles），对�
 网络设计领域还在快速发展，需要用到大量的知识和经验。本节的目的是介绍一些网络设计
 领域已经广泛接受的概念。
 
-#### 1.1.1.2 结构化工程原则
+### 1.1.1.2 结构化工程原则
 
 不管网络规模和企业需求如何，结构化工程原则都是设计一个成功的网络架构的关键因
 素。这些原则包括：
@@ -88,11 +93,11 @@ network scale and knowledge of good structured engineering principles），对�
 要满足这些基础的设计目标，网络必须构建在分层架构之上，这样的架构足够灵活，并且支
 持网络规模的增长。
 
-### 1.1.2 分层网络设计
+## 1.1.2 分层网络设计
 
 本节讨论分层网络模型的三个层：接入层、分发层、核心层。
 
-#### 1.1.2.1 网络层级（Network Hierarchy）
+### 1.1.2.1 网络层级（Network Hierarchy）
 
 早期的网络都是扁平拓扑（flat topology），如图 1-2 所示。
 
@@ -134,7 +139,7 @@ local traffic remains local）。只有目的是其他网络的流量才会被�
 > 一层，由同一个物理交换机充当，这样网络就变成了两层。这被称为 collapsed core
 > design（塌缩的核心层设计）。
 
-#### 1.1.2.1 接入层（Access Layer）
+### 1.1.2.1 接入层（Access Layer）
 
 在局域网中，接入层提供终端设备接入网络的功能；在广域网中，它可能还提供远程办公（
 teleworker）或远程 site 通过 WAN 访问公司网络的功能。
@@ -156,7 +161,7 @@ teleworker）或远程 site 通过 WAN 访问公司网络的功能。
 1. 生成树（spanning tree）
 1. Power over Ethernet (PoE) and auxiliary VLANs for VoIP
 
-#### 1.1.2.3 分发层（Distribution Layer）
+### 1.1.2.3 分发层（Distribution Layer）
 
 分发层对接入层的包进行聚合（aggregate），然后送到核心层进行路由。如图 1-6
 所示，**分发层是 L2 网络（交换）和 L3 网络（路由）的边界**。
@@ -178,7 +183,7 @@ teleworker）或远程 site 通过 WAN 访问公司网络的功能。
 1. 路由聚合和摘要的边界，配置在与核心层连接的端口上
 1. 广播域控制（路由器和多层交换机不转发广播包），分发层设备充当了广播域之间的边界（demarcation）
 
-#### 1.1.2.4 核心层（Core Layer）
+### 1.1.2.4 核心层（Core Layer）
 
 核心层也称作网络骨干（network backbone），由高速网络设备组成，例如 Cisco
 Catalyst 6500 和 6800。核心层设计用来**尽可能快地转发包，以及互联多个网络模块**
@@ -200,7 +205,7 @@ Catalyst 6500 和 6800。核心层设计用来**尽可能快地转发包，以�
 1. **通过更快的而不是更多的设备进行扩展**（scaling by using faster, not more, equipment）
 1. 避免对包进行 CPU 密集的操作，这些操作可能来自安全、检测、QoS 分类或其他过程
 
-#### 1.1.2.5 Two-Tier Collapsed Core Design（两层塌缩核心层设计）
+### 1.1.2.5 Two-Tier Collapsed Core Design（两层塌缩核心层设计）
 
 三层分层设计最大化了性能、网络可用性、以及网络设计的扩展性。
 

@@ -6,7 +6,7 @@ lastupdate: 2019-05-05
 categories: network datacenter cilium
 ---
 
-### Preface
+## Preface
 
 This article comes from my talk ***Ctrip Network Architecture Evolution in the
 Cloud Computing Era*** at [GOPS 2019
@@ -14,8 +14,14 @@ Shenzhen](https://www.bagevent.com/event/GOPS2019-shenzhen) (a tech conference
 in Chinese). The content is gently re-structured to make it more
 ease of reading as a post, and slightly updated to correct some inaccuracies.
 
+----
 
-### About Me
+* TOC
+{:toc}
+
+----
+
+## About Me
 
 I'm a senior achitect at Ctrip cloud, currently lead the network & storage
 development team, focusing on **network virtualization** and **distributed
@@ -34,7 +40,7 @@ computing era. The content is as follows:
 * K8S and Hybrid Network
 * Cloud Native Solutions
 
-## 0 About Ctrip Cloud
+# 0 About Ctrip Cloud
 
 Ctrip's cloud computing team started at ~2013.
 
@@ -54,7 +60,7 @@ instances. In the public cloud, we have integrated public cloud vendors like
 AWS, Tecent cloud, UCloud, etc to provide VM and container instances to our internal
 customers.
 
-### Network Evolution Timeline
+## Network Evolution Timeline
 
 <p align="center"><img src="/assets/img/ctrip-net-evolution/2.jpg" width="70%" height="70%"></p>
 <p align="center">Fig 2. Timeline of the Network Architecture Evolution</p>
@@ -79,12 +85,12 @@ address the new challenges we are facing.
 
 Let's dig into those solutions in more detail.
 
-## 1 VLAN-based L2 Network
+# 1 VLAN-based L2 Network
 
 At 2013, we started building our private cloud based on OpenStack, provisioning
 VM and BM instances to our internal customers.
 
-### 1.1 Requirements
+## 1.1 Requirements
 
 The requirements for network were as follows:
 
@@ -102,7 +108,7 @@ little security could give us a significant performance increase, that would be
 acceptable. As in a private cloud environment, we have other means to ensure
 security.
 
-### 1.2 Solution: OpenStack Provider Network Model
+## 1.2 Solution: OpenStack Provider Network Model
 
 <p align="center"><img src="/assets/img/ctrip-net-evolution/3.jpg" width="25%" height="25%"></p>
 <p align="center">Fig 3. OpenStack Provider Network Model</p>
@@ -131,7 +137,7 @@ Other aspects in our design:
 1. Floating IP: NO
 1. Security Group：NO
 
-### 1.3 HW Network Topology
+## 1.3 HW Network Topology
 
 The HW network topology in our data center is Fig 4.
 
@@ -149,7 +155,7 @@ All OpenStack network gateways are configured on core routers. Besides, there
 are HW firewalls connected to core routers to perform some security
 enforcements.
 
-### 1.4 Host Network Topology
+## 1.4 Host Network Topology
 
 The virtual network topology within a compute node is shown in Fig 5.
 
@@ -183,9 +189,9 @@ a Linux bridge is inserted between each instance and `br-int`.
 Except this, other parts are similar, so in this circumstance, the total hops is
 24.
 
-### 1.5 Summary
+## 1.5 Summary
 
-#### Advantages
+### Advantages
 
 First of all, we simplified OpenStack deployment architecture, removed some
 components that we did not need, e.g. L3 agent, DHCP agent, Neutron metadata
@@ -203,7 +209,7 @@ better performance than OpenStack's pure SW solutions.
 And at last, the instance IP was routable, which benifited a lot to upper layer
 systems such as tracking and monitoring systems.
 
-#### Disadvantags
+### Disadvantags
 
 First, as has been said, we removed security groups. So the security is
 sacrified at some extent. We compensated this partly by enforcing some security
@@ -214,9 +220,9 @@ we had to configure the core routers whenever we add/delete networks to/from
 OpenStack. Although these operations have a very low frequency, the impact of
 core router misconfiguration is dramatic - it could affect the entire network.
 
-## 2 SDN-based Large L2 Network
+# 2 SDN-based Large L2 Network
 
-### 2.1 New Challenges
+## 2.1 New Challenges
 
 Time arrived 2016, due to the scale expansion of our cluster and network, the
 VLAN-based L2 network reached some limitations.
@@ -244,13 +250,13 @@ On the other hand, we had also some new needs, as such:
 1. We'd like the network provision more automatic, with little human
    intervention.
 
-### 2.2 Solution: OpenStack + SDN
+## 2.2 Solution: OpenStack + SDN
 
 Regarding to these requirements, we designed a **HW+SW, OpenStack+SDN** 
 solution jointly with the ***data center network team*** in our corporation,
 shifted the network **from L2 to Large L2**.
 
-#### HW Topology
+### HW Topology
 
 For the HW network topology, we evolved from the traditional 3-layer hierachical
 model to **Spine-Leaf model**, which gets more and more popular in modern data
@@ -272,7 +278,7 @@ nodes in the same layer. This connectivity pattern brings many benifits:
 
 For blades, we upgraded the NICs to 10 Gbps, and further to 25 Gbps.
 
-#### SDN: Control and Data Plane
+### SDN: Control and Data Plane
 
 We have separate control and data planes [2]:
 
@@ -288,7 +294,7 @@ eliminates the performance bottleneck of traditional gateways on core routers.
 
 This solution physically support multitenancy (via VRF).
 
-#### SDN: Components And Implementation
+### SDN: Components And Implementation
 
 We developed our own SDN controller **Ctrip Network Controller** (CNC).
 
@@ -308,7 +314,7 @@ Below is the monitoring panel for the neutron port states in a real data center.
 <p align="center"><img src="/assets/img/ctrip-net-evolution/8.png" width="40%" height="40%"></p>
 <p align="center">Fig 8. Monitoring Panel for Neutron Port States</p>
 
-### 2.3 HW + SW Topology
+## 2.3 HW + SW Topology
 
 <p align="center"><img src="/assets/img/ctrip-net-evolution/9.png" width="90%" height="90%"></p>
 <p align="center">Fig 9. HW + SW Topology of the Designed SDN Solution</p>
@@ -327,7 +333,7 @@ controlled by CNC. CNC integrates with Neutron via Neutron plugins.
 As has been said, this is a joint work by cloud network team & data center
 network team. We cloud network team focuses mainly on the underlay part.
 
-### 2.4 Spawn An Instance
+## 2.4 Spawn An Instance
 
 In this solution, when spawning an instance, how the instance's network gets reachable?
 
@@ -353,11 +359,11 @@ Major steps depicted in Fig 10:
 In Fig 10, black lines are legacy OpenStack flows, and blue lines are newly
 added by us.
 
-### 2.5 Summary
+## 2.5 Summary
 
 A summary of the SDN-based large L2 network solution.
 
-#### HW
+### HW
 
 First, HW network model evolved from hierarchical (3-layer) network to
 Spine-Leaf (2-tier). With the Spine-Leaf full-mesh connectivity,
@@ -371,7 +377,7 @@ resilient to failures. All devices are active rather than active-backup
 (traditional 3-layer model), thus when one device fails, it has far more
 smaller failure radius.
 
-#### SW
+### SW
 
 For the SW part, we developed our own SDN controller, and integrated it with
 OpenStack neutron via plugins.  The SDN controller cloud dynamically send
@@ -380,11 +386,11 @@ configurations to HW devices.
 Although we have only mentioned VM here, this solution actually
 supports both VM and BM provision.
 
-#### Multi-tenancy & VPC support
+### Multi-tenancy & VPC support
 
 At last, this solution supports multi-tenancy and VPC.
 
-## 3 K8S & Hybrid Cloud Network
+# 3 K8S & Hybrid Cloud Network
 
 At 2017, we started to deploy container platforms, migrating some
 applications from VM/BM to containers.
@@ -397,11 +403,11 @@ with VM orchestrator (e.g OpenStack), such as:
 * Shorter spawn/destroy time: ~10s (VM: ~100s)
 * Container failure/drifting is the norm rather than exception
 
-### 3.1 K8S Network In Private Cloud
+## 3.1 K8S Network In Private Cloud
 
 Characteristics of container platform raised new requirements to the network.
 
-#### 3.1.1 Network Requirements
+### 3.1.1 Network Requirements
 
 First, The network API must be high performance, and supporting concurrency.
 
@@ -422,7 +428,7 @@ lifecycle, and they designed their systems based on this assumption. If we
 suddenly break this assumption, lots of systems (SOA, SLB, etc) need to be
 refactored, and this is out of our control.
 
-#### 3.1.2 Solution: Extend SDN to Support Mesos/K8S
+### 3.1.2 Solution: Extend SDN to Support Mesos/K8S
 
 In private cloud, we decided to extend our SDN solution to integrate container
 networks. We reused existing infrastructures, including Neutron, CNC, OVS,
@@ -430,7 +436,7 @@ Neutron-OVS-Agent. And then developed a CNI plugin for neutron.
 
 Some changes or newly added components listed below.
 
-##### Neutron Changes
+#### Neutron Changes
 
 First, we added some new APIs, e.g. legacy Neutron supports only allocating port
 by network ID, we added label attributes to Neutron `networks` model, supporting
@@ -449,7 +455,7 @@ Next, we did some performance optimizations:
 We also backported some new features from upstream, e.g. graceful OVS agent
 restart, a big benefit for network operators.
 
-##### New K8S CNI plugin for neutron
+#### New K8S CNI plugin for neutron
 
 K8S CNI plugin creates and deletes networks for each Pod. The jobs it does are
 much the same with other CNI plugins (e.g Calico, Flannel): creates veth pair,
@@ -460,7 +466,7 @@ Two big differences seperating it from other plugins:
 1. Communicate with Neutron (central IPAM) to allocate/free port (IP address)
 1. Update port information to neutron server after finishing
 
-##### Existing network services/components upgrade
+#### Existing network services/components upgrade
 
 We also upgraded some network infra. E.g. we've hit some OVS bugs
 during past few years:
@@ -470,7 +476,7 @@ during past few years:
 
 So we upgraded OVS to the latest LTS `2.5.6`, which has solved those bugs.
 
-#### 3.1.3 Pod Drifting
+### 3.1.3 Pod Drifting
 
 Network steps in starting a container are much the same as in
 spawning a VM in Fig. 10, so we do not detail it here.
@@ -483,7 +489,7 @@ address information from neutron with this name.
 <p align="center"><img src="/assets/img/ctrip-net-evolution/11.png" width="80%" height="80%"></p>
 <p align="center">Fig 11. Pod drifting with the same IP within a K8S cluster </p>
 
-#### 3.1.4 Summary
+### 3.1.4 Summary
 
 A quick summary:
 
@@ -499,7 +505,7 @@ Current deployment scale of this new solution:
 * Up to 500+ instances per host
 * Up to 20K+ instances per AZ
 
-#### 3.1.5 Future Architecture
+### 3.1.5 Future Architecture
 
 <p align="center"><img src="/assets/img/ctrip-net-evolution/12.png" width="85%" height="85%"></p>
 <p align="center">Fig 12. Layered view of the future network architecture</p>
@@ -517,9 +523,9 @@ access from outside of the cluster should go through Ingress - the K8S native
 way. We haven't achieved this, because it needs lots of SW and HW system
 refactors.
 
-### 3.2 K8S on Public Cloud
+## 3.2 K8S on Public Cloud
 
-#### 3.2.1 Requirements
+### 3.2.1 Requirements
 
 Ctrip started its internationalization in recent years, in the techical layer,
 we should be able to support global deployment, which means provisioning
@@ -534,7 +540,7 @@ details, and provide a unified API to our internal customers/systems.
 
 This work involves networking solutions on public cloud platforms.
 
-#### 3.2.2 K8S Network Solution on AWS
+### 3.2.2 K8S Network Solution on AWS
 
 Taking AWS as example, let's see our K8S network solution.
 
@@ -553,7 +559,7 @@ The CNI plugin also supports attach/detach floating IP to Pods.  And again, the
 IP address stays the same when Pod drifts from one node to another.  This is
 achieved by ENI drifting.
 
-#### 3.2.3 VPCs over the globe
+### 3.2.3 VPCs over the globe
 
 Fig 14 is the global picture of our VPCs in both private and public cloud.
 
@@ -571,7 +577,7 @@ is routable (if needed).
 OK, right here, I have introduced all of the major aspects of our network
 evolution. In the next, let's see some new challenges in the cloud native age.
 
-## 4 Cloud Native Solutions
+# 4 Cloud Native Solutions
 
 The current network solution faced some new challenges in cloud native era:
 
@@ -585,7 +591,7 @@ So we are doing some investigations on new solutions, e.g. Calico, Cilium.
 Calico has been widely used nowadays, so I'll skip it and give some
 introduction to a relatively less well-known solution: Cilium.
 
-### 4.1 Cilium Overview
+## 4.1 Cilium Overview
 
 Cilium is a brand-new solution [7], and it needs Kernel 4.8+.
 
@@ -604,7 +610,7 @@ It has following components:
 <p align="center"><img src="/assets/img/ctrip-net-evolution/15.png" width="60%" height="60%"></p>
 <p align="center">Fig 15. Cilium</p>
 
-### 4.2 Host Networking
+## 4.2 Host Networking
 
 Any networking solution could be split into two major parts:
 
@@ -639,7 +645,7 @@ Summary of cilium host networking:
 * Inst-to-inst: BPF + Kernel Stack L2 forward
 * Inst-to-host: BPF + L3 Routing
 
-### 4.3 Multi-host networking
+## 4.3 Multi-host networking
 
 For multi-host networking, Cilium provides two commonly used ways:
 
@@ -656,11 +662,11 @@ network support. On public cloud, you could also try the BGP API.
 BGP solution has better performance compared with VxLAN overlay, and more
 importantly, it makes the container IP routable.
 
-### 4.4 Pros & Cons
+## 4.4 Pros & Cons
 
 Here is a brief comparison according to my understanding and experiment.
 
-#### Pros
+### Pros
 
 * K8S-native L4-L7 security policy support
 * High performance network policy enforcement
@@ -672,7 +678,7 @@ Here is a brief comparison according to my understanding and experiment.
     * Development driven by a company
     * Core developers from kernel community
 
-#### Cons
+### Cons
 
 **Latest kernel (4.8+ at least, 4.14+ better) needed**. lots of companies'
 PROD environments run kernels older than this.
@@ -696,7 +702,7 @@ But at last, **Cilium/eBPF is still one of the most exciting techs rised in
 recent years**, and it's still under fast developing. So, have a try and find
 the fun!
 
-## References
+# References
 
 1. [OpenStack Doc: Networking Concepts](https://docs.openstack.org/neutron/rocky/admin/intro-os-networking.html)
 2. [Cisco Data Center Spine-and-Leaf Architecture: Design Overview](https://www.cisco.com/c/en/us/products/collateral/switches/nexus-7000-series-switches/white-paper-c11-737022.pdf)

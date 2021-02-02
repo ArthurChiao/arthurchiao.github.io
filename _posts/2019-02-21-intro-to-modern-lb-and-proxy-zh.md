@@ -2,10 +2,11 @@
 layout: post
 title:  "[译] 现代网络负载均衡与代理导论（2017）"
 date:   2019-02-21
+lastupdate: 2021-01-31
 categories: load-balancing proxying
 ---
 
-### 译者序
+## 译者序
 
 本文翻译自 Envoy 作者 Matt Klein 2017 年的一篇英文博客 [Introduction to modern
 network load balancing and proxying
@@ -27,6 +28,11 @@ service mesh 数据平面的首选组件。Matt Klein 是 Envoy 的设计者和�
 
 ----
 
+* TOC
+{:toc}
+
+----
+
 近期我注意到，关于现代网络负载均衡和代理的入门级教学材料非常稀少（dearth）。
 我问自己：为什么会这样呢？负载均衡是构建可靠的分布式系统最核心的概念之
 一。因此网上一定有高质量的相关材料？我做了大量搜索，结果发现信息确实相当稀少。
@@ -43,7 +49,7 @@ Wikipedia 上面[负载均衡
 
 好了，以上就是我写作本文的原因。现在让我们正式开始吧！
 
-## 1 网络负载均衡和代理（proxy）是什么？
+# 1 网络负载均衡和代理（proxy）是什么？
 
 Wikipedia 关于负载均衡的 [定义](https://en.wikipedia.org/wiki/Load_balancing_%28computing%29)：
 
@@ -78,7 +84,7 @@ Wikipedia 关于负载均衡的 [定义](https://en.wikipedia.org/wiki/Load_bala
   之间带宽`）。智能负载均衡可以最大限度地将请求流量保持在 zone 内部，既提高了性
   能（延迟降低），又减少了整体的系统成本（减少跨 zone 带宽及光纤成本）
 
-### 1.1 负载均衡器 vs 代理
+## 1.1 负载均衡器 vs 代理
 
 在业内讨论网络负载均衡器的时候，**负载均衡器**（load balancer）和**代理**（proxy）两个
 术语经常（大体上）无差别混用。本文中也将沿用这种惯例，认为二者整体上是对等的。
@@ -91,7 +97,7 @@ Wikipedia 关于负载均衡的 [定义](https://en.wikipedia.org/wiki/Load_bala
 理；应用通过内嵌的库进行代理转发，这个库提供的抽象和一个位于应用进程之外的
 负载均衡器是一样的。
 
-### 1.2 L4（会话/连接层）负载均衡
+## 1.2 L4（会话/连接层）负载均衡
 
 现在，当业内讨论负载均衡的时候，所有解决方案通常分为两类：L4 和 L7。这
 两者分别对应 [OSI 模型](https://en.wikipedia.org/wiki/OSI_model)的 4 层和 7 层。
@@ -114,7 +120,7 @@ OSI 模型是一个很差的对负载均衡解决方案复杂度的近似，这�
 LB 不感知其转发字节所属应用的任何细节。这些字节可能是 HTTP、Redis、MongoDB，或者
 任何其他应用层协议。
 
-### 1.3 L7（应用层）负载均衡
+## 1.3 L7（应用层）负载均衡
 
 L4 负载均衡很简单，应用范围也很广。那么，相比于 L7 （应用层）负载均衡，L4 有哪些
 缺点？设想如下 L4 特殊场景：
@@ -143,7 +149,7 @@ LB 的阻抗不匹配问题（impedance mismatch）随时间越来越彰显。�
 现代协议如此重要的原因。L7 负载均衡具备检测应用层流量的能力，这带来了大量额外的
 好处，我们后面会更详细看到。
 
-### 1.4 L7 负载均衡和 OSI 7 层模型
+## 1.4 L7 负载均衡和 OSI 7 层模型
 
 前面讨论 L4 负载均衡时我说过，使用 OSI 模型描述负载均衡特性是有问题的。原因是，
 对于 L7，至少按照 OSI 模型的描述，它本身就包括了负载均衡抽象的多个独立层级（
@@ -161,12 +167,12 @@ discrete layers），例如，对于 HTTP 流量考虑如下子层级：
 了 HTTP；Redis、Kafka、MongoDB 等等都是 L7 LB 应用层协议的例子，它们都受益于 7 层
 负载均衡。）
 
-## 2 负载均衡器特性
+# 2 负载均衡器特性
 
 本节将简要总结负载均衡器提供的高层特性（high level features）。但并不是所有负载
 均衡器都提供这里的所有特性。
 
-### 2.1 服务发现
+## 2.1 服务发现
 
 服务发现是负载均衡器判断它有哪些可用后端的过程。用到的方式差异很大，这里给出几个
 例子：
@@ -176,7 +182,7 @@ discrete layers），例如，对于 HTTP 流量考虑如下子层级：
 * Zookeeper, Etcd, Consul 等待
 * Envoy 的通用数据平面 API（[universal data plane API](https://medium.com/@mattklein123/the-universal-data-plane-api-d15cec7a)）
 
-### 2.2 健康检查
+## 2.2 健康检查
 
 健康检查是负载均衡器判断它的后端是否可以接收请求的过程。大致分为两类：
 
@@ -185,7 +191,7 @@ discrete layers），例如，对于 HTTP 流量考虑如下子层级：
 * 被动：LB 从数据流中检测健康状态。例如，L4 LB 可能会认为如果一个后端有三次连接
   错误，它就是不健康的；L7 LB 可能会认为如果后端有 503 错误码就是不健康的
 
-### 2.3 负载均衡
+## 2.3 负载均衡
 
 LB 必须保证负载是均衡的。给定一组健康的后端，如何选择哪个后端来处理一个连接或一
 个请求呢？负载均衡算法是一个相对活跃的研究领域，从简单的随机选择、Round Robin，
@@ -193,7 +199,7 @@ LB 必须保证负载是均衡的。给定一组健康的后端，如何选择�
 请求](https://brooker.co.za/blog/2012/01/17/two-random.html)（power of 2 least
 request）负载均衡。
 
-### 2.4 Sticky Session（黏性会话）
+## 2.4 Sticky Session（黏性会话）
 
 对于一些特定应用，保证属于同一 session 的请求落到同一后端非常重要。这可能需要考
 虑缓存、结构复杂的临时状态等问题。session 的定义也并不相同，可能会包括 HTTP
@@ -201,14 +207,14 @@ cookies、客户端连接特性（properties），或者其他一些属性。一
 session。但这里我要说明的是，session stickiness 本质上是脆弱的（处理/保持
 session 的后端会挂掉），因此如果设计的系统依赖这个特性，那要额外小心。
 
-### 2.5 TLS Termination
+## 2.5 TLS Termination
 
 关于 TLS 以及它在边缘服务（edge serving）和安全的 service-to-service 通信中扮演的
 角色，值得单独写一篇文章，因此这里不详细展开。许多 L7 LB 会做大量的 TLS 处理工作
 ，包括 termination、证书验证和绑定（verification and pinning）、使用
 [SNI](https://en.wikipedia.org/wiki/Server_Name_Indication) 提供证书服务等等。
 
-### 2.6 可观测性（observability）
+## 2.6 可观测性（observability）
 
 我在技术分享中喜欢说：“可观测性、可观测性、可观测性。”网络在本质上是不可靠的，LB
 通常需要导出统计、跟踪和日志信息，以帮助运维判断出了什么问题并修复它。负载均衡器
@@ -217,30 +223,30 @@ session 的后端会挂掉），因此如果设计的系统依赖这个特性，
 需要做一些额外的工作才能产生这些数据。但是，这些数据带来的收益要远远大于为产生它
 们而增加的那点性能损失。
 
-### 2.7 安全和 DoS 防御
+## 2.7 安全和 DoS 防御
 
 至少（尤其）在边缘部署拓扑（下面会看到）情况下，负载均衡器通常需要实现很多安全特
 性，包括限速、鉴权和 DoS 防御（例如，给 IP 地址打标签及分配标识符、
 [tarpitting](https://en.wikipedia.org/wiki/Tarpit_%28networking%29)等等）。
 
-### 2.8 配置和控制平面
+## 2.8 配置和控制平面
 
 负载均衡器要可以配置。在大型部署场景中，这可能是一项很大的工作。一般地，将配
 置负载均衡器的系统称为“控制平面”，其实现方式各异。想了解更多关于这一方面的信息，
 可以参考我之前关于 service mesh 数据平面和控制平面的[博客](https://medium.com/@mattklein123/service-mesh-data-plane-vs-control-plane-2774e720f7fc)。
 
-### 2.9 其他更多特性
+## 2.9 其他更多特性
 
 本节对负载均衡器提供的功能做了一个非常浅的介绍。更多内容我们会在下面讨论 L7 LB
 的时候看到。
 
-## 3 负载均衡器的拓扑类型
+# 3 负载均衡器的拓扑类型
 
 前面我们已经覆盖了负载均衡器的高层概览，L4 和 L7 负载均衡器的区别，以及负载均衡
 器的功能特性等内容，接下来介绍它的分布式部署拓扑（下面介绍的每种拓扑都适用于 L4
 和 L7 负载均衡器）。
 
-### 3.1 中间代理（middle proxy）
+## 3.1 中间代理（middle proxy）
 
 <p align="center"><img src="/assets/img/intro-to-modern-lb/middle-proxy-lb.png" width="70%" height="70%"></p>
 <p align="center">图 4：中间代理负载均衡拓扑</p>
@@ -261,7 +267,7 @@ point of failure），而且横向扩展有瓶颈**。
 中间代理很多情况下都是一个黑盒子，给运维带来很多困难。例如发生故障的时候，很难判
 断问题是出在客户端，中间代理，还是后端。
 
-### 3.2 边缘代理（edge proxy）
+## 3.2 边缘代理（edge proxy）
 
 <p align="center"><img src="/assets/img/intro-to-modern-lb/edge-proxy-lb.png" width="70%" height="70%"></p>
 <p align="center">图 5：边缘代理负载均衡拓扑</p>
@@ -275,7 +281,7 @@ point of failure），而且横向扩展有瓶颈**。
 络库，服务方是控制不了的（下文会看到的客户端内嵌库或 sidecar 代理拓扑在此不适用）。
 另外，从安全的角度考虑，所有来自因特网的流量都通过唯一的网关进入系统是比较好的。
 
-### 3.3 客户端内嵌库（embedded client library）
+## 3.3 客户端内嵌库（embedded client library）
 
 <p align="center"><img src="/assets/img/intro-to-modern-lb/lb-via-client-lib.png" width="70%" height="70%"></p>
 <p align="center">图 6：客户端内嵌库实现负载均衡</p>
@@ -296,7 +302,7 @@ point of failure），而且横向扩展有瓶颈**。
 虽然如此，但是那些在能够限制语言数量增加（proliferation）而且能够解决客户端升级
 痛苦的公司，这种拓扑还是取得了成功的。
 
-### 3.4 sidecar 代理
+## 3.4 sidecar 代理
 
 <p align="center"><img src="/assets/img/intro-to-modern-lb/lb-via-sidecar.png" width="70%" height="70%"></p>
 <p align="center">图 7：sidecar 代理实现负载均衡</p>
@@ -312,7 +318,7 @@ point of failure），而且横向扩展有瓶颈**。
 [service mesh 数据平面 vs 控制平面的博客
 ](https://medium.com/@mattklein123/service-mesh-data-plane-vs-control-plane-2774e720f7fc)。
 
-### 3.5 不同拓扑类型的优缺点比较
+## 3.5 不同拓扑类型的优缺点比较
 
 * 中间代理拓扑是最简单的负载均衡方式，缺点是单点故障、扩展性问题、以及黑盒运维
 * 边缘代理拓扑和中间代理拓扑类似，但一些场景必须得用这种模式
@@ -324,9 +330,9 @@ point of failure），而且横向扩展有瓶颈**。
 其他所有拓扑类型。另外，在流量进入 service mesh 的地方，总是需要一个边缘代理拓扑
 负载均衡器。
 
-## 4 当前 L4 负载均衡最新技术 （state of the art）
+# 4 当前 L4 负载均衡最新技术 （state of the art）
 
-### 4.1 L4 负载均衡还有用吗？
+## 4.1 L4 负载均衡还有用吗？
 
 我们前面已经解释了为什么 L7 负载均衡器对现代协议如此重要，接下来详细讨论 L7 LB 的
 功能特性。这是否意味着 L4 LB 没用了？不！虽然我认为在 service-to-service 通信中 L7
@@ -345,7 +351,7 @@ point of failure），而且横向扩展有瓶颈**。
 接下来的几节我将介绍中间/边缘代理 L4 LB 的几种不同设计。这些设计通常不适用于客户
 端内嵌库和 sidecar 代理拓扑模式。
 
-### 4.2 TCP/UDP termination 负载均衡
+## 4.2 TCP/UDP termination 负载均衡
 
 <p align="center"><img src="/assets/img/intro-to-modern-lb/l4-termination-lb.png" width="70%" height="70%"></p>
 <p align="center">图 8：TCP L4 termination 负载均衡</p>
@@ -364,7 +370,7 @@ L4 负载均衡器仍然在用有两个原因：
    location）。换句话说，这种负载均衡方式可能会用于入网点（POP，Point of
    Presence）的 raw TCP connection termination
 
-### 4.3 TCP/UDP passthrough 负载均衡
+## 4.3 TCP/UDP passthrough 负载均衡
 
 <p align="center"><img src="/assets/img/intro-to-modern-lb/l4-passthrough-lb.png" width="70%" height="70%"></p>
 <p align="center">图 9：TCP passthrough 负载均衡</p>
@@ -398,7 +404,7 @@ IP/port （从 `1.2.3.4:80`）换成 `10.0.0.2:9000`，以及将源 IP/port 换�
 * **是 Direct server return (DSR) 和 L4 LB 集群化的基础**：很多高级的 L4 负载
   均衡技术基于 passthrough LB，例如 DSR 和一致性哈希集群（下面讨论）
 
-### 4.4 DSR（直接服务器返回）
+## 4.4 DSR（直接服务器返回）
 
 <p align="center"><img src="/assets/img/intro-to-modern-lb/l4-dsr.png" width="70%" height="70%"></p>
 <p align="center">图 10：L4 Direct server return (DSR，直接服务器返回）</p>
@@ -425,7 +431,7 @@ DSR 在如下方面扩展了 passthrough LB：
 注意，不管是在 passthrough 还是 DSR 设计中，负载均衡器和后端之间的连接跟踪、NAT
 、GRE 等等都有多种设置方式。但不幸的是这个话题超出本文的讨论范围。
 
-### 4.5 通过 HA pair 实现容错
+## 4.5 通过 HA pair 实现容错
 
 <p align="center"><img src="/assets/img/intro-to-modern-lb/l4-fault-tolerance-via-ha.png" width="70%" height="70%"></p>
 <p align="center">图 11：通过 HA pair 和 连接跟踪实现 L4 容错</p>
@@ -465,7 +471,7 @@ DSR 在如下方面扩展了 passthrough LB：
   lock-in，即买了某个厂商的设备后，后期只能继续买这个厂商的设备或服务）。通常期
   望的是，可以用基于通用服务器的、水平扩展性良好的纯软件方案代替这些硬件设备
 
-### 4.6 基于集群和一致性哈希的容错和可扩展
+## 4.6 基于集群和一致性哈希的容错和可扩展
 
 <p align="center"><img src="/assets/img/intro-to-modern-lb/l4-fault-tolerance-and-scaling-via-cluster.png" width="70%" height="70%"></p>
 <p align="center">图 12：基于负载均衡器集群和一致性哈希实现 L4 容错和可扩展</p>
@@ -520,7 +526,7 @@ Balancer](http://docs.aws.amazon.com/elasticloadbalancing/latest/network/introdu
 的产品。对此我非常兴奋，因为现代 L4 LB 是网络领域的开源产品中仍然缺失的重要部分
 。
 
-## 5 当前 L7 负载均衡最新技术 （state of the art）
+# 5 当前 L7 负载均衡最新技术 （state of the art）
 
 <p align="center"><img src="/assets/img/intro-to-modern-lb/twt-1.png" width="60%" height="60%"></p>
 
@@ -531,14 +537,14 @@ inherently faulty network）越来越难以有效运维。而且，自动扩缩�
 仅使用网络更加频繁，而且使用的方式越来越动态，需要负载均衡器提供更多的功能。本节
 我将简要现代 L7 负载均衡器发展最快的几个领域。
 
-### 5.1 协议支持
+## 5.1 协议支持
 
 现代 L7 负载均衡器正在显示地添加对更多协议的支持。负载均衡器对应用层协议了解的越
 多，就可以处理越多更复杂的事情，包括观测输出、高级负载均衡和路由等等。例如，在写
 作本文时，Envoy 显式支持如下 L7 协议的解析和路由：HTTP/1、HTTP/2、gRPC、Redis、
 MongoDB、DynamoDB。未来可能会添加包括 MySQL 和 Kafka 在内的更多协议。
 
-### 5.2 动态配置
+## 5.2 动态配置
 
 如前面描述的，分布式系统越来越动态的本质需要同时在两方面做投资：动态和响应式控制
 。[Istio](https://istio.io/) 即使这种系统的一个例子。更多信息请查看我之前的
@@ -546,25 +552,25 @@ MongoDB、DynamoDB。未来可能会添加包括 MySQL 和 Kafka 在内的更多
 ](https://medium.com/@mattklein123/service-mesh-data-plane-vs-control-plane-2774e720f7fc)
 。
 
-### 5.3 高级负载均衡
+## 5.3 高级负载均衡
 
 L7 LB 现在一般都内置高级负载均衡的特性，例如超时、重试、限速、熔断（
 circuit breaking）、流量镜像（shadowing）、缓存、基于内容的路由等等。
 
-### 5.4 可观测性
+## 5.4 可观测性
 
 前面在介绍通用负载均衡器特性时讲到，随着部署的系统越来越动态，debug 也越来越困难
 。健壮的**协议特定的**（protocol specific）可观测性输出可能是现代 L7 LB 提供的最
 重要的特性。输出数值统计、分布式跟踪以及自定义日志等功能现在几乎是 L7 负载均衡解
 决方案的标配。
 
-### 5.5 可扩展性
+## 5.5 可扩展性
 
 现代 L7 LB 的用户常常希望能够轻松地对它扩展以添加自定义的功能。这可以通过
 编写可插拔的过滤器，然后加载到负载均衡器实现。一些负载均衡器还支持脚本编程，典型
 的是通过 [Lua](https://www.lua.org/)。
 
-### 5.6 容错
+## 5.6 容错
 
 前面介绍了很多 L4 LB 容错的内容。那么 L7 LB 的容错又如何呢？通常来说，我们认
 为 L7 LB 是**易消耗的和无状态的**（expendable and stateless）。基于通用软件使得
@@ -574,13 +580,13 @@ L4 LB 要复杂的多。搭建一个 L7 LB HA pair 技术上是可行的，但�
 总体来说，不管是在 L4 还是在 L7 负载均衡领域，业界都在从 HA pair 架构转向基于一
 致性哈希的水平可扩展架构。
 
-### 5.7 其他
+## 5.7 其他
 
 L7 负载均衡器正在以蹒跚的步伐演进。以 Envoy 作为例子，读者可以查看它的 [架构综述
 ](https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/arch_overview)
 。
 
-## 6 全局负载均衡和集中式控制平面
+# 6 全局负载均衡和集中式控制平面
 
 <p align="center"><img src="/assets/img/intro-to-modern-lb/global-lb.png" width="60%" height="60%"></p>
 <p align="center">图 13：全局负载均衡</p>
@@ -609,7 +615,7 @@ API](https://medium.com/@mattklein123/the-universal-data-plane-api-d15cec7a) 以
 plane](https://medium.com/@mattklein123/service-mesh-data-plane-vs-control-plane-2774e720f7fc)
 的博客。
 
-## 7 从硬件进化到软件
+# 7 从硬件进化到软件
 
 到目前为止本文只是对硬件和软件做了简要对比，大部分内容是在介绍传统 L4 LB HA pair
 的时候。那么，这一领域当前的趋势是什么呢？
@@ -628,7 +634,7 @@ plane](https://medium.com/@mattklein123/service-mesh-data-plane-vs-control-plane
 * 同时，工业界几个主要云厂商主导的以 IaaS、CaaS、FaaA 为整体演进的趋势，意味着将
   来只有很少一部分工程师需要了解物理的网络是如何工作的（这些就是“黑科技”）。
 
-## 8 总结及展望
+# 8 总结及展望
 
 最后总结，本文的核心内容：
 

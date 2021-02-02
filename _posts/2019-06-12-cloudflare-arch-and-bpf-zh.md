@@ -18,9 +18,14 @@ world](https://blog.cloudflare.com/cloudflare-architecture-and-how-bpf-eats-the-
 
 ----
 
-## 边缘网络
+* TOC
+{:toc}
 
-<p align="center"><img src="/assets/img/cloudflare-arch-and-bpf/1.jpg" width="60%" height="60%"></p>
+----
+
+# 边缘网络
+
+<p align="center"><img src="/assets/img/cloudflare-arch-and-bpf/1.jpg" width="80%" height="80%"></p>
 
 Cloudflare 的服务器运行 Linux 系统。
 
@@ -32,7 +37,7 @@ Cloudflare 的服务器运行 Linux 系统。
 本文将关注于**边缘服务器**部分。特别地，我们在这些服务器中使用了最新的 Linux 特
 性，进行了针对性的性能优化，并特别关注 DoS 弹性。
 
-<p align="center"><img src="/assets/img/cloudflare-arch-and-bpf/2.png" width="60%" height="60%"></p>
+<p align="center"><img src="/assets/img/cloudflare-arch-and-bpf/2.png" width="80%" height="80%"></p>
 
 特殊的网络配置——**大量使用任播路由**（anycast routing）——导致我们的边缘服务器也
 很特殊。任播意味着，我们**所有的数据中心都通告相同的一组 IP 地址**，如上图所示。
@@ -45,7 +50,7 @@ Cloudflare 的服务器运行 Linux 系统。
 其次，可以**分散 DoS 攻击**。当发生攻击时，每个边缘节点只会收到全部流量的一
 小部分，这使得流量过滤更容易。
 
-<p align="center"><img src="/assets/img/cloudflare-arch-and-bpf/3.jpg" width="60%" height="60%"></p>
+<p align="center"><img src="/assets/img/cloudflare-arch-and-bpf/3.jpg" width="80%" height="80%"></p>
 
 另外，任播使得所有边缘数据中心的**网络配置都是一致的**（uniform）。因此，当我们
 将同一设计应用于所有数据中心时，这些边缘服务器中的软件栈也都是一致的。即，**所有服
@@ -59,7 +64,7 @@ Spectrum 和 Warp。
 即使每台服务器都部署了以上所有软件，典型情况下，请求还是经过多台机器最终穿过我们
 的软件栈的。例如，一个 HTTP 请求的 5 个处理阶段如下图所示：
 
-<p align="center"><img src="/assets/img/cloudflare-arch-and-bpf/4.png" width="60%" height="60%"></p>
+<p align="center"><img src="/assets/img/cloudflare-arch-and-bpf/4.png" width="80%" height="80%"></p>
 
 inbound packet（入向包）的几个处理阶段：
 
@@ -82,11 +87,11 @@ inbound packet（入向包）的几个处理阶段：
 * Load balancing
 * Socket dispatch
 
-## DDos Mitigation
+# DDos Mitigation
 
 来更深入地看一下 DDoS 处理。
 
-<p align="center"><img src="/assets/img/cloudflare-arch-and-bpf/5.png" width="60%" height="60%"></p>
+<p align="center"><img src="/assets/img/cloudflare-arch-and-bpf/5.png" width="80%" height="80%"></p>
 
 前面说到，ECMP 路由之后会到 Linux XDP，这里会做一些包括 DDoS 防御在内的处理。
 
@@ -104,7 +109,7 @@ concurrency primitives）。实现 race-free token bucket （无竞争令牌桶�
 Kartseva](http://vger.kernel.org/lpc-bpf2018.html#session-9) 也面临同样的问题。
 在二月份引入了 `bpf_spin_lock` 辅助函数之后，这个问题得到了解决。
 
-<p align="center"><img src="/assets/img/cloudflare-arch-and-bpf/6.png" width="60%" height="60%"></p>
+<p align="center"><img src="/assets/img/cloudflare-arch-and-bpf/6.png" width="80%" height="80%"></p>
 
 虽然我们的现代大规模 DoS 防御系统是在 XDP 层做的，但我们的 7 层（应用层）防御目前
 还是依赖 iptables。在应用层，更高级别防火墙的一些特性会带来很大帮助：connlimit、
@@ -114,7 +119,7 @@ cBPF 匹配 packet payload。下面两个分享中介绍了这部分工作：
 * [Lessons from defending the indefensible](https://speakerdeck.com/majek04/lessons-from-defending-the-indefensible) (PPT)
 * [Introducing the BPF tools](https://blog.cloudflare.com/introducing-the-bpf-tools/)
 
-<p align="center"><img src="/assets/img/cloudflare-arch-and-bpf/7.png" width="60%" height="60%"></p>
+<p align="center"><img src="/assets/img/cloudflare-arch-and-bpf/7.png" width="80%" height="80%"></p>
 
 XDP 和 iptables 之后，我们还有**位于内核的最后一层 DoS 防御层**。
 
@@ -139,9 +144,9 @@ socket，可能导致 socket 溢出而丢包 —— 期望的包和不期望的�
 我猜可能是因为在 UDP socket 上运行 eBPF 还是一件比较少见的事情，所以 bug 之前没
 有被及时发现。
 
-## 负载均衡
+# 负载均衡
 
-<p align="center"><img src="/assets/img/cloudflare-arch-and-bpf/8.png" width="60%" height="60%"></p>
+<p align="center"><img src="/assets/img/cloudflare-arch-and-bpf/8.png" width="80%" height="80%"></p>
 
 除了 DoS 之外，我们还在 XDP 中做 **4 层负载均衡**。这是个新项目，因此我们对外的
 分享还不多。简单来说（做这件事情）是因为：在特定的情况下，我们要能通过 XDP 查询
@@ -152,9 +157,9 @@ socket。
 。例如其中一个问题是：当 SYN-cookie 功能打开时，无法验证收到的某个 ACK 是否来自
 一个合法的三次握手。我的同事 Lorenz Bauer 正在致力于为这个边界场景添加支持。
 
-## TCP/UDP Socket Dispatch
+# TCP/UDP Socket Dispatch
 
-<p align="center"><img src="/assets/img/cloudflare-arch-and-bpf/9.png" width="60%" height="60%"></p>
+<p align="center"><img src="/assets/img/cloudflare-arch-and-bpf/9.png" width="80%" height="80%"></p>
 
 经过了 DoS 和 LB 层之后，数据包来到了常规的 Linux TCP/UDP 协议栈。这里是进行
 socket dispatch 的地方，例如，端口是 53 的包会被发送到 DNS 服务器。
@@ -168,7 +173,7 @@ socket dispatch 的地方，例如，端口是 53 的包会被发送到 DNS 服�
 望 80 这样的常用端口可以被不同应用共享，每个应用运行在不同的 IP 地址范围。Linux
 本身并不支持这种功能，`bind()` 只能针对单个具体 IP，或者所有 IP（`0.0.0.0`）。
 
-<p align="center"><img src="/assets/img/cloudflare-arch-and-bpf/10.png" width="60%" height="60%"></p>
+<p align="center"><img src="/assets/img/cloudflare-arch-and-bpf/10.png" width="80%" height="80%"></p>
 
 为了满足这种需求，我们开发了一个内核补丁，添加了 `SO_BINDTOPREFIX` [socket 选项
 ](http://patchwork.ozlabs.org/patch/602916/)。从名字上可以看出，它允许对**给定的
@@ -187,11 +192,11 @@ IP 前缀**调用 `bind()`，这就使得多个应用可以共享某些常用端
 —— 事实上是**扩展 socket dispatch 逻辑**。你猜对了 —— 我们想基于 eBPF 来做。敬请
 期待我们的补丁。
 
-## SOCKMAP
+# SOCKMAP
 
 一种基于 eBPF 优化应用的方式。
 
-<p align="center"><img src="/assets/img/cloudflare-arch-and-bpf/11.png" width="60%" height="60%"></p>
+<p align="center"><img src="/assets/img/cloudflare-arch-and-bpf/11.png" width="95%" height="95%"></p>
 
 近期我们对基于 SOCKMAP 做 TCP splicing 非常感兴趣：
 
@@ -205,7 +210,7 @@ IP 前缀**调用 `bind()`，这就使得多个应用可以共享某些常用端
 BPF_SOCK_OPS](https://netdevconf.org/2.2/papers/brakmo-tcpbpf-talk.pdf) hooks 提
 供了强大的方式检查 TCP flow 的性能参数，对我们性能团队来说非常有用。
 
-## Prometheus - ebpf_exporter
+# Prometheus - ebpf_exporter
 
 <p align="center"><img src="/assets/img/cloudflare-arch-and-bpf/12.jpg" width="60%" height="60%"></p>
 
@@ -220,9 +225,9 @@ Babrou 写了一个名为 “ebpf_exporter” 的 Prometheus metrics exporter �
 * [Introducing ebpf_exporter](https://blog.cloudflare.com/introducing-ebpf_exporter/)
 * [github.com/cloudflare/ebpf_exporter](https://blog.cloudflare.com/introducing-ebpf_exporter/)
 
-## 无处不在的 eBPF
+# 无处不在的 eBPF
 
-<p align="center"><img src="/assets/img/cloudflare-arch-and-bpf/13.png" width="60%" height="60%"></p>
+<p align="center"><img src="/assets/img/cloudflare-arch-and-bpf/13.png" width="80%" height="80%"></p>
 
 最后总结一下，本文介绍了 eBPF 在我们的边缘服务器里 6 个不同层次的应用：
 

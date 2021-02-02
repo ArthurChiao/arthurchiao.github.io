@@ -6,7 +6,7 @@ lastupdate: 2020-05-21
 categories: bgp datacenter
 ---
 
-### 关于本文
+## 关于本文
 
 本文是我在阅读 [Internet Routing Architecture, 2nd Edition](https://www.amazon.com/Internet-Routing-Architectures-2nd-Halabi/dp/157870233X) （
 Cisco Press, 2000）（直译为**“互联网路由架构”**）时所做的笔记。
@@ -22,67 +22,18 @@ Cisco Press, 2000）（直译为**“互联网路由架构”**）时所做的�
 
 ----
 
-1. [互联网的演进](#chap_1)
-    * 1.1 [互联网：起源及近史](#chap_1.1)
-    * 1.1 [Network Access Points](#chap_1.2)
-    * 1.1 [Routing Arbiter Project](#chap_1.3)
-    * 1.1 [The Very High-Speed Backbone Network Service](#chap_1.4)
-    * 1.1 [Transitioning the Regional Networks from the NSFNET](#chap_1.5)
-    * 1.1 [NSF Solicits NIS Managers](#chap_1.6)
-    * 1.1 [Other Internet Registries](#chap_1.7)
-    * 1.1 [Internet Routing Registries](#chap_1.8)
-    * 1.1 [The Once and Future Internet](#chap_1.9)
-2. [ISP Services and Characteristics](#chap_2)
-    * 2.1 ISP Services
-    * 2.2 ISP Service Pricing, Service-Level Agreements, and Technical Characteristics
-3. [IP 寻址和分配](#chap_3)
-    * 3.1 History of Internet Addressing
-    * 3.2 IP Address Space Depletion
-    * 3.3 Looking Ahead
-    * 3.4 Frequently Asked Questions
-    * 3.5 References
-4. [域间路由基础](#chap_4)
-    * 4.1 Overview of Routers and Routing
-    * 4.2 Routing Protocol Concepts
-    * 4.3 Segregating the World into Autonomous Systems
-5. [边界网关协议第 4 版（BGP-4）](#chap_5)
-    * 5.1 How BGP Works
-    * 5.2 BGP Capabilities Negotiation
-    * 5.3 Multiprotocol Extensions for BGP
-    * 5.4 TCP MD5 Signature Option
-6. [Tuning BGP Capabilities](#chap_6)
-    * 6.1 Building Peer Sessions
-    * 6.2 Sources of Routing Updates
-    * 6.3 Overlapping Protocols: Backdoors
-    * 6.4 The Routing Process Simplified
-    * 6.5 Controlling BGP Routes
-    * 6.6 Route Filtering and Attribute Manipulation
-    * 6.7 BGP-4 Aggregation
-7. [冗余、对称和负载均衡](#chap_7)
-    * 7.1 Redundancy
-    * 7.2 Symmetry
-    * 7.3 Load Balancing
-    * 7.4 Specific Scenarios: Designing Redundancy, Symmetry, and Load Balancing
-8. [AS 内部路由控制](#chap_8)
-    * 8.1 [Interaction of Non-BGP Routers with BGP Routers](#chap_8.1)
-    * 8.2 BGP Policies Conflicting with Internal Defaults
-    * 8.3 Policy Routing
-9. [大型 AS 控制管理](#chap_9)
-    * 9.1 Route Reflectors
-    * 9.2 Confederations
-    * 9.3 Controlling IGP Expansion
-10. [设计稳定的因特网](#chap_10)
-    * 10.1 因特网路由的不稳定性
-    * 10.2 BGP Stability Features
+* TOC
+{:toc}
 
+----
 
-## 引言
+# 引言
 
 互联网（Internet）起源于 20 世纪 60 年代（`1960s`）的一个学术实验。
 
 **一些人惊讶于网络会发生故障，另外一些人则惊讶于网络竟然会长时间良好地运行**。
 
-### 目标
+## 目标
 
 本书致力于使读者成为**将自有网络集成到全球互联网**（integrating your network
 into the global Internet）领域的专家。
@@ -90,7 +41,7 @@ into the global Internet）领域的专家。
 本书致力于解决实际问题，书中包含大量的架构图、拓扑图和真实场景示例，内容全面而且
 易于上手（comprehensive and accessible）。
 
-### 目标读者
+## 目标读者
 
 需要将自有网络接入互联网的公司的网络管理员、集成者、架构师。
 
@@ -105,16 +56,16 @@ into the global Internet）领域的专家。
 
 <a name="chap_1"></a>
 
-## 1 互联网的演进
+# 1 互联网的演进
 
 介绍互联网的发展历史，主要组件，理解互联网现在面临的挑战，以及如何构建可扩展互连
 网络（internetworks）。
 
 <a name="chap_1.1"></a>
 
-### 1.1 互联网：起源及近史
+## 1.1 互联网：起源及近史
 
-#### ARPANET
+### ARPANET
 
 **1969 年 12 月**，四个节点、通过 `56kbps` 电路连接的试验网络 ARPANET。
 
@@ -131,7 +82,7 @@ into the global Internet）领域的专家。
 Internet 禁止用于商业目的，不过大量的接入还是导致了扩展性和链路拥塞问题，因此
 NSF 开始研究 NSFNET。
 
-#### NSFNET
+### NSFNET
 
 NSFNET 是为了解决 ARPANET 的拥塞问题。设计：
 
@@ -149,7 +100,7 @@ NSFNET 是为了解决 ARPANET 的拥塞问题。设计：
 
 1995 年，这张网络完成了自己的历史使命。
 
-#### The Internet Today
+### The Internet Today
 
 今天的互联网是从一个**核心网络**（core network，也就是 NSFNET）转变成的由商业提
 供商运营的**分布式网络**，这些供应商网络通过主要的网络交换节点或直连而连接到一起。
@@ -161,11 +112,11 @@ ISP 在多个 region 都提供连接接入点，称为 POP（Points of Presence�
 
 <a name="chap_2"></a>
 
-## 2 ISP 服务和特点
+# 2 ISP 服务和特点
 
 <a name="chap_2.1"></a>
 
-### 2.1 ISP Services
+## 2.1 ISP Services
 
 想了解更多关于交换机、VLAN、广播域等知识，推荐下面的书：
 
@@ -175,11 +126,11 @@ ISP 在多个 region 都提供连接接入点，称为 POP（Points of Presence�
 
 <a name="chap_3"></a>
 
-## 3 IP 寻址和分配
+# 3 IP 寻址和分配
 
-### 3.1 History of Internet Addressing
+## 3.1 History of Internet Addressing
 
-### 3.2 IP Address Space Depletion
+## 3.2 IP Address Space Depletion
 
 CIDR: Classless Inter-domain Routing
 
@@ -204,7 +155,7 @@ prefix 做路由聚合，大大减小路由表的规模。
 如图 3-12，如果因为一些原因 path 1 路由失效了，那会用到下一个最长匹配，在图中就
 是 path 2。
 
-#### 将自己聚合的路由指向黑洞
+### 将自己聚合的路由指向黑洞
 
 每个路由器会对外通告自己聚合的路由，表明自己到这些路由是可达的。
 
@@ -235,13 +186,13 @@ ISP1 时，会匹配到默认路由，流量会绕回 ISP2，形成环路。
 
 <a name="chap_4"></a>
 
-## 4 域间路由基础
+# 4 域间路由基础
 
 互联网是由自治系统（AS）组成的，这些 AS 由不同组织管理，拥有不同的路由策略。
 
 <a name="chap_4.1"></a>
 
-### 4.1 路由器和路由（Routers and Routing）
+## 4.1 路由器和路由（Routers and Routing）
 
 内部网关协议（IGP）是为**企业网**（enterprise）设计的，**不适用于大型网络**，
 例如上千个节点、有上万条路由的网络。因此引入了外部网关协议（EGP），例如**边界
@@ -249,14 +200,14 @@ ISP1 时，会匹配到默认路由，流量会绕回 ISP2，形成环路。
 
 本章介绍 IGP 基础。
 
-### 4.2 路由协议
+## 4.2 路由协议
 
 大部分路由协议都可以归为两类分布式路由算法：
 
 1. 链路-状态（link-state）
 1. 距离矢量（distance vector）
 
-#### 距离矢量算法
+### 距离矢量算法
 
 为每条路由维护一个**距离矢量**（vector of distances），其中“距离”用跳数（hops）或类
 似指标衡量。
@@ -294,7 +245,7 @@ infinity 问题。path vector 包含了路径上的 ASN，相同 ASN 的路径�
 消除了路由环路。BGP 还支持基于域的策略（domain-based policies）。后面会详细介绍
 BGP。
 
-#### 链路状态算法
+### 链路状态算法
 
 * 距离矢量算法：交换路由表信息
 * 链路状态算法：交换邻居的链路状态信息，比距离矢量算法复杂
@@ -312,7 +263,7 @@ interior routing）。
 大部分大型服务供应商在域内（intra-domain）都使用 link-state 协议，主要是看中它的
 **快速收敛**特性。
 
-### 4.3 将互联网分割为自治系统（AS）
+## 4.3 将互联网分割为自治系统（AS）
 
 **外部路由协议（Exterior routing protocol）的提出是为了解决两个问题**：
 
@@ -329,7 +280,7 @@ interior routing）。
 > * intra-domain 主要解决技术需求
 > * inter-domain 主要反映网络和公司的政治与商业关系
 
-##### Autonomous Systems
+#### Autonomous Systems
 
 一个 **AS 是拥有如下特点的一组路由器**：
 
@@ -342,7 +293,7 @@ interior routing）。
 <p align="center"><img src="/assets/img/internet-routing-arch/4-2.PNG" width="60%" height="60%"></p>
 <p align="center">图 4-2 AS 之间的路由交换</p>
 
-#### 三种 AS 类型
+### 三种 AS 类型
 
 1. stub AS：末梢 AS，只有一条默认出口，因此不需要同步路由信息
 1. non-transient AS：只通告自己的路由，不传播学习到的路由
@@ -357,16 +308,16 @@ interior routing）。
 <p align="center"><img src="/assets/img/internet-routing-arch/4-6.PNG" width="60%" height="60%"></p>
 <p align="center">图 4-6 Multihomed Transit AS Using BGP Internally and Externally</p>
 
-### 4.5 Frequently Asked Questions
+## 4.5 Frequently Asked Questions
 
-#### Domain 和 AS 有什么区别？
+### Domain 和 AS 有什么区别？
 
 两者都是指满足某些条件的一组路由器。
 
 * Domain 一般指**运行相同路由协议**的一组路由器，例如一个 RIP domain 或一个 OSFP domain。
 * AS 是**管理概念**，**作为整体统一管理的、有相同路由策略**的一组路由器是一个 AS。一个 AS 可能包含一个或多个 domain。
 
-#### BGP 是用于 AS 之间的。那用于 AS 内的 BGP 又是什么？
+### BGP 是用于 AS 之间的。那用于 AS 内的 BGP 又是什么？
 
 AS 内的 BGP 是 iBGP。
 
@@ -376,11 +327,11 @@ AS 内的 BGP 是 iBGP。
 
 <a name="chap_5"></a>
 
-## 5 边界网关协议第 4 版（BGP-4）
+# 5 边界网关协议第 4 版（BGP-4）
 
 BGP-4 `1993` 年开始部署，是第一个支持路由聚合的 BGP 版本。
 
-### 5.1 BGP 工作原理
+## 5.1 BGP 工作原理
 
 BGP 是一种**路径矢量协议（path vector protocol）**。
 
@@ -393,7 +344,7 @@ BGP 是一种**路径矢量协议（path vector protocol）**。
 * 维护**路由表**的**版本号**，每次路由表有更新，版本号都会递增
 * 通过 UPDATE 消息通告和撤回路由
 
-#### BGP 消息头格式
+### BGP 消息头格式
 
 <p align="center"><img src="/assets/img/internet-routing-arch/5-6.PNG" width="60%" height="60%"></p>
 <p align="center">图 5-6 BGP Message Header Format</p>
@@ -408,11 +359,11 @@ BGP 是一种**路径矢量协议（path vector protocol）**。
     * `NOTIFICATION`
     * `KEEPALIVE`
 
-### 5.2 BGP 功能协商
+## 5.2 BGP 功能协商
 
 检测到错误时会发送 NOTIFICATION 消息，然后关闭 peer 连接。
 
-#### UPDATE Message and Routing Information
+### UPDATE Message and Routing Information
 
 UPDATE 消息:
 
@@ -426,23 +377,23 @@ UPDATE 消息:
 <p align="center"><img src="/assets/img/internet-routing-arch/5-11.PNG" width="60%" height="60%"></p>
 <p align="center">图 5-11 BGP Routing Update Example</p>
 
-### 5.3 多协议扩展（Multiprotocol Extensions for BGP）
+## 5.3 多协议扩展（Multiprotocol Extensions for BGP）
 
 对 BGP-4 的兼容性扩展，支持除了 IPv4 之外的其他协议（所以叫多协议），例如 IPv6。
 
-### 5.4 TCP MD5 Signature Option
+## 5.4 TCP MD5 Signature Option
 
 
-### 5.5 Looking Ahead
+## 5.5 Looking Ahead
 
 
-### 5.6 Frequently Asked Questions
+## 5.6 Frequently Asked Questions
 
-#### BGP 是否像 RIP 一样定期发布路由更新消息？
+### BGP 是否像 RIP 一样定期发布路由更新消息？
 
 不是。只有路由有变动时，才会通告，而且只通告变动的路由。
 
-#### ASN 在 BGP 消息中的什么地方？
+### ASN 在 BGP 消息中的什么地方？
 
 UPDATE 消息的 AS_PATH 属性中。
 
@@ -452,11 +403,11 @@ UPDATE 消息的 AS_PATH 属性中。
 
 <a name="chap_6"></a>
 
-## 6 BGP Capabilities 调优
+# 6 BGP Capabilities 调优
 
 从本章开始，内容从理论转向 BGP 实现。
 
-### 6.1 Building Peer Sessions
+## 6.1 Building Peer Sessions
 
 虽然 BGP 大部分情况都是用于 AS 之间，但是，它也可以用在 AS 内部，为 AS 内部的路
 由器提供外部路由可达信息（external destination reachability information）。
@@ -474,7 +425,7 @@ iBGP 和 eBGP 的区别：
 1. 对收到的 UPDATE 消息的处理不同
 1. 消息携带的属性不同
 
-#### 物理和逻辑连接
+### 物理和逻辑连接
 
 eBGP 要求邻居之间必须是物理直连的，但是有些情况下两个 AS 之间的 BGP peer 无法满
 足直连的要求，例如经过了一些非 GBP 路由器。这种情况下，需要对 BGP 做特殊配置。
@@ -484,7 +435,7 @@ eBGP 要求邻居之间必须是物理直连的，但是有些情况下两个 AS
 
 iBGP 对于 peer 之间是否直连没有要求，只要 peer 之间 IP 通即可。
 
-#### Synchronization Within an AS
+### Synchronization Within an AS
 
 BGP 的默认行为是，只有 iBGP 收敛之后，才将 AS 内部的路由通告给其他 AS。
 
@@ -520,12 +471,12 @@ iBGP full-mesh，这样路由可以**通过 iBGP 保证同步**。向 IGP 内部
 是当前的常见配置（disable BGP synchronization and rely on a full mesh of IBGP
 routers）。
 
-### 6.2 路由更新方式
+## 6.2 路由更新方式
 
 对于像互联网这样复杂的网络来说，**路由稳定性**（route stability）是一个很大的问题。
 这和链路的稳定性，以及路由的注入方式（动态/静态）有关系。
 
-#### BGP 动态注入
+### BGP 动态注入
 
 可以进一步分为：
 
@@ -549,14 +500,14 @@ routers）。
 
 最后，另一种解决路由不稳定的方式是静态注入路由。
 
-#### BGP 静态注入
+### BGP 静态注入
 
 静态注入的路由会一直存在于路由表，一直会被通告。
 
 可以解决路由不稳定的问题，但是会导致失效的路由无法自动从路由表删除，而且静态配置
 相当繁琐，配置不当还容易产生环路。因此只在特定的场景下使用。
 
-#### 静态路由和动态路由例子：移动网络
+### 静态路由和动态路由例子：移动网络
 
 移动网络中分配 IP 地址的问题。
 
@@ -566,7 +517,7 @@ BGP。这会带来一些问题，前面已经分析过，例如需要对路由�
 
 另一种实现方式是通过 `network` 命令，在所有位置的边界路由器定义这些网络。
 
-### 6.3 重叠的协议：后门（Overlapping Protocols: Backdoors）
+## 6.3 重叠的协议：后门（Overlapping Protocols: Backdoors）
 
 路由可以通过多种协议学习，选择不同的协议会影响流量的路径。例如，如果选择一条 RIP
 路由，可能会走某链路；而选择一条 eBGP 路由，则可能会走另一条链路。
@@ -580,7 +531,7 @@ Cisco 提供的 ***administrative distance*** 就是这个功能。
 通过设置不同协议的路由的优先级，使得后门路由被选中作为最优路由。
 或者，前面介绍过，通过 `distance` BGP 命令也可以设置优先级。
 
-### 6.4 BGP 路由过程
+## 6.4 BGP 路由过程
 
 简要查看完整的 BGP 路由处理过程。
 
@@ -599,7 +550,7 @@ BGP 实现需要维护一张 BGP 路由表，这张表是和 IP 路由表独立�
 <p align="center"><img src="/assets/img/internet-routing-arch/6-8.PNG" width="60%" height="60%"></p>
 <p align="center">图 6-8 Routing Process Overview</p>
 
-#### BGP 路由：通告和存储
+### BGP 路由：通告和存储
 
 根据 RFC 1771，BGP 协议中路由（route）的定义是：一条路由是**一个目标及其到达这个目
 标的一条路径的属性**组成的信息单元（a route is defined as a unit of information that pairs a destination with the attributes of a path to that destination）。
@@ -624,7 +575,7 @@ BGP speaker 选择通告一条路由的时候，可能会修改路由的 path �
 <p align="center"><img src="/assets/img/internet-routing-arch/6-10.PNG" width="60%" height="60%"></p>
 <p align="center">图 6-10 Sample Routing Environment</p>
 
-#### BGP 决策过程总结
+### BGP 决策过程总结
 
 1. 如果下一跳不可达，则忽略此路由（这就是为什么有一条 IGP 路由作为下一跳如此重要
    的原因）
@@ -640,65 +591,65 @@ BGP speaker 选择通告一条路由的时候，可能会修改路由的 path �
 1. 如果内部路径也相同，那就依靠 BGP ROUTE_ID 来选择了。选择从 RID 最小的 BGP 路
    由器来的路由。对 Cisco 路由器来说，RID 就是路由器的 loopback 地址。
 
-### 6.5 Controlling BGP Routes
+## 6.5 Controlling BGP Routes
 
 介绍路由的每个属性。
 
-#### ORIGIN（type code 1)
+### ORIGIN（type code 1)
 
 * 0: `IGP`, NLRI that is inteior to the originating AS
 * 1: `EGP`, NLRI learned via EGP
 * 2: `INCOMPLETE`, NLRI learned by some means
 
-#### AS_PATH
+### AS_PATH
 
 BGP 依靠这个字段实现路由无环路。里面存储了路径上的 ASN。
 
 <p align="center"><img src="/assets/img/internet-routing-arch/6-11.PNG" width="60%" height="60%"></p>
 <p align="center">图 6-11 Sample Loop Condition Addressed by the AS_PATH Attribute</p>
 
-#### NEXT_HOP
+### NEXT_HOP
 
 <p align="center"><img src="/assets/img/internet-routing-arch/6-12.PNG" width="60%" height="60%"></p>
 <p align="center">图 6-12 BGP NEXT_HOP Example</p>
 
-### 6.6 Route Filtering and Attribute Manipulation
+## 6.6 Route Filtering and Attribute Manipulation
 
-### 6.7 BGP-4 Aggregation
+## 6.7 BGP-4 Aggregation
 
-### 6.8 Looking Ahead
+## 6.8 Looking Ahead
 
-### 6.9 Frequently Asked Questions
+## 6.9 Frequently Asked Questions
 
-#### 是否应该将 BGP 路由注入 IGP？
+### 是否应该将 BGP 路由注入 IGP？
 
 不。不推荐将 BGP 路由注入 IGP。应该关闭 BGP synchronization。
 
-### 6.1 References
+## 6.1 References
 
 <a name="chap_7"></a>
 
-## 7 冗余、对称和负载均衡
+# 7 冗余、对称和负载均衡
 
 * 冗余：发生链路故障时，有备用路由
 * 对称：流量在相同的点进出 AS（enters and exits an AS at the same point）
 * 负载均衡：在多条链路之间均衡地分发流量
 
-### 7.1 冗余
+## 7.1 冗余
 
 冗余和对称这两个目标是有冲突的：**一个网络提供的冗余越多，它的对称性越难保证**。
 
 **冗余最终会以路由的形式落到路由表**。为了避免路由表过于复杂，通常的冗余实现方式
 就是默认路由（default routing）。
 
-#### 设置默认路由
+### 设置默认路由
 
 默认路由是**优先级最低的路由**，因此是最后的选择（gateway of the last resort）。分为两种：
 
 * 动态学习
 * 静态配置
 
-##### 动态学习默认路由
+#### 动态学习默认路由
 
 0.0.0.0/0.0.0.0 是全网约定的默认路由，并且可以动态通告给其他路由器。通告此路由的
 系统表示它可以**作为其他系统最后尝试的网关**（represents itself as a gateway of
@@ -708,13 +659,13 @@ last resort for other systems）。
 路由。在 BGP 中，可以通过设置 `local reference` 给默认路由设置优先级。如果高优先
 级的默认路由发生故障，低优先级的可以补上。
 
-##### 静态配置默认路由
+#### 静态配置默认路由
 
 动态学习到的默认路由可能不是我们想要的，因此一些管理员会选择静态配置默认路由。
 
 静态默认路由也可以设置多条，用优先级区分。
 
-### 7.2 对称
+## 7.2 对称
 
 流量从 AS 的哪个点出去的，也通过哪个点进来。
 
@@ -723,7 +674,7 @@ last resort for other systems）。
 > 实际上非对称路由在现实中并不少见（more often than not），而且也没有造成太大问
 > 题。
 
-### 7.3 非对称路由
+## 7.3 非对称路由
 
 流量要根据 inbound 和 outbound 分开考虑。
 例如，如果网络和 ISP1 之间的带宽被打爆了，那你肯定是先问：是 inbound 还是
@@ -737,31 +688,31 @@ outbound 被打爆了？
 因此，要调整 inbound 流量，就需要调整从本 AS 通告出去的路由；而要调整 outbound，
 就需要控制本 AS 如何学习邻居通告的路由。
 
-### 7.4 不同场景下对三者的权衡
+## 7.4 不同场景下对三者的权衡
 
 可以看出，冗余、对称和负载均衡之间是有联系的，并且存在一些冲突。
 
 第六章介绍的路由属性（routing attributes）是实现这三个目标的工具。
 
-### 7.5 Looking Ahead
+## 7.5 Looking Ahead
 
-### 7.6 Frequently Asked Questions
+## 7.6 Frequently Asked Questions
 
 **BGP 本身不考虑链路速度和流量特性**，因此需要管理员通过策略配置达到所期望的目的。
 
 
 <a name="chap_8"></a>
 
-## 8 AS 内部路由控制
+# 8 AS 内部路由控制
 
-### 8.1 非 BGP 路由器和 BGP 路由器的交互
+## 8.1 非 BGP 路由器和 BGP 路由器的交互
 
 非 BGP 路由器如何连接到外部网络：
 
 1. 将 BGP 注入到 IGP（即，将外部路由注入到 AS 内部）
 1. 静态配置 AS 内的默认路由到外网
 
-#### 8.1.1 BGP 注入 IGP
+### 8.1.1 BGP 注入 IGP
 
 **不推荐将全部 BGP 路由注入到 IGP**，这会给 IGP 路由增加很大的负担。IGP 路由是针
 对 AS 内路由和很小的网络设计的，不适用于大规模网络。但可以将部分 BGP 路由注入 IGP。
@@ -780,16 +731,16 @@ outbound 被打爆了？
 1. 如果 IGP 非常老，例如 RIP-1，不支持 CIDR，那 BGP 过来的 CIDR 路由都会丢失
 1. BGP 路由的抖动会引起 IGP 的抖动，很多 IGP 挂掉都是这个原因
 
-#### 8.1.2 静态配置默认路由
+### 8.1.2 静态配置默认路由
 
 在每个 AS 的边界路由器上添加一条默认路由。
 
-### 8.2 BGP Policies Conflicting with Internal Defaults
+## 8.2 BGP Policies Conflicting with Internal Defaults
 
 **BGP 路由策略和 IGP 的默认行为有冲突会导致出现路由环路**，来看 图 8-2 这个例子
 。
 
-#### 8.2.1 例子：主备 BGP 策略和 IGP 默认行为冲突导致环路
+### 8.2.1 例子：主备 BGP 策略和 IGP 默认行为冲突导致环路
 
 考虑图 8-2。RTC 和 RTD 和外面的 AS 运行 eBGP；在 AS 内部，它们两个之间运行 iBGP
 。但是，他们不是直连的，要经过 RTA 和 RTB 两个非 BGP 路由器。RTA 和 RTB 会和 AS
@@ -806,51 +757,51 @@ RTC 和 RTD 之间出现环路：
 
 解决这个问题的办法有如下几种。
 
-##### 方案 1: 修改 IGP Metric
+#### 方案 1: 修改 IGP Metric
 
 **将 RTA 的默认路由从指向 RTC 改为指向 RTD**。
 
 具体地，将 RTC 的默认路由 0/0 的 metric 设置的非常大。这样 RTD 的路径相比之下很
 短，RTA 就会将 RTA-RTB-RTD 作为最优路径。
 
-##### 方案 2: 直连 RTC 和 RTD
+#### 方案 2: 直连 RTC 和 RTD
 
 **直连 RTC 和 RTD，使得二者之间的最优路径不需要经过 RTA。**
 
 RTC-RTD 是 iBGP 路径，RTC-RTA-RTB-RTD 是 IGP 路径。
 
-##### 方案 3: Transit Routers 都跑 BGP
+#### 方案 3: Transit Routers 都跑 BGP
 
 Transit routers 都跑 BGP，在图 8-2 中就是 RTA 和 RTB。
 
-##### 方案 4: 控制默认路由自动注入
+#### 方案 4: 控制默认路由自动注入
 
 RTD 和 RTC 只有一个注入默认路由，另一个不注入。
 
 缺点：在对 primary/backup 模式有用，而且 primary 挂掉之后，backup 用不了，因为它
 没有注入默认路由。
 
-#### 8.2.2 Defaults Inside the AS: Other BGP Policies
+### 8.2.2 Defaults Inside the AS: Other BGP Policies
 
 IGP 默认配置和 BGP policy 冲突产生的环路。
 
-### 8.3 策略路由（Policy Routing）
+## 8.3 策略路由（Policy Routing）
 
 通常所说的路由，都是根据**目的地址**做转发。
 
 而策略路由是根据**源地址**，或**源地址+目的地址**做转发。可以做更高级的路由控制。
 
-### 8.4 Looking Ahead
+## 8.4 Looking Ahead
 
-### 8.5 Frequently Asked Questions
+## 8.5 Frequently Asked Questions
 
 <a name="chap_9"></a>
 
-## 9 大型 AS 控制管理
+# 9 大型 AS 控制管理
 
 网络节点超过几百个之后，会带来很大的管理问题。
 
-## 9.1 路由反射器（Route Reflectors）
+# 9.1 路由反射器（Route Reflectors）
 
 BGP 之间通过 full-mesh 做 peering，当节点多了之后，BGP mesh 非常复杂。
 
@@ -864,7 +815,7 @@ BGP 之间通过 full-mesh 做 peering，当节点多了之后，BGP mesh 非常
 1. 增加额外计算开销
 1. 如果配置不正常会引起路由环路和路由不稳定
 
-#### 9.1.1 没有 RR 的拓扑：full-mesh
+### 9.1.1 没有 RR 的拓扑：full-mesh
 
 <p align="center"><img src="/assets/img/internet-routing-arch/9-1.PNG" width="60%" height="60%"></p>
 <p align="center">图 9-1 Internal Peers in a Normal Full-Mesh Environment</p>
@@ -880,7 +831,7 @@ BGP 之间通过 full-mesh 做 peering，当节点多了之后，BGP mesh 非常
 因此，如果 RTA-RTC 之间没有做 peer，RTC 就收不到 RTA 的消息；所以没有 RR 的情况
 下必须得用 full-mesh。
 
-#### 9.1.2 有 RR 的拓扑
+### 9.1.2 有 RR 的拓扑
 
 再来看有 RR 的情况，如图 9-2 所示。
 
@@ -892,7 +843,7 @@ BGP 之间通过 full-mesh 做 peering，当节点多了之后，BGP mesh 非常
 
 RR 大大减少了 BGP session 数量，使得网络更具扩展性。
 
-#### 9.1.3 路由反射原则
+### 9.1.3 路由反射原则
 
 所有设备分为三类：
 
@@ -912,7 +863,7 @@ RR 大大减少了 BGP session 数量，使得网络更具扩展性。
 
 RR 只用于 AS 内部，因此 AS 边界的外部路由节点（eBGP）也当作 nonclients 对待。
 
-#### 9.1.4 RR 高可用
+### 9.1.4 RR 高可用
 
 RR 是集中式节点，因此非常重要，需要做冗余。
 
@@ -921,7 +872,7 @@ RR 是集中式节点，因此非常重要，需要做冗余。
 <p align="center"><img src="/assets/img/internet-routing-arch/9-4.PNG" width="60%" height="60%"></p>
 <p align="center">图 9-4 Comparison of Logical and Physical Redundancy Solutions</p>
 
-#### 9.1.5 RR 拓扑
+### 9.1.5 RR 拓扑
 
 RR 拓扑主要取决于物理网络拓扑，事实上每个路由器都可以配置成 RR。
 
@@ -939,9 +890,9 @@ RR 拓扑主要取决于物理网络拓扑，事实上每个路由器都可以�
 
 <a name="chap_10"></a>
 
-## 10 设计稳定的因特网
+# 10 设计稳定的因特网
 
-### 10.1 因特网路由的不稳定性
+## 10.1 因特网路由的不稳定性
 
 最常见的现象：路由抖动（flapping），BGP 频繁 UPDATE 和 WITHDRAWN 路由。
 
@@ -955,6 +906,6 @@ RR 拓扑主要取决于物理网络拓扑，事实上每个路由器都可以�
 1. 人为错误
 1. 链路拥塞
 
-### 10.2 BGP Stability Features
+## 10.2 BGP Stability Features
 
 # IV: Internet Routing Device Configuration

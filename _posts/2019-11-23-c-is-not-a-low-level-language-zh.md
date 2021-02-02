@@ -2,7 +2,7 @@
 layout    : post
 title     : "[译] C 不是一门低层（low-level）语言（acmqueue, 2018）"
 date      : 2019-11-23
-lastupdate: 2019-11-23
+lastupdate: 2021-01-31
 categories: c language
 ---
 
@@ -23,35 +23,12 @@ SICK](http://esr.ibiblio.org/?p=7979)。
 
 ----
 
-## 目录
-
-1. [什么是低层语言？](#ch_1)
-    * 1.1 低层语言：定义
-    * 1.2 抽象机器
-2. [快速 PDP-11 模拟器](#ch_2)
-    * 2.1 C 抽象机器
-    * 2.2 指令集并行（ILP）
-    * 2.3 寄存器重命名引擎
-    * 2.4 扁平内存和缓存
-3. [优化 C](#ch_3)
-    * 3.1 编译器复杂度
-    * 3.2 指令矢量化
-    * 3.3 结构体填充
-    * 3.4 SROA 和 loop unswitching（循环外提）
-    * 3.5 未初始化变量、未定义行为和未定义值
-    * 3.6 小结
-4. [理解 C](#ch_4)
-    * 4.1 初始化结构体时，填充部分是否会被初始化？
-    * 4.2 内存模型和指针
-5. [设想一个 Non-C 处理器](#ch_5)
-    * 5.1 Sun/Oracle UltraSPARC
-    * 5.2 ARM SVE
-    * 5.3 缓存一致性、对象可变/不可变性、GC
-    * 5.4 专门为速度设计的处理器
+* TOC
+{:toc}
 
 ----
 
-我们有必要花一些时间来思考最近的 **Meltdown 和 Spectre** 漏洞产生的根本原因。
+有必要花时间思考最近的 **Meltdown 和 Spectre** 漏洞产生的根本原因。
 
 这两个漏洞都与处理器的**预测执行**（speculatively executing）相关：预测执行中的
 的指令会**经过某些类型的访问检查**（access check），使得攻击者可以通过一个**旁路
@@ -59,7 +36,7 @@ SICK](http://esr.ibiblio.org/?p=7979)。
 
 导致这些漏洞的特性（features），以及其他一些东西，助长了 C 程序员们的如下观念：
 他们是**在用一门低层语言进行编程（programming in a low-level language）**。而事
-实上这种观念以及错误了几十年了。
+实上，这种观念以及错了几十年了。
 
 **处理器厂商**并不是唯一需要对此负责的。那些**开发 C/C++ 编译器的人**也助长了
 这种错误观念。
@@ -81,7 +58,7 @@ SICK](http://esr.ibiblio.org/?p=7979)。
 什么**。
 
 **很多语言属性（attributes）都会导致人们认为某种语言是低层语言**。我们不妨想象这
-样一个场景，各种编程语言排列在一个 continuum（连续统一体，任何相邻的两个实体都非
+样一个场景：各种编程语言排列在一个 continuum（连续统一体，任何相邻的两个实体都非
 常相似，但最两端的两个实体却差异非常大。译者注）之上，continuum 的一端是汇编语
 言，另一端是通往 Starship Enterprise 的计算机的接口（interface）。**低层语言“靠近金
 属”（close to the metal），而高级语言更靠近人类的思考方式**。
@@ -93,8 +70,8 @@ SICK](http://esr.ibiblio.org/?p=7979)。
 基于以上分析，我们很容易得出这样一个结论：**对于 PDP-11 来说，C 是一门低层语言**。
 二者都描述了这样一个模型：
 
-* 程序是顺序执行的（programs executed sequentially）
-* 内存空间是扁平的（memory was a flat space）
+* <mark>程序是顺序执行的</mark>（programs executed sequentially）
+* <mark>内存空间是扁平的</mark>（memory was a flat space）
  
 甚至 C 语言的前递增（`++i`）和后递增（`i++`）运算符都能一个萝卜一个坑地对应到
 PDP-11 的不同寻址模式。
@@ -189,9 +166,8 @@ compiler transforms）。Clang 编译器，连同 LLVM 中相关的部分，大�
 
 例如，在 C 中，处理大量数据通常是写一个循环，在循环中顺序地处理每个元素。
 
-要在现
-代 CPU 上最优地执行这段代码，编译器必须首先判断每次迭代是不是独立的。这里 C 的
-`restrict` 关键字可能会排上用场。`restric` 保证一个指针的写操作不会与另一个
+要在现代 CPU 上最优地执行这段代码，编译器必须首先判断每次迭代是不是独立的。这里 C 的
+<mark><code>restrict</code> 关键字可能会排上用场</mark>。`restric` 保证一个指针的写操作不会与另一个
 指针的读操作彼此产生任何影响（或者如果有，程序就会得到无法预期的结果）。相比于
 Fortran 这样的语言，C 中这类信息太不通用了（far more limited），这也是为什么 C
 无法在高性能计算领域取代 Fortran 的一个重要原因。
