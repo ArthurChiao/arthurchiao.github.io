@@ -16,6 +16,9 @@ categories: cilium bpf k8s load-balancing
 实际上，一年之后 Daniel 和 Martynas 又在 LPC 做了一次分享，内容是本文的延续：
 [基于 BPF/XDP 实现 K8s Service 负载均衡 (LPC, 2020)]({% link _posts/2020-11-24-cilium-k8s-service-lb-zh.md %})。
 
+其他推荐阅读：[Cracking kubernetes node proxy (aka kube-proxy)]({% link _posts/2019-11-30-cracking-k8s-node-proxy.md %})，
+用五种方式、百来行代码，实现极度简易版 kube-proxy。
+
 **由于译者水平有限，本文不免存在遗漏或错误之处。如有疑问，请查阅原文。**
 
 ----
@@ -193,8 +196,8 @@ Service 数量不断增长时，**iptables 规则的数量增长会更快**。�
 <p align="center"><img src="/assets/img/cilium-scale-service/cilium-cluster-ip.png" width="75%" height="75%"></p>
 
 这里有一些实现上的考虑：相比于在 TC ingress 层做 Service 转换，我们优先利用
-cgroupv2 hooks，**在 socket BPF 层直接做这种转换**（需要高版本内核支持，如果不支
-持则 fallback 回 TC ingress 方式）。
+<mark>cgroupv2 hooks</mark>，**在 socket BPF 层直接做这种转换**（需要高版本内核
+支持，如果不支持则 fallback 回 TC ingress 方式）。
 
 ## 2.1 ClusterIP Service
 
@@ -431,7 +434,7 @@ Cilium 中现在有一个 BPF conntrack table，我们支持到了一些非常�
 ，例如 4.9。Cilium 在启动时会检查内核版本，优先选择使用 LRU，没有 LRU 再
 fallback 到普通的哈希表（Hash Table）。**对于哈希表，就需要一个不断 GC 的过程**。
 
-我们**有意将 NAT map 与 CT map 独立开来**，这是因
+Cilium **有意将 NAT map 与 CT map 独立开来**，因
 为我们要求在 **cilium-agent 升级或降级过程中，现有的连接/流量不能受影响**。
 如果二者是耦合在一起的，假如 CT 相关的东西有很大改动，那升级时那要么
 是将当前的连接状态全部删掉重新开始；要么就是服务中断，临时不可用，升级完成后再将

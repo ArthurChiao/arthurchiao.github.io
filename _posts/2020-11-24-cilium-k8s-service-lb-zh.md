@@ -65,8 +65,8 @@ pod 的行为做任何规定**。
 但这种方式有几个**缺点**：
 
 1. pod 会因为某些原因重建，而 K8s **无法保证它每次都会分到同一个 IP 地址**
-   。例如，如果 node 重启了，pod 很可能就会分到不同的 IP 地址，这对客户端来说个
-   大麻烦。
+   。例如，<mark>如果 node 重启了，pod 很可能就会分到不同的 IP 地址</mark>，这
+   对客户端来说个大麻烦。
 2. **没有内置的负载均衡**。即，客户端选择一个 PodIP 后，所有的请求都会发送到这个
    pod，而不是分散到不同的后端 pod。
 
@@ -145,12 +145,12 @@ Service，如果它将流量转发到本机内的 backend pod，需要做一次 
 
 **缺点**：
 
-1. **External IP 在 k8s 的控制范围之外**，是由底层的网络平台提供的。例如，底层网
-   络通过 BGP 宣告，使得 IP 能到达某些 nodes。
+1. <mark>External IP 在 k8s 的控制范围之外</mark>，是由底层的网络平台提供的。例
+   如，底层网络通过 BGP 宣告，使得 IP 能到达某些 nodes。
 2. 由于这个 IP 是在 k8s 的控制之外，对 k8s 来说就是黑盒，因此
-   **从集群内访问 external IP 是存在安全隐患的**，例如 external IP 上可能运行了
-   恶意服务，能够进行中间人攻击。因此，Cilium 目前不支持在集群内通过 external IP
-   访问 Service。
+   <mark>从集群内访问 external IP 是存在安全隐患的</mark>，例如 external IP 上
+   可能运行了恶意服务，能够进行中间人攻击。因此，Cilium 目前不支持在集群内通过
+   external IP访问 Service。
 
 ## 1.5 LoadBalancer Service
 
@@ -168,7 +168,7 @@ remote 转发：
 
 <p align="center"><img src="/assets/img/cilium-service-lb/load-balancer-2.png" width="75%" height="75%"></p>
 
-但是，二者有重要区别：
+但是，<mark>二者有重要区别</mark>：
 
 1. **externalIPs 在 K8s 的控制之外**，使用方式是从某个地方申请一个 external IP，
    然后填到 Service 的 Spec 里；这个 external IP 是存在安全隐患的，因为并不是
@@ -226,8 +226,8 @@ remote 转发：
 
 <p align="center"><img src="/assets/img/cilium-service-lb/cluster-ip.png" width="75%" height="75%"></p>
 
-ClusterIP 也是 Service 的一种 VIP，但这种方式只适用于从集群内访问 Service，例如
-从一个 Pod 访问相同集群内的一个 Service。
+ClusterIP 也是 Service 的一种 VIP，但这种方式<mark>只适用于从集群内访问 Service</mark>，
+例如从一个 Pod 访问相同集群内的一个 Service。
 
 ClusterIP 的特点：
 
@@ -260,8 +260,8 @@ ClusterIP 的特点：
 
 如上图所示，Service 的实现由两个主要部分组成：
 
-1. 运行在 socket 层的 BPF 程序
-2. 运行在 tc/XDP 层的 BPF 程序
+1. 运行在 **socket** 层的 BPF 程序
+2. 运行在 **tc/XDP** 层的 BPF 程序
 
 以上两者共享 service map 等资源，其中存储了 service 及其 backend pods 的映射关系。
 
@@ -277,10 +277,10 @@ pod 建连和通信**，如下图所示，这里能 hook 的系统调用包括 `
 
 <p align="center"><img src="/assets/img/cilium-service-lb/e-w-lb.png" width="75%" height="75%"></p>
 
-这里的一个问题是，**K8s 使用的还是 cgroup v1，但这个功能需要使用 v2**，而由于
-兼容性问题，v2 完全替换 v1 还需要很长时间。所以我们目前所能做的就是
+这里的一个问题是，<mark>K8s 使用的还是 cgroup v1，但这个功能需要使用 v2</mark>，
+而由于兼容性问题，v2 完全替换 v1 还需要很长时间。所以我们目前所能做的就是
 支持 v1 和 v2 的混合模式。这也是为什么 Cilium 会 mount 自己的 cgroup v2 instance
-的原因。
+的原因（将宿主机 `/var/run/cilium/cgroupv2` mount 到 cilium-agent 容器内，译注）。
 
 > Cilium mounts cgroup v2, attaches BPF to root cgroup. Hybrid use works well for root v2.
 
@@ -295,7 +295,7 @@ pod 建连和通信**，如下图所示，这里能 hook 的系统调用包括 `
 
 > <mark>想知道 socket-level translation 具体是如何实现的</mark>，
 > 可参考 [Cracking kubernetes node proxy (aka kube-proxy)]({% link _posts/2019-11-30-cracking-k8s-node-proxy.md %})，
-> 其中有一个 20 多行 bpf 代码实现的例子。译注。
+> 其中有一个 20 多行 bpf 代码实现的例子，可认为是 Cilium 相关代码的极度简化。译注。
 
 ### 查找后端 pods
 
