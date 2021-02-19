@@ -2,7 +2,7 @@
 layout    : post
 title     : "[译] 大规模微服务利器：eBPF + Kubernetes（KubeCon, 2020）"
 date      : 2020-09-06
-lastupdate: 2020-09-06
+lastupdate: 2021-02-21
 categories: ebpf kernel k8s networking
 ---
 
@@ -342,6 +342,11 @@ Alexei 主要负责 tracing 部分，他添加了一个 patch，支持加载 eBP
 datapath 进行编程，获得一个高性能 datapath。
 
 ### 为 tc 添加了一个 lockless ingress & egress hook 点
+
+> 译注：可参考：
+>
+> * [深入理解 tc ebpf 的 direct-action (da) 模式（2020）]({% link _posts/2021-02-21-understanding-tc-da-mode-zh.md %})
+> * [为容器时代设计的高级 eBPF 内核特性（FOSDEM, 2021）]({% link _posts/2021-02-13-advanced-bpf-kernel-features-for-container-age-zh.md %})
 
 ### 添加了很多 verifer 和 eBPF 辅助代码（helper）
 

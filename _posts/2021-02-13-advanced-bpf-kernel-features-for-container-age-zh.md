@@ -325,8 +325,8 @@ TCP_RR 测试（ping-pong）也是类似的结果：
 
 这种方式存在很多问题：
 
-1. 效率不高，因为通常情况下这都会涉及到多队列设备（multi-queue devices），需要竞
-   争 qdisc 锁，不是一种无锁方式。
+1. 效率不高，因为通常情况下这都会涉及到多队列设备（multi-queue devices），
+   **需要竞争 qdisc 锁**，不是一种无锁方式。
 2. 通过 ifb 设备来做整形（shaping）也不是合适，因为它占用了很多的资源来做 ingress
    整形，效果却不怎么样。整形都应该是在出向做的。
 3. 整体上这种方式并不是可扩展的。
@@ -335,6 +335,16 @@ TCP_RR 测试（ping-pong）也是类似的结果：
 
 在 Cilium 中，我们基于 multi-queue 和 BPF，实现了一种称为 <mark>Earlist Departhure Time</mark>（EDT，最早离开时间）
 的<mark>无锁（lockless）方式来对 pod 进行限速</mark>。
+
+> 关于 lockless，可参考下面的 patch。译注。
+>
+> author  Daniel Borkmann 2016-01-07 22:29:47 +0100
+>
+> [net, sched: add clsact qdisc](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=1f211a1b929c804100e138c5d3d656992cfd5622)
+>
+> This work adds a generalization of the ingress qdisc as a qdisc holding
+> only classifiers. The clsact qdisc works on ingress, but also on egress.
+> In both cases, it's execution happens without taking the qdisc lock, ...
 
 工作原理如下图所示：
 

@@ -329,6 +329,19 @@ $ sudo bpftool cgroup attach /sys/fs/cgroup/unified/ sock_ops pinned /sys/fs/bpf
    [cgroupv2](http://man7.org/conf/osseu2018/cgroups_v2-OSS.eu-2018-Kerrisk.pdf)
    时，systemd 会在 `/sys/fs/cgroup/unified` 自动创建一个 mount 点。
 
+> 下面的命令说明 <mark>/sys/fs/cgroup/unified/ 确实是 cgroupv2 挂载点</mark>：
+>
+> ```shell
+> $ mount | grep cgroup
+> cgroup2 on /sys/fs/cgroup/unified type cgroup2 (rw,nosuid,nodev,noexec,relatime,nsdelegate)
+> ...
+> ```
+>
+> 如果想自定义 cgroupv2 挂载点，可参考
+> [Cracking kubernetes node proxy (aka kube-proxy)]({% link _posts/2019-11-30-cracking-k8s-node-proxy.md %})，其中的第五种方式。
+>
+> 译注。
+
 ### 查看 map ID
 
 至此，目标代码已经加载（load）和附着（attach）到 hook 点了，接下来查看
