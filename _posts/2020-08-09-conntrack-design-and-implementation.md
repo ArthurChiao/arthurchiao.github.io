@@ -2,7 +2,7 @@
 layout    : post
 title     : "Connection Tracking (conntrack): Design and Implementation Inside Linux Kernel"
 date      : 2020-08-09
-lastupdate: 2021-01-11
+lastupdate: 2021-04-26
 categories: conntrack nat netfilter kernel
 ---
 
@@ -37,7 +37,7 @@ etc, all rely on it.
 
 ## 1.1 Concepts
 
-As the name illustrates itself, connection tracking **tracks (and maintains) connections and their states**.
+As the name illustrates itself, connection tracking **<mark>tracks (and maintains) connections and their states</mark>**.
 
 <p align="center"><img src="/assets/img/conntrack/node-conntrack.png" width="40%" height="40%"></p>
 <p align="center">Fig 1.1 Connection tracking example on a Linux node</p>
@@ -85,7 +85,7 @@ To track the states of all connections on a node, we need to,
 2. **Setup a "database"** for recoding the status of those connections (conntrack table).
 3. **Update connection status timely** to database based on the extracted information from hooked packets.
 
-For example, 
+For example,
 
 1. When hooked a TCP `SYNC` packet, we could confirm that a new connection
    attempt is under the way, so we need to create a new conntrack entry to
@@ -238,7 +238,7 @@ NAT can be further categorized as:
 
 * SNAT: do translation on source address
 * DNAT: do translation on destination address
-* Full NAT：do translation on both source and destination addresses
+* Full NAT: do translation on both source and destination addresses
 
 Our above examples falls into SNAT case.
 
@@ -268,7 +268,7 @@ NAT between client-server traffic, the data flow depicted as picture below:
 
 Stateful firewall is relative to the **stateless firewall** in the early days.
 With stateless firewall, one could only apply simple rules like
-`drop syn` or `allow syn`, and it has no concept of flow. It's impossible to
+`drop syn to port 443` or `allow syn to port 80`, and it has no concept of flow. It's impossible to
 configure a rule like **"allow this `ack` if `syn` has been seen, otherwise drop
 it"**, so the funtionality was quite limited [6].
 
@@ -289,14 +289,13 @@ connects (integrates) all VMs inside it with an OVS bridge (`br-int`).
 If only considering network connectivity, each VM should attach to `br-int`
 directly. But here comes the problem [7]:
 
-* OVS has **no conntrack module**,
+* (Early versions) OVS has **no conntrack module**,
 * Linux kernel has conntrack, but the firewall based on this **works at IP layer (L3)**, manipulated via iptables,
 * **OVS is a L2 module**, which means it could not utilize L3 modules,
 
-Thus, firewalling at the OVS (node-side) network devices of VMs is impossible.
+As a result, firewalling at the OVS (node-side) network devices of VMs is impossible.
 
-OpenStack solved this problem by **inserting a Linux
-bridge between every VM and `br-int`**, as shown below:
+OpenStack solved this problem by **inserting a Linux bridge between every VM and `br-int`**, as shown below:
 
 <p align="center"><img src="/assets/img/conntrack/ovs-compute.png" width="60%" height="60%"></p>
 <p align="center">Fig 1.6. Network topology within an OpenStack compute node,
@@ -307,13 +306,13 @@ But, **it has a L2 filtering machanism
 called ebtables, which could jump to iptables rules**, and thus makes
 Netfilter/iptables workable.
 
-But this workaround is ugly, and leads to performance problems. So in 2016, RedHat
-proposed an OVS conntrack solution [7]. Since then, people could turn off
-Linux bridge while still keeping security group funtion.
+But this workaround is ugly, and leads to significant performance issues. So in 2016, RedHat
+proposed an OVS conntrack solution [7]. Until then, people could possibly turn off
+Linux bridge while still having security group funtionality.
 
 ## 1.6 Summary
 
-This ends our discussion on the theory of connection tracking, and 
+This ends our discussion on the theory of connection tracking, and
 in the following, we will dig into the kernel implementation.
 
 # 2 Implementation: Netfilter hooks
@@ -351,7 +350,7 @@ packet arrives at the hook point, it will triger the related handlers being call
 > There is another definition for these `NF_INET_*` variables, in `include/uapi/linux/netfilter.h`.
 > These two definitions are equivalent, from the comments in the code, `NF_IP_*`
 > are probably used for backward compatibility.
-> 
+>
 > ```c
 > enum nf_inet_hooks {
 >     NF_INET_PRE_ROUTING,
@@ -374,7 +373,8 @@ results include:
 
 #define NF_DROP   0  // the packet has been dropped this packet in handler
 #define NF_ACCEPT 1  // the packet is no dropped, continue following processing
-#define NF_STOLEN 2  // the packet has been consumed by the handler, no further processing is needed
+#define NF_STOLEN 2  // silently holds the packet until something happends, no further processing is needed
+                     // usually used to collect fragmented packets (for later assembling)
 #define NF_QUEUE  3  // the packet should be pushed into queue
 #define NF_REPEAT 4  // current handler should be called again against the packet
 ```
@@ -402,9 +402,8 @@ This is not the focus of this post, more information on this, refer to
 
 # 3 Implementation: Netfilter conntrack
 
-conntrack module traces the **connection status of trackable protocols** [1].
-That is, connection tracking targets at **specific protocols**, not all
-protocols. We will see later what protocols it supports.
+conntrack module traces the **<mark>connection status of trackable protocols</mark>** [1].
+That is, connection tracking targets at **specific protocols**, not all. We will see later what protocols it supports.
 
 ## 3.1 Data structures and functions
 
@@ -413,18 +412,21 @@ Key data structures:
 * `struct nf_conntrack_tuple {}`: **defines a `tuple`**.
     * `struct nf_conntrack_man {}`: the manipulatable part of a tuple
         * `struct nf_conntrack_man_proto {}`: the protocol specific part in tuple's manipulatable part
-* `struct nf_conntrack_l4proto {}`: a collection of **methods** a trackable
+* `struct nf_conntrack_l4proto {}`: a collection of **<mark>methods</mark>** a trackable
   protocol needs to implement (and other fields).
 * `struct nf_conntrack_tuple_hash {}`: **defines a conntrack entry** (value)
   stored in hash table (conntrack table), hash key is a `uint32` integer
   computed from tuple info.
-* `struct nf_conn {}`: **defines a flow**.
+* `struct nf_conn {}`: **<mark>defines a flow</mark>**.
 
 Key functions:
 
 * `hash_conntrack_raw()`: calculates a 32bit hash key from tuple info.
-* `nf_conntrack_in()`：**core of the conntrack module, the entrypoint of connection tracking**.
-* `resolve_normal_ct() -> init_conntrack() -> l4proto->new()`: creates a new conntrack entry.
+* `nf_conntrack_in()`: **core of the conntrack module, the entrypoint of connection tracking**.
+* `resolve_normal_ct() -> init_conntrack() -> ct = __nf_conntrack_alloc(); l4proto->new(ct)`
+
+    Create a new conntrack entry, then init it with protocol-specific method.
+
 * `nf_conntrack_confirm()`: confirms the new connection that previously created via `nf_conntrack_in()`.
 
 ## 3.2 `struct nf_conntrack_tuple {}`: Tuple
@@ -475,7 +477,7 @@ struct nf_conntrack_man {                  /
                                               };
 
 struct nf_conntrack_tuple { /* This contains the information to distinguish a connection. */
-    struct nf_conntrack_man src;  // source address info，manipulatable part
+    struct nf_conntrack_man src;  // source address info, manipulatable part
     struct {
         union nf_inet_addr u3;
         union {
@@ -494,8 +496,8 @@ struct nf_conntrack_tuple { /* This contains the information to distinguish a co
 };
 ```
 
-There are only 2 fields (`src` and `dst`) inside `struct nf_conntrack_tuple {}`, each stores
-source and destination address information.
+**<mark>There are only 2 fields (src and dst) inside struct nf_conntrack_tuple {}</mark>**,
+each stores source and destination address information.
 
 But `src` and `dst` are themselves also structs, storing protocol specific data.
 Take IPv4 UDP as example, information of the 5-tuple stores in the following
@@ -512,7 +514,7 @@ fields:
 From the above code, we could see that **only 6 protocols support connection
 tracking currently**: TCP, UDP, ICMP, DCCP, SCTP, GRE.
 
-**Pay attention to the ICMP protocol**. People may think that connction tracking is
+**<mark>Pay attention to the ICMP protocol</mark>**. People may think that connction tracking is
 done by hashing over L3+L4 headers of packets, while ICMP is a L3 protocol, so it
 could not be conntrack-ed. But actually it could be, from the above code, we see
 that the **`type` and `code` fields in ICMP header** are used for defining a
@@ -592,7 +594,7 @@ struct nf_conntrack_tuple_hash {
 
 ## 3.5 `struct nf_conn {}`: connection
 
-Each flow in Netfilter is called a connection, even for those connectionless
+**<mark>Each flow in Netfilter is called a connection</mark>**, even for those connectionless
 protocols (e.g. UDP). A connection is defined as `struct nf_conn {}`, with
 important fields as follows:
 
@@ -616,16 +618,16 @@ struct nf_conn {                        |
     struct hlist_node    nat_bysource;
                                                         // per conntrack: protocol private data
     struct nf_conn *master;                             union nf_conntrack_proto {
-                                                            /* insert conntrack proto private data here */
-    u_int32_t mark;    /* mark skb */                       struct nf_ct_dccp dccp;
-    u_int32_t secmark;                                      struct ip_ct_sctp sctp;
-                                                            struct ip_ct_tcp tcp;
-    union nf_conntrack_proto proto; ---------->----->       struct nf_ct_gre gre;
+                                                       /    /* insert conntrack proto private data here */
+    u_int32_t mark;    /* mark skb */                 /     struct nf_ct_dccp dccp;
+    u_int32_t secmark;                               /      struct ip_ct_sctp sctp;
+                                                    /       struct ip_ct_tcp tcp;
+    union nf_conntrack_proto proto; ---------->----/        struct nf_ct_gre gre;
 };                                                          unsigned int tmpl_padto;
                                                         };
 ```
 
-All possible status of a connection, `enum ip_conntrack_status`：
+**<mark>The collection of all possible connection states</mark>** in conntrack module, `enum ip_conntrack_status`:
 
 ```c
 // include/uapi/linux/netfilter/nf_conntrack_common.h
@@ -665,8 +667,8 @@ positions:
 
 1. `PRE_ROUTING` and `LOCAL_OUT`
 
-    **Start connection tracking** by calling `nf_conntrack_in()`, normally this
-    will create a new conntrack entry, then insert it into **unconfirmed list**.
+    **<mark>Start connection tracking</mark>** by calling `nf_conntrack_in()`, normally this
+    will create a new conntrack entry, then insert it into **<mark>unconfirmed list</mark>**.
 
     Why starting at these two places? Because both of them are the **earliest
     points that the initial packet of a new connection arrives Netfilter
@@ -677,8 +679,8 @@ positions:
 
 1. `POST_ROUTING` 和 `LOCAL_IN`
 
-    Call `nf_conntrack_confirm()`, move the newly created (in previous
-    `nf_conntrack_in()`) connection in unconfirmed list to **confirmed list**.
+    Call `nf_conntrack_confirm()`, **<mark>move the newly created (in previous
+    nf_conntrack_in()) connection</mark>** in unconfirmed list to **<mark>confirmed list</mark>**.
 
     Again, why these two hooking points? It is because if the first packet of a
     new connection is not dropped during internal processing, it should arrive
@@ -690,41 +692,41 @@ positions:
     * For packet of **locally-initiated** connection, `POST_ROUTING` is the last hooking point
       before this packet is sent out on the wire.
 
-We could see how these handlers get registered into the netfilter framwork:
+We could see **<mark>how these handlers got registered into the netfilter framwork</mark>**:
 
 ```c
 // net/netfilter/nf_conntrack_proto.c
 
 /* Connection tracking may drop packets, but never alters them, so make it the first hook.  */
 static const struct nf_hook_ops ipv4_conntrack_ops[] = {
-	{
-		.hook		= ipv4_conntrack_in,       // enter conntrack by calling nf_conntrack_in()
-		.pf		= NFPROTO_IPV4,
-		.hooknum	= NF_INET_PRE_ROUTING,     // PRE_ROUTING hook point
-		.priority	= NF_IP_PRI_CONNTRACK,
-	},
-	{
-		.hook		= ipv4_conntrack_local,    // enter conntrack by calling nf_conntrack_in()
-		.pf		= NFPROTO_IPV4,
-		.hooknum	= NF_INET_LOCAL_OUT,       // LOCAL_OUT hook point
-		.priority	= NF_IP_PRI_CONNTRACK,
-	},
-	{
-		.hook		= ipv4_confirm,            // call nf_conntrack_confirm()
-		.pf		= NFPROTO_IPV4,
-		.hooknum	= NF_INET_POST_ROUTING,    // POST_ROUTING hook point
-		.priority	= NF_IP_PRI_CONNTRACK_CONFIRM,
-	},
-	{
-		.hook		= ipv4_confirm,            // call nf_conntrack_confirm()
-		.pf		= NFPROTO_IPV4,
-		.hooknum	= NF_INET_LOCAL_IN,        // LOCAL_IN hook point
-		.priority	= NF_IP_PRI_CONNTRACK_CONFIRM,
-	},
+    {
+        .hook        = ipv4_conntrack_in,       // enter conntrack by calling nf_conntrack_in()
+        .pf        = NFPROTO_IPV4,
+        .hooknum    = NF_INET_PRE_ROUTING,     // PRE_ROUTING hook point
+        .priority    = NF_IP_PRI_CONNTRACK,
+    },
+    {
+        .hook        = ipv4_conntrack_local,    // enter conntrack by calling nf_conntrack_in()
+        .pf        = NFPROTO_IPV4,
+        .hooknum    = NF_INET_LOCAL_OUT,       // LOCAL_OUT hook point
+        .priority    = NF_IP_PRI_CONNTRACK,
+    },
+    {
+        .hook        = ipv4_confirm,            // call nf_conntrack_confirm()
+        .pf        = NFPROTO_IPV4,
+        .hooknum    = NF_INET_POST_ROUTING,    // POST_ROUTING hook point
+        .priority    = NF_IP_PRI_CONNTRACK_CONFIRM,
+    },
+    {
+        .hook        = ipv4_confirm,            // call nf_conntrack_confirm()
+        .pf        = NFPROTO_IPV4,
+        .hooknum    = NF_INET_LOCAL_IN,        // LOCAL_IN hook point
+        .priority    = NF_IP_PRI_CONNTRACK_CONFIRM,
+    },
 };
 ```
 
-Method **`nf_conntrack_in()` is the core of connection tracking module**.
+Method `nf_conntrack_in()` is **<mark>the core of connection tracking module</mark>**.
 
 ```c
 // net/netfilter/nf_conntrack_core.c
@@ -767,7 +769,7 @@ Rough processing steps:
 
 1. Get conntrack info of this skb.
 1. Determine if conntrack is needed for this skb. If not needed, update ignore
-   counter, return `NF_ACCEPT`; if needed, init (reset) this skb's refcount.
+   counter (check with `conntrack -S`), return `NF_ACCEPT`; if needed, init (reset) this skb's refcount.
 1. Extract L4 information from skb, init protocol-specific `struct
    nf_conntrack_l4proto {}` variable, which contains the protocol's callback
    methods for performing connection tracking.
@@ -793,51 +795,67 @@ further call protocol-specific method `new()` to create a new conntrack entry.
 // Allocate a new conntrack
 static noinline struct nf_conntrack_tuple_hash *
 init_conntrack(struct net *net, struct nf_conn *tmpl,
-	       const struct nf_conntrack_tuple *tuple,
-	       const struct nf_conntrack_l4proto *l4proto,
-	       struct sk_buff *skb, unsigned int dataoff, u32 hash)
+           const struct nf_conntrack_tuple *tuple,
+           const struct nf_conntrack_l4proto *l4proto,
+           struct sk_buff *skb, unsigned int dataoff, u32 hash)
 {
-	struct nf_conn *ct;
-	ct = __nf_conntrack_alloc(net, zone, tuple, &repl_tuple, GFP_ATOMIC, hash);
+    struct nf_conn *ct;
 
-	l4proto->new(ct, skb, dataoff); // protocol-specific method for creating a conntrack entry
+    // Allocate an entry in conntrack hash table, if the table is full, print following log
+    // into kernel: "nf_conntrack: table full, dropping packet". Check with `dmesg -T`
+    ct = __nf_conntrack_alloc(net, zone, tuple, &repl_tuple, GFP_ATOMIC, hash);
 
-	local_bh_disable();             // disable softirq
+    l4proto->new(ct, skb, dataoff); // protocol-specific method for creating a conntrack entry
 
-	if (net->ct.expect_count) {
-		exp = nf_ct_find_expectation(net, zone, tuple);
-		if (exp) {
-			__set_bit(IPS_EXPECTED_BIT, &ct->status);
+    local_bh_disable();             // disable softirq
+    if (net->ct.expect_count) {
+        exp = nf_ct_find_expectation(net, zone, tuple);
+        if (exp) {
+            __set_bit(IPS_EXPECTED_BIT, &ct->status);
 
-			/* exp->master safe, refcnt bumped in nf_ct_find_expectation */
-			ct->master = exp->master;
+            /* exp->master safe, refcnt bumped in nf_ct_find_expectation */
+            ct->master = exp->master;
 
-			ct->mark = exp->master->mark;
-			ct->secmark = exp->master->secmark;
-			NF_CT_STAT_INC(net, expect_new);
-		}
-	}
+            ct->mark = exp->master->mark;
+            ct->secmark = exp->master->secmark;
+            NF_CT_STAT_INC(net, expect_new);
+        }
+    }
 
-	/* Now it is inserted into the unconfirmed list, bump refcount */
-	nf_conntrack_get(&ct->ct_general);
-	nf_ct_add_to_unconfirmed_list(ct);
+    /* Now it is inserted into the unconfirmed list, bump refcount */
+    nf_conntrack_get(&ct->ct_general);
+    nf_ct_add_to_unconfirmed_list(ct);
+    local_bh_enable();              // re-enable softirq
 
-	local_bh_enable();              // re-enable softirq
+    if (exp) {
+        if (exp->expectfn)
+            exp->expectfn(ct, exp);
+        nf_ct_expect_put(exp);
+    }
 
-	if (exp) {
-		if (exp->expectfn)
-			exp->expectfn(ct, exp);
-		nf_ct_expect_put(exp);
-	}
-
-	return &ct->tuplehash[IP_CT_DIR_ORIGINAL];
+    return &ct->tuplehash[IP_CT_DIR_ORIGINAL];
 }
 ```
 
-Implementations of protocol-specific `new()` method, see 
-`net/netfilter/nf_conntrack_proto_*.c`.
+Implementations of protocol-specific `new()` method, see `net/netfilter/nf_conntrack_proto_*.c`.
+Such as TCP's one:
 
-If current packet will influence the status of subsequent packets, 
+```c
+// net/netfilter/nf_conntrack_proto_tcp.c
+
+/* Called when a new connection for this protocol found. */
+static bool tcp_new(struct nf_conn *ct, const struct sk_buff *skb, unsigned int dataoff)
+{
+    if (new_state == TCP_CONNTRACK_SYN_SENT) {
+        memset(&ct->proto.tcp, 0, sizeof(ct->proto.tcp));
+        /* SYN packet */
+        ct->proto.tcp.seen[0].td_end = segment_seq_plus_len(ntohl(th->seq), skb->len, dataoff, th);
+        ct->proto.tcp.seen[0].td_maxwin = ntohs(th->window);
+        ...
+}
+```
+
+If current packet will influence the status of subsequent packets,
 `init_conntrack()` will set the `master` field in `struct nf_conn`.
 Connection oriented protocols (e.g. TCP) uses this feature.
 
@@ -855,14 +873,14 @@ After `nf_conntrack_confirm()` is done, status of the connection will turn to
 `IPS_CONFIRMED`, and the conntrack will be move from unconfirmed list to
 **confirmed list**.
 
-> Why bother to split the conntrack creating process into two stages (`new` and `confirm`)?
+> Why bother to split the conntrack entry creating process into two stages (`new` and `confirm`)?
 >
-> It is because after the initial packet passes `nf_conntrack_in()`, but before
-> it arrives `nf_conntrack_confirm()`, it is possible that the packet get
-> dropped by the kernel somewhere in the middle. This may result in large
+> Think about this: after the initial packet passed `nf_conntrack_in()`, but before
+> arriving `nf_conntrack_confirm()`, it is possible that the packet get
+> dropped by the kernel somewhere in the middle. This may result in large amounts of
 > half-connected conntrack entries, and it would be a big concern in terms of
 > both performance and security. Spliting into two steps will significantly
-> accelerate the GC process.
+> accelerate the GC procedure.
 
 ```c
 // include/net/netfilter/nf_conntrack_core.h
@@ -870,16 +888,16 @@ After `nf_conntrack_confirm()` is done, status of the connection will turn to
 /* Confirm a connection: returns NF_DROP if packet must be dropped. */
 static inline int nf_conntrack_confirm(struct sk_buff *skb)
 {
-	struct nf_conn *ct = (struct nf_conn *)skb_nfct(skb);
-	int ret = NF_ACCEPT;
+    struct nf_conn *ct = (struct nf_conn *)skb_nfct(skb);
+    int ret = NF_ACCEPT;
 
-	if (ct) {
-		if (!nf_ct_is_confirmed(ct))
-			ret = __nf_conntrack_confirm(skb);
-		if (likely(ret == NF_ACCEPT))
-			nf_ct_deliver_cached_events(ct);
-	}
-	return ret;
+    if (ct) {
+        if (!nf_ct_is_confirmed(ct))
+            ret = __nf_conntrack_confirm(skb);
+        if (likely(ret == NF_ACCEPT))
+            nf_ct_deliver_cached_events(ct);
+    }
+    return ret;
 }
 ```
 
@@ -892,30 +910,30 @@ confirm logic, error handling code omitted:
 int
 __nf_conntrack_confirm(struct sk_buff *skb)
 {
-	struct nf_conn *ct;
-	ct = nf_ct_get(skb, &ctinfo);
+    struct nf_conn *ct;
+    ct = nf_ct_get(skb, &ctinfo);
 
-	local_bh_disable();               // disable softirq
+    local_bh_disable();               // disable softirq
 
-	hash = *(unsigned long *)&ct->tuplehash[IP_CT_DIR_REPLY].hnnode.pprev;
-	reply_hash = hash_conntrack(net, &ct->tuplehash[IP_CT_DIR_REPLY].tuple);
+    hash = *(unsigned long *)&ct->tuplehash[IP_CT_DIR_REPLY].hnnode.pprev;
+    reply_hash = hash_conntrack(net, &ct->tuplehash[IP_CT_DIR_REPLY].tuple);
 
-	ct->timeout += nfct_time_stamp;   // update timer, will be GC-ed after timeout
-	atomic_inc(&ct->ct_general.use);  // update conntrack entry refcount?
-	ct->status |= IPS_CONFIRMED;      // set status as `confirmed`
+    ct->timeout += nfct_time_stamp;   // update timer, will be GC-ed after timeout
+    atomic_inc(&ct->ct_general.use);  // update conntrack entry refcount?
+    ct->status |= IPS_CONFIRMED;      // set status as `confirmed`
 
-	__nf_conntrack_hash_insert(ct, hash, reply_hash);  // insert into conntrack table
+    __nf_conntrack_hash_insert(ct, hash, reply_hash);  // insert into conntrack table
 
-	local_bh_enable();                // re-enable softirq
+    local_bh_enable();                // re-enable softirq
 
-	nf_conntrack_event_cache(master_ct(ct) ? IPCT_RELATED : IPCT_NEW, ct);
-	return NF_ACCEPT;
+    nf_conntrack_event_cache(master_ct(ct) ? IPCT_RELATED : IPCT_NEW, ct);
+    return NF_ACCEPT;
 }
 ```
 
-One thing needs to be noted here: we could see softirq (soft interrupts) is
-disabled/re-enabled at many places; besides, there are lots of lock/unlock
-operations (omitted in the above code). This may be the main reasons of
+One thing needs to be noted here: we could see **<mark>softirq (soft interrupt) gets
+frequently disabled/re-enabled; besides, there are lots of lock/unlock
+operations (omitted in the above code)</mark>**. This may be the main reasons of
 degraded performance in certain scenarios (e.g. massive concurrent short-time
 connections)?
 
@@ -937,7 +955,7 @@ Protocols that support NAT needs to implement the methods defined in:
 
 **Functions:**
 
-* `nf_nat_inet_fn()`: core of NAT module, will be called at all hooking points except `NF_INET_FORWARD`.
+* `nf_nat_inet_fn()`: **<mark>core of NAT module</mark>**, will be called at **<mark>all hooking points except NF_INET_FORWARD</mark>**.
 
 ## 4.2 NAT module init
 
@@ -945,22 +963,21 @@ Protocols that support NAT needs to implement the methods defined in:
 // net/netfilter/nf_nat_core.c
 
 static struct nf_nat_hook nat_hook = {
-	.parse_nat_setup	= nfnetlink_parse_nat_setup,
-	.decode_session		= __nf_nat_decode_session,
-	.manip_pkt		= nf_nat_manip_pkt,
+    .parse_nat_setup    = nfnetlink_parse_nat_setup,
+    .decode_session        = __nf_nat_decode_session,
+    .manip_pkt        = nf_nat_manip_pkt,
 };
 
 static int __init nf_nat_init(void)
 {
-	nf_nat_bysource = nf_ct_alloc_hashtable(&nf_nat_htable_size, 0);
+    nf_nat_bysource = nf_ct_alloc_hashtable(&nf_nat_htable_size, 0);
 
-	nf_ct_helper_expectfn_register(&follow_master_nat);
+    nf_ct_helper_expectfn_register(&follow_master_nat);
 
-	RCU_INIT_POINTER(nf_nat_hook, &nat_hook);
+    RCU_INIT_POINTER(nf_nat_hook, &nat_hook);
 }
 
 MODULE_LICENSE("GPL");
-
 module_init(nf_nat_init);
 ```
 
@@ -1010,11 +1027,11 @@ example, the TCP's implementation:
 // net/netfilter/nf_nat_proto_tcp.c
 
 const struct nf_nat_l4proto nf_nat_l4proto_tcp = {
-	.l4proto		= IPPROTO_TCP,
-	.manip_pkt		= tcp_manip_pkt,
-	.in_range		= nf_nat_l4proto_in_range,
-	.unique_tuple		= tcp_unique_tuple,
-	.nlattr_to_range	= nf_nat_l4proto_nlattr_to_range,
+    .l4proto        = IPPROTO_TCP,
+    .manip_pkt        = tcp_manip_pkt,
+    .in_range        = nf_nat_l4proto_in_range,
+    .unique_tuple        = tcp_unique_tuple,
+    .nlattr_to_range    = nf_nat_l4proto_nlattr_to_range,
 };
 ```
 
@@ -1086,7 +1103,7 @@ It first queries conntrack info for this packet, if conntrack info not exists,
 it means this connection could not be tracked, then we could never perform NAT
 for it. So just exit NAT in this case.
 
-If conntrack info exists, and the connection is in 
+If conntrack info exists, and the connection is in
  `IP_CT_RELATED` or `IP_CT_RELATED_REPLY` or
 `IP_CT_NEW` states, then get all NAT rules.
 
@@ -1096,62 +1113,302 @@ will be dropped.
 
 ### Masquerade
 
-NAT module often configured in this fashion: `change IP1 to IP2 if matching XXX`。
+NAT module could be configured in two fashions:
 
-There is also another fashion for **SNAT**, called `masquerade`: `change IP1 to dev1's IP if
-matching XXX`.
+1. Normal: `change IP1 to IP2 if matching XXX`.
+2. Special: `change IP1 to dev1's IP if matching XXX`, this is **<mark>a special case of SNAT, called masquerade</mark>**.
 
-Masquerade differentiates itself from SNAT in that when device's IP address
-changes, the rules still valid. It could be seen as dynamic SNAT
-(dynamically adapting to the source IP changes in SNAT rules).
+Pros & Cons:
 
-The drawback of masquerade is that it has degraded performance compared with
-SNAT, and this is easy to understand.
+* Masquerade differentiates itself from SNAT in that when device's IP address
+  changes, the rules still valid. It could be seen as dynamic SNAT
+  (dynamically adapting to the source IP changes in SNAT rules).
+* The drawback of masquerade is that it has degraded performance compared with
+  SNAT, and this is easy to understand.
 
-## 4.6 `nf_nat_packet()`: executing NAT
+## 4.6 `nf_nat_packet()`: performing NAT
 
 ```c
 // net/netfilter/nf_nat_core.c
 
 /* Do packet manipulations according to nf_nat_setup_info. */
 unsigned int nf_nat_packet(struct nf_conn *ct, enum ip_conntrack_info ctinfo,
-			   unsigned int hooknum, struct sk_buff *skb)
+               unsigned int hooknum, struct sk_buff *skb)
 {
-	enum nf_nat_manip_type mtype = HOOK2MANIP(hooknum);
-	enum ip_conntrack_dir dir = CTINFO2DIR(ctinfo);
-	unsigned int verdict = NF_ACCEPT;
+    enum nf_nat_manip_type mtype = HOOK2MANIP(hooknum);
+    enum ip_conntrack_dir dir = CTINFO2DIR(ctinfo);
+    unsigned int verdict = NF_ACCEPT;
 
-	statusbit = (mtype == NF_NAT_MANIP_SRC? IPS_SRC_NAT : IPS_DST_NAT)
+    statusbit = (mtype == NF_NAT_MANIP_SRC? IPS_SRC_NAT : IPS_DST_NAT)
 
-	if (dir == IP_CT_DIR_REPLY)     // Invert if this is reply dir
-		statusbit ^= IPS_NAT_MASK;
+    if (dir == IP_CT_DIR_REPLY)     // Invert if this is reply dir
+        statusbit ^= IPS_NAT_MASK;
 
-	if (ct->status & statusbit)     // Non-atomic: these bits don't change. */
-		verdict = nf_nat_manip_pkt(skb, ct, mtype, dir);
+    if (ct->status & statusbit)     // Non-atomic: these bits don't change. */
+        verdict = nf_nat_manip_pkt(skb, ct, mtype, dir);
 
-	return verdict;
+    return verdict;
 }
 ```
 
 ```c
 static unsigned int nf_nat_manip_pkt(struct sk_buff *skb, struct nf_conn *ct,
-				     enum nf_nat_manip_type mtype, enum ip_conntrack_dir dir)
+                     enum nf_nat_manip_type mtype, enum ip_conntrack_dir dir)
 {
-	struct nf_conntrack_tuple target;
+    struct nf_conntrack_tuple target;
 
-	/* We are aiming to look like inverse of other direction. */
-	nf_ct_invert_tuplepr(&target, &ct->tuplehash[!dir].tuple);
+    /* We are aiming to look like inverse of other direction. */
+    nf_ct_invert_tuplepr(&target, &ct->tuplehash[!dir].tuple);
 
-	l3proto = __nf_nat_l3proto_find(target.src.l3num);
-	l4proto = __nf_nat_l4proto_find(target.src.l3num, target.dst.protonum);
-	if (!l3proto->manip_pkt(skb, 0, l4proto, &target, mtype)) // 协议相关处理
-		return NF_DROP;
+    l3proto = __nf_nat_l3proto_find(target.src.l3num);
+    l4proto = __nf_nat_l4proto_find(target.src.l3num, target.dst.protonum);
+    if (!l3proto->manip_pkt(skb, 0, l4proto, &target, mtype)) // protocol-specific processing
+        return NF_DROP;
 
-	return NF_ACCEPT;
+    return NF_ACCEPT;
 }
 ```
 
-# 5. Summary
+# 5. Configuration and monitoring
+
+## 5.1 Inspect and load/unload nf_conntrack module
+
+```shell
+$ modinfo nf_conntrack
+filename:       /lib/modules/4.19.118-1.el7.centos.x86_64/kernel/net/netfilter/nf_conntrack.ko
+license:        GPL
+alias:          nf_conntrack-10
+alias:          nf_conntrack-2
+alias:          ip_conntrack
+srcversion:     4BBDB5BBEF460DF5F079C59
+depends:        nf_defrag_ipv6,libcrc32c,nf_defrag_ipv4
+retpoline:      Y
+intree:         Y
+name:           nf_conntrack
+vermagic:       4.19.118-1.el7.centos.x86_64 SMP mod_unload modversions
+parm:           tstamp:Enable connection tracking flow timestamping. (bool)
+parm:           acct:Enable connection tracking flow accounting. (bool)
+parm:           nf_conntrack_helper:Enable automatic conntrack helper assignment (default 0) (bool)
+parm:           expect_hashsize:uint
+```
+
+Remove the module:
+
+```shell
+$ rmmod nf_conntrack_netlink nf_conntrack
+```
+
+Load the module:
+
+```shell
+$ modprobe nf_conntrack
+
+# Also support to pass configuration parameters, e.g.:
+$ modprobe nf_conntrack nf_conntrack_helper=1 expect_hashsize=131072
+```
+
+## 5.2 sysctl options
+
+```shell
+$ sysctl -a | grep nf_conntrack
+net.netfilter.nf_conntrack_acct = 0
+net.netfilter.nf_conntrack_buckets = 262144                 # hashsize = nf_conntrack_max/nf_conntrack_buckets
+net.netfilter.nf_conntrack_checksum = 1
+net.netfilter.nf_conntrack_count = 2148
+... # DCCP options
+net.netfilter.nf_conntrack_events = 1
+net.netfilter.nf_conntrack_expect_max = 1024
+... # IPv6 options
+net.netfilter.nf_conntrack_generic_timeout = 600
+net.netfilter.nf_conntrack_helper = 0
+net.netfilter.nf_conntrack_icmp_timeout = 30
+net.netfilter.nf_conntrack_log_invalid = 0
+net.netfilter.nf_conntrack_max = 1048576                    # conntrack table size
+... # SCTP options
+net.netfilter.nf_conntrack_tcp_be_liberal = 0
+net.netfilter.nf_conntrack_tcp_loose = 1
+net.netfilter.nf_conntrack_tcp_max_retrans = 3
+net.netfilter.nf_conntrack_tcp_timeout_close = 10
+net.netfilter.nf_conntrack_tcp_timeout_close_wait = 60
+net.netfilter.nf_conntrack_tcp_timeout_established = 21600
+net.netfilter.nf_conntrack_tcp_timeout_fin_wait = 120
+net.netfilter.nf_conntrack_tcp_timeout_last_ack = 30
+net.netfilter.nf_conntrack_tcp_timeout_max_retrans = 300
+net.netfilter.nf_conntrack_tcp_timeout_syn_recv = 60
+net.netfilter.nf_conntrack_tcp_timeout_syn_sent = 120
+net.netfilter.nf_conntrack_tcp_timeout_time_wait = 120
+net.netfilter.nf_conntrack_tcp_timeout_unacknowledged = 300
+net.netfilter.nf_conntrack_timestamp = 0
+net.netfilter.nf_conntrack_udp_timeout = 30
+net.netfilter.nf_conntrack_udp_timeout_stream = 180
+```
+
+## 5.3 Monitoring
+
+### conntrack statistics
+
+```shell
+$ cat /proc/net/stat/nf_conntrack
+entries   searched found    new      invalid  ignore   delete   delete_list insert   insert_failed drop     early_drop icmp_error  expect_new expect_create expect_delete search_restart
+000008e3  00000000 00000000 00000000 0000309d 001e72d4 00000000 00000000    00000000 00000000      00000000 00000000   000000ee    00000000   00000000      00000000       000368d7
+000008e3  00000000 00000000 00000000 00007301 002b8e8c 00000000 00000000    00000000 00000000      00000000 00000000   00000170    00000000   00000000      00000000       00035794
+000008e3  00000000 00000000 00000000 00001eea 001e6382 00000000 00000000    00000000 00000000      00000000 00000000   00000059    00000000   00000000      00000000       0003f166
+...
+```
+
+There is also a command line tool `conntrack`:
+
+```shell
+$ conntrack -S
+cpu=0   found=0 invalid=743150 ignore=238069 insert=0 insert_failed=0 drop=195603 early_drop=118583 error=16 search_restart=22391652
+cpu=1   found=0 invalid=2004   ignore=402790 insert=0 insert_failed=0 drop=44371  early_drop=34890  error=0  search_restart=1225447
+...
+```
+
+Fields:
+
+* ignore: untracked packets (recall that only packets of trackable protocols will be tracked)
+
+### conntrack table usage
+
+Number of current conntrack entries:
+
+```shell
+$ cat /proc/sys/net/netfilter/nf_conntrack_count
+257273
+```
+
+Number of max allowed conntrack entries:
+
+```shell
+$ cat /proc/sys/net/netfilter/nf_conntrack_max
+262144
+```
+
+# 6. Conntrack related issues
+
+## 6.1 nf_conntrack: table full
+
+### Symptoms
+
+#### Application layer symptoms
+
+1. Probabilistic **<mark>connection timeout</mark>**.
+
+    E.g. if the application is written in Java, the raised errors are `jdbc4.CommunicationsException` communications link failure, etc.
+
+2. **<mark>Existing (e.g. established) connections</mark>** works normally.
+
+    That is to say, there are no read/write timeouts or something like that at that moment, but only connect timeouts.
+
+#### Network layer symptoms
+
+1. With traffic capturing, we could see **<mark>the first packet (SYN) got siliently dropped by the kernel</mark>**.
+
+    Unfortunately, common NIC stats (`ifconfig`) and kernel stats (`/proc/net/softnet_stat`)
+    **<mark>don't show these droppings</mark>**.
+
+2. SYN got restransmitted after `1s+`, or the connection is closed by retransmission.
+
+    **<mark>Retransmission of the first SYN takes 1s, this is a hardcode value in the kernel, not configurable</mark>** (See [appendix](#ch_8.1) for the detailed implementation) .
+
+    Considering other overheads, the real retransmission will take place 1+ second's later.
+    If the client has a very small connect timeout setting, e.g.  `1.05s`, then
+    the connection will be closed before retransmission, and reports connection
+    timeout errors to upper layers.
+
+#### OS/kernel layer symptoms
+
+Kernel log,
+
+```shell
+$ demsg -T
+[Tue Apr  6 18:12:30 2021] nf_conntrack: nf_conntrack: table full, dropping packet
+[Tue Apr  6 18:12:30 2021] nf_conntrack: nf_conntrack: table full, dropping packet
+[Tue Apr  6 18:12:30 2021] nf_conntrack: nf_conntrack: table full, dropping packet
+...
+```
+
+### Trouble shooting
+
+The above described phenomenons indicate that conntrack table is blown out.
+
+```shell
+$ cat /proc/sys/net/netfilter/nf_conntrack_count
+257273
+
+$ cat /proc/sys/net/netfilter/nf_conntrack_max
+262144
+```
+
+Compare above two numbers, we could conclude that conntrack table indeeded get
+blown out.
+
+Besides, we could also see dropping statistics in `cat /proc/net/stat/nf_conntrack` or `conntrack -S` output.
+
+### Resolution
+
+With decreasing priority:
+
+1. Increase conntrack table size
+
+    Runtime configuration (**will not disrupt existing connections/traffic**) :
+
+    ```shell
+    $ sysctl -w net.netfilter.nf_conntrack_max=524288
+    $ echo 131072 > /sys/module/nf_conntrack/parameters/hashsize # recommendation: hashsize=nf_conntrack_count/4
+    ```
+
+    Permanent configuration:
+
+    ```shell
+    $ echo 'net.netfilter.nf_conntrack_max = 524288' >> /etc/sysctl.conf
+
+    # Write hashsize either to system boot file or module config file
+    # Method 1: write to system boot file
+    $ echo 'echo 131072 > /sys/module/nf_conntrack/parameters/hashsize' >> /etc/rc.local
+    # Method 2: write to module load file
+    $ echo 'options nf_conntrack expect_hashsize=131072 hashsize=131072' >> /etc/modprobe.d/nf_conntrack.conf
+    ```
+
+    Side effect：**<mark>more memory will be reserved</mark>** by conntrack module.
+    Refer to the [appendix](#ch_8.2) for the detailed calculation.
+
+2. Decrease GC durations (timeout values)
+
+    Besides increase conntrack table size, we could also decrease conntrack GC values (also called timeouts),
+    this will acclerate eviction of stale entries.
+
+    `nf_conntrack` has several timeout setting, each for entries of different TCP states (established、fin_wait、time_wait, etc).
+
+    For example, **<mark>the default timeout for established state conntrack entries is 423000s (5 days!) </mark>**.
+    **Possible reason** for so large a value may be: TCP/IP specification
+    allows established connection stays idle for infinite long time (but still
+    alive) [8], specific implementations (Linux、BSD、Windows, etc) could set their own max allowed idle timeout.
+    To avoid to accidently GC out such connection, Linux kernel chose a long enough duration.
+    [8] recommends to timeout value to be no smaller than 2 hours 4 minutes (as mentioned previously,
+    Cilium implements its own CT module, as comparison and reference,**<mark>Cilium's established timeout is 6 hours</mark>**).
+    But there are also recommendations that are far more smaller than this, such as 20 minutes.
+
+    Unless certainly know what you are doing, you should decrease this value with caution,
+    **<mark>such as 6 hours</mark>**, which is already smaller significantly than the default one.
+
+    Runtime configuration:
+
+    ```shell
+    $ sysctl -w net.netfilter.nf_conntrack_tcp_timeout_established = 21600
+    ```
+
+    Permanent configuration:
+
+    ```shell
+    $ echo 'net.netfilter.nf_conntrack_tcp_timeout_established = 21600' >> /etc/sysctl.conf
+    ```
+
+    You could also consider to decrease the other timeout values (especially `nf_conntrack_tcp_timeout_time_wait`, which defaults to `120s`).
+    But still to remind: **unless sure what you're doing, do not decrease these values radically**.
+
+# 7. Summary
 
 Connection tracking (conntrack) is a fairly fundamental and important network module,
 but it goes into normal developer or system maintainer's eyes only when they
@@ -1170,6 +1427,69 @@ Phenomenons in this case:
 The reasons here maybe that conntrack table size is not big enough, or GC
 interval is too large, or even there are [bugs in conntrack GC](https://github.com/cilium/cilium/pull/12729).
 
+# 8. Appendix
+
+<a name="ch_8.1"></a>
+
+## 8.1 Retransmission interval calculation of the first SYN (Linux 4.19.118)
+
+Call stack: `tcp_connect() -> tcp_connect_init() -> tcp_timeout_init()`.
+
+```c
+// net/ipv4/tcp_output.c
+/* Do all connect socket setups that can be done AF independent. */
+static void tcp_connect_init(struct sock *sk)
+{
+    inet_csk(sk)->icsk_rto = tcp_timeout_init(sk);
+    ...
+}
+
+// include/net/tcp.h
+static inline u32 tcp_timeout_init(struct sock *sk)
+{
+    // Get SYN-RTO: return -1 if
+    //   * no BPF programs attached to the socket/cgroup, or
+    //   * there are BPF programs, but the progams executed failed
+    //
+    // Unless users write their own BPF programs and attach to cgroup/socket,
+    // there will be no BPF programs. so here will (always) return -1
+    timeout = tcp_call_bpf(sk, BPF_SOCK_OPS_TIMEOUT_INIT, 0, NULL);
+
+    if (timeout <= 0)                // timeout == -1, using default value in the below
+        timeout = TCP_TIMEOUT_INIT;  // defined as the HZ of the system, which is effectively 1 second, see below
+    return timeout;
+}
+
+// include/net/tcp.h
+#define TCP_RTO_MAX    ((unsigned)(120*HZ))
+#define TCP_RTO_MIN    ((unsigned)(HZ/5))
+#define TCP_TIMEOUT_MIN    (2U) /* Min timeout for TCP timers in jiffies */
+#define TCP_TIMEOUT_INIT ((unsigned)(1*HZ))    /* RFC6298 2.1 initial RTO value    */
+```
+
+<a name="ch_8.2"></a>
+
+## 8.2 Calculating conntrack memory usage
+
+```shell
+$ cat /proc/slabinfo | head -n2; cat /proc/slabinfo | grep conntrack
+slabinfo - version: 2.1
+# name            <active_objs> <num_objs> <objsize> <objperslab> <pagesperslab> : tunables <limit> <batchcount> <sharedfactor> : slabdata <active_slabs> <num_slabs> <sharedavail>
+nf_conntrack      512824 599505    320   51    4 : tunables    0    0    0 : slabdata  11755  11755      0
+```
+
+in the above output, **<mark>objsize means the kernel object size</mark>** (`struct nf_conn` here),
+in unit of **<mark>bytes</mark>**. So the above information tells us that
+**<mark>each conntrack entry takes 320 bytes of memory</mark>**.
+
+If page overheads are ignored (kernel allocates memory with slabs), then the
+**<mark>memory usage under different table sizes</mark>** would be:
+
+* `nf_conntrack_max=512K`: `512K * 320Byte = 160MB`
+* `nf_conntrack_max=1M`: `1M * 320Byte = 320MB`
+
+For more accurate calculation, refer to [9].
+
 # References
 
 1. [Netfilter connection tracking and NAT implementation](https://wiki.aalto.fi/download/attachments/69901948/netfilter-paper.pdf). Proc.
@@ -1180,3 +1500,5 @@ interval is too large, or even there are [bugs in conntrack GC](https://github.c
 5. [Wikipedia: Netfilter](https://en.wikipedia.org/wiki/Netfilter)
 6. [Conntrack tales - one thousand and one flows](https://blog.cloudflare.com/conntrack-tales-one-thousand-and-one-flows/)
 7. [How connection tracking in Open vSwitch helps OpenStack performance](https://www.redhat.com/en/blog/how-connection-tracking-open-vswitch-helps-openstack-performance)
+8. [NAT Behavioral Requirements for TCP](https://tools.ietf.org/html/rfc5382#section-5), RFC5382
+9. [Netfilter Conntrack Memory Usage](https://johnleach.co.uk/posts/2009/06/17/netfilter-conntrack-memory-usage/)

@@ -2,7 +2,7 @@
 layout    : post
 title     : "连接跟踪（conntrack）：原理、应用及 Linux 内核实现"
 date      : 2020-08-05
-lastupdate: 2021-01-11
+lastupdate: 2021-04-26
 categories: conntrack nat netfilter kernel
 ---
 
@@ -29,7 +29,7 @@ categories: conntrack nat netfilter kernel
 
 ## 1.1 概念
 
-连接跟踪，顾名思义，就是**跟踪（并记录）连接的状态**。
+连接跟踪，顾名思义，就是**<mark>跟踪（并记录）连接的状态</mark>**。
 
 <p align="center"><img src="/assets/img/conntrack/node-conntrack.png" width="40%" height="40%"></p>
 <p align="center">Fig 1.1. 连接跟踪及其内核位置示意图</p>
@@ -197,7 +197,8 @@ VIP（Virtual IP）是四层负载均衡的一种实现方式：
 ### 1.5.2 有状态防火墙
 
 有状态防火墙（stateful firewall）是相对于早期的**无状态防火墙**（stateless
-firewall）而言的：早期防火墙只能写 `drop syn` 或者 `allow syn` 这种非常简单直接
+firewall）而言的：早期防火墙只能写 `drop syn to port 443` 或者 `allow syn to port 80`
+这种非常简单直接
 的规则，**没有 flow 的概念**，因此无法实现诸如 **“如果这个 ack 之前已经有 syn，
 就 allow，否则 drop”** 这样的规则，使用非常受限 [6]。
 
@@ -207,7 +208,7 @@ firewall）而言的：早期防火墙只能写 `drop syn` 或者 `allow syn` �
 
 #### OpenStack 安全组
 
-简单来说，安全组实现了**虚拟机级别**的安全隔离，具体实现是：在 node 上连接 VM 的 
+简单来说，安全组实现了**虚拟机级别**的安全隔离，具体实现是：在 node 上连接 VM 的
 网络设备上做有状态防火墙。在当时，最能实现这一功能的可能就是 Netfilter/iptables。
 
 回到宿主机内网络拓扑问题：
@@ -215,11 +216,11 @@ OpenStack 使用 OVS bridge 来连接一台宿主机内的所有 VM。
 如果只从网络连通性考虑，那每个 VM 应该直接连到 OVS bridge `br-int`。但这里问题
 就来了 [7]：
 
-* OVS 没有 conntrack 模块，
+* （较早版本的）OVS 没有 conntrack 模块，
 * Linux 中有 conntrack 模块，但基于 conntrack 的防火墙**工作在 IP 层**（L3），通过 iptables 控制，
 * 而 **OVS 是 L2 模块**，无法使用 L3 模块的功能，
 
-因此无法在 OVS （连接虚拟机）的设备上做防火墙。
+最终结果是：无法在 OVS （连接虚拟机）的设备上做防火墙。
 
 所以，2016 之前 OpenStack 的解决方案是，在每个 OVS 和 VM 之间再加一个 Linux bridge
 ，如下图所示，
@@ -232,7 +233,7 @@ Linux bridge 也是 L2 模块，按道理也无法使用 iptables。但是，**�
 ebtables，能够跳转到 iptables**，因此间接支持了 iptables，也就能用到
 Netfilter/iptables 防火墙的功能。
 
-这种 workaround 不仅丑陋、增加网络复杂性，而且会导致性能问题。因此，
+这种暴力堆砌的方式不仅丑陋、增加网络复杂性，而且会导致性能问题。因此，
 RedHat 在 2016 年提出了一个 OVS conntrack 方案 [7]，从那以后，才有可能干掉 Linux
 bridge 而仍然具备安全组的功能。
 
@@ -242,8 +243,7 @@ bridge 而仍然具备安全组的功能。
 
 # 2 Netfilter hook 机制实现
 
-Netfilter 由几个模块构成，其中最主要的是**连接跟踪**（CT）
-模块和**网络地址转换**（NAT）模块。
+Netfilter 由几个模块构成，其中最主要的是**连接跟踪**（CT）模块和**网络地址转换**（NAT）模块。
 
 CT 模块的主要职责是识别出可进行连接跟踪的包。
 CT 模块独立于 NAT 模块，但主要目的是服务于后者。
@@ -273,7 +273,7 @@ CT 模块独立于 NAT 模块，但主要目的是服务于后者。
 
 > 另外还有一套 `NF_INET_` 开头的定义，`include/uapi/linux/netfilter.h`。
 > 这两套是等价的，从注释看，`NF_IP_` 开头的定义可能是为了保持兼容性。
-> 
+>
 > ```c
 > enum nf_inet_hooks {
 >     NF_INET_PRE_ROUTING,
@@ -294,8 +294,8 @@ hook 函数对包进行判断或处理之后，需要返回一个判断结果，
 // include/uapi/linux/netfilter.h
 
 #define NF_DROP   0  // 已丢弃这个包
-#define NF_ACCEPT 1  // 接受这个包，继续下一步处理
-#define NF_STOLEN 2  // 当前处理函数已经消费了这个包，后面的处理函数不用处理了
+#define NF_ACCEPT 1  // 接受这个包，结束判断，继续下一步处理
+#define NF_STOLEN 2  // 临时 hold 这个包，不用再继续穿越协议栈了。常见的情形是缓存分片之后的包（等待重组）
 #define NF_QUEUE  3  // 应当将包放到队列
 #define NF_REPEAT 4  // 当前处理函数应当被再次调用
 ```
@@ -319,8 +319,9 @@ handlers 的**优先级**，这样触发 hook 时能够根据优先级依次调�
 
 # 3 Netfilter conntrack 实现
 
-连接跟踪模块用于维护**可跟踪协议**（trackable protocols）的连接状态。也就是说，
-连接跟踪**针对的是特定协议的包，而不是所有协议的包**。稍后会看到它支持哪些协议。
+连接跟踪模块用于维护**<mark>可跟踪协议</mark>**（trackable protocols）的连接状态。
+也就是说，连接跟踪**<mark>针对的是特定协议的包，而不是所有协议的包</mark>**。
+稍后会看到它支持哪些协议。
 
 ## 3.1 重要结构体和函数
 
@@ -329,16 +330,19 @@ handlers 的**优先级**，这样触发 hook 时能够根据优先级依次调�
 * `struct nf_conntrack_tuple {}`: 定义一个 tuple。
     * `struct nf_conntrack_man {}`：tuple 的 manipulable part。
         * `struct nf_conntrack_man_proto {}`：manipulable part 中协议相关的部分。
-* `struct nf_conntrack_l4proto {}`: 支持连接跟踪的**协议需要实现的方法集**（以及其他协议相关字段）。
+* `struct nf_conntrack_l4proto {}`: 支持连接跟踪的**<mark>协议需要实现的方法集</mark>**（以及其他协议相关字段）。
 * `struct nf_conntrack_tuple_hash {}`：哈希表（conntrack table）中的表项（entry）。
-* `struct nf_conn {}`：定义一个 flow。
+* `struct nf_conn {}`：**<mark>定义一个 flow</mark>**。
 
 重要函数：
 
 * `hash_conntrack_raw()`：根据 tuple 计算出一个 32 位的哈希值（hash key）。
-* `nf_conntrack_in()`：**连接跟踪模块的核心，包进入连接跟踪的地方**。
-* `resolve_normal_ct() -> init_conntrack() -> l4proto->new()`：创建一个新的连接记录（conntrack entry）。
-* `nf_conntrack_confirm()`：确认前面通过 `nf_conntrack_in()` 创建的新连接。
+* `nf_conntrack_in()`：**连接跟踪模块的核心，<mark>包进入连接跟踪的地方</mark>**。
+* `resolve_normal_ct() -> init_conntrack() -> ct = __nf_conntrack_alloc(); l4proto->new(ct)`
+
+    <mark>创建一个新的连接记录</mark>（conntrack entry），然后初始化。
+
+* `nf_conntrack_confirm()`：确认前面通过 `nf_conntrack_in()` 创建的新连接（是否被丢弃）。
 
 ## 3.2 `struct nf_conntrack_tuple {}`：元组（Tuple）
 
@@ -403,7 +407,7 @@ struct nf_conntrack_tuple { /* This contains the information to distinguish a co
 };
 ```
 
-Tuple 结构体中只有两个字段 `src` 和 `dst`，分别保存源和目的信息。`src` 和 `dst`
+**<mark>Tuple 结构体中只有两个字段 src 和 dst</mark>**，分别保存源和目的信息。`src` 和 `dst`
 自身也是结构体，能保存不同类型协议的数据。以 IPv4 UDP 为例，五元组分别保存在如下字段：
 
 * `dst.protonum`：协议类型
@@ -488,7 +492,7 @@ struct nf_conntrack_tuple_hash {
 
 ## 3.5 `struct nf_conn {}`：连接（connection）
 
-Netfilter 中每个 flow 都称为一个 connection，即使是对那些非面向连接的协议（例
+**<mark>Netfilter 中每个 flow 都称为一个 connection</mark>**，即使是对那些非面向连接的协议（例
 如 UDP）。每个 connection 用 `struct nf_conn {}` 表示，主要字段如下：
 
 ```c
@@ -511,16 +515,16 @@ struct nf_conn {                        |
     struct hlist_node    nat_bysource;
                                                         // per conntrack: protocol private data
     struct nf_conn *master;                             union nf_conntrack_proto {
-                                                            /* insert conntrack proto private data here */
-    u_int32_t mark;    /* 对 skb 进行特殊标记 */            struct nf_ct_dccp dccp;
-    u_int32_t secmark;                                      struct ip_ct_sctp sctp;
-                                                            struct ip_ct_tcp tcp;
-    union nf_conntrack_proto proto; ---------->----->       struct nf_ct_gre gre;
+                                                       /    /* insert conntrack proto private data here */
+    u_int32_t mark;    /* 对 skb 进行特殊标记 */      /     struct nf_ct_dccp dccp;
+    u_int32_t secmark;                               /      struct ip_ct_sctp sctp;
+                                                    /       struct ip_ct_tcp tcp;
+    union nf_conntrack_proto proto; ---------->----/        struct nf_ct_gre gre;
 };                                                          unsigned int tmpl_padto;
                                                         };
 ```
 
-连接的状态集合 `enum ip_conntrack_status`：
+**<mark>连接的状态集合 enum ip_conntrack_status</mark>**：
 
 ```c
 // include/uapi/linux/netfilter/nf_conntrack_common.h
@@ -557,60 +561,59 @@ enum ip_conntrack_status {
 
 如上图所示，Netfilter 在四个 Hook 点对包进行跟踪：
 
-1. `PRE_ROUTING` 和 `LOCAL_OUT`：调用 `nf_conntrack_in()` 开始连接跟踪，正常情况
-   下会创建一条新连接记录，然后将 conntrack entry 放到 **unconfirmed list**。
+1. `PRE_ROUTING` 和 `LOCAL_OUT`：**<mark>调用 nf_conntrack_in() 开始连接跟踪</mark>**，
+   正常情况下会创建一条新连接记录，然后将 conntrack entry 放到 **<mark>unconfirmed list</mark>**。
 
    为什么是这两个 hook 点呢？因为它们都是**新连接的第一个包最先达到的地方**，
 
     * `PRE_ROUTING` 是**外部主动和本机建连**时包最先到达的地方
     * `LOCAL_OUT` 是**本机主动和外部建连**时包最先到达的地方
 
-1. `POST_ROUTING` 和 `LOCAL_IN`：调用 `nf_conntrack_confirm()` 将
-   `nf_conntrack_in()` 创建的连接移到 **confirmed list**。
+1. `POST_ROUTING` 和 `LOCAL_IN`：**<mark>调用 nf_conntrack_confirm() 将 nf_conntrack_in() 创建的连接移到 confirmed list</mark>**。
 
    同样要问，为什么在这两个 hook 点呢？因为如果新连接的第一个包没有被丢弃，那这
    是它们**离开 netfilter 之前的最后 hook 点**：
 
-    * **外部主动和本机建连**的包，如果在中间处理中没有被丢弃，`LOCAL_IN` 
+    * **外部主动和本机建连**的包，如果在中间处理中没有被丢弃，`LOCAL_IN`
       是其被送到应用（例如 nginx 服务）之前的最后 hook 点
     * **本机主动和外部建连**的包，如果在中间处理中没有被丢弃，`POST_ROUTING`
       是其离开主机时的最后 hook 点
 
-下面的代码可以看到这些 handler 是如何注册的：
+下面的代码可以看到**<mark>这些 handler 是如何注册到 Netfilter hook 点的</mark>**：
 
 ```c
 // net/netfilter/nf_conntrack_proto.c
 
 /* Connection tracking may drop packets, but never alters them, so make it the first hook.  */
 static const struct nf_hook_ops ipv4_conntrack_ops[] = {
-	{
-		.hook		= ipv4_conntrack_in,       // 调用 nf_conntrack_in() 进入连接跟踪
-		.pf		= NFPROTO_IPV4,
-		.hooknum	= NF_INET_PRE_ROUTING,     // PRE_ROUTING hook 点
-		.priority	= NF_IP_PRI_CONNTRACK,
-	},
-	{
-		.hook		= ipv4_conntrack_local,    // 调用 nf_conntrack_in() 进入连接跟踪
-		.pf		= NFPROTO_IPV4,
-		.hooknum	= NF_INET_LOCAL_OUT,       // LOCAL_OUT hook 点
-		.priority	= NF_IP_PRI_CONNTRACK,
-	},
-	{
-		.hook		= ipv4_confirm,            // 调用 nf_conntrack_confirm()
-		.pf		= NFPROTO_IPV4,
-		.hooknum	= NF_INET_POST_ROUTING,    // POST_ROUTING hook 点
-		.priority	= NF_IP_PRI_CONNTRACK_CONFIRM,
-	},
-	{
-		.hook		= ipv4_confirm,            // 调用 nf_conntrack_confirm()
-		.pf		= NFPROTO_IPV4,
-		.hooknum	= NF_INET_LOCAL_IN,        // LOCAL_IN hook 点
-		.priority	= NF_IP_PRI_CONNTRACK_CONFIRM,
-	},
+    {
+        .hook        = ipv4_conntrack_in,       // 调用 nf_conntrack_in() 进入连接跟踪
+        .pf          = NFPROTO_IPV4,
+        .hooknum     = NF_INET_PRE_ROUTING,     // PRE_ROUTING hook 点
+        .priority    = NF_IP_PRI_CONNTRACK,
+    },
+    {
+        .hook        = ipv4_conntrack_local,    // 调用 nf_conntrack_in() 进入连接跟踪
+        .pf          = NFPROTO_IPV4,
+        .hooknum     = NF_INET_LOCAL_OUT,       // LOCAL_OUT hook 点
+        .priority    = NF_IP_PRI_CONNTRACK,
+    },
+    {
+        .hook        = ipv4_confirm,            // 调用 nf_conntrack_confirm()
+        .pf          = NFPROTO_IPV4,
+        .hooknum     = NF_INET_POST_ROUTING,    // POST_ROUTING hook 点
+        .priority    = NF_IP_PRI_CONNTRACK_CONFIRM,
+    },
+    {
+        .hook        = ipv4_confirm,            // 调用 nf_conntrack_confirm()
+        .pf          = NFPROTO_IPV4,
+        .hooknum     = NF_INET_LOCAL_IN,        // LOCAL_IN hook 点
+        .priority    = NF_IP_PRI_CONNTRACK_CONFIRM,
+    },
 };
 ```
 
-**`nf_conntrack_in` 函数是连接跟踪模块的核心**。
+`nf_conntrack_in()` 是**<mark>连接跟踪模块的核心</mark>**。
 
 ```c
 // net/netfilter/nf_conntrack_core.c
@@ -654,7 +657,8 @@ out:
 大致流程：
 
 1. 尝试获取这个 skb 对应的连接跟踪记录
-1. 判断是否需要对这个包做连接跟踪，如果不需要，更新 ignore 计数，返回 `NF_ACCEPT`；如果需要，就**初始化这个 skb 的引用计数**。
+1. 判断是否需要对这个包做连接跟踪，如果不需要，更新 ignore 计数（`conntrack -S` 能看到这个计数），
+   返回 `NF_ACCEPT`；如果需要，就**初始化这个 skb 的引用计数**。
 1. 从包的 L4 header 中提取信息，初始化协议相关的 `struct nf_conntrack_l4proto {}`
    变量，其中包含了该协议的**连接跟踪相关的回调方法**。
 1. 调用该协议的 `error()` 方法检查包的完整性、校验和等信息。
@@ -674,49 +678,67 @@ out:
 // Allocate a new conntrack
 static noinline struct nf_conntrack_tuple_hash *
 init_conntrack(struct net *net, struct nf_conn *tmpl,
-	       const struct nf_conntrack_tuple *tuple,
-	       const struct nf_conntrack_l4proto *l4proto,
-	       struct sk_buff *skb, unsigned int dataoff, u32 hash)
+           const struct nf_conntrack_tuple *tuple,
+           const struct nf_conntrack_l4proto *l4proto,
+           struct sk_buff *skb, unsigned int dataoff, u32 hash)
 {
-	struct nf_conn *ct;
-	ct = __nf_conntrack_alloc(net, zone, tuple, &repl_tuple, GFP_ATOMIC, hash);
+    struct nf_conn *ct;
 
-	l4proto->new(ct, skb, dataoff); // 协议相关的方法
+    // 从 conntrack table 中分配一个 entry，如果哈希表满了，会在内核日志中打印
+    // "nf_conntrack: table full, dropping packet" 信息，通过 `dmesg -T` 能看到
+    ct = __nf_conntrack_alloc(net, zone, tuple, &repl_tuple, GFP_ATOMIC, hash);
 
-	local_bh_disable();             // 关闭软中断
+    l4proto->new(ct, skb, dataoff); // 协议相关的方法
 
-	if (net->ct.expect_count) {
-		exp = nf_ct_find_expectation(net, zone, tuple);
-		if (exp) {
-			/* Welcome, Mr. Bond.  We've been expecting you... */
-			__set_bit(IPS_EXPECTED_BIT, &ct->status);
+    local_bh_disable();             // 关闭软中断
+    if (net->ct.expect_count) {
+        exp = nf_ct_find_expectation(net, zone, tuple);
+        if (exp) {
+            /* Welcome, Mr. Bond.  We've been expecting you... */
+            __set_bit(IPS_EXPECTED_BIT, &ct->status);
 
-			/* exp->master safe, refcnt bumped in nf_ct_find_expectation */
-			ct->master = exp->master;
+            /* exp->master safe, refcnt bumped in nf_ct_find_expectation */
+            ct->master = exp->master;
+            ct->mark = exp->master->mark;
+            ct->secmark = exp->master->secmark;
+            NF_CT_STAT_INC(net, expect_new);
+        }
+    }
 
-			ct->mark = exp->master->mark;
-			ct->secmark = exp->master->secmark;
-			NF_CT_STAT_INC(net, expect_new);
-		}
-	}
+    /* Now it is inserted into the unconfirmed list, bump refcount */
+    // 至此这个新的 conntrack entry 已经被插入 unconfirmed list
+    nf_conntrack_get(&ct->ct_general);
+    nf_ct_add_to_unconfirmed_list(ct);
 
-	/* Now it is inserted into the unconfirmed list, bump refcount */
-	nf_conntrack_get(&ct->ct_general);
-	nf_ct_add_to_unconfirmed_list(ct);
+    local_bh_enable();              // 重新打开软中断
 
-	local_bh_enable();              // 重新打开软中断
+    if (exp) {
+        if (exp->expectfn)
+            exp->expectfn(ct, exp);
+        nf_ct_expect_put(exp);
+    }
 
-	if (exp) {
-		if (exp->expectfn)
-			exp->expectfn(ct, exp);
-		nf_ct_expect_put(exp);
-	}
-
-	return &ct->tuplehash[IP_CT_DIR_ORIGINAL];
+    return &ct->tuplehash[IP_CT_DIR_ORIGINAL];
 }
 ```
 
 每种协议需要实现自己的 `l4proto->new()` 方法，代码见：`net/netfilter/nf_conntrack_proto_*.c`。
+例如 TCP 协议对应的 `new()` 方法是：
+
+```c
+// net/netfilter/nf_conntrack_proto_tcp.c
+
+/* Called when a new connection for this protocol found. */
+static bool tcp_new(struct nf_conn *ct, const struct sk_buff *skb, unsigned int dataoff)
+{
+    if (new_state == TCP_CONNTRACK_SYN_SENT) {
+        memset(&ct->proto.tcp, 0, sizeof(ct->proto.tcp));
+        /* SYN packet */
+        ct->proto.tcp.seen[0].td_end = segment_seq_plus_len(ntohl(th->seq), skb->len, dataoff, th);
+        ct->proto.tcp.seen[0].td_maxwin = ntohs(th->window);
+        ...
+}
+```
 
 如果当前包会影响后面包的状态判断，`init_conntrack()` 会设置 `struct nf_conn`
 的 `master` 字段。面向连接的协议会用到这个特性，例如 TCP。
@@ -731,9 +753,9 @@ unconfirmed connection）列表。
 `nf_conntrack_confirm()` 完成之后，状态就变为了 `IPS_CONFIRMED`，并且连接记录从
 **未确认列表**移到**正常**的列表。
 
-之所以要将创建一个合法的新 entry 的过程分为创建（new）和确认（confirm）两个阶段
-，是因为**包在经过 `nf_conntrack_in()` 之后，到达 `nf_conntrack_confirm()` 之前
-，可能会被内核丢弃**。这样会导致系统残留大量的半连接状态记录，在性能和安全性上都
+之所以把创建一个新 entry 的过程分为创建（new）和确认（confirm）两个阶段
+，是因为**<mark>包在经过 nf_conntrack_in() 之后，到达 nf_conntrack_confirm() 之前
+，可能会被内核丢弃</mark>**。这样会导致系统残留大量的半连接状态记录，在性能和安全性上都
 是很大问题。分为两步之后，可以加快半连接状态 conntrack entry 的 GC。
 
 ```c
@@ -742,16 +764,16 @@ unconfirmed connection）列表。
 /* Confirm a connection: returns NF_DROP if packet must be dropped. */
 static inline int nf_conntrack_confirm(struct sk_buff *skb)
 {
-	struct nf_conn *ct = (struct nf_conn *)skb_nfct(skb);
-	int ret = NF_ACCEPT;
+    struct nf_conn *ct = (struct nf_conn *)skb_nfct(skb);
+    int ret = NF_ACCEPT;
 
-	if (ct) {
-		if (!nf_ct_is_confirmed(ct))
-			ret = __nf_conntrack_confirm(skb);
-		if (likely(ret == NF_ACCEPT))
-			nf_ct_deliver_cached_events(ct);
-	}
-	return ret;
+    if (ct) {
+        if (!nf_ct_is_confirmed(ct))
+            ret = __nf_conntrack_confirm(skb);
+        if (likely(ret == NF_ACCEPT))
+            nf_ct_deliver_cached_events(ct);
+    }
+    return ret;
 }
 ```
 
@@ -764,28 +786,28 @@ confirm 逻辑，省略了各种错误处理逻辑：
 int
 __nf_conntrack_confirm(struct sk_buff *skb)
 {
-	struct nf_conn *ct;
-	ct = nf_ct_get(skb, &ctinfo);
+    struct nf_conn *ct;
+    ct = nf_ct_get(skb, &ctinfo);
 
-	local_bh_disable();               // 关闭软中断
+    local_bh_disable();               // 关闭软中断
 
-	hash = *(unsigned long *)&ct->tuplehash[IP_CT_DIR_REPLY].hnnode.pprev;
-	reply_hash = hash_conntrack(net, &ct->tuplehash[IP_CT_DIR_REPLY].tuple);
+    hash = *(unsigned long *)&ct->tuplehash[IP_CT_DIR_REPLY].hnnode.pprev;
+    reply_hash = hash_conntrack(net, &ct->tuplehash[IP_CT_DIR_REPLY].tuple);
 
-	ct->timeout += nfct_time_stamp;   // 更新连接超时时间，超时后会被 GC
-	atomic_inc(&ct->ct_general.use);  // 设置连接引用计数？
-	ct->status |= IPS_CONFIRMED;      // 设置连接状态为 confirmed
+    ct->timeout += nfct_time_stamp;   // 更新连接超时时间，超时后会被 GC
+    atomic_inc(&ct->ct_general.use);  // 设置连接引用计数？
+    ct->status |= IPS_CONFIRMED;      // 设置连接状态为 confirmed
 
-	__nf_conntrack_hash_insert(ct, hash, reply_hash);  // 插入到连接跟踪哈希表
+    __nf_conntrack_hash_insert(ct, hash, reply_hash);  // 插入到连接跟踪哈希表
 
-	local_bh_enable();                // 重新打开软中断
+    local_bh_enable();                // 重新打开软中断
 
-	nf_conntrack_event_cache(master_ct(ct) ? IPCT_RELATED : IPCT_NEW, ct);
-	return NF_ACCEPT;
+    nf_conntrack_event_cache(master_ct(ct) ? IPCT_RELATED : IPCT_NEW, ct);
+    return NF_ACCEPT;
 }
 ```
 
-可以看到，连接跟踪的处理逻辑中需要频繁关闭和打开软中断，此外还有各种锁，
+可以看到，**<mark>连接跟踪的处理逻辑中需要频繁关闭和打开软中断</mark>**，此外还有各种锁，
 这是短连高并发场景下连接跟踪性能损耗的主要原因？。
 
 # 4 Netfilter NAT 实现
@@ -803,7 +825,7 @@ NAT 是与连接跟踪独立的模块。
 
 **重要函数：**
 
-* `nf_nat_inet_fn()`：NAT 的核心函数是，在**除 `NF_INET_FORWARD` 之外的其他 hook 点都会被调用**。
+* `nf_nat_inet_fn()`：NAT 的核心函数，在**<mark>除 NF_INET_FORWARD 之外的其他 hook 点都会被调用</mark>**。
 
 ## 4.2 NAT 模块初始化
 
@@ -811,22 +833,21 @@ NAT 是与连接跟踪独立的模块。
 // net/netfilter/nf_nat_core.c
 
 static struct nf_nat_hook nat_hook = {
-	.parse_nat_setup	= nfnetlink_parse_nat_setup,
-	.decode_session		= __nf_nat_decode_session,
-	.manip_pkt		= nf_nat_manip_pkt,
+    .parse_nat_setup    = nfnetlink_parse_nat_setup,
+    .decode_session        = __nf_nat_decode_session,
+    .manip_pkt        = nf_nat_manip_pkt,
 };
 
 static int __init nf_nat_init(void)
 {
-	nf_nat_bysource = nf_ct_alloc_hashtable(&nf_nat_htable_size, 0);
+    nf_nat_bysource = nf_ct_alloc_hashtable(&nf_nat_htable_size, 0);
 
-	nf_ct_helper_expectfn_register(&follow_master_nat);
+    nf_ct_helper_expectfn_register(&follow_master_nat);
 
-	RCU_INIT_POINTER(nf_nat_hook, &nat_hook);
+    RCU_INIT_POINTER(nf_nat_hook, &nat_hook);
 }
 
 MODULE_LICENSE("GPL");
-
 module_init(nf_nat_init);
 ```
 
@@ -873,11 +894,11 @@ struct nf_nat_l4proto {
 // net/netfilter/nf_nat_proto_tcp.c
 
 const struct nf_nat_l4proto nf_nat_l4proto_tcp = {
-	.l4proto		= IPPROTO_TCP,
-	.manip_pkt		= tcp_manip_pkt,
-	.in_range		= nf_nat_l4proto_in_range,
-	.unique_tuple		= tcp_unique_tuple,
-	.nlattr_to_range	= nf_nat_l4proto_nlattr_to_range,
+    .l4proto        = IPPROTO_TCP,
+    .manip_pkt        = tcp_manip_pkt,
+    .in_range        = nf_nat_l4proto_in_range,
+    .unique_tuple        = tcp_unique_tuple,
+    .nlattr_to_range    = nf_nat_l4proto_nlattr_to_range,
 };
 ```
 
@@ -892,8 +913,8 @@ NAT 的核心函数是 `nf_nat_inet_fn()`，它会在以下 hook 点被调用：
 
 也就是除了 `NF_INET_FORWARD` 之外其他 hook 点都会被调用。
 
-在这些 hook 点的优先级：**Conntrack > NAT > Packet Filtering**。**连接跟踪的优先
-级高于 NAT 是因为 NAT 依赖连接跟踪的结果**。
+**<mark>在这些 hook 点的优先级</mark>**：**Conntrack > NAT > Packet Filtering**。
+**连接跟踪的优先级高于 NAT** 是因为 NAT 依赖连接跟踪的结果。
 
 <p align="center"><img src="/assets/img/conntrack/hook-to-nat.png" width="60%" height="60%"></p>
 <p align="center">Fig. NAT</p>
@@ -903,7 +924,7 @@ unsigned int
 nf_nat_inet_fn(void *priv, struct sk_buff *skb, const struct nf_hook_state *state)
 {
     ct = nf_ct_get(skb, &ctinfo);
-    if (!ct)    // conntrack 不存在就做不了 NAT，直接返回，这也是为什么说 NAT 依赖 conntrack 的结果
+    if (!ct)    // conntrack 不存在就做不了 NAT，直接返回，这也是我们为什么说 NAT 依赖 conntrack 的结果
         return NF_ACCEPT;
 
     nat = nfct_nat(ct);
@@ -953,11 +974,15 @@ NAT 了，因此直接返回。
 
 ### Masquerade
 
-NAT 模块一般配置方式：`Change IP1 to IP2 if matching XXX`。
+NAT 模块
 
-此次还支持一种更灵活的 NAT 配置，称为 Masquerade：`Change IP1 to dev1's IP if
-matching XXX`。与前面的区别在于，当设备（网卡）的 IP 地址发生变化时，这种方式无
-需做任何修改。缺点是性能比第一种方式要差。
+* 一般配置方式：`Change IP1 to IP2 if matching XXX`。
+* 高级配置方式：`Change IP1 to dev1's IP if matching XXX`，这种方式称为 Masquerade。
+
+Masquerade 优缺点：
+
+* 优点：**<mark>当设备（网卡）的 IP 地址发生变化时，NAT 规则无需做任何修改</mark>**。
+* 缺点：**<mark>性能比第一种方式要差</mark>**。
 
 ## 4.6 `nf_nat_packet()`：执行 NAT
 
@@ -966,43 +991,270 @@ matching XXX`。与前面的区别在于，当设备（网卡）的 IP 地址发
 
 /* Do packet manipulations according to nf_nat_setup_info. */
 unsigned int nf_nat_packet(struct nf_conn *ct, enum ip_conntrack_info ctinfo,
-			   unsigned int hooknum, struct sk_buff *skb)
+               unsigned int hooknum, struct sk_buff *skb)
 {
-	enum nf_nat_manip_type mtype = HOOK2MANIP(hooknum);
-	enum ip_conntrack_dir dir = CTINFO2DIR(ctinfo);
-	unsigned int verdict = NF_ACCEPT;
+    enum nf_nat_manip_type mtype = HOOK2MANIP(hooknum);
+    enum ip_conntrack_dir dir = CTINFO2DIR(ctinfo);
+    unsigned int verdict = NF_ACCEPT;
 
-	statusbit = (mtype == NF_NAT_MANIP_SRC? IPS_SRC_NAT : IPS_DST_NAT)
+    statusbit = (mtype == NF_NAT_MANIP_SRC? IPS_SRC_NAT : IPS_DST_NAT)
 
-	if (dir == IP_CT_DIR_REPLY)     // Invert if this is reply dir
-		statusbit ^= IPS_NAT_MASK;
+    if (dir == IP_CT_DIR_REPLY)     // Invert if this is reply dir
+        statusbit ^= IPS_NAT_MASK;
 
-	if (ct->status & statusbit)     // Non-atomic: these bits don't change. */
-		verdict = nf_nat_manip_pkt(skb, ct, mtype, dir);
+    if (ct->status & statusbit)     // Non-atomic: these bits don't change. */
+        verdict = nf_nat_manip_pkt(skb, ct, mtype, dir);
 
-	return verdict;
+    return verdict;
 }
 ```
 
 ```c
 static unsigned int nf_nat_manip_pkt(struct sk_buff *skb, struct nf_conn *ct,
-				     enum nf_nat_manip_type mtype, enum ip_conntrack_dir dir)
+                     enum nf_nat_manip_type mtype, enum ip_conntrack_dir dir)
 {
-	struct nf_conntrack_tuple target;
+    struct nf_conntrack_tuple target;
 
-	/* We are aiming to look like inverse of other direction. */
-	nf_ct_invert_tuplepr(&target, &ct->tuplehash[!dir].tuple);
+    /* We are aiming to look like inverse of other direction. */
+    nf_ct_invert_tuplepr(&target, &ct->tuplehash[!dir].tuple);
 
-	l3proto = __nf_nat_l3proto_find(target.src.l3num);
-	l4proto = __nf_nat_l4proto_find(target.src.l3num, target.dst.protonum);
-	if (!l3proto->manip_pkt(skb, 0, l4proto, &target, mtype)) // 协议相关处理
-		return NF_DROP;
+    l3proto = __nf_nat_l3proto_find(target.src.l3num);
+    l4proto = __nf_nat_l4proto_find(target.src.l3num, target.dst.protonum);
+    if (!l3proto->manip_pkt(skb, 0, l4proto, &target, mtype)) // 协议相关处理
+        return NF_DROP;
 
-	return NF_ACCEPT;
+    return NF_ACCEPT;
 }
 ```
 
-# 5. 总结
+# 5. 配置和监控
+
+## 5.1 查看/加载/卸载 nf_conntrack 模块
+
+```shell
+$ modinfo nf_conntrack
+filename:       /lib/modules/4.19.118-1.el7.centos.x86_64/kernel/net/netfilter/nf_conntrack.ko
+license:        GPL
+alias:          nf_conntrack-10
+alias:          nf_conntrack-2
+alias:          ip_conntrack
+srcversion:     4BBDB5BBEF460DF5F079C59
+depends:        nf_defrag_ipv6,libcrc32c,nf_defrag_ipv4
+retpoline:      Y
+intree:         Y
+name:           nf_conntrack
+vermagic:       4.19.118-1.el7.centos.x86_64 SMP mod_unload modversions
+parm:           tstamp:Enable connection tracking flow timestamping. (bool)
+parm:           acct:Enable connection tracking flow accounting. (bool)
+parm:           nf_conntrack_helper:Enable automatic conntrack helper assignment (default 0) (bool)
+parm:           expect_hashsize:uint
+```
+
+卸载：
+
+```shell
+$ rmmod nf_conntrack_netlink nf_conntrack
+```
+
+重新加载：
+
+```shell
+$ modprobe nf_conntrack
+
+# 加载时还可以指定额外的配置参数，例如：
+$ modprobe nf_conntrack nf_conntrack_helper=1 expect_hashsize=131072
+```
+
+## 5.2 sysctl 配置项
+
+```shell
+$ sysctl -a | grep nf_conntrack
+net.netfilter.nf_conntrack_acct = 0
+net.netfilter.nf_conntrack_buckets = 262144                 # hashsize = nf_conntrack_max/nf_conntrack_buckets
+net.netfilter.nf_conntrack_checksum = 1
+net.netfilter.nf_conntrack_count = 2148
+... # DCCP options
+net.netfilter.nf_conntrack_events = 1
+net.netfilter.nf_conntrack_expect_max = 1024
+... # IPv6 options
+net.netfilter.nf_conntrack_generic_timeout = 600
+net.netfilter.nf_conntrack_helper = 0
+net.netfilter.nf_conntrack_icmp_timeout = 30
+net.netfilter.nf_conntrack_log_invalid = 0
+net.netfilter.nf_conntrack_max = 1048576                    # conntrack table size
+... # SCTP options
+net.netfilter.nf_conntrack_tcp_be_liberal = 0
+net.netfilter.nf_conntrack_tcp_loose = 1
+net.netfilter.nf_conntrack_tcp_max_retrans = 3
+net.netfilter.nf_conntrack_tcp_timeout_close = 10
+net.netfilter.nf_conntrack_tcp_timeout_close_wait = 60
+net.netfilter.nf_conntrack_tcp_timeout_established = 21600
+net.netfilter.nf_conntrack_tcp_timeout_fin_wait = 120
+net.netfilter.nf_conntrack_tcp_timeout_last_ack = 30
+net.netfilter.nf_conntrack_tcp_timeout_max_retrans = 300
+net.netfilter.nf_conntrack_tcp_timeout_syn_recv = 60
+net.netfilter.nf_conntrack_tcp_timeout_syn_sent = 120
+net.netfilter.nf_conntrack_tcp_timeout_time_wait = 120
+net.netfilter.nf_conntrack_tcp_timeout_unacknowledged = 300
+net.netfilter.nf_conntrack_timestamp = 0
+net.netfilter.nf_conntrack_udp_timeout = 30
+net.netfilter.nf_conntrack_udp_timeout_stream = 180
+```
+
+## 5.3 监控
+
+### 丢包监控
+
+`/proc/net/stat` 下面有一些关于 conntrack 的详细统计：
+
+```shell
+$ cat /proc/net/stat/nf_conntrack
+entries   searched found    new      invalid  ignore   delete   delete_list insert   insert_failed drop     early_drop icmp_error  expect_new expect_create expect_delete search_restart
+000008e3  00000000 00000000 00000000 0000309d 001e72d4 00000000 00000000    00000000 00000000      00000000 00000000   000000ee    00000000   00000000      00000000       000368d7
+000008e3  00000000 00000000 00000000 00007301 002b8e8c 00000000 00000000    00000000 00000000      00000000 00000000   00000170    00000000   00000000      00000000       00035794
+000008e3  00000000 00000000 00000000 00001eea 001e6382 00000000 00000000    00000000 00000000      00000000 00000000   00000059    00000000   00000000      00000000       0003f166
+...
+```
+
+
+此外，还可以用 `conntrack` 命令：
+
+```shell
+$ conntrack -S
+cpu=0   found=0 invalid=743150 ignore=238069 insert=0 insert_failed=0 drop=195603 early_drop=118583 error=16 search_restart=22391652
+cpu=1   found=0 invalid=2004   ignore=402790 insert=0 insert_failed=0 drop=44371  early_drop=34890  error=0  search_restart=1225447
+...
+```
+
+* ignore：不需要做连接跟踪的包（回忆前面，只有特定协议的包才会做连接跟踪）
+
+### conntrack table 使用量监控
+
+可以定期采集系统的 conntrack 使用量，
+
+```shell
+$ cat /proc/sys/net/netfilter/nf_conntrack_count
+257273
+```
+
+并与最大值比较：
+
+```shell
+$ cat /proc/sys/net/netfilter/nf_conntrack_max
+262144
+```
+
+# 6. 常见问题
+
+## 6.1 连接太多导致 conntrack table 被打爆
+
+### 现象
+
+#### 业务层（应用层）现象
+
+1. 存在随机、偶发的**<mark>新建连接</mark>**超时（connect timeout）。
+
+    例如，如果业务用的是 Java，那对应的是 `jdbc4.CommunicationsException` communications link failure 之类的错误。
+
+2. **<mark>已有连接</mark>**正常。
+
+    也就是没有 read timeout 或 write timeout 之类的报错，报错都集中为 connect timeout。
+
+#### 网络层现象
+
+1. 抓包会看到三次握手的**<mark>第一个 SYN 包被宿主机静默丢弃了</mark>**。
+
+    需要注意的是，常规的网卡统计（`ifconfig`）和内核统计（`/proc/net/softnet_stat`）
+    **<mark>无法反映出这些丢包</mark>**。
+
+2. `1s+` 之后出发 SYN 重传，或者还没重传连接就关闭了。
+
+    **<mark>第一个 SYN 的重传是 1s，这个是内核代码里写死的，不可配置</mark>**（具体实现见 [附录](#ch_8.1)）。
+
+    再考虑到其他一些耗时，第一次重传的实际间隔要大于 1s。
+    如果客户端设置的超时时间很小，例如 `1.05s`，那可能来不及重传连接就被关闭了，然后向上层报 connect timeout 错误。
+
+#### 操作系统层现象
+
+内核日志中有如下报错：
+
+```shell
+$ demsg -T
+[Tue Apr  6 18:12:30 2021] nf_conntrack: nf_conntrack: table full, dropping packet
+[Tue Apr  6 18:12:30 2021] nf_conntrack: nf_conntrack: table full, dropping packet
+[Tue Apr  6 18:12:30 2021] nf_conntrack: nf_conntrack: table full, dropping packet
+...
+```
+
+另外，`cat /proc/net/stat/nf_conntrack` 或 `conntrack -S` 能看到有 drop 统计。
+
+### 确认 conntrack table 被打爆
+
+遇到以上现象，基本就是 conntrack 表被打爆了。确认：
+
+```shell
+$ cat /proc/sys/net/netfilter/nf_conntrack_count
+257273
+
+$ cat /proc/sys/net/netfilter/nf_conntrack_max
+net.netfilter.nf_conntrack_max = 262144
+```
+
+如果有 conntrack count 监控会看的更清楚，因为我们命令行查看时，高峰可能过了。
+
+### 解决方式
+
+优先级从高到低：
+
+1. 调大 conntrack 表
+
+    运行时配置（经实际测试，**不会对现有连接造成影响**）：
+
+    ```shell
+    $ sysctl -w net.netfilter.nf_conntrack_max=524288
+    $ sysctl -w net.netfilter.nf_conntrack_buckets=131072 # 推荐配置 hashsize=nf_conntrack_count/4
+    ```
+
+    持久化配置：
+
+    ```shell
+    $ echo 'net.netfilter.nf_conntrack_max = 524288' >> /etc/sysctl.conf
+    $ echo 'net.netfilter.nf_conntrack_buckets = 131072' >> /etc/sysctl.conf
+    ```
+
+    影响：连接跟踪模块**<mark>会多用一些内存</mark>**。具体多用多少内存，可参考 [附录](#ch_8.2)。
+
+2. 减小 GC 时间
+
+    还可以调小 conntrack 的 GC（也叫 timeout）时间，加快过期 entry 的回收。
+
+    `nf_conntrack` 针对不同 TCP 状态（established、fin_wait、time_wait 等）的 entry 有不同的 GC 时间。
+
+    例如，**<mark>默认的 established 状态的 GC 时间是 423000s（5 天）</mark>**。设置成这么长的
+    **可能原因**是：TCP/IP 协议中允许 established 状态的连接无限期不发送任何东西（但仍然活着）
+    [8]，协议的具体实现（Linux、BSD、Windows 等）会设置各自允许的最大 idle timeout。为防止
+    GC 掉这样长时间没流量但实际还活着的连接，就设置一个足够保守的
+    timeout 时间。[8] 中建议这个值不小于 2 小时 4 分钟（作为对比和参考，
+    **<mark>Cilium 自己实现的 CT 中，默认 established GC 是 6 小时</mark>**）。
+    但也能看到一些厂商推荐比这个小得多的配置，例如 20 分钟。
+
+    如果对自己的网络环境和需求非常清楚，那可以将这个时间调到一个合理的、足够小的值；
+    如果不是非常确定的话，还是**<mark>建议保守一些，例如设置 6 个小时</mark>** —— 这已经比默认值 5 天小多了。
+
+    ```shell
+    $ sysctl -w net.netfilter.nf_conntrack_tcp_timeout_established = 21600
+    ```
+
+    持久化：
+
+    ```shell
+    $ echo 'net.netfilter.nf_conntrack_tcp_timeout_established = 21600' >> /etc/sysctl.conf
+    ```
+
+    其他几个 timeout 值（尤其是 `nf_conntrack_tcp_timeout_time_wait`，默认 `120s`）也可以适当调小，
+    但还是那句话：**如果不确定潜在后果，千万不要激进地调小**。
+
+# 7. 总结
 
 连接跟踪是一个非常基础且重要的网络模块，但只有在少数场景下才会引起普通开发者的注意。
 
@@ -1017,6 +1269,63 @@ table 被打爆。此时的现象是：
 此时的原因可能是 conntrack table 太小，也可能是 GC 不够及
 时，甚至是 [GC 有bug](https://github.com/cilium/cilium/pull/12729)。
 
+# 8. 附录
+
+<a name="ch_8.1"></a>
+
+## 8.1 第一个 SYN 包的重传间隔计算（Linux 4.19.118 实现）
+
+调用路径：`tcp_connect() -> tcp_connect_init() -> tcp_timeout_init()`。
+
+```c
+// net/ipv4/tcp_output.c
+/* Do all connect socket setups that can be done AF independent. */
+static void tcp_connect_init(struct sock *sk)
+{
+    inet_csk(sk)->icsk_rto = tcp_timeout_init(sk);
+    ...
+}
+
+// include/net/tcp.h
+static inline u32 tcp_timeout_init(struct sock *sk)
+{
+    // 获取 SYN-RTO：如果这个 socket 上没有 BPF 程序，或者有 BPF 程序但执行失败，都返回 -1
+    // 除非用户自己编写 BPF 程序并 attach 到 cgroup/socket，否则这里都是没有 BPF 的，因此这里返回 -1
+    timeout = tcp_call_bpf(sk, BPF_SOCK_OPS_TIMEOUT_INIT, 0, NULL);
+
+    if (timeout <= 0)                // timeout == -1，接下来使用默认值
+        timeout = TCP_TIMEOUT_INIT;  // 宏定义，等于系统的 HZ 数，也就是 1 秒，见下面
+    return timeout;
+}
+
+// include/net/tcp.h
+#define TCP_RTO_MAX    ((unsigned)(120*HZ))
+#define TCP_RTO_MIN    ((unsigned)(HZ/5))
+#define TCP_TIMEOUT_MIN    (2U) /* Min timeout for TCP timers in jiffies */
+#define TCP_TIMEOUT_INIT ((unsigned)(1*HZ))    /* RFC6298 2.1 initial RTO value    */
+```
+
+<a name="ch_8.2"></a>
+
+## 8.2 根据 nf_conntrack_max 计算 conntrack 模块所需的内存
+
+```shell
+$ cat /proc/slabinfo | head -n2; cat /proc/slabinfo | grep conntrack
+slabinfo - version: 2.1
+# name            <active_objs> <num_objs> <objsize> <objperslab> <pagesperslab> : tunables <limit> <batchcount> <sharedfactor> : slabdata <active_slabs> <num_slabs> <sharedavail>
+nf_conntrack      512824 599505    320   51    4 : tunables    0    0    0 : slabdata  11755  11755      0
+```
+
+其中的 **<mark>objsize 表示这个内核对象</mark>**（这里对应的是 `struct nf_conn`）的大小，
+单位是**字节**，所以以上输出表明**<mark>每个 conntrack entry 占用 320 字节的内存空间</mark>**。
+
+如果忽略内存碎片（内存分配单位为 slab），那**不同 size 的 conntrack table 占用的内存**如下：
+
+* `nf_conntrack_max=512K`: `512K * 320Byte = 160MB`
+* `nf_conntrack_max=1M`: `1M * 320Byte = 320MB`
+
+更精确的计算，可以参考 [9]。
+
 # References
 
 1. [Netfilter connection tracking and NAT implementation](https://wiki.aalto.fi/download/attachments/69901948/netfilter-paper.pdf). Proc.
@@ -1027,3 +1336,5 @@ table 被打爆。此时的现象是：
 5. [Wikipedia: Netfilter](https://en.wikipedia.org/wiki/Netfilter)
 6. [Conntrack tales - one thousand and one flows](https://blog.cloudflare.com/conntrack-tales-one-thousand-and-one-flows/)
 7. [How connection tracking in Open vSwitch helps OpenStack performance](https://www.redhat.com/en/blog/how-connection-tracking-open-vswitch-helps-openstack-performance)
+8. [NAT Behavioral Requirements for TCP](https://tools.ietf.org/html/rfc5382#section-5), RFC5382
+9. [Netfilter Conntrack Memory Usage](https://johnleach.co.uk/posts/2009/06/17/netfilter-conntrack-memory-usage/)
