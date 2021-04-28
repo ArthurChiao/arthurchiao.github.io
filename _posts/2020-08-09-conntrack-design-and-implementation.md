@@ -1449,7 +1449,7 @@ static inline u32 tcp_timeout_init(struct sock *sk)
 {
     // Get SYN-RTO: return -1 if
     //   * no BPF programs attached to the socket/cgroup, or
-    //   * there are BPF programs, but the progams executed failed
+    //   * there are BPF programs, but the programs excuting failed
     //
     // Unless users write their own BPF programs and attach to cgroup/socket,
     // there will be no BPF programs. so here will (always) return -1

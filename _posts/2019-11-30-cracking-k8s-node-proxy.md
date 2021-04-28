@@ -1171,8 +1171,8 @@ eBPF code can be attached at different places (levels) in the kernel:
 <p align="center"><img src="/assets/img/socket-acceleration-with-ebpf/bpf-kernel-hooks.png" width="50%" height="50%"></p>
 <p align="center">Image from <a href="https://cyral.com/blog/how-to-ebpf-accelerating-cloud-native/">here</a></p>
 
-If we hook the connection at socket-level, we could just bypass the
-packet-level NAT: <mark>for each connection, we just need to perform NAT once!</mark> (for TCP).
+By hooking connections at socket-level, the packet-level NAT would be bypassed:
+<mark>for each connection, we just need to perform NAT once!</mark> (for TCP).
 
 What's more, such a functionality can be implemented in **less than 30 lines of C (ebpf) code**.
 
