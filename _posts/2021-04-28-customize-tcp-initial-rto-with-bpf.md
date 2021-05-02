@@ -2,7 +2,7 @@
 layout    : post
 title     : "Customize TCP initial RTO (retransmission timeout) with BPF"
 date      : 2021-04-28
-lastupdate: 2021-04-28
+lastupdate: 2021-05-07
 categories: bpf tcp bpftool
 ---
 
@@ -396,6 +396,11 @@ reveals the tip of the BPF iceberg.
 
 Without this facility, in some cases, we have to modify and re-compile the kernel
 to achieve the same effects. In this sense, BPF make Linux kernel programmable.
+
+**Update [20210507]**: it is after the finish of this post that i found
+this [stackexchange thread](https://serverfault.com/questions/295390/how-can-i-tune-the-initial-tcp-retransmit-timeout)
+and this post [BPF: The future of configs](https://blog.habets.se/2020/11/BPF-the-future-of-configs.html), which
+covered the same topic.
 
 # References
 
