@@ -52,6 +52,10 @@ runDaemon                                                                    // 
         metadata.Handle                                                            
          |-EndpointRegenerationEvent.Handle                                  //    pkg/endpoint/events.go
            |-regenerate                                                      // -> pkg/endpoint/policy.go
+              |-runPreCompilationSteps
+              |-updateAndOverrideEndpointOptions
+              |-writeHeaderfile
+              |  |-ctmap.WriteBPFMacros()
               |-regenerateBPF                                                //    pkg/endpoint/bpf.go
                 |-realizeBPFState                                            //    pkg/endpoint/bpf.go
                    |-if   CompileAndLoad                                     //    pkg/datapath/loader/loader.go

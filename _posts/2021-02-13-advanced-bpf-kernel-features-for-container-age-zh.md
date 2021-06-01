@@ -333,7 +333,7 @@ TCP_RR 测试（ping-pong）也是类似的结果：
 
 ## 5.2 Cilium 方式：BPF EDT
 
-在 Cilium 中，我们基于 multi-queue 和 BPF，实现了一种称为 <mark>Earlist Departhure Time</mark>（EDT，最早离开时间）
+在 Cilium 中，我们基于 multi-queue 和 BPF，实现了一种称为 <mark>Earlist Departure Time</mark>（EDT，最早离开时间）
 的<mark>无锁（lockless）方式来对 pod 进行限速</mark>。
 
 > 关于 lockless，可参考下面的 patch。译注。

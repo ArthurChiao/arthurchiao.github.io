@@ -22,6 +22,7 @@ categories: cilium
 
 1. [What's inside Cilium Etcd (kvstore)]({% link _posts/2020-05-20-whats-inside-cilium-etcd.md %})
 1. [Life of a Packet in Cilium: Discovering the Pod-to-Service Traffic Path and BPF Processing Logics]({% link _posts/2020-09-12-cilium-life-of-a-packet-pod-to-service.md %})
+1. [Cilium ClusterMesh: A Hands-on Guide]({% link _posts/2020-08-13-cilium-clustermesh.md %})
 
 # 中文
 

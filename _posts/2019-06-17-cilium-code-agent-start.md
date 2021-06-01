@@ -2,7 +2,7 @@
 layout    : post
 title     : "Cilium Code Walk Through: Agent Start Process"
 date      : 2019-05-29
-lastupdate: 2020-09-01
+lastupdate: 2021-05-27
 categories: cilium
 ---
 
@@ -25,7 +25,16 @@ runDaemon                                                                    // 
   |-k8s.Init                                                                 // -> pkg/k8s/init.go
   |-NewDaemon                                                                // -> daemon/cmd/daemon.go
   |  |-d := Daemon{}
+  |  |-ctmap.InitMapInfo(maxEntries)
+  |  |-policymap.InitMapInfo()
+  |  |-lbmap.InitMapInfo()
   |  |-d.initMaps                                                            //    daemon/cmd/datapath.go
+  |  |  |-lxcmap.LXCMap.OpenOrCreate()
+  |  |  |-ipcachemap.IPCache.OpenParallel()
+  |  |  |-d.svc.InitMaps
+  |  |  |-for m in ctmap.GlobalMaps:
+  |  |       m.Create()
+  |  |
   |  |-d.svc.RestoreServices                                                 // -> pkg/service/service.go
   |  |  |-restoreBackendsLocked
   |  |  |-restoreServicesLocked
@@ -45,7 +54,10 @@ runDaemon                                                                    // 
   |  |-d.init                                                                //    daemon/cmd/daemon.go
   |  |  |-os.MkdirAll(globalsDir)
   |  |  |-d.createNodeConfigHeaderfile
-  |  |  |-d.Datapath().Loader().Reinitialize
+  |  |  |   |-f = os.Create("node_config.h")
+  |  |  |   |-WriteNodeConfig(f, LocalConfig)// fill up node_config.h
+  |  |  |      |-ctmap.WriteBPFMacros()      // #define CT_MAP_XXX
+  |  |  |-d.Datapath().Loader().Reinitialize // modify node_config.h
   |  |-monitoragent.NewAgent
   |  |-d.syncEndpointsAndHostIPs                                             // -> daemon/cmd/datapath.go
   |  |  |-insert special identities to lxcmap, ipcache
@@ -429,7 +441,7 @@ func (d *Daemon) init() error {
     sockops.SockmapDisable()
     sockops.SkmsgDisable()
 
-    d.createNodeConfigHeaderfile()
+    d.createNodeConfigHeaderfile() // create /var/run/cilium/state/globals/node_config.h
 
     if Config.SockopsEnable {
         eppolicymap.CreateEPPolicyMap()

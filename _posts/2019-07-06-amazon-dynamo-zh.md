@@ -177,7 +177,7 @@ ACID（Atomicity, Consistency, Isolation, Durability）是一组保证数据库�
 我们在 Amazon 的实践表明，让数据仓库支持 ACID 会使得它的可用性（availability）
 非常差，工业界和学术界也已经就这一点达成了广泛共识 [5]。
 
-**Dynamo 的目标应用具有这样的特点：如果能给可用性（ACID 里面的 A）带来很大提升
+**Dynamo 的目标应用具有这样的特点：如果能给可用性（CAP 里面的 A）带来很大提升
 ，那牺牲一些一致性（C）也是允许的**。
 
 Dynamo 不提供任何隔离保证，并且只允许带单个 key 的更新操作（permit only single
