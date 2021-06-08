@@ -3,7 +3,7 @@ layout    : post
 title     : "Cilium: Handle Conntrack (CT) related BPF Maps on Agent Restart"
 date      : 2021-06-06
 lastupdate: 2021-06-06
-categories: cilium bpf
+categories: cilium bpf conntrack
 ---
 
 This post digs into the **<mark>handling of CT (conntrack) related BPF

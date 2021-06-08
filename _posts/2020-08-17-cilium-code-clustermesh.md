@@ -1,15 +1,20 @@
 ---
 layout    : post
-title     : "Cilium Code Walk Through: ClusterMesh"
+title     : "Cilium: What the Agents Do When Enabling ClusterMesh"
 date      : 2020-08-17
-lastupdate: 2020-09-01
+lastupdate: 2021-06-08
 categories: cilium clustermesh
 ---
 
 This post walks through the ClusterMesh implementation in cilium.
-Code bases on `1.8.2`.
+Code based on `1.9.5`.
 
-This post belongs to
+<p align="center"><img src="/assets/img/cilium-clustermesh/clustermesh.png" width="90%" height="90%"></p>
+
+A previous post [Cilium ClusterMesh: A Hands-on Guide]({% link _posts/2020-08-13-cilium-clustermesh.md %})
+is recommended (also where the above picture comes from) before reading this one.
+
+This post is included in the
 [Cilium Code Walk Through Series]({% link _posts/2019-06-17-cilium-code-series.md %}).
 
 ----
@@ -20,61 +25,108 @@ This post belongs to
 ---
 
 ```
-bootstrapClusterMesh                                                    //    daemon/daemon.go
-  |-NewClusterMesh                                                      //    pkg/clustermesh/clustermesh.go
-     |-watcher := createConfigDirectoryWatcher                          // -> pkg/clustermesh/config.go
-     |-watcher.watch                                                    // -> pkg/clustermesh/config.go
-        |-add(configFile)                                               //    pkg/clustermesh/clustermesh.go
-           |-onInsert                                                   //    pkg/clustermesh/remote_cluster.go
-              |-restartRemoteConnection                                 //    pkg/clustermesh/remote_cluster.go
-                 |-remoteNodes := store.JoinSharedStore()
-                 |                 /
-                 |   JoinSharedStore
-                 |     |-listAndStartWatcher
-                 |     |  |-go s.watcher()
-                 |     |          |-updateKey                           //    pkg/kvstore/store/store.go
-                 |     |             |-onUpdate                         //    pkg/kvstore/store/store.go
-                 |     |                |-observer.OnUpdate             //    pkg/node/store/store.go
-                 |     |                   |-NodeUpdated                // -> pkg/node/manager/manager.go
-                 |     |                      |-ipcache.Upsert
-                 |     |-syncLocalKeys(ctx)
-                 |
-                 |-remoteServices := store.JoinSharedStore()
-                 |                   /
-                 |   JoinSharedStore
-                 |     |-listAndStartWatcher
-                 |     |  |-go s.watcher()
-                 |     |          |-updateKey                           //    pkg/kvstore/store/store.go
-                 |     |             |-onUpdate                         //    pkg/kvstore/store/store.go
-                 |     |                |-observer.OnUpdate             // -> pkg/clustermesh/services.go
-                 |     |                   |-MergeExternalServiceUpdate // -> pkg/k8s/service_cache.go
-                 |     |-syncLocalKeys(ctx)
-                 |
-                 |-remoteIdentityCache := WatchRemoteIdentities()       // -> pkg/identity/cache/allocator.go
-                 |                        /
-                 |   WatchRemoteIdentities
-                 |     |-WatchRemoteKVStore                             // -> pkg/allocator/allocator.go
-                 |         |-cache.start
-                 |
-                 |-ipCacheWatcher := NewIPIdentityWatcher()             // -> pkg/ipcache/kvstore.go
-                 |-ipCacheWatcher.Watch()                               // -> pkg/ipcache/kvstore.go
-                     |-IPIdentityCache.Upsert/Delete
+NewDaemon
+ |-bootstrapClusterMesh                                                     // daemon/daemon.go
+   |-NewClusterMesh                                                         // pkg/clustermesh/clustermesh.go
+     |-createConfigDirectoyWatcher                                          // pkg/clustermesh/config.go
+     | |-watcher := fsnotify.NewWatcher()
+     | |-watcher.Add("/var/lib/cilium/clustermesh")
+     |
+     |-configWatcher.watch()
+       |-for f := files
+           handleAddedFile
+            |-add                                                            // pkg/clustermesh/clustermesh.go
+              |-if !inserted // existing etcd config changed
+                  changed <- true ------>----->-------\
+                                                       |
+                else // new etcd config added          |
+                  onInsert                             |
+                    |-go func() {        /----<-------/
+                    |   for {            |
+                    |     if val := <-changed; val
+                    |       restartRemoteConnection -->--|   // re-create connection
+                    |     else                           |
+                    |       return                       |   // closing connection to remote etcd
+                    |   }}()                             |
+                    |                                    |
+                    |-go func() {                        |
+                    |   for {                            |
+                    |     if <-statusCheckErrors         |   // Error observed on etcd connection
+                    |       restartRemoteConnection -->--|
+                    |   }}()                             |
+                    |                                    |
+                    |-restartRemoteConnection -------->--|                   // pkg/clustermesh/remote_cluster.go
+                                                        /
+restartRemoteConnection -----<----<------------<-------/                     // pkg/clustermesh/remote_cluster.go
+  |-UpdateController(rc.remoteConnectionControllerName, // e.g. "remote-etcd-k8s-cluster2"
+  |   DoFunc: func() {
+  |    |-releaseOldConnection()
+  |    |  |-go func() {
+  |    |      ipCacheWatcher.Close()
+  |    |      remoteNodes.Close()
+  |    |      remoteIdentityCache.Close()
+  |    |      remoteServices.Close()
+  |    |      backend.Close()
+  |    |       |-Close()                                                      // pkg/kvstore/etcd.go
+  |    |         |-e.lockSession.Close() // revoke lock session
+  |    |         |   |-Close()           // vendor/go.etcd.io/etcd/clientv3/concurrency/session.go
+  |    |         |-e.session.Close()     // revoke main session
+  |    |         |   |-Close()           // vendor/go.etcd.io/etcd/clientv3/concurrency/session.go
+  |    |         |-e.client.Close()
+  |    |    }
+  |    |
+  |    |-NewClient                                                           // pkg/kvstore/client.go
+  |    | |-module.newClient                                                  // pkg/kvstore/etcd.go
+  |    |   |-for {
+  |    |       backend := connectEtcdClient
+  |    |         |-UpdateController("kvstore-etcd-session-renew")
+  |    |         |-UpdateController("kvstore-etcd-lock-session-renew")
+  |    |     }
+  |    |
+  |    |-remoteNodes = JoinSharedStore("cilium/state/nodes/v1")
+  |    |     |-listAndStartWatcher
+  |    |     |  |-go s.watcher()
+  |    |     |          |-updateKey                           //    pkg/kvstore/store/store.go
+  |    |     |             |-onUpdate                         //    pkg/kvstore/store/store.go
+  |    |     |                |-observer.OnUpdate             //    pkg/node/store/store.go
+  |    |     |                   |-NodeUpdated                // -> pkg/node/manager/manager.go
+  |    |     |                      |-ipcache.Upsert
+  |    |     |-syncLocalKeys(ctx)
+  |    |
+  |    |-remoteServices = JoinSharedStore("cilium/state/services/v1")
+  |    |     |-listAndStartWatcher
+  |    |     |  |-go s.watcher()
+  |    |     |          |-updateKey                           //    pkg/kvstore/store/store.go
+  |    |     |             |-onUpdate                         //    pkg/kvstore/store/store.go
+  |    |     |                |-observer.OnUpdate             // -> pkg/clustermesh/services.go
+  |    |     |                   |-MergeExternalServiceUpdate // -> pkg/k8s/service_cache.go
+  |    |     |-syncLocalKeys(ctx)
+  |    |
+  |    |-remoteIdentityCache = WatchRemoteIdentities()       // -> pkg/identity/cache/allocator.go
+  |    |     |-WatchRemoteKVStore                             // -> pkg/allocator/allocator.go
+  |    |        |-cache.start
+  |    |
+  |    |-ipCacheWatcher = NewIPIdentityWatcher()             // -> pkg/ipcache/kvstore.go
+  |    |-ipCacheWatcher.Watch()                               // -> pkg/ipcache/kvstore.go
+  |        |-IPIdentityCache.Upsert/Delete
+  |
+  |   }
 ```
 
-# 1 Daemon start: `bootstrapClusterMesh()`
+# 1 Daemon start: bootstrap ClusterMesh
 
-If `clustermesh-config` is configured (an absolute path, e.g
-`/var/lib/clustermesh`), cilium agent will create a ClusterMesh instance by
-calling `NewClusterMesh()` method:
+If `--clustermesh-config` is provided (an absolute path, e.g
+`/var/lib/clustermesh`), cilium agent will **<mark>create a ClusterMesh instance</mark>**
+by calling `NewClusterMesh()`:
 
 ```go
 // daemon/daemon.go
 
 func (d *Daemon) bootstrapClusterMesh(nodeMngr *nodemanager.Manager) {
     if path := option.Config.ClusterMeshConfig; path != "" {
-        clustermesh := clustermesh.NewClusterMesh(clustermesh.Configuration{
+        clustermesh.NewClusterMesh(clustermesh.Configuration{
             Name:                  "clustermesh",
-            ConfigDirectory:       path,
+            ConfigDirectory:       path,          // "/var/lib/clustermesh"
             ServiceMerger:         &d.k8sWatcher.K8sSvcCache,
             RemoteIdentityWatcher: d.identityAllocator,
         })
@@ -82,10 +134,10 @@ func (d *Daemon) bootstrapClusterMesh(nodeMngr *nodemanager.Manager) {
 }
 ```
 
-Each config file in the specified directory should contain the kvstore (cilium-etcd) information
-of a remote cluster, you can [have a glimpse of these files]({% link _posts/2020-08-13-cilium-clustermesh.md %}) [1].
+Each config file in the specified directory should contain **<mark>kvstore (cilium-etcd) information
+of a remote cluster</mark>**, you can [have a glimpse of these files]({% link _posts/2020-08-13-cilium-clustermesh.md %}) [1].
 
-Now back to the code, let's see what `NewClusterMesh()` does.
+Now back to the code, let's see what `NewClusterMesh()` actually does.
 
 # 2 Create clustermesh: `NewClusterMesh()`
 
@@ -99,7 +151,6 @@ func NewClusterMesh(c Configuration) (*ClusterMesh, error) {
     cm := &ClusterMesh{
         conf:           c,
         clusters:       map[string]*remoteCluster{},
-        controllers:    controller.NewManager(),
         globalServices: newGlobalServiceCache(),
     }
 
@@ -108,13 +159,13 @@ func NewClusterMesh(c Configuration) (*ClusterMesh, error) {
 }
 ```
 
-It first creates a `ClusterMesh` instance, which contains following important fields:
+It first creates a `ClusterMesh` instance, which holds some important information like:
 
-* `clusters`: all remote k8s clusters in this mesh.
-* `globalServices`: k8s Services that have **backend Pods in more than one clusters** in the mesh.
+* `clusters`: all **<mark>remote k8s clusters</mark>** in this mesh.
+* `globalServices`: k8s Services whose **<mark>backend Pods scattered in multiple clusters</mark>** in the mesh.
 
-Then, the method creates a directory watcher, and the watcher **listens to config
-file changes** by starting its `watch()` method.
+Then it creates a **<mark>directory watcher</mark>**, which
+**<mark>listens to config file changes</mark>** in its `watch()` method.
 
 ## 2.1 Watch config directory
 
@@ -125,9 +176,6 @@ func (cdw *configDirectoryWatcher) watch() error {
     files := ioutil.ReadDir(cdw.path)              // read all files in config dir
     for _, f := range files {
         absolutePath := path.Join(cdw.path, f)
-        if !isEtcdConfigFile(absolutePath)         // skip if it's not a config file
-            continue
-
         cdw.lifecycle.add(f, absolutePath)         // tigger callback if new config file found
     }
 
@@ -195,6 +243,13 @@ func (rc *remoteCluster) onInsert(allocator RemoteIdentityWatcher) {
 `onInsert()` creates a or recreates the connection to the remote cilium-etcd
 by calling method `restartRemoteConnection()`.
 
+Remote connection controller name can be checked with CLI:
+
+```shell
+(node@cluster1) $ cilium status --all-controllers | grep remote
+  remote-etcd-k8s-cluster2          73h37m30s ago   never        0       no error
+```
+
 # 3 Create/recreate connection to remote etcd
 
 Create/recreate connection to etcd:
@@ -203,39 +258,57 @@ Create/recreate connection to etcd:
 // pkg/clustermesh/remote_cluster.go
 
 func (rc *remoteCluster) restartRemoteConnection(allocator RemoteIdentityWatcher) {
-    rc.controllers.UpdateController(
-        DoFunc: func(ctx context.Context) error {
-            backend := kvstore.NewClient(kvstore.EtcdBackendName, rc.configPath) // etcd client
+    rc.controllers.UpdateController(rc.remoteConnectionControllerName,
+        controller.ControllerParams{
+            DoFunc: func(ctx context.Context) error {
+                rc.releaseOldConnection()
 
-            remoteNodes := store.JoinSharedStore(store.Configuration{
-                Prefix:                  path.Join("cilium/state/nodes/v1", rc.name),
-                SynchronizationInterval: time.Minute,
-                Backend:                 backend,
-                Observer:                rc.mesh.conf.NodeObserver(),
-            })
+                backend := kvstore.NewClient(rc.configPath, ExtraOptions{NoLockQuorumCheck: true})
+                Info("Connection to remote cluster established")
 
-            remoteServices := store.JoinSharedStore(store.Configuration{
-                Prefix: path.Join("cilium/state/services/v1", rc.name),
-                ...
-                Observer: &remoteServiceObserver{ remoteCluster: rc, },
-            })
+                remoteNodes := store.JoinSharedStore(store.Configuration{
+                    Prefix:                  "cilium/state/nodes/v1",
+                    KeyCreator:              rc.mesh.conf.NodeKeyCreator,
+                    SynchronizationInterval: time.Minute,
+                    Backend:                 backend,
+                    Observer:                rc.mesh.conf.NodeObserver(),
+                })
 
-            remoteIdentityCache := allocator.WatchRemoteIdentities(backend)
+                remoteServices := store.JoinSharedStore(store.Configuration{
+                    Prefix:                  "cilium/state/services/v1",
+                    KeyCreator: func() store.Key { return serviceStore.ClusterService{} },
+                    SynchronizationInterval: time.Minute,
+                    Backend:                 backend,
+                    Observer: &remoteServiceObserver{
+                        remoteCluster: rc,
+                        swg:           rc.swg,
+                    },
+                })
 
-            ipCacheWatcher := ipcache.NewIPIdentityWatcher(backend)
-            go ipCacheWatcher.Watch(ctx)
+                remoteIdentityCache := allocator.WatchRemoteIdentities(backend)
+
+                ipCacheWatcher := ipcache.NewIPIdentityWatcher(backend)
+                go ipCacheWatcher.Watch(ctx)
+
+                Info("Established connection to remote etcd")
+            },
+            StopFunc: func(ctx context.Context) error {
+                rc.releaseOldConnection()
+                Info("All resources of remote cluster cleaned up")
+                return nil
+            },
         },
     )
 }
 ```
 
-As can be seen, after established connection to remote cilium-etcd, it will
+As can be seen, after establishing connection to remote cilium-etcd, it will
 listen and maintain a local cache for following remote resources:
 
-* nodes: `cilium/state/nodes/v1` in remote cilium-etcd
-* services: `cilium/state/services/v1` in remote cilium-etcd
-* identity: `cilium/state/identities/v1` in remote cilium-etcd
-* ipcache: `cilium/state/ip/v1` in remote cilium-etcd?
+* **<mark>nodes</mark>**: `cilium/state/nodes/v1` in remote cilium-etcd
+* **<mark>services</mark>**: `cilium/state/services/v1` in remote cilium-etcd
+* **<mark>identity</mark>**: `cilium/state/identities/v1` in remote cilium-etcd
+* **<mark>ipcache</mark>**: `cilium/state/ip/v1` in remote cilium-etcd?
 
 Note that when listening to remote nodes and services, it registered a
 corresponding `Observer`; when there are resource changes, the observer will be
@@ -357,7 +430,7 @@ func (m *Manager) NodeUpdated(n node.Node) {
             ID:     remoteHostIdentity,
             Source: n.Source,
         })
-        if !isOwning {  // The datapath is only updated if that source of truth is updated. 
+        if !isOwning {  // The datapath is only updated if that source of truth is updated.
             dpUpdate = false
         }
     }
@@ -581,6 +654,229 @@ restart:
 }
 ```
 
+# 5 Misc: create and close connection to remote kvstores
+
+## 5.1 Create etcd client: `newClient() -> connectEtcdClient()`
+
+```go
+// pkg/kvstore/etcd.go
+
+func (e *etcdModule) newClient(ctx context.Context, opts *ExtraOptions) (BackendOperations, chan error) {
+    errChan := make(chan error, 10)
+
+    clientOptions := clientOptions{
+        KeepAliveHeartbeat: 15 * time.Second,
+        KeepAliveTimeout:   25 * time.Second,
+        RateLimit:          defaults.KVstoreQPS,
+    }
+
+    // parse configurations
+    if o, ok := e.opts[EtcdRateLimitOption]; ok && o.value != "" {
+        clientOptions.RateLimit, _ = strconv.Atoi(o.value)
+    }
+
+    if o, ok := e.opts[etcdOptionKeepAliveTimeout]; ok && o.value != "" {
+        clientOptions.KeepAliveTimeout, _ = time.ParseDuration(o.value)
+    }
+
+    if o, ok := e.opts[etcdOptionKeepAliveHeartbeat]; ok && o.value != "" {
+        clientOptions.KeepAliveHeartbeat, _ = time.ParseDuration(o.value)
+    }
+
+    endpointsOpt, endpointsSet := e.opts[EtcdAddrOption]
+    configPathOpt, configSet := e.opts[EtcdOptionConfig]
+
+    if configSet {
+        configPath = configPathOpt.value
+    }
+
+    for {
+        backend := connectEtcdClient(ctx, e.config, configPath, errChan, clientOptions, opts)
+        switch {
+        case os.IsNotExist(err):
+            log.WithError(err).Info("Waiting for all etcd configuration files to be available")
+            time.Sleep(5 * time.Second)
+        case err != nil:
+            errChan <- err
+            close(errChan)
+            return backend, errChan
+        default:
+            return backend, errChan
+        }
+    }
+}
+```
+
+Create etcd client **<mark>supports rate limiting</mark>** (QPS).
+
+Example configuration (configmap) [2]:
+
+* `kvstore='etcd'`
+* `kvstore-opt='{"etcd.config": "/var/lib/etcd-config/etcd.config", "etcd.qps": "30"}'`
+
+```go
+func connectEtcdClient(ctx context.Context, config *client.Config, cfgPath string, errChan chan error, clientOptions clientOptions, opts *ExtraOptions) (BackendOperations, error) {
+    if cfgPath != "" {
+        cfg := newConfig(cfgPath)
+        cfg.DialOptions = append(cfg.DialOptions, config.DialOptions...)
+        config = cfg
+    }
+
+    // Set DialTimeout to 0, otherwise the creation of a new client will
+    // block until DialTimeout is reached or a connection to the server is made.
+    config.DialTimeout = 0
+
+    // Ping the server to verify if the server connection is still valid
+    config.DialKeepAliveTime = clientOptions.KeepAliveHeartbeat
+
+    // Timeout if the server does not reply within 15 seconds and close the connection.
+    // Ideally it should be lower than staleLockTimeout
+    config.DialKeepAliveTimeout = clientOptions.KeepAliveTimeout
+
+    c := client.New(*config)
+    Info("Connecting to etcd server...")
+
+    var s, ls concurrency.Session
+
+    ec := &etcdClient{
+        client:               c,
+        config:               config,
+        configPath:           cfgPath,
+        session:              &s,
+        lockSession:          &ls,
+        firstSession:         make(chan struct{}),
+        controllers:          controller.NewManager(),
+        latestStatusSnapshot: "Waiting for initial connection to be established",
+        stopStatusChecker:    make(chan struct{}),
+        extraOptions:         opts,
+        limiter:              rate.NewLimiter(rate.Limit(clientOptions.RateLimit), clientOptions.RateLimit),
+        statusCheckErrors:    make(chan error, 128),
+    }
+
+    // create session in parallel as this is a blocking operation
+    go func() {
+        session := concurrency.NewSession(c, concurrency.WithTTL(int(option.Config.KVstoreLeaseTTL.Seconds())))
+        lockSession := concurrency.NewSession(c, concurrency.WithTTL(int(defaults.LockLeaseTTL.Seconds())))
+
+        log.Infof("Got lease ID %x", s.Lease())
+        log.Infof("Got lock lease ID %x", ls.Lease())
+    }()
+
+    // wait for session to be created also in parallel
+    go func() {
+        select {
+        case err = <-errorChan:
+            if err != nil {
+                handleSessionError(err)
+                return
+            }
+        case <-time.After(initialConnectionTimeout):
+            handleSessionError(fmt.Errorf("timed out while waiting for etcd session. Ensure that etcd is running on %s", config.Endpoints))
+            return
+        }
+
+        Info("Initial etcd session established")
+    }()
+
+    go func() {
+        watcher := ec.ListAndWatch(ctx, HeartbeatPath, HeartbeatPath, 128)
+
+        for {
+            select {
+            case _, ok := <-watcher.Events:
+                if !ok {
+                    log.Debug("Stopping heartbeat watcher")
+                    watcher.Stop()
+                    return
+                }
+
+                ec.lastHeartbeat = time.Now()
+                Debug("Received update notification of heartbeat")
+            }
+        }
+    }()
+
+    go ec.statusChecker()
+
+    ec.controllers.UpdateController("kvstore-etcd-session-renew",
+        controller.ControllerParams{
+            Context: ec.client.Ctx(),
+            DoFunc: func(ctx context.Context) error {
+                return ec.renewSession(ctx)
+            },
+            RunInterval: time.Duration(10) * time.Millisecond,
+        },
+    )
+
+    ec.controllers.UpdateController("kvstore-etcd-lock-session-renew",
+        controller.ControllerParams{
+            Context: ec.client.Ctx(),
+            DoFunc: func(ctx context.Context) error {
+                return ec.renewLockSession(ctx)
+            },
+            RunInterval: time.Duration(10) * time.Millisecond,
+        },
+    )
+
+    return ec, nil
+}
+```
+
+## 5.2 Close session
+
+```go
+// pkg/kvstore/etcd.go
+
+// Close closes the etcd session
+func (e *etcdClient) Close() {
+    close(e.stopStatusChecker)
+    sessionErr := e.waitForInitialSession(context.Background())
+    if e.controllers != nil {
+        e.controllers.RemoveAll()
+    }
+
+    if sessionErr == nil { // Only close e.lockSession if the initial session was successful
+        if err := e.lockSession.Close(); err != nil {
+            e.getLogger().WithError(err).Warning("Failed to revoke lock session while closing etcd client")
+        }
+    }
+    if sessionErr == nil { // Only close e.session if the initial session was successful
+        if err := e.session.Close(); err != nil {
+            e.getLogger().WithError(err).Warning("Failed to revoke main session while closing etcd client")
+        }
+    }
+    if e.client != nil {
+        if err := e.client.Close(); err != nil {
+            e.getLogger().WithError(err).Warning("Failed to close etcd client")
+        }
+    }
+}
+```
+
+```go
+// vendor/go.etcd.io/etcd/clientv3/concurrency/session.go
+
+// Orphan ends the refresh for the session lease. This is useful
+// in case the state of the client connection is indeterminate (revoke
+// would fail) or when transferring lease ownership.
+func (s *Session) Orphan() {
+    s.cancel()
+    <-s.donec
+}
+
+// Close orphans the session and revokes the session lease.
+func (s *Session) Close() error {
+    s.Orphan()
+
+    // if revoke takes longer than the ttl, lease is expired anyway
+    ctx, cancel := context.WithTimeout(s.opts.ctx, time.Duration(s.opts.ttl)*time.Second)
+    _, err := s.client.Revoke(ctx, s.id)
+    cancel()
+    return err
+}
+```
+
 # References
 
 1. [Cilium ClusterMesh: A Hands-on Guide]({% link _posts/2020-08-13-cilium-clustermesh.md %})
+2. [kvstore/etcd: fix etcd rate limit (QPS) not working](https://github.com/cilium/cilium/pull/15742)

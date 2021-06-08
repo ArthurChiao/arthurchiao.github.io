@@ -2,7 +2,7 @@
 layout    : post
 title     : "Cilium Code Walk Through Series"
 date      : 2019-06-17
-lastupdate: 2021-06-05
+lastupdate: 2021-06-08
 categories: cilium
 ---
 
@@ -15,9 +15,9 @@ categories: cilium
 1. [Cilium Code Walk Through: CNI Delete Network]({% link _posts/2019-06-17-cilium-code-cni-delete-network.md %})
 1. [Cilium Code Walk Through: CNI Create Network]({% link _posts/2019-06-17-cilium-code-cni-create-network.md %})
 1. [Cilium Code Walk Through: Add Network Policy]({% link _posts/2019-06-17-cilium-code-add-network-policy.md %})
-1. [Cilium Code Walk Through: ClusterMesh]({% link _posts/2020-08-17-cilium-code-clustermesh.md %})
 1. [Cilium Code Walk Through: Node & Endpoint Health Probe]({% link _posts/2020-12-31-cilium-code-health-probe.md %})
-1. [Cilium: Handle Conntrack (CT) related BPF Maps Handling Agent Restart]({% link _posts/2021-06-08-cilium-handle-conntrack-related-bpf-maps-on-agent-restart.md %})
+1. [Cilium: Handle Conntrack (CT) related BPF Maps on Agent Restart]({% link _posts/2021-06-08-cilium-handle-conntrack-related-bpf-maps-on-agent-restart.md %})
+1. [Cilium: What the Agents Do When Enabling ClusterMesh]({% link _posts/2020-08-17-cilium-code-clustermesh.md %})
 
 # Related
 

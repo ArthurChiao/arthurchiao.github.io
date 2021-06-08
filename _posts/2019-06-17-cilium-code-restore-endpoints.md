@@ -26,15 +26,15 @@ This post belongs to
 ```shell
 runDaemon                                                                    //    daemon/cmd/daemon_main.go
   |-NewDaemon                                                                // -> daemon/cmd/daemon.go
-  | |-restoredEndpoints := d.restoreOldEndpoints                            
-  |     |-ioutil.ReadDir                                                   
+  | |-restoredEndpoints := d.restoreOldEndpoints
+  |     |-ioutil.ReadDir
   |     |-endpoint.FilterEPDir // filter over endpoint directories
   |     |-for ep := range possibleEPs
   |         validateEndpoint(ep)
   |           |-allocateIPsLocked
   |-initRestore(restoredEndpoints)                                           // -> daemon/cmd/state.go
      |-regenerateRestoredEndpoints                                           //    daemon/cmd/state.go
-        |-for ep  
+        |-for ep
         |   Expose
         |    |-NewEventQueueBuffered
         |    |-eventQueue.Run ------------------>---|
@@ -43,13 +43,13 @@ runDaemon                                                                    // 
             RegenerateAfterRestore                  |                        // -> pkg/endpoint/restore.go
              |-restoreIdentity                      |                        //
              |-Regenerate                           |                        // -> pkg/endpoint/policy.go
-                |-eventQueue.Enqueue(epEvent)       |                       
-                  /\                                |                       
-                  ||                                |                       
-                  \/                                |                       
+                |-eventQueue.Enqueue(epEvent)       |
+                  /\                                |
+                  ||                                |
+                  \/                                |
    eventQueue.Run()   <-----------------------<-----|                        //    pkg/endpoint/events.go
-    |-for ev := range q.events                                                     
-        metadata.Handle                                                            
+    |-for ev := range q.events
+        metadata.Handle
          |-EndpointRegenerationEvent.Handle                                  //    pkg/endpoint/events.go
            |-regenerate                                                      // -> pkg/endpoint/policy.go
               |-runPreCompilationSteps
@@ -129,13 +129,13 @@ func (d *Daemon) restoreOldEndpoints(dir string, clean bool) (*endpointRestoreSt
     existingEndpoints = lxcmap.DumpToMap()             // get previous endpoint IDs from BPF map
     dirFiles := ioutil.ReadDir(dir)                    // state dir: `/var/run/cilium/`
     eptsID := endpoint.FilterEPDir(dirFiles)           // `/var/run/cilium/<ep_id>/lxc_config.h`
-                                                       
+
     possibleEPs := ReadEPsFromDirNames(dir, eptsID)    // parse endpoint ID from dir name
-    for ep := range possibleEPs {                      
-        ep.SetAllocator(d.identityAllocator)           
+    for ep := range possibleEPs {
+        ep.SetAllocator(d.identityAllocator)
         d.validateEndpoint(ep)  // further call allocateIPsLocked() to retain IP for this endpoint
-        ep.SetDefaultConfiguration(true)               
-                                                       
+        ep.SetDefaultConfiguration(true)
+
         state.restored.append(ep)                      // insert into restored list, will regen bpf for them
         delete(existingEndpoints, ep.IPv4.String())
     }
