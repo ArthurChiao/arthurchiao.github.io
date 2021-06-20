@@ -2,7 +2,7 @@
 layout    : post
 title     : "Cilium: What the Agents Do When Enabling ClusterMesh"
 date      : 2020-08-17
-lastupdate: 2021-06-08
+lastupdate: 2021-06-20
 categories: cilium clustermesh
 ---
 
@@ -32,10 +32,10 @@ NewDaemon
      | |-watcher := fsnotify.NewWatcher()
      | |-watcher.Add("/var/lib/cilium/clustermesh")
      |
-     |-configWatcher.watch()
+     |-configWatcher.watch()                                                // pkg/clustermesh/config.go
        |-for f := files
-           handleAddedFile
-            |-add                                                            // pkg/clustermesh/clustermesh.go
+           handleAddedFile                                                  // pkg/clustermesh/config.go
+            |-add()                                                         // pkg/clustermesh/clustermesh.go
               |-if !inserted // existing etcd config changed
                   changed <- true ------>----->-------\
                                                        |
@@ -75,7 +75,7 @@ restartRemoteConnection -----<----<------------<-------/                     // 
   |    |         |-e.client.Close()
   |    |    }
   |    |
-  |    |-NewClient                                                           // pkg/kvstore/client.go
+  |    |-kvstore.NewClient                                                   // pkg/kvstore/client.go
   |    | |-module.newClient                                                  // pkg/kvstore/etcd.go
   |    |   |-for {
   |    |       backend := connectEtcdClient
@@ -83,14 +83,14 @@ restartRemoteConnection -----<----<------------<-------/                     // 
   |    |         |-UpdateController("kvstore-etcd-lock-session-renew")
   |    |     }
   |    |
-  |    |-remoteNodes = JoinSharedStore("cilium/state/nodes/v1")
+  |    |-remoteNodes = JoinSharedStore("cilium/state/nodes/v1")              // pkg/kvstore/store/store.go
   |    |     |-listAndStartWatcher
-  |    |     |  |-go s.watcher()
-  |    |     |          |-updateKey                           //    pkg/kvstore/store/store.go
-  |    |     |             |-onUpdate                         //    pkg/kvstore/store/store.go
-  |    |     |                |-observer.OnUpdate             //    pkg/node/store/store.go
-  |    |     |                   |-NodeUpdated                // -> pkg/node/manager/manager.go
-  |    |     |                      |-ipcache.Upsert
+  |    |     |  |-go s.watcher()                                             // pkg/kvstore/store/store.go
+  |    |     |        |-updateKey                           //    pkg/kvstore/store/store.go
+  |    |     |           |-onUpdate                         //    pkg/kvstore/store/store.go
+  |    |     |              |-observer.OnUpdate             //    pkg/node/store/store.go
+  |    |     |                 |-NodeUpdated                // -> pkg/node/manager/manager.go
+  |    |     |                    |-ipcache.Upsert
   |    |     |-syncLocalKeys(ctx)
   |    |
   |    |-remoteServices = JoinSharedStore("cilium/state/services/v1")
@@ -102,9 +102,10 @@ restartRemoteConnection -----<----<------------<-------/                     // 
   |    |     |                   |-MergeExternalServiceUpdate // -> pkg/k8s/service_cache.go
   |    |     |-syncLocalKeys(ctx)
   |    |
-  |    |-remoteIdentityCache = WatchRemoteIdentities()       // -> pkg/identity/cache/allocator.go
-  |    |     |-WatchRemoteKVStore                             // -> pkg/allocator/allocator.go
-  |    |        |-cache.start
+  |    |-WatchRemoteIdentities("cilium/state/identities/v1")  // -> pkg/identity/cache/allocator.go
+  |    |   |-NewKVStoreBackend
+  |    |   |-WatchRemoteKVStore                               // -> pkg/allocator/allocator.go
+  |    |       |-cache.start
   |    |
   |    |-ipCacheWatcher = NewIPIdentityWatcher()             // -> pkg/ipcache/kvstore.go
   |    |-ipCacheWatcher.Watch()                               // -> pkg/ipcache/kvstore.go
