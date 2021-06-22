@@ -2,7 +2,7 @@
 layout    : post
 title     : "Cilium Code Walk Through: Cilium Operator"
 date      : 2019-05-30
-lastupdate: 2019-08-23
+lastupdate: 2021-06-22
 categories: cilium
 ---
 
@@ -12,6 +12,13 @@ categories: cilium
 ----
 
 ```shell
+init                                                 // operator/flags.go
+ |-cobra.OnInitialize(option.InitConfig())           // pkg/option/config.go
+    |-option.InitConfig()                            // pkg/option/config.go
+      |-ReadDirConfig
+      |-MergeConfig
+         |-viper.MergeConfigMap
+
 runOperator                                                 // operator/api.go
   |-startServer                                             // operator/api.go
   |-startSynchronizingServices                              // operator/k8s_service_sync.go
@@ -43,7 +50,12 @@ runOperator                                                 // operator/api.go
   | |-for { kvstore.Client().Update(HeartbeatPath) }
   |
   |-startKvstoreIdentityGC
-  | |-RunGC
+  |  |-allocator.RunGC
+  |    |-allocator.RunGC
+  |       |-backend.RunGC(staleKeyPrevRound)                // pkg/kvstore/allocator/allocator.go
+  |          |-allocated := k.backend.ListPrefix()
+  |          |-for key, v in allocated:
+  |
   |-enableCiliumEndpointSyncGC                              // operator/k8s_cep_gc.go
   | |-ciliumClient.CiliumEndpoints(cep.Namespace).Delete
   |-enableCNPWatcher
@@ -54,7 +66,7 @@ runOperator                                                 // operator/api.go
 
 This post walks through the implementation of cilium-operator.
 
-Code based on `1.8.2`.
+Code based on `1.8.2`/`1.9.5`.
 
 ## 1.1 Cilium operator
 
@@ -441,7 +453,228 @@ func startKvstoreWatchdog() {
 
 # 6 `startKvstoreIdentityGC()`
 
-Rate-limited kvstore identity garbage collector, GC interval `IdentityGCInterval`:
+## 6.1 Background: identity allocation in cilium-agent side
+
+### Agent: create identity allocator
+
+```go
+// pkg/allocator/allocator.go
+
+func NewAllocator(typ AllocatorKey, backend Backend, opts ...AllocatorOption) (*Allocator, error) {
+    a := &Allocator{
+        keyType:      typ,
+        backend:      backend,                      // kvstore client
+        localKeys:    newLocalKeys(),
+        stopGC:       make(chan struct{}),          // keepalive master/slave keys in kvstore
+        remoteCaches: map[*RemoteCache]struct{}{},
+    }
+
+    for _, fn := range opts {
+        fn(a)
+    }
+
+    a.mainCache = newCache(a)
+    a.idPool = idpool.NewIDPool(a.min, a.max)
+    a.initialListDone = a.mainCache.start()
+
+    if !a.disableGC {
+        go func() {
+            select {
+            case <-a.initialListDone:
+            case <-time.After(AllocatorListTimeout): // List kvstore contents timed out
+                log.Fatalf("Timeout while waiting for initial allocator state")
+            }
+            a.startLocalKeySync()
+        }()
+    }
+
+    return a, nil
+}
+```
+
+### Agent: ensure local keys always in kvstore with sync loop
+
+A loop to periodically check and re-create identity keys if they are missing from KVStore:
+
+* **<mark>master key</mark>**: identity ID to value
+* **<mark>slave key</mark>**: value to identity ID
+
+```go
+// pkg/allocator/allocator.go
+
+func (a *Allocator) startLocalKeySync() {
+    go func(a *Allocator) {
+        for {
+            a.syncLocalKeys() // for k in keys: kvstore.UpdateKey()
+
+            select {
+            case <-a.stopGC:
+                return        // Stopped master key sync routine
+            case <-time.After(KVstorePeriodicSync): // 5min
+            }
+        }
+    }(a)
+}
+
+// Check the kvstore and verify that a master key exists for all locally used allocations.
+// This will restore master keys if deleted for some reason.
+func (a *Allocator) syncLocalKeys() error {
+    ids := a.localKeys.getVerifiedIDs()
+
+    for id, value := range ids {
+        a.backend.UpdateKey(context.TODO(), id, value, false)
+    }
+}
+```
+
+```go
+// pkg/kvstore/allocator/allocator.go
+
+// UpdateKey refreshes the record that this node is using this key -> id mapping.
+// When reliablyMissing is set it will also recreate missing master or slave keys.
+func (k *kvstoreBackend) UpdateKey(ctx context.Context, id idpool.ID, key allocator.AllocatorKey, reliablyMissing bool) error {
+    var (
+        err        error
+        recreated  bool
+        keyPath    = path.Join(k.idPrefix, id.String())
+        keyEncoded = []byte(k.backend.Encode([]byte(key.GetKey())))
+        valueKey   = path.Join(k.valuePrefix, k.backend.Encode([]byte(key.GetKey())), k.suffix)
+    )
+
+    // Ensures that any existing potentially conflicting key is never overwritten.
+    success, err := k.backend.CreateOnly(ctx, keyPath, keyEncoded, false)
+    switch {
+    case err != nil:
+        return fmt.Errorf("Unable to re-create missing master key "%s" -> "%s": %s", fieldKey, valueKey, err)
+    case success:
+        log.Warning("Re-created missing master key")
+    }
+
+    // Also re-create the slave key in case it has been deleted.
+    if reliablyMissing {
+        recreated = k.backend.CreateOnly(ctx, valueKey, []byte(id.String()), true)
+    } else {
+        recreated = k.backend.UpdateIfDifferent(ctx, valueKey, []byte(id.String()), true)
+    }
+    switch {
+    case err != nil:
+        return fmt.Errorf("Unable to re-create missing slave key "%s" -> "%s": %s", fieldKey, valueKey, err)
+    case recreated:
+        log.Warning("Re-created missing slave key")
+    }
+
+    return nil
+}
+```
+
+### Agent: allocate identity
+
+```go
+// pkg/identity/cache/allocator.go
+
+// AllocateIdentity allocates an identity described by the specified labels. If
+// an identity for the specified set of labels already exist, the identity is
+// re-used and reference counting is performed, otherwise a new identity is allocated via the kvstore.
+func (m *CachingIdentityAllocator) AllocateIdentity(ctx, lbls labels.Labels) (*identity.Identity, allocated bool) {
+    // This will block until the kvstore can be accessed and all identities were successfully synced
+    m.WaitForInitialGlobalIdentities(ctx)
+
+    idp := m.IdentityAllocator.Allocate(ctx, GlobalIdentity{lbls.LabelArray()})
+
+    return identity.NewIdentity(identity.NumericIdentity(idp), lbls), isNew, nil
+}
+```
+
+```go
+// pkg/allocator/allocator.go
+
+// Allocate will retrieve the ID for the provided key. If no ID has been
+// allocated for this key yet, a key will be allocated. If allocation fails,
+// most likely due to a parallel allocation of the same ID by another user,
+// allocation is re-attempted for maxAllocAttempts times.
+func (a *Allocator) Allocate(ctx context.Context, key AllocatorKey) (idpool.ID, error) {
+    k := a.encodeKey(key)
+
+    select {
+    case <-a.initialListDone:
+    case <-ctx.Done():
+        return 0, fmt.Errorf("allocation cancelled while waiting for initial key list to be received")
+    }
+
+    for attempt := 0; attempt < maxAllocAttempts; attempt++ {
+        if val := a.localKeys.use(k); val != idpool.NoID {
+            a.mainCache.insert(key, val)
+            return val
+        }
+
+        value, isNew, firstUse = a.lockedAllocate(ctx, key) // Create in kvstore
+        if err == nil {
+            a.mainCache.insert(key, value)
+            return value
+        }
+
+        boff.Wait(ctx) // back-off wait
+    }
+
+    return 0
+}
+
+// Return values:
+// 1. allocated ID
+// 2. whether the ID is newly allocated from kvstore
+// 3. whether this is the first owner that holds a reference to the key in
+//    localkeys store
+// 4. error in case of failure
+func (a *Allocator) lockedAllocate(ctx context.Context, key AllocatorKey) (idpool.ID, bool, bool, error) {
+    k := a.encodeKey(key)
+
+    // fetch first key that matches /value/<key> while ignoring the node suffix
+    value := a.GetIfLocked(ctx, key, lock)
+
+    // We shouldn't assume the fact the master key does not exist in the kvstore
+    // that localKeys does not have it. The KVStore might have lost all of its
+    // data but the local agent still holds a reference for the given master key.
+    if value == 0 {
+        value = a.localKeys.lookupKey(k)
+        if value {
+            a.backend.UpdateKeyIfLocked(ctx, value, key, true, lock) // re-create master key
+        }
+    } else {
+        _, firstUse = a.localKeys.allocate(k, key, value)
+    }
+
+    if value != 0 { // reusing existing global key
+        a.backend.AcquireReference(ctx, value, key, lock)
+        a.localKeys.verify(k) // mark the key as verified in the local cache
+        return value, false, firstUse, nil
+    }
+
+    log.Debug("Allocating new master ID")
+    id, strID, unmaskedID := a.selectAvailableID()
+
+    oldID, firstUse := a.localKeys.allocate(k, key, id)
+
+    err = a.backend.AllocateIDIfLocked(ctx, id, key, lock)
+    if err != nil {
+        // Creation failed. Another agent most likely beat us to allocting this
+        // ID, retry.
+        releaseKeyAndID()
+        return 0, false, false, fmt.Errorf("unable to allocate ID %s for key %s: %s", strID, key, err)
+    }
+
+    // Notify pool that leased ID is now in-use.
+    a.idPool.Use(unmaskedID)
+    a.backend.AcquireReference(ctx, id, key, lock)
+    a.localKeys.verify(k) // mark the key as verified in the local cache
+
+    return id, true, firstUse, nil
+}
+```
+
+## 6.2 Operator: `RunGC`
+
+Now back to cilium-operator, the
+rate-limited kvstore identity garbage collector, GC interval `IdentityGCInterval`:
 
 ```go
 // operator/identity_gc.go
@@ -462,6 +695,55 @@ func startKvstoreIdentityGC() {
             }).Debug("Will delete identities if they are still unused")
         }
     }()
+}
+```
+
+Identity key-pair:
+
+* **<mark>ID-to-Value key</mark>**: the so-called **<mark>"allocator master key"</mark>**
+    * Key: `"cilium/state/identities/v1/id/12345"`
+    * Val: `"label1;label2;labelN"`
+* **<mark>Value-to-ID key</mark>**: the so-called **<mark>"allocator slave key"</mark>**
+    * Key: `"cilium/state/identities/v1/value/label1;label2;labelN;/<NodeIP>"`
+    * Val: `12345`
+
+**<mark>ID-to-Value key will be GC-ed if corresponding Value-to-ID key is missing.</mark>**
+
+```go
+// pkg/kvstore/allocator/allocator.go
+
+// RunGC scans the kvstore for unused master keys and removes them
+func (k *kvstoreBackend) RunGC(ctx context.Context, rateLimit *rate.Limiter, staleKeysPrevRound map[string]uint64) (map[string]uint64) {
+    allocated := k.backend.ListPrefix(ctx, k.idPrefix)      // "cilium/state/identities/v1/id/"
+    staleKeys := map[string]uint64{}
+
+    for key, v := range allocated {
+        prefix2 := path.Join(k.valuePrefix, string(v.Data)) // "cilium/state/identities/v1/value/<labels>"
+        pairs := k.backend.ListPrefixIfLocked(ctx, prefix2, lock)
+
+        hasUsers := false
+        for prefix := range pairs {
+            if prefixMatchesKey(prefix2, prefix) {
+                hasUsers = true
+                break
+            }
+        }
+
+        if !hasUsers {
+            if modRev, ok := staleKeysPrevRound[key]; ok { // Only delete if this key was previously marked as to be deleted
+                // if the v.ModRevision is different than the modRev (which is
+                // the last seen v.ModRevision) then this key was re-used in between GC calls.
+                if modRev == v.ModRevision {
+                    k.backend.DeleteIfLocked(ctx, key, lock); log.Info("Deleted unused allocator master key")
+                    rateLimit.Wait(ctx)
+                }
+            } else {
+                staleKeys[key] = v.ModRevision // mark it to be delete in the next RunGC
+            }
+        }
+    }
+
+    return staleKeys, gcStats, nil
 }
 ```
 

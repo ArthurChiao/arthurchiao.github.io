@@ -2,8 +2,8 @@
 layout    : post
 title     : "源码解析：K8s 创建 pod 时，背后发生了什么（五）（2021）"
 date      : 2021-06-01
-lastupdate: 2021-06-01
-categories: k8s cni
+lastupdate: 2021-06-23
+categories: k8s kubelet cni
 ---
 
 本文基于 2019 年的一篇文章
@@ -632,6 +632,12 @@ Sandbox 容器初始化完成后，kubelet 就开始创建其他容器。
 
 ```
 startContainer
+ |-EnsureImageExists
+ |
+ |-generateContainerConfig                               // pkg/kubelet/kuberuntime/kuberuntime_container.go
+ |  |-GenerateRunContainerOptions                        // pkg/kubelet/kubelet_pods.go
+ |     |-makeEnvironmentVariables                        // pkg/kubelet/kubelet_pods.go
+ |
  |-m.runtimeService.CreateContainer                      // pkg/kubelet/cri/remote/remote_runtime.go
  |  |-r.runtimeClient.CreateContainer                    // -> pkg/kubelet/dockershim/docker_container.go
  |       |-new(CreateContainerResponse)                  // staging/src/k8s.io/cri-api/pkg/apis/runtime/v1/api.pb.go
@@ -639,14 +645,16 @@ startContainer
  |
  |  CreateContainer // pkg/kubelet/dockershim/docker_container.go
  |      |-ds.client.CreateContainer                      // -> pkg/kubelet/dockershim/libdocker/instrumented_client.go
- |             |-d.client.ContainerCreate                // -> vendor/github.com/docker/docker/client/container_create.go
- |                |-cli.post("/containers/create")
- |                |-json.NewDecoder().Decode(&resp)
+ |            |-d.client.ContainerCreate                 // -> vendor/github.com/docker/docker/client/container_create.go
+ |               |-cli.post("/containers/create")
+ |               |-json.NewDecoder().Decode(&resp)
  |
  |-m.runtimeService.StartContainer(containerID)          // -> pkg/kubelet/cri/remote/remote_runtime.go
-    |-r.runtimeClient.StartContainer
-         |-new(CreateContainerResponse)                  // staging/src/k8s.io/cri-api/pkg/apis/runtime/v1/api.pb.go
-         |-Invoke("/runtime.v1.RuntimeService/StartContainer")
+ |  |-r.runtimeClient.StartContainer
+ |       |-new(CreateContainerResponse)                  // staging/src/k8s.io/cri-api/pkg/apis/runtime/v1/api.pb.go
+ |       |-Invoke("/runtime.v1.RuntimeService/StartContainer")
+ |
+ |-m.runner.Run(PostStart)
 ```
 
 ### 具体过程
@@ -662,7 +670,7 @@ func (m *kubeGenericRuntimeManager) startContainer(podSandboxID, podSandboxConfi
     // Step 1: 拉镜像
     m.imagePuller.EnsureImageExists(pod, container, pullSecrets, podSandboxConfig)
 
-    // Step 2: 通过 CRI 创建容器
+    // Step 2: 通过 CRI 创建容器，其中包括给 pod 注入环境变量
     containerConfig := m.generateContainerConfig(container, pod, restartCount, podIP, imageRef, podIPs, target)
 
     m.internalLifecycle.PreCreateContainer(pod, container, containerConfig)
@@ -690,6 +698,18 @@ func (m *kubeGenericRuntimeManager) startContainer(podSandboxID, podSandboxConfi
     从 parent PodSpec 的 `ContainerConfig` struct 中解析参数（command, image, labels, mounts, devices, env variables 等等），
     然后通过 protobuf 发送给 CRI plugin。例如对于 docker，收到请求后会反序列化，从中提取自己需要的参数，然后发送给 Daemon API。
     过程中它会给容器添加几个 metadata labels （例如 container type, log path, sandbox ID）。
+
+    **<mark>这里稍微展开一点</mark>**：如果想通过 API 访问 K8s 资源，最常见的
+    方式是用 `client-go` **<mark>初始化一个 K8s client</mark>**：初始化时指定
+    kubeconfig 文件路径或 apiserver 地址。**<mark>不传行不行呢？</mark>**
+
+    如果是**<mark>以 pod 方式部署</mark>**这个程序，还真可以不传：client-go 代码会 fallback 到所谓的
+    `InClusterConfig` 模式，自动从当前 pod 中获取 `KUBERNETES_SERVICE_HOST` 和
+    `KUBERNETES_SERVICE_PORT` 这两个环境变量，二者拼起来就是 **<mark>kube-apiserver 的 Service 入口</mark>**，例如 `10.224.0.1:443`。
+
+    这两个环境变量就是在这一步注入的。
+
+    > **<mark>Service 网段是在 apiserver 中配置的</mark>**，例如 `--service-cluster-ip-range=10.224.0.0/16`。
 
 1. 然后通过 `runtimeService.startContainer()` 启动容器；
 1. 如果注册了 post-start hooks，接下来就执行这些 hooks。**<mark>post Hook 类型</mark>**：

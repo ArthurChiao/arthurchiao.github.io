@@ -2,7 +2,7 @@
 layout    : post
 title     : "Cilium Code Walk Through: Agent Start Process"
 date      : 2019-05-29
-lastupdate: 2021-05-27
+lastupdate: 2021-06-22
 categories: cilium
 ---
 
@@ -20,6 +20,13 @@ This post belongs to
 ----
 
 ```shell
+init                                                 // daemon/cmd/daemon_main.go
+ |-cobra.OnInitialize(option.InitConfig())           // pkg/option/config.go
+    |-option.InitConfig()                            // pkg/option/config.go
+      |-ReadDirConfig
+      |-MergeConfig
+         |-viper.MergeConfigMap
+
 runDaemon                                                                    //    daemon/cmd/daemon_main.go
   |-enableIPForwarding                                                       
   |-k8s.Init                                                                 // -> pkg/k8s/init.go
