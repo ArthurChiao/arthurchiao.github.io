@@ -46,8 +46,15 @@ runOperator                                                 // operator/api.go
   |    |-create/update/delete key from shared cache
   |
   |-startKvstoreWatchdog                                    // operator/kvstore_watchdog.go
-  | |-for { RunLocksGC }
-  | |-for { kvstore.Client().Update(HeartbeatPath) }
+  |  |-go func() {
+  |  |   for {
+  |  |     RunLocksGC // GC lock-files in kvstore
+  |  | }}()
+  |  |
+  |  |-go func() {
+  |      for {
+  |        kvstore.Client().Update(HeartbeatPath)
+  |    }}()
   |
   |-startKvstoreIdentityGC
   |  |-allocator.RunGC
@@ -134,24 +141,21 @@ func runOperator(cmd *cobra.Command) {
     }
 
     if kvstoreEnabled() {                       // cilium-etcd used
-        if Config.SyncK8sServices
-            startSynchronizingServices()        // sync Service
+        startSynchronizingServices()            // sync Service
 
         kvstore.Setup(option.Config.KVStore)    // connect to kvstore (cilium-etcd)
 
-        if Config.SyncK8sNodes
-            runNodeWatcher(nodeManager)         // sync CiliumNode
-
-        startKvstoreWatchdog()                  // perform identity GC and kvstore heartbeat
+        runNodeWatcher(nodeManager)             // sync CiliumNode
+        startKvstoreWatchdog()                  // perform lock-files GC and kvstore heartbeat
     }
 
-    switch Config.IdentityAllocationMode {
+    switch IdentityAllocationMode {
     ...
     case IdentityAllocationModeKVstore:
         startKvstoreIdentityGC()                // perform identity GC
     }
 
-    if Config.EnableCEPGC && Config.EndpointGCInterval != 0 {
+    if EnableCEPGC && EndpointGCInterval != 0 {
         enableCiliumEndpointSyncGC()            // perform CiliumEndpoint GC
     }
 
@@ -418,12 +422,12 @@ func runNodeWatcher(nodeManager *allocator.NodeEventHandler) error {
 }
 ```
 
-# 5 `startKvstoreWatchdog()`
+# 5 `startKvstoreWatchdog()`: GC of unused lock files in kvstore
 
-This method performs:
+This method:
 
-1. identity GC every lock lease (`25s`)
-2. kvstore heartbeat (`1min`)
+1. scans the kvstore for **<mark>unused locks</mark>** and removes them every lock lease (`25s`)
+2. updates kvstore heartbeat (`1min`)
 
 ```go
 // operator/kvstore_watchdog.go
