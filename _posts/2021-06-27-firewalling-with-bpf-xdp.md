@@ -26,7 +26,7 @@ categories: bpf xdp tc
 The superpower of **<mark>being able to dynamically program the datapath of Linux kernel</mark>**
 makes BPF/XDP an excellent tool for implementing efficient L3-L7 firewalls.
 
-While it has already been used this way in production at large scale [2] -
+While it has already been used this way in production at large scale [2,6] -
 which indicates the maturity of technology - it's still not clear to many network
 engineers and developers that **<mark>how does this facility actually works in the underlying</mark>**.
 
@@ -956,6 +956,7 @@ TODO: more elaborations on this section.
 
 tcpdump happens before tc-bpf hooking point, but after XDP hooking point.
 That's why we could capture the traffic in section 2, but would not if we're running XDP ones.
+`xdpdump` comes as a rescue in the latter case.
 
 ## 5.2 Netfilter framework
 
@@ -971,3 +972,4 @@ For example, it is possible now to entirely bypass the netfilter framework in Ci
 3. [netlink(7) — Linux manual page](https://man7.org/linux/man-pages/man7/netlink.7.html)
 4. [(译) 深入理解 Cilium 的 eBPF 收发包路径（datapath）（KubeCon, 2019）]({% link _posts/2020-09-04-understanding-ebpf-datapath-in-cilium-zh.md %})
 5. [Understanding (and Troubleshooting) the eBPF Datapath in Cilium](https://kccncna19.sched.com/event/Uae7/understanding-and-troubleshooting-the-ebpf-datapath-in-cilium-nathan-sweet-digitalocean)
+6. Facebook, [eBPF / XDP firewall and packet filtering](http://vger.kernel.org/lpc_net2018_talks/ebpf-firewall-LPC.pdf), 2018
