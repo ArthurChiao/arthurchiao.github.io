@@ -576,6 +576,7 @@ tc_filter_modify                                      // tc/filter.c
   |
   |-q->parse_fopt            "bpf da obj drop-arp.o sec ingress"
   |  |-bpf_parse_opt                                  // tc/f_bpf.c
+  |     |-cfg.type = BPF_PROG_TYPE_SCHED_CLS          // tc/f_bpf.c
   |
   |-rtnl_talk                                         // lib/libnetlink.c
      |-__rtnl_talk                                    // lib/libnetlink.c
@@ -588,6 +589,9 @@ tc_filter_modify                                      // tc/filter.c
 The above frontend processing logic explains itself clearly:
 
 1. Parse CLI parameters from user inputs (`tc` commands)
+
+    Set the program type to be `BPF_PROG_TYPE_SCHED_CLS`.
+
 2. **<mark>Init a netlink message</mark>** with those parameters
 3. **<mark>Send the netlink message to kernel</mark>**
 
