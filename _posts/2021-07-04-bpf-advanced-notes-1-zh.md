@@ -1,8 +1,8 @@
 ---
 layout    : post
-title     : "BPF 进阶笔记（一）：BPF 程序类型详解：使用场景、函数签名、执行位置及程序示例"
+title     : "BPF 进阶笔记（一）：BPF 程序（BPF Prog）类型详解：使用场景、函数签名、执行位置及程序示例"
 date      : 2021-07-04
-lastupdate: 2021-07-04
+lastupdate: 2021-07-13
 categories: bpf xdp socket cgroup
 ---
 
@@ -30,6 +30,10 @@ BPF 程序类型。对于主要的程序类型，本文将介绍其：
 同学可作查漏补缺之用。
 
 文中涉及的代码，如无特殊说明，均基于内核 **<mark>5.8/5.10</mark>** 版本。
+
+* [BPF 进阶笔记（一）：BPF 程序（BPF Prog）类型详解：使用场景、函数签名、执行位置及程序示例]({% link _posts/2021-07-04-bpf-advanced-notes-1-zh.md %})
+* [BPF 进阶笔记（二）：BPF Map 类型详解：使用场景、程序示例]({% link _posts/2021-07-04-bpf-advanced-notes-2-zh.md %})
+* [BPF 进阶笔记（三）：BPF Map 内核实现]({% link _posts/2021-07-04-bpf-advanced-notes-3-zh.md %})
 
 ----
 
@@ -517,6 +521,58 @@ TODO
 ## 延伸阅读
 
 1. 内核 patch 文档：[BPF: sockmap and sk redirect support](https://lwn.net/Articles/731133/)
+
+# 4 `BPF_PROG_TYPE_SK_MSG`
+
+# 5 `BPF_PROG_TYPE_SK_REUSEPORT`
+
+## 使用场景
+
+### 场景一：加速 socket 查找
+
+这种程序类型是为了加速 listener socket 的查找速度，使用方式：
+
+1. 创建一个 `BPF_MAP_TYPE_REUSEPORT_SOCKARRAY` 类型的数组，来存放监听在同一端口的所有 sockets。
+2. 加载一段 `BPF_PROG_TYPE_SK_REUSEPORT` 类型的 BPF 程序，程序返回值是 socket
+   数组中的 index。接下来系统就会选中这个 index 对应的 socket。
+
+## Hook 位置
+
+## 程序签名
+
+### 传入参数
+
+### 返回值
+
+Socket array 中的 index。
+
+## 内核实现
+
+逻辑如下，还是非常简单的：
+
+```c
+// net/core/sock_reuseport.c
+
+static struct sock *run_bpf_filter(struct sock_reuseport *reuse, u16 socks,
+                   struct bpf_prog *prog, struct sk_buff *skb, int hdr_len)
+{
+    if (skb_shared(skb)) {
+        struct sk_buff *nskb = skb_clone(skb, GFP_ATOMIC);
+        skb = nskb;
+    }
+
+    pskb_pull(skb, hdr_len); // temporarily advance data past protocol header
+    index = bpf_prog_run_save_cb(prog, skb);
+    __skb_push(skb, hdr_len);
+
+    consume_skb(nskb);
+
+    if (index >= socks)
+        return NULL;
+
+    return reuse->socks[index];
+}
+```
 
 # ------------------------------------------------------------------------
 # TC 子系统相关类型
