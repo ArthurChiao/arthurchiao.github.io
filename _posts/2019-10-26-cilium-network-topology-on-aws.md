@@ -160,7 +160,7 @@ One of Cilium's great powers is the dynamic traffic manipulation. It implements 
 by utilizing BPF. Detailed explanations on this topic is beyong the scope of
 this post, refer to the official doc [BPF and XDP Reference
 Guide](https://docs.cilium.io/en/v1.6/bpf/) if you are interested (or my
-[TRANSLATION]({% link _posts/2019-10-09-cilium-bpf-xdp-reference-guide-zh.md %})
+[TRANSLATION]({% link _posts/2021-07-18-cilium-bpf-xdp-reference-guide-zh.md %})
 if you could read Chinese).
 
 Cilium uses `tc` BPF to filter ingress and egress traffic for containers. Let's

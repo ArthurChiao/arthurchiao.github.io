@@ -453,7 +453,7 @@ introspect them）。还是不太懂？这么说吧，**BTF 是后来的 “一�
 
 新的特性不断加入，它们都依赖 BTF 提供富元数据（rich metadata）这个基础。
 
-> 更多 BTF 内容，可参考 [(译) Cilium：BPF 和 XDP 参考指南（2019）]({% link _posts/2019-10-09-cilium-bpf-xdp-reference-guide-zh.md %})
+> 更多 BTF 内容，可参考 [(译) Cilium：BPF 和 XDP 参考指南（2019）]({% link _posts/2021-07-18-cilium-bpf-xdp-reference-guide-zh.md %})
 >
 > 译者注
 

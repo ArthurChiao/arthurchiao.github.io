@@ -2,7 +2,7 @@
 layout    : post
 title     : "BPF 进阶笔记（二）：BPF Map 类型详解：使用场景、程序示例"
 date      : 2021-07-13
-lastupdate: 2021-07-13
+lastupdate: 2021-07-17
 categories: bpf xdp
 ---
 
@@ -17,6 +17,7 @@ BPF map 类型。对于主要的类型，本文将介绍其：
 本文参考：
 
 1. [notes-on-bpf-3](https://blogs.oracle.com/linux/notes-on-bpf-3)，内容较老，基于内核 `4.14`
+1. [BPF Features by Linux Kernel Version](https://github.com/iovisor/bcc/blob/v0.20.0/docs/kernel-versions.md)，bcc 文档，`v0.20.0`
 
 ## 关于 “BPF 进阶笔记” 系列
 
@@ -76,6 +77,11 @@ enum bpf_map_type {
     BPF_MAP_TYPE_RINGBUF,
 };
 ```
+
+## 每种 map 引入时的内核版本
+
+见 bcc [维护的文档](https://github.com/iovisor/bcc/blob/master/docs/kernel-versions.md#tables-aka-maps)，
+记录了哪个内核版本引入的，以及对应的 patch。
 
 # ------------------------------------------------------------------------
 # Hash Maps
@@ -203,6 +209,8 @@ recently used）</mark>**的 entry 从 map 中移除。
 
 map-in-map：**<mark>第一个 map 内的元素是指向另一个 map 的指针</mark>**。
 与后面将介绍的 `BPF_MAP_TYPE_ARRAY_OF_MAPS` 类似，但外层 map 使用的是哈希而不是数组。
+
+可以将 **<mark>整个（内层）map 在运行时实现原子替换</mark>**。
 
 相关 [commit message](https://www.mail-archive.com/netdev@vger.kernel.org/msg159383.html)。
 
@@ -722,7 +730,14 @@ struct {
 
 同上。
 
-# 4 `BPF_MAP_TYPE_XSKMAP`
+# 4 `BPF_MAP_TYPE_CPUMAP`
+
+## 使用场景：XDP 中将包重定向到指定 CPU
+
+
+
+
+# 5 `BPF_MAP_TYPE_XSKMAP`
 
 都是 XDP map，都可用于 XDP socket 重定向，**<mark>与 DEVMAP 有什么区别？</mark>**
 
@@ -755,26 +770,20 @@ SEC("xdp_sock") int xdp_sock_prog(struct xdp_md *ctx)
 # 其他 Maps
 # ------------------------------------------------------------------------
 
-# 1 `BPF_MAP_TYPE_CPUMAP`
-
-## 使用场景
-
-### 场景一：
-
-# 2 `BPF_MAP_TYPE_QUEUE`
+# 1 `BPF_MAP_TYPE_QUEUE`
 
 ## 使用场景
 
 ### 场景一：
 
 
-# 3 `BPF_MAP_TYPE_STRUCT_OPS`
+# 2 `BPF_MAP_TYPE_STRUCT_OPS`
 
 ## 使用场景
 
 ### 场景一：
 
-# 4 `BPF_MAP_TYPE_LPM_TRIE`
+# 3 `BPF_MAP_TYPE_LPM_TRIE`
 
 支持高效的 longest-prefix matching。
 

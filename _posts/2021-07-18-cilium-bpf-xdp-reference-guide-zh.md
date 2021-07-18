@@ -1,15 +1,18 @@
 ---
 layout    : post
-title     : "[译] Cilium：BPF 和 XDP 参考指南（2019）"
-date      : 2019-10-09
-lastupdate: 2019-10-09
+title     : "[译] Cilium：BPF 和 XDP 参考指南（2021）"
+date      : 2021-07-18
+lastupdate: 2021-07-18
 categories: cilium bpf xdp
 ---
 
 ### 译者序
 
-本文翻译自 Cilium 1.6 的官方文档：[**BPF and XDP Reference Guide**](
-https://docs.cilium.io/en/v1.6/bpf/)。
+本文翻译自 Cilium **<mark>1.10</mark>** 的官方文档：
+[**BPF and XDP Reference Guide**](https://docs.cilium.io/en/v1.10/bpf/)。
+
+> 几年前翻译过一版：[Cilium：BPF 和 XDP 参考指南（2019）]({% link _posts/2019-10-09-cilium-bpf-xdp-reference-guide-2019-zh.md %})，
+> 对应 Cilium v1.6。
 
 本文对排版做了一些调整，以更适合网页阅读。
 
@@ -22,59 +25,33 @@ https://docs.cilium.io/en/v1.6/bpf/)。
 > 本文的目标读者是 **“希望在技术层面对 BPF 和 XDP 有更深入理解的开发者和用户”**。虽
 > 然阅读本文有助于拓宽读者对 Cilium 的认识，但这并不是使用 Cilium 的前提条件。
 
-BPF 是 **Linux 内核中**一个高度灵活与高效的**类虚拟机**（virtual machine-like）
-组件，它以一种安全的方式在许多 hook 点执行字节码（bytecode ）。很多**内核子系统**
-都已经使用了 BPF，比如常见的**网络**（networking）、**跟踪**（tracing）与**安全**
-（security ，例如沙盒）。
+BPF 是 **Linux 内核中**一个非常灵活与高效的**类虚拟机**（virtual machine-like）组件，
+能够在许多内核 hook 点**<mark>安全地</mark>**执行字节码（bytecode ）。很多
+**内核子系统**都已经使用了 BPF，例如常见的**网络**（networking）、**跟踪**（
+tracing）与**安全**（security ，例如沙盒）。
 
-BPF 1992 年就出现了，但本文介绍的是**扩展的 BPF**（extended Berkeley Packet
+BPF 其实早在 1992 年就出现了，但本文介绍的是**扩展的 BPF**（extended Berkeley Packet
 Filter，eBPF）。eBPF 最早出现在 3.18 内核中，此后原来的 BPF 就被称为 **“经典”
-BPF**（classic BPF, cBPF），cBPF 现在基本已经废弃了。很多人知道 cBPF 是因为它是
+BPF**（classic BPF, cBPF），cBPF 现在基本已经过时了。很多人知道 cBPF 是因为它是
 `tcpdump` 的包过滤语言。**现在，Linux 内核只运行 eBPF，内核会将加载的 cBPF 字节码
 透明地转换成 eBPF 再执行**。如无特殊说明，本文中所说的 BPF 都是泛指 BPF 技术。
 
 虽然“伯克利包过滤器”（Berkeley Packet Filter）这个名字听起来像是专用于数据包过
-滤的，但现今这个指令集已经足够通用和灵活，因此现在 BPF 也有很多网络之外的使用案例，
-下文中会列出一些使用 BPF 的项目。
+滤的，但如今这个指令集已经足够通用和灵活，因此现在 BPF 也有很多网络之外的使用案例，
+下文会列出一些项目。
 
-**Cilium 在它的 datapath 中重度使用了 BPF 技术**，更多信息请参考 Cilium 的
-[datapath 架构](https://docs.cilium.io/en/v1.6/architecture/#datapath)
-文档。本文的目标是提供一份 BPF 参考指南，以帮助读者理解 BPF 本身、BPF 网络相关的
-使用方式（包括利用 `tc` 和 XDP 加载 BPF 程序），以及协助开发 Cilium 的 BPF 模板。
+**Cilium 在其数据平面（datapath）中重度使用了 BPF 技术**，更多信息可参考其
+[eBPF datapath 架构](https://docs.cilium.io/en/v1.10/concepts/ebpf/#ebpf-datapath)
+文档。**<mark>本文的目标</mark>**是提供一份 BPF 参考指南，这份指南能帮助我们更
+深入地理解 BPF、BPF 网络相关的使用方式（例如用 `tc` 加载 BPF 程序，XDP 程序
+），以及更好地开发 Cilium 中的 BPF 模板。
 
-### 目录
+----
 
-1. [BPF 架构](#bpf_arch)
-    * [1.1 指令集](#bpf_instruction)
-    * [1.2 辅助函数](#bpf_helper)
-    * [1.3 BPF Map](#bpf_maps)
-    * [1.4 Object Pinning](#bpf_obj_pinning)
-    * [1.5 尾调用](#bpf_tail_call)
-    * [1.6 BPF-to-BPF 函数调用](#bpf_to_bpf_call)
-    * [1.7 JIT](#bpf_jit)
-    * [1.8 加固](#bpf_hardening)
-    * [1.9 Offload](#bpf_offloads)
-2. [工具链](#toolchain)
-    * [2.1 开发环境](#tool_dev_env)
-    * [2.2 LLVM](#tool_llvm)
-        * [2.2.1 BPF Target（目标平台）](#ch_2.2.1)
-        * [2.2.2 调试信息（DWARF、BTF）](#ch_2.2.2)
-        * [2.2.3 BPF 指令集](#ch_2.2.3)
-        * [2.2.4 指令和寄存器位宽（64/32 位）](#ch_2.2.4)
-        * [2.2.5 C BPF 代码注意事项](#ch_2.2.5)
-    * [2.3 iproute2](#tool_iproute2)
-        * [2.3.1 加载 XDP BPF 对象文件](#ch_2.3.1)
-        * [2.3.2 加载 tc BPF 对象文件](#ch_2.3.2)
-        * [2.3.3 使用 netdevsim 驱动测试 BPF offload](#ch_2.3.3)
-    * [2.4 bpftool](#tool_bpftool)
-    * [2.5 BPF 相关的 sysctl 参数](#tool_bpf_sysctls)
-    * [2.6 内核测试](#tool_kernel_testing)
-    * [2.7 JIT 调试](#tool_jit_debug)
-    * [2.8 内省（Introspection）](#tool_introspection)
-    * [2.9 其他（Misc）](#tool_misc)
-3. [程序类型](#prog_type)
-    * [3.1 XDP](#prog_type_xdp)
-    * [3.2 tc](#prog_type_tc)
+* TOC
+{:toc}
+
+----
 
 <a name="bpf_arch"></a>
 
@@ -82,28 +59,27 @@ BPF**（classic BPF, cBPF），cBPF 现在基本已经废弃了。很多人知�
 
 **BPF 不仅仅是一个指令集，它还提供了围绕自身的一些基础设施**，例如：
 
-1. **BPF map**：高效的 key/value 仓库
+1. **BPF map**：高效的 key/value 存储
 1. **辅助函数**（helper function）：可以更方便地利用内核功能或与内核交互
 1. **尾调用**（tail call）：高效地调用其他 BPF 程序
 1. **安全加固原语**（security hardening primitives）
-1. 用于钉住（pin）对象（例如 map、程序）的**伪文件系统**（`bpffs`）
+1. 用于 pin/unpin 对象（例如 map、程序）的**伪文件系统**（`bpffs`），实现持久存储
 1. 支持 BPF **offload**（例如 offload 到网卡）的基础设施
 
 LLVM 提供了一个 **BPF 后端**（back end），因此使用 clang 这样的工具就可以将 C 代
 码编译成 BPF **对象文件**（object file），然后再加载到内核。BPF 深度绑定 Linux
-内核，可以在 **不牺牲原生内核性能的前提下实现（对内核的）完全可编程**（full
-programmability）。
+内核，可以在 **<mark>不牺牲原生内核性能的前提下，实现对内核的完全可编程</mark>**
+（full programmability）。
 
-另外， **使用 BPF 的内核子系统也是 BPF 基础设施的一部分**。本文将主要讨论 **tc
-和 XDP** 这两个子系统，它们都支持 attach（附着）BPF 程序。
+另外， **使用了 BPF 的内核子系统也是 BPF 基础设施的一部分**。本文将主要讨论
+**<mark>tc和 XDP</mark>** 这两个子系统，二者都支持 attach（附着）BPF 程序。
 
 * **XDP BPF 程序**会被 attach 到**网络驱动的最早阶段**（earliest networking driver
   stage），**驱动收到包之后就会触发 BPF 程序的执行**。从定义上来说，这**可以取得
-  最好的包处理性能**，因为这已经是**软件中最早可以处理包的位置**了。但也正是因为
-  这一步的处理在网络栈中是如此之早，**协议栈此时还没有从包中提取出元数据**，（因此
+  最好的包处理性能**，因为这已经是**<mark>软件中最早可以处理包的位置</mark>**了。但也正因为
+  这一步的处理在网络栈中是如此之早，**<mark>协议栈此时还没有从包中提取出元数据</mark>**（因此
   XDP BPF 程序无法利用这些元数据）。
-* **tc BPF 程序在内核栈中稍后面的一些地方执行，因此它们可以访问更多的元数据和一
-  些核心的内核功能**。
+* tc BPF 程序在内核栈中稍后面的一些地方执行，因此它们**<mark>能够访问更多的元数据和一些核心的内核功能</mark>**。
 
 除了 tc 和 XDP 程序之外，还有很多其他内核子系统也在使用 BPF，例如跟踪子系统（
 kprobes、uprobes、tracepoints 等等）。
@@ -116,12 +92,14 @@ kprobes、uprobes、tracepoints 等等）。
 
 ### 1.1.1 指令集
 
-BPF 是一个通用目的 RISC 指令集，其**最初的设计目标**是：用 C 语言的一个子集**编
-写**程序，然后用一个编译器后端（例如 LLVM）将其**编译**成 BPF 指令，稍后内核再通
-过一个位于内核中的（in-kernel）即时编译器（JIT Compiler）将 BPF 指令**映射**成处
-理器的原生指令（opcode ），以取得在内核中的最佳执行性能。
+BPF 是一个通用目的 RISC 指令集，其**最初的设计目标**是：
 
-将这些指令下放到内核中可以带来如下好处：
+1. 用 **<mark>C 语言</mark>**的一个子集**<mark>编写</mark>**程序，
+2. 然后用一个**<mark>编译器后端</mark>**（例如 LLVM）将其**<mark>编译</mark>**成 BPF 指令，
+3. 稍后内核再通过一个位于内核中的（in-kernel）**<mark>即时编译器（JIT Compiler）</mark>**
+   将 BPF 指令**<mark>映射</mark>**成处理器的原生指令（opcode ），以获得在内核中的最佳执行性能。
+
+将这些指令**<mark>下放到内核中可以带来如下好处</mark>**：
 
 * **无需在内核/用户空间切换**就可以实现内核的可编程。例如，Cilium 这种和网络相关
   的 BPF 程序能直接在内核中实现灵活的容器策略、负载均衡等功能，而无需将包送先
@@ -143,8 +121,8 @@ BPF 是一个通用目的 RISC 指令集，其**最初的设计目标**是：用
   以确保它们不会造成内核崩溃、程序永远会终止等等**。例如，XDP 程序会复用已有的内
   核驱动，能够直接操作存放在 DMA 缓冲区中的数据帧，而不用像某些模型（例如 DPDK）
   那样将这些数据帧甚至整个驱动暴露给用户空间。而且，XDP 程序**复用**内核协议栈而
-  不是绕过它。BPF 程序可以看做是内核设施之间的通用“胶水代码”，用于设计巧妙的程序
-  ，解决特定的问题。
+  不是绕过它。**<mark>BPF 程序可以看做是内核设施之间的通用“胶水代码”</mark>**，
+  基于 BPF 可以设计巧妙的程序，解决特定的问题。
 
 BPF 程序在内核中的执行总是**事件驱动**的！例如：
 
@@ -188,9 +166,9 @@ BPF 相关的辅助函数（从 `BPF_CALL_0()` 到 `BPF_CALL_5()` 函数）也�
 
 `r1` - `r5` 寄存器是 **scratch registers**，意思是说，如果要在多次辅助函数调用之
 间重用这些寄存器内的值，那 BPF 程序需要负责将这些值临时转储（spill）到 BPF 栈上
-，或者保存到被调用方（callee）保存的寄存器中。**Spilling**（倒出/泼出/溅出/涌出）
+，或者保存到被调用方（callee）保存的寄存器中。**Spilling**（倒出/转储）
 的意思是这些寄存器内的变量被移到了 BPF 栈中。相反的操作，即将变量从 BPF 栈移回寄
-存器，称为 **filling**（填充）。**spilling/filling 的原因是寄存器数量有限**。
+存器，称为 **filling**（填充）。**<mark>spilling/filling 的原因是寄存器数量有限</mark>**。
 
 BPF 程序开始执行时，**`r1` 寄存器中存放的是程序的上下文**（context）。上下文就是
 **程序的输入参数**（和典型 C 程序的 `argc/argv` 类似）。**BPF 只能在单个上下文中
@@ -202,11 +180,12 @@ BPF 程序开始执行时，**`r1` 寄存器中存放的是程序的上下文**�
 作。
 
 **每个 BPF 程序的最大指令数限制在 4096 条以内**，这意味着从设计上就可以保证**每
-个程序都会很快结束**。虽然指令集中包含前向和后向跳转，但内核中的 BPF 校验器禁止
+个程序都会很快结束**。**<mark>对于内核 5.1+，这个限制放大到了 100 万条</mark>**。
+虽然指令集中包含前向和后向跳转，但内核中的 BPF 校验器禁止
 程序中有循环，因此可以永远保证程序会终止。因为 BPF 程序运行在内核，校验器的工作
 是保证这些程序在运行时是安全的，不会影响到系统的稳定性。这意味着，从指令集的角度
 来说循环是可以实现的，但校验器会对其施加限制。另外，BPF 中有尾调用的概念，允许一
-个 BPF 程序调用另一个 BPF 程序。类似地，这种调用也是有限制的，目前上限是 32 层调
+个 BPF 程序调用另一个 BPF 程序。类似地，这种调用也是有限制的，目前上限是 33 层调
 用；现在这个功能常用来对程序逻辑进行解耦，例如解耦成几个不同阶段。
 
 ### 1.1.3 BPF 指令格式
@@ -306,9 +285,9 @@ JIT，还没有迁移到 eBPF JIT。
 目前下列架构都内置了内核 eBPF JIT 编译器：`x86_64`、`arm64`、`ppc64`、`s390x`
 、`mips64`、`sparc64` 和 `arm`。
 
-所有的 BPF 操作，例如加载程序到内核，或者创建 BPF map，都是通过核心的 `bpf()` 系
-统调用完成的。它还用于管理 map 表项（查找/更新/删除），以及通过 pinning（钉住
-）将程序和 map 持久化到 BPF 文件系统。
+**<mark>所有的 BPF 操作</mark>**，例如加载程序到内核，或者创建 BPF map，
+**<mark>都是通过核心的 bpf() 系统调用完成的</mark>**。它还用于管理 map 表项（查
+找/更新/删除），以及通过 pinning 将程序和 map 持久化到 BPF 文件系统。
 
 <a name="bpf_helper"></a>
 
@@ -317,9 +296,9 @@ JIT，还没有迁移到 eBPF JIT。
 辅助函数（Helper functions）使得 BPF 能够通过一组内核定义的函数调用（function
 call）来从内核中查询数据，或者将数据推送到内核。**不同类型的 BPF 程序能够使用的
 辅助函数可能是不同的**，例如，与 attach 到 tc 层的 BPF 程序相比，attach 到
-socket 的 BPF程序只能够调用前者可以调用的辅助函数的一个子集。另外一个例子是，**
-轻量级隧道**（lightweight tunneling ）使用的封装和解封装（Encapsulation and
-decapsulation）辅助函数，只能被更低的 tc 层（lower tc layers）使用；而推送通知到
+socket 的 BPF程序只能够调用前者可以调用的辅助函数的一个子集。另外一个例子是，
+**<mark>轻量级隧道</mark>**（lightweight tunneling ）使用的封装和解封装（Encapsulation and
+decapsulation）辅助函数，**<mark>只能被更低的 tc 层（lower tc layers）使用</mark>**；而推送通知到
 用户态所使用的事件输出辅助函数，既可以被 tc 程序使用也可以被 XDP 程序使用。
 
 **所有的辅助函数都共享同一个通用的、和系统调用类似的函数签名**。签名定义如下：
@@ -416,7 +395,7 @@ map，这些 map 可以读/写任意数据，也有一些和辅助函数一起�
 
 例如，`BPF_MAP_TYPE_PROG_ARRAY` 是一个数组 map，用于持有（hold）其他的 BPF 程序
 。`BPF_MAP_TYPE_ARRAY_OF_MAPS` 和 `BPF_MAP_TYPE_HASH_OF_MAPS` 都用于持有（hold）
-其他 map 的指针，这样整个 map 就可以在运行时实现原子替换。这些类型的 map 都针对
+其他 map 的指针，这样**<mark>整个 map 就可以在运行时实现原子替换</mark>**。这些类型的 map 都针对
 特定的问题，不适合单单通过一个 BPF 辅助函数实现，因为它们需要在各次 BPF 程序调用
 （invoke）之间时保持额外的（非数据）状态。
 
@@ -426,12 +405,13 @@ map，这些 map 可以读/写任意数据，也有一些和辅助函数一起�
 
 <p align="center"><img src="/assets/img/cilium-bpf-xdp-guide/bpf_fs.png" width="60%" height="60%"></p>
 
-**BPF map 和程序作为内核资源只能通过文件描述符访问，其背后是内核中的匿名
-inode。**这带来了很多优点，但同时也有很多缺点：
+**<mark>BPF map 和程序作为内核资源只能通过文件描述符访问，其背后是内核中的匿名
+inode。</mark>**这带来了很多优点，例如：
 
-优点包括：用户空间应用能够使用大部分文件描述符相关的 API，传递给 Unix socket 的文
-件描述符是透明工作的等等。但同时，**文件描述符受限于进程的生命周期，使得 map
-共享之类的操作非常笨重**。
+* 用户空间应用能够使用大部分文件描述符相关的 API，
+* 在 Unix socket 中传递文件描述符是透明的，等等。
+
+但同时，也有很多缺点：**文件描述符受限于进程的生命周期，使得 map 共享之类的操作非常笨重**。
 
 因此，这给某些特定的场景带来了很多复杂性，例如 iproute2，其中的 tc 或 XDP 在准备
 环境、加载程序到内核之后最终会退出。在这种情况下，从用户空间也无法访问这些 map
@@ -462,15 +442,15 @@ BPF 相关的另一个概念是尾调用（tail calls）。尾调用的机制是
 BPF 程序都是独立验证的，因此要传递状态，要么使用 per-CPU map 作为 scratch 缓冲区
 ，要么如果是 tc 程序的话，还可以使用 `skb` 的某些字段（例如 `cb[]`）。
 
-**相同类型的程序才可以尾调用**，而且它们还要与 JIT 编译器相匹配，因此要么是 JIT
-编译执行，要么是解释器执行（invoke interpreted programs），但不能同时使用两种方
-式。
+**<mark>类型相同的 BPF 程序才可以尾调用</mark>**，而且还要与 JIT 编译器相匹配，
+因此一个给定的 BPF 程序 要么是 JIT编译执行，要么是解释器执行（invoke interpreted
+programs），而不能同时使用两种方式。
 
-尾调用执行涉及**两个步骤**：
+尾调用执行涉及**<mark>两个步骤</mark>**：
 
-1. 设置一个称为“程序数组”（program array）的特殊 map（`BPF_MAP_TYPE_PROG_ARRAY`
-   ），这个 map 可以从用户空间通过 key/value 操作
-1. 调用辅助函数 `bpf_tail_call()`。两个参数：一个对程序数组的引用（a reference
+1. **<mark>设置一个称为“程序数组”（program array）的特殊 map</mark>**（map 类型 `BPF_MAP_TYPE_PROG_ARRAY`
+   ），这个 map 可以从用户空间通过 key/value 操作，
+1. **<mark>调用辅助函数 bpf_tail_call()</mark>**。两个参数：一个对程序数组的引用（a reference
    to the program array），一个查询 map 所用的 key。内核将这个辅助函数调用内联（
    inline）到一个特殊的 BPF 指令内。目前，这样的程序数组在用户空间侧是只写模式（
    write-only from user space side）。
@@ -554,13 +534,34 @@ BPF 辅助函数的调用约定也适用于 BPF 函数间调用，即 `r1` - `r5
 存器。最大嵌套调用深度是 `8`。调用方可以传递指针（例如，指向调用方的栈帧的指针）
 给被调用方，但反过来不行。
 
-**当前，BPF 函数间调用和 BPF 尾调用是不兼容的**，因为后者需要复用当前的栈设置（
-stack setup），而前者会增加一个额外的栈帧，因此不符合尾调用期望的布局。
-
 BPF JIT 编译器为每个函数体发射独立的镜像（emit separate images for each function
 body），稍后在最后一通 JIT 处理（final JIT pass）中再修改镜像中函数调用的地址
 。已经证明，这种方式需要对各种 JIT 做最少的修改，因为在实现中它们可以将 BPF 函数
 间调用当做常规的 BPF 辅助函数调用。
+
+内核 5.9 版本之前，**<mark>BPF 尾调用和 BPF-to-BPF 调用是互斥的</mark>**，只能二选一。
+尾调用的缺点是生成的程序镜像大、加载时间长。
+**<mark>内核 5.10 最终解决了这一问题</mark>**，允许同时使用者两种调用类型，充分利用二者各自的优点。
+
+但混合使用者两种调用类型是有限制的，否则会导致内核栈溢出（kernel stack overflow）。
+来看下面的例子：
+
+<p align="center"><img src="/assets/img/cilium-bpf-xdp-guide/bpf_tailcall_subprograms.png" width="80%" height="80%"></p>
+
+如上图所示，尾调用在真正跳转到目标程序（`func3`）之前，只会展开（unwind）它当前
+所处层级的栈帧（stack frame）。也就是说，如果尾调用是从某个子函数发起的（occurs from
+within the sub-function），例如 `subfunc1 --tailcall--> func2`，那当程序在执行 `func2` 时，
+所有 `subfunc1` 之前的栈帧（在这里是 `func1` 的栈帧）都会出现在栈上。只有当最后
+一个函数（这里是 `func3`）执行结束时，所有前面的栈帧才将被展开（unwinded），然后控制返回
+到 BPF 程序的调用者（BPF program caller）。
+
+内核引入了额外的逻辑来检测这种混用的情况。整个调用链中，每个子程序的栈空间（
+stack size）不能超过 256 字节（如果校验器检测到 bpf2bpf 调用，那主函数也会被当做
+子函数）。有了这个限制，**<mark>BPF 程序调用链最多能使用 8KB 的栈空间</mark>**，计算方式：256
+byte/stack 乘以尾调用数量上限 33。如果没有这个限制，BPF 程序将使用 512 字节栈空
+间，最终消耗最多 16KB 的总栈空间，在某些架构上会导致栈溢出。
+
+另外需要说明，这种混合调用**<mark>目前只有 x86-64 架构支持</mark>**。
 
 <a name="bpf_jit"></a>
 
@@ -570,15 +571,15 @@ body），稍后在最后一通 JIT 处理（final JIT pass）中再修改镜像
 
 64 位的 `x86_64`、`arm64`、`ppc64`、`s390x`、`mips64`、`sparc64` 和 32 位的 `arm`
 、`x86_32` 架构都内置了 in-kernel eBPF JIT 编译器，它们的功能都是一样的，可
-以用如下方式打开：
+以用**<mark>如下方式打开</mark>**：
 
 ```shell
 $ echo 1 > /proc/sys/net/core/bpf_jit_enable
 ```
 
 32 位的 `mips`、`ppc` 和 `sparc` 架构目前内置的是一个 cBPF JIT 编译器。这些只有
-cBPF JIT 编译器的架构，以及那些甚至完全没有 BPF JIT 编译器的架构，需要通过**内核
-中的解释器**（in-kernel interpreter）执行 eBPF 程序。
+cBPF JIT 编译器的架构，以及那些甚至完全**<mark>没有 BPF JIT 编译器的架构</mark>**，
+需要通过**<mark>内核中的解释器</mark>**（in-kernel interpreter）执行 eBPF 程序。
 
 要判断哪些平台支持 eBPF JIT，可以在内核源文件中 grep `HAVE_EBPF_JIT`：
 
@@ -604,11 +605,13 @@ JIT 编译器可以极大加速 BPF 程序的执行，因为与解释器相比�
 
 ## 1.8 加固（Hardening）
 
-为了避免代码被损坏，BPF 会在程序的生命周期内，在内核中将 BPF 解释器**解释后的整
-个镜像**（`struct bpf_prog`）和 **JIT 编译之后的镜像**（`struct
-bpf_binary_header`）锁定为只读的（read-only）。在这些位置发生的任何数据损坏（例
-如由于某些内核 bug 导致的）会触发通用的保护机制，因此会造成内核崩溃（crash）而不
-是允许损坏静默地发生。
+为了避免代码被损坏，BPF 会在程序的生命周期内，在内核中**<mark>将下面两个镜像锁定为只读的</mark>**（read-only）：
+
+* 经过 BPF 解释器**<mark>解释（翻译）之后的整个镜像</mark>**（`struct bpf_prog`）
+* **<mark>JIT 编译之后的镜像</mark>**（`struct bpf_binary_header`）。
+
+在这些位置发生的任何数据损坏（例如某些内核 bug 导致的）会触发通用的保护机制，因
+此会造成内核崩溃（crash），而不会让这种损坏静默地发生。
 
 查看哪些平台支持将镜像内存（image memory）设置为只读的，可以通过下面的搜索：
 
@@ -698,23 +701,22 @@ $ echo 1 > /proc/sys/net/core/bpf_jit_harden
 两个程序在语义上是一样的，但在第二种方式中，原来的立即数在反汇编之后的程序中不再
 可见。
 
-同时，加固还会禁止任何 JIT 内核符合（kallsyms）暴露给特权用户，JIT 镜像地址不再
-出现在 `/proc/kallsyms` 中。
+同时，加固还会禁止任何 JIT 内核符号（kallsyms）暴露给特权用户，
+**<mark>JIT 镜像地址不再出现在 /proc/kallsyms 中</mark>**。
 
-另外，Linux 内核提供了 `CONFIG_BPF_JIT_ALWAYS_ON` 选项，打开这个开关后 BPF 解释
-器将会从内核中完全移除，永远启用 JIT 编译器。此功能部分是为防御 Spectre v2 
+另外，Linux 内核提供了 `CONFIG_BPF_JIT_ALWAYS_ON` 选项，打开这个开关后 **<mark>BPF 解释
+器将会从内核中完全移除</mark>**，永远启用 JIT 编译器。此功能部分是为防御 Spectre v2 
 攻击开发的，如果应用在一个基于虚拟机的环境，客户机内核（guest kernel）将不会复用
 内核的 BPF 解释器，因此可以避免某些相关的攻击。如果是基于容器的环境，这个配置是
 可选的，如果 JIT 功能打开了，解释器仍然可能会在编译时被去掉，以降低内核的复杂度
-。因此，对于主流架构（例如 `x86_64` 和 `arm64`）上的 JIT 通常都建议打开这个开关
-。
+。因此，对于主流架构（例如 `x86_64` 和 `arm64`）上的 JIT **<mark>通常都建议打开这个开关。</mark>**
 
-另外，内核提供了一个配置项 `/proc/sys/kernel/unprivileged_bpf_disabled` 来禁止非
-特权用户使用 `bpf(2)` 系统调用，可以通过 `sysctl` 命令修改。
+另外，内核提供了一个配置项 `/proc/sys/kernel/unprivileged_bpf_disabled` 来
+**<mark>禁止非特权用户使用 bpf(2) 系统调用</mark>**，可以通过 `sysctl` 命令修改。
 比较特殊的一点是，这个配置项特意设计为**“一次性开关”**（one-time kill switch），
 这意味着一旦将它设为 `1`，就没有办法再改为 `0` 了，除非重启内核。一旦设置为 `1`
 之后，只有初始命名空间中有 `CAP_SYS_ADMIN` 特权的进程才可以调用 `bpf(2)` 系统调用
-。 Cilium 启动后也会将这个配置项设为 1：
+。 **<mark>Cilium 启动后也会将这个配置项设为 1</mark>**：
 
 ```shell
 $ echo 1 > /proc/sys/kernel/unprivileged_bpf_disabled
@@ -745,7 +747,7 @@ BPF 程序可以执行 map 查找、更新和删除操作。
 
 ## 2.1 开发环境
 
-#### Fedora
+### Fedora
 
 Fedora `25+`：
 
@@ -754,7 +756,7 @@ $ sudo dnf install -y git gcc ncurses-devel elfutils-libelf-devel bc \
   openssl-devel libcap-devel clang llvm graphviz bison flex glibc-static
 ```
 
-#### Ubuntu
+### Ubuntu
 
 Ubuntu `17.04+`：
 
@@ -764,7 +766,7 @@ $ sudo apt-get install -y make gcc libssl-dev bc libelf-dev libcap-dev \
   graphviz
 ```
 
-#### openSUSE Tumbleweed
+### openSUSE Tumbleweed
 
 openSUSE Tumbleweed 和 openSUSE Leap `15.0+`：
 
@@ -775,6 +777,165 @@ $ sudo zypper install -y git gcc ncurses-devel libelf-devel bc libopenssl-devel 
 
 <a name="tool_llvm"></a>
 
+### 编译 Linux 内核
+
+**<mark>新的 BPF 特性都是在内核 net-next 源码树中开发的</mark>**。获取 `net-netxt` 源码树：
+
+```shell
+$ git clone git://git.kernel.org/pub/scm/linux/kernel/git/netdev/net-next.git
+```
+
+如果不关心提交历史，可以指定 `--depth 1`，这会下载当前最新的版本，节省大量时间和
+磁盘空间。
+
+**<mark>最新的 BPF fix 都在 net 源码树</mark>**：
+
+```shell
+$ git clone git://git.kernel.org/pub/scm/linux/kernel/git/netdev/net.git
+```
+
+网络已经有大量关于如何编译 Linux 内核的教程，推荐
+[**Kernel Newbies website**](https://kernelnewbies.org/KernelBuild)。
+
+要运行 BPF，需要确保生成的 `.config` 文件包含下列配置（Cilium 也需要这些配置）：
+
+```shell
+    CONFIG_CGROUP_BPF=y
+    CONFIG_BPF=y
+    CONFIG_BPF_SYSCALL=y
+    CONFIG_NET_SCH_INGRESS=m
+    CONFIG_NET_CLS_BPF=m
+    CONFIG_NET_CLS_ACT=y
+    CONFIG_BPF_JIT=y
+    CONFIG_LWTUNNEL_BPF=y
+    CONFIG_HAVE_EBPF_JIT=y
+    CONFIG_BPF_EVENTS=y
+    CONFIG_TEST_BPF=m
+```
+
+以上的某些配置项是无法通过 `make menuconfig` 修改的。例如，
+`CONFIG_HAVE_EBPF_JIT` 是根据当前架构是否支持 eBPF JIT 自动设置的。在本节中，
+`CONFIG_HAVE_EBPF_JIT` 是可选但强烈推荐的配置。没有 eBPF JIT 编译器的架构只能
+fallback 到内核解释器，执行效率会大大降低。
+
+### 验证编译好的内核
+
+用编译好的内核启动之后，进入 BPF 测试目录来验证 BPF 的功能：
+
+```shell
+$ cd tools/testing/selftests/bpf/
+$ make
+$ sudo ./test_verifier
+```
+
+正常的话，会打印如下类似的结果：
+
+```shell
+Summary: 847 PASSED, 0 SKIPPED, 0 FAILED
+```
+
+> 注意：For kernel releases 4.16+ the BPF selftest has a dependency on LLVM 6.0+
+> caused by the BPF function calls which do not need to be inlined
+> anymore. See section `bpf_to_bpf_calls` or the cover letter mail
+> from the kernel patch (https://lwn.net/Articles/741773/) for more information.
+> Not every BPF program has a dependency on LLVM 6.0+ if it does not
+> use this new feature. If your distribution does not provide LLVM 6.0+
+> you may compile it by following the instruction in the `tooling_llvm`
+> section.
+
+运行所有 BPF selftests：
+
+```shell
+$ sudo make run_tests
+```
+
+### 编译 iproute2
+
+与 `net` (fixes only) 和 `net-next` (new features) 内核树类似，
+iproute2 源码树有两个分支：`master` 和 `net-next`。 
+
+* `master` 分支基于 `net` 内核源码树，
+* `net-next` 分支基于 `net-next` 内核树。这样，头文件的改动就会同步到 iproute2 源码树。
+
+下载 iproute2 `master` 分支代码：
+
+```shell
+$ git clone https://git.kernel.org/pub/scm/network/iproute2/iproute2.git
+```
+
+下周 `net-next` 分支代码：
+
+```shell
+$ git clone -b net-next https://git.kernel.org/pub/scm/network/iproute2/iproute2.git
+```
+
+编译和安装：
+
+```shell
+$ cd iproute2/
+$ ./configure --prefix=/usr
+TC schedulers
+ ATM    no
+
+libc has setns: yes
+SELinux support: yes
+ELF support: yes
+libmnl support: no
+Berkeley DB: no
+
+docs: latex: no
+ WARNING: no docs can be built from LaTeX files
+ sgml2html: no
+ WARNING: no HTML docs can be built from SGML
+$ make
+[...]
+$ sudo make install
+```
+
+确保 `configure` 脚本打印出了 `ELF support: yes`，这样 iproute2 才能处理 LLVM BPF
+后端产生的 ELF 文件。
+
+### 编译 bpftool
+
+bpftool 对调试和检视（introspect）BPF 程序及 BPF map 非常有用。它是**<mark>内核源码树的
+一部分</mark>**，代码位于 `tools/bpf/bpftool/`。
+
+Make sure to have cloned either the ``net`` or ``net-next`` kernel tree as described
+earlier. In order to build and install bpftool, the following steps are required:
+
+```shell
+$ cd <kernel-tree>/tools/bpf/bpftool/
+$ make
+Auto-detecting system features:
+...                        libbfd: [ on  ]
+...        disassembler-four-args: [ OFF ]
+
+  CC       xlated_dumper.o
+  CC       prog.o
+  CC       common.o
+  CC       cgroup.o
+  CC       main.o
+  CC       json_writer.o
+  CC       cfg.o
+  CC       map.o
+  CC       jit_disasm.o
+  CC       disasm.o
+make[1]: Entering directory '/home/foo/trees/net/tools/lib/bpf'
+
+Auto-detecting system features:
+...                        libelf: [ on  ]
+...                           bpf: [ on  ]
+
+  CC       libbpf.o
+  CC       bpf.o
+  CC       nlattr.o
+  LD       libbpf-in.o
+  LINK     libbpf.a
+make[1]: Leaving directory '/home/foo/trees/bpf/tools/lib/bpf'
+  LINK     bpftool
+$ sudo make install
+```
+
 ## 2.2 LLVM
 
 写作本文时，LLVM 是唯一提供 BPF 后端的编译器套件。gcc 目前还不支持。
@@ -782,14 +943,14 @@ $ sudo zypper install -y git gcc ncurses-devel libelf-devel bc libopenssl-devel 
 主流的发行版在对 LLVM 打包的时候就默认启用了 BPF 后端，因此，在大部分发行版上安
 装 clang 和 llvm 就可以将 C 代码编译为 BPF 对象文件了。
 
-典型的工作流是：
+**<mark>典型的工作流</mark>**：
 
 1. 用 C 编写 BPF 程序
 1. 用 LLVM 将 C 程序编译成对象文件（ELF）
 1. 用户空间 BPF ELF 加载器（例如 iproute2）解析对象文件
-1. 加载器通过 `bpf()` 系统调用将解析后的对象文件注入内核
-1. 内核验证 BPF 指令，然后对其执行即时编译（JIT），返回程序的一个新文件描述符
-1. 利用文件描述符 attach 到内核子系统（例如网络子系统）
+1. **<mark>加载器</mark>**通过 `bpf()` 系统调用**<mark>将解析后的对象文件注入内核</mark>**
+1. 内核验证 BPF 指令，然后对其执行即时编译（JIT），**<mark>返回程序的一个新文件描述符</mark>**
+1. 利用文件描述符 **<mark>attach 到内核子系统</mark>**（例如网络子系统）
 
 某些子系统还支持将 BPF 程序 offload 到硬件（例如网卡）。
 
@@ -827,7 +988,7 @@ BPF 程序可以在大端节点上编译，在小端节点上运行，或者相�
 ），指定 `bpf` 和 `bpfel` 会产生相同的结果，因此触发编译的脚本不需要感知到大小端
 。
 
-下面是**一个最小的完整 XDP 程序**，实现丢弃包的功能（`xdp-example.c`）：
+下面是**<mark>一个最小的完整 XDP 程序</mark>**，实现丢弃包的功能（`xdp-example.c`）：
 
 ```c
 #include <linux/bpf.h>
@@ -846,7 +1007,7 @@ int xdp_drop(struct xdp_md *ctx)
 char __license[] __section("license") = "GPL";
 ```
 
-用下面的命令编译并加载到内核：
+用下面的命令**<mark>编译并加载到内核</mark>**：
 
 ```shell
 $ clang -O2 -Wall -target bpf -c xdp-example.c -o xdp-example.o
@@ -856,7 +1017,7 @@ $ ip link set dev em1 xdp obj xdp-example.o
 > 以上命令将一个 XDP 程序 attach 到一个网络设备，需要是 Linux 4.11 内核中支持
 > XDP 的设备，或者 4.12+ 版本的内核。
 
-LLVM（>= 3.9） 使用**正式的 BPF 机器值**（machine value），即 `EM_BPF`（十进制 `247`
+LLVM（>= 3.9） 使用**<mark>正式的 BPF 机器值</mark>**（machine value），即 `EM_BPF`（十进制 `247`
 ，十六进制 `0xf7`），来**生成对象文件**。在这个例子中，程序是用 `bpf` target 在
 `x86_64` 平台上编译的，因此下面显示的大小端标识是 `LSB` (和 `MSB` 相反)：
 
@@ -892,9 +1053,9 @@ __license:
     .asciz    "GPL"
 ```
 
-LLVM 从 6.0 开始，还包括了汇编解析器（assembler parser）的支持。你可以**直接使用
-BPF 汇编指令编程**，然后使用 llvm-mc 将其汇编成一个目标文件。例如，你可以将前面
-的 `xdp-example.S` 重新变回对象文件：
+LLVM 从 6.0 开始，还包括了汇编解析器（assembler parser）的支持。可以**<mark>直接使用
+BPF 汇编指令编程</mark>**，然后**<mark>使用 llvm-mc 将其汇编成一个目标文件</mark>**。
+例如，可以将前面的 `xdp-example.S` 重新变回对象文件：
 
 ```
 $ llvm-mc -triple bpf -filetype=obj -o xdp-example.o xdp-example.S
@@ -902,12 +1063,12 @@ $ llvm-mc -triple bpf -filetype=obj -o xdp-example.o xdp-example.S
 
 #### DWARF 格式和 `llvm-objdump`
 
-另外，较新版本（>= 4.0）的 LLVM 还可以将调试信息以 dwarf 格式存储到对象文件中。
-只要在编译时加上 `-g`：
+另外，较新版本（>= 4.0）的 LLVM 还可以**<mark>将调试信息以 dwarf 格式存储到对象
+文件中</mark>**。只要在编译时加上 `-g`：
 
 ```shell
 $ clang -O2 -g -Wall -target bpf -c xdp-example.c -o xdp-example.o
-$ llvm-objdump -S -no-show-raw-insn xdp-example.o
+$ llvm-objdump -S --no-show-raw-insn xdp-example.o
 
 xdp-example.o:        file format ELF64-BPF
 
@@ -920,8 +1081,8 @@ xdp_drop:
 ```
 
 **`llvm-objdump` 工具能够用编译的 C 源码对汇编输出添加注解（annotate ）**。这里
-的例子过于简单，没有几行 C 代码；但注意上面的 `0` 和 `1` 行号，**这些行号直接对
-应到内核的校验器日志（见下面的输出）**。这意味着假如 BPF 程序被校验器拒绝了，
+的例子过于简单，没有几行 C 代码；但注意上面的 `0` 和 `1` 行号，**<mark>这些行号直接对
+应到内核的校验器日志（见下面的输出）</mark>**。这意味着假如 BPF 程序被校验器拒绝了，
 `llvm-objdump`能帮助你将 BPF 指令关联到原始的 C 代码，对于分析来说非常有用。
 
 ```shell
@@ -1138,8 +1299,7 @@ $ llc xdp-example.bc -march=bpf -mcpu=probe -filetype=obj -o xdp-example.o
 
 `native` target 主要用于跟踪（tracing）内核中的 `struct pt_regs`，这个结构体对
 CPU 寄存器进行映射，或者是跟踪其他一些能感知 CPU 寄存器位宽（CPU's register
-width）的内核结构体。除此之外的其他场景，例如网络场景，都建议使用 `clang -target
-bpf`。
+width）的内核结构体。**<mark>除此之外的其他场景，例如网络场景，都建议使用 <code>clang -target bpf</code></mark>**。
 
 另外，LLVM 从 7.0 开始支持 32 位子寄存器和 BPF ALU32 指令。另外，新加入了一个代
 码生成属性 `alu32`。当指定这个参数时，LLVM 会尝试尽可能地使用 32 位子寄存器，例
@@ -1533,7 +1693,7 @@ LLVM 后端中的某个问题会导致内置的 `memcmp()` 有某些边界场景
 
 另外一种实现循环的方式是：用一个 `BPF_MAP_TYPE_PERCPU_ARRAY` map 作为本地 scratch
 space（存储空间），然后用尾调用的方式调用函数自身。虽然这种方式更加动态，但目前
-最大只支持 32 层嵌套调用。
+**<mark>最大只支持 34 层</mark>**（原始程序，外加 33 次尾调用）嵌套调用。
 
 将来 BPF 可能会提供一些更加原生、但有一定限制的循环。
 
@@ -1600,7 +1760,7 @@ struct bpf_elf_map jmp_map __section("maps") = {
     .max_elem       = 1,
 };
 
-__section_tail(JMP_MAP_ID, 0)
+__section_tail(BPF_JMP_MAP_ID, 0)
 int looper(struct __sk_buff *skb)
 {
     printk("skb cb: %u\n", skb->cb[0]++);
@@ -2809,6 +2969,43 @@ $ bpftool map dump id 386
 针对 map 的某个 key，也可用通过 bpftool 查看、更新、删除和获取下一个 key（'get
 next key'）。
 
+如果带 BTF 调试信息的 BPF 程序已经成功加载，`prog show` 命令的 `btf_id` 字段显示
+的就是 **<mark>BTF ID</mark>**：
+
+```shell
+$ bpftool prog show id 72
+72: xdp  name balancer_ingres  tag acf44cabb48385ed  gpl
+   loaded_at 2020-04-13T23:12:08+0900  uid 0
+   xlated 19104B  jited 10732B  memlock 20480B  map_ids 126,130,131,127,129,128
+   btf_id 60
+```
+
+此外，还可以用 `btf show` 命令来 **<mark>dump 系统中已经加载的所有 BTF 对象
+</mark>**；
+
+```shell
+# bpftool btf show
+60: size 12243B  prog_ids 72  map_ids 126,130,131,127,129,128
+```
+
+还可以用子命令 `btf dump` 来检查 BTF 中携带了哪些 debug 信息。`format` 类型可以
+是 'raw' 或 'c'：
+
+```shell
+$ bpftool btf dump id 60 format c
+  [...]
+   struct ctl_value {
+         union {
+                 __u64 value;
+                 __u32 ifindex;
+                 __u8 mac[6];
+         };
+   };
+
+   typedef unsigned int u32;
+   [...]
+```
+
 <a name="tool_bpf_sysctls"></a>
 
 ## 2.5 BPF sysctls
@@ -3133,9 +3330,19 @@ xdp:xdp_exception                                  [Tracepoint event]
 信息，将结果放到一个 BPF map 或以事件的方式发送到用户空间收集器，例如利用
 `bpf_perf_event_output()` 辅助函数。
 
+## 2.9 Tracing pipe
+
+在 BPF 程序中执行 `bpf_trace_printk()`，输出会打到内核的跟踪管道（tracing pipe）。
+用户可以在用户态读取这些输出：
+
+```
+$ tail -f /sys/kernel/debug/tracing/trace_pipe
+...
+```
+
 <a name="tool_misc"></a>
 
-## 2.9 其他（Miscellaneous）
+## 2.10 其他（Miscellaneous）
 
 和 `perf` 类似，BPF 程序和 map 占用的内存是算在 `RLIMIT_MEMLOCK` 中的。可以用
 `ulimit -l` 查看当前锁定到内存中的页面大小。`setrlimit()` 系统调用的 man page 提
@@ -3238,7 +3445,7 @@ headroom 开始位置，即，当对包进行封装（加 header）时，`data` 
 制块（control block）类似。
 
 这样，我们就可以得到这样的结论，对于 `struct xdp_buff` 中数据包的指针，有：
-`data_hard_start` <= `data_meta` <= `data` < `data_end`.
+`data_hard_start <= data_meta <= data < data_end`.
 
 `rxq` 字段指向某些额外的、和每个接收队列相关的元数据：
 
@@ -3362,7 +3569,7 @@ XDP BPF 在生产环境使用的一个例子是 Facebook 的 SHIV 和 Droplet �
 Virtual Server）迁移到 XDP BPF 使它们的生产基础设施获得了 10x 的性能提升。这方面
 的工作最早在 netdev 2.1 大会上做了分享：
 
-* [演讲 Slides](https://www.netdevconf.org/2.1/slides/apr6/zhou-netdev-xdp-2017.pdf)
+* [演讲 Slides](https://www.netdevconf.info/2.1/slides/apr6/zhou-netdev-xdp-2017.pdf)
 * [演讲视频](https://youtu.be/YEU2ClcGqts)
 
 另一个例子是 Cloudflare 将 XDP 集成到它们的 DDoS 防御流水线中，替换了原来基于
@@ -3372,7 +3579,7 @@ bypass 内核的一个方案，但这种方案也有自己的一些缺点，并�
 ）网卡，并且在将某些包重新注入内核协议栈时代价非常高。迁移到 eBPF/XDP 之后，两种
 方案的优点都可以利用到，直接在内核中实现了高性能、可编程的包处理过程：
 
-* [Slides](https://www.netdevconf.org/2.1/slides/apr6/bertin_Netdev-XDP.pdf)
+* [Slides](https://www.netdevconf.info/2.1/slides/apr6/bertin_Netdev-XDP.pdf)
 * [Video](https://youtu.be/7OuOukmuivg)
 
 ### XDP 工作模式

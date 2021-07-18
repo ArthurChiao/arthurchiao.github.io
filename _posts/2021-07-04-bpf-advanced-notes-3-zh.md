@@ -2,7 +2,7 @@
 layout    : post
 title     : "BPF 进阶笔记（三）：BPF Map 内核实现"
 date      : 2021-07-13
-lastupdate: 2021-07-13
+lastupdate: 2021-07-17
 categories: bpf xdp
 ---
 
@@ -1223,7 +1223,12 @@ const struct bpf_map_ops dev_map_hash_ops = {
 };
 ```
 
-# 4 `BPF_MAP_TYPE_XSKMAP`
+# 4 `BPF_MAP_TYPE_CPUMAP`
+
+XDP 中**<mark>将包重定向到指定 CPU</mark>**。
+
+
+# 5 `BPF_MAP_TYPE_XSKMAP`
 
 XDP.
 
@@ -1233,10 +1238,7 @@ XDP.
 # 其他 Maps
 # ------------------------------------------------------------------------
 
-# 1 `BPF_MAP_TYPE_CPUMAP`
-
-
-# 2 `BPF_MAP_TYPE_QUEUE`
+# 1 `BPF_MAP_TYPE_QUEUE`
 
 ```c
 // kernel/bpf/queue_stack_maps.c
@@ -1256,10 +1258,10 @@ const struct bpf_map_ops queue_map_ops = {
 ```
 
 
-# 3 `BPF_MAP_TYPE_STRUCT_OPS`
+# 2 `BPF_MAP_TYPE_STRUCT_OPS`
 
 
-# 4 `BPF_MAP_TYPE_LPM_TRIE`
+# 3 `BPF_MAP_TYPE_LPM_TRIE`
 
 ```c
 // kernel/bpf/lpm_trie.c

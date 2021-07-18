@@ -2,7 +2,7 @@
 layout    : post
 title     : "BPF 进阶笔记（一）：BPF 程序（BPF Prog）类型详解：使用场景、函数签名、执行位置及程序示例"
 date      : 2021-07-04
-lastupdate: 2021-07-13
+lastupdate: 2021-07-17
 categories: bpf xdp socket cgroup
 ---
 
@@ -20,9 +20,10 @@ BPF 程序类型。对于主要的程序类型，本文将介绍其：
 1. **程序示例**：一些实际例子。
 1. **延伸阅读**：其他高级主题，例如相关的内核设计与实现。
 
-本文主要参考：
+本文参考：
 
 1. [BPF: A Tour of Program Types](https://blogs.oracle.com/linux/notes-on-bpf-1)，内容略老，基于内核 `4.14`
+1. [BPF Features by Linux Kernel Version](https://github.com/iovisor/bcc/blob/v0.20.0/docs/kernel-versions.md)，bcc 文档，`v0.20.0`
 
 ## 关于 “BPF 进阶笔记” 系列
 
@@ -84,6 +85,10 @@ enum bpf_prog_type {
     BPF_PROG_TYPE_LSM,
 };
 ```
+
+## 每种程序能使用的 helper 函数：完整列表
+
+见 [bcc 维护的文档](https://github.com/iovisor/bcc/blob/master/docs/kernel-versions.md#program-types)。
 <a name="enum-bpf_attach_type"></a>
 ## BPF attach 类型：完整列表
 
@@ -131,6 +136,7 @@ enum bpf_attach_type {
     __MAX_BPF_ATTACH_TYPE
 };
 ```
+
 
 # ------------------------------------------------------------------------
 # Socket 相关类型
@@ -667,6 +673,9 @@ $ tc filter add dev eth0 egress bpf da obj toy-proxy-bpf.o sec egress
 
 XDP 位于<mark>设备驱动中（在创建 skb 之前）</mark>，因此能最大化网络处理性能，
 而且可编程、通用（很多厂商的设备都支持）。
+
+各厂商网卡/驱动对 **<mark>XDP 及其内核版本</mark>**的支持，见 bcc
+[维护的文档](https://github.com/iovisor/bcc/blob/master/docs/kernel-versions.md#xdp)。
 
 # 1 `BPF_PROG_TYPE_XDP`
 
