@@ -2,7 +2,7 @@
 layout    : post
 title     : "Cilium Code Walk Through: Cilium Operator"
 date      : 2019-05-30
-lastupdate: 2021-06-22
+lastupdate: 2021-07-24
 categories: cilium
 ---
 
@@ -456,6 +456,17 @@ func startKvstoreWatchdog() {
 ```
 
 # 6 `startKvstoreIdentityGC()`
+
+Perform periodic identity GC. **<mark>GC interval</mark>** is configured through
+`--identity-gc-interval=<interval>`, which defaults to the value of KVstoreLeaseTTL
+(`--kvstore-lease-ttl="15m"`).
+
+And, the GC process will in turn pose periodic QPS peaks on kvstore (default QPS limit=20).
+[Configure client-side kvstore QPS limit](https://github.com/cilium/cilium/pull/15742) with:
+
+```yaml
+    kvstore-opt: '{"etcd.config": "/tmp/cilium/config-map/etcd-config", "etcd.qps": "100"}'
+```
 
 ## 6.1 Background: identity allocation in cilium-agent side
 

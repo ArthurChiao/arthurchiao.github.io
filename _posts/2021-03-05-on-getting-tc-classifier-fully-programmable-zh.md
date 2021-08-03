@@ -1,6 +1,6 @@
 ---
 layout    : post
-title     : "[译] 迈向完全可编程 tc 分类器（cls_bpf）（NetdevConf，2016）"
+title     : "[译] [论文] 迈向完全可编程 tc 分类器（cls_bpf）（NetdevConf，2016）"
 date      : 2021-03-05
 lastupdate: 2021-03-05
 categories: bpf tc

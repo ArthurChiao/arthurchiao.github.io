@@ -1,6 +1,6 @@
 ---
 layout    : post
-title     : "Cilium Code Walk Through: Agent Start Process"
+title     : "Cilium Code Walk Through: Agent Start"
 date      : 2019-05-29
 lastupdate: 2021-06-22
 categories: cilium

@@ -3344,14 +3344,15 @@ $ tail -f /sys/kernel/debug/tracing/trace_pipe
 
 ## 2.10 其他（Miscellaneous）
 
-和 `perf` 类似，BPF 程序和 map 占用的内存是算在 `RLIMIT_MEMLOCK` 中的。可以用
-`ulimit -l` 查看当前锁定到内存中的页面大小。`setrlimit()` 系统调用的 man page 提
-供了进一步的细节。
+和 perf 类似，**<mark>BPF 程序和 BPF map 占用的内存是受 RLIMIT_MEMLOCK 限制的</mark>**。
 
-默认的限制通常导致无法加载复杂的程序或很大的 BPF map，此时 BPF 系统调用会返回
-`EPERM` 错误码。这种情况就需要将限制调大，或者用 `ulimit -l unlimited` 来临时解
-决。**`RLIMIT_MEMLOCK` 主要是针对非特权用户施加限制**。根据实际场景不同，为特权
-用户设置一个较高的阈值通常是可以接受的。
+* `ulimit -l` 可以查看当前能锁定的内存大小，单位是页面（system pages）。
+* `setrlimit()` 系统调用的 man page 提供了更多细节。
+
+这个限制通常导致**<mark>无法加载复杂的 BPF 程序或很大的 BPF map</mark>**，此时 BPF 系统调用会返回
+`EPERM` 错误。这种情况需要将限制调大，或者用 `ulimit -l unlimited` 来临时解决。
+`RLIMIT_MEMLOCK` **<mark>主要是针对非特权用户施加限制</mark>**；对于特权用户，
+根据实际场景，设置一个较高的阈值通常是可以接受的。
 
 <a name="prog_type"></a>
 
