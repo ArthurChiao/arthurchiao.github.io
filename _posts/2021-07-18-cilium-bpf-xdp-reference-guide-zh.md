@@ -2,7 +2,7 @@
 layout    : post
 title     : "[译] Cilium：BPF 和 XDP 参考指南（2021）"
 date      : 2021-07-18
-lastupdate: 2021-07-18
+lastupdate: 2021-08-07
 categories: cilium bpf xdp
 ---
 
@@ -1233,14 +1233,11 @@ annotate）类型信息。
 
 ### 2.2.3 BPF 指令集
 
-LLVM 默认用 BPF 基础指令集（base instruction set）来生成代码，以确保这些生成的对
-象文件也能够被稍老的 LTS 内核（例如 4.9+）加载。
-
-但是，LLVM 提供了一个 BPF 后端选项 `-mcpu`，可以指定不同版本的 BPF 指令集，即
-BPF 基础指令集之上的指令集扩展（instruction set extensions），以生成更高效和体积
-更小的代码。
-
-可用的 `-mcpu` 类型：
+LLVM 默认用 BPF **<mark>基础指令集</mark>**（base instruction set）生成代码，
+以确保生成的对象文件也能被稍老的 LTS 内核（例如 4.9+）加载。
+但 LLVM 提供了一个 BPF 后端选项 `-mcpu`，用来**<mark>指定特定的 BPF 指令集版本</mark>**，
+即 BPF 基础指令集之上的指令集扩展（instruction set extensions），以生成更高效和
+体积更小的代码。`-mcpu` 类型：
 
 ```shell
 $ llc -march bpf -mcpu=help
@@ -1253,7 +1250,7 @@ Available CPUs for this target:
 [...]
 ```
 
-* `generic` processor 是默认的 processor，也是 BPF `v1` 基础指令集。
+* `generic` processor 是默认的 processor，也是 **<mark>BPF v1 基础指令集</mark>**。
 * `v1` 和 `v2` processor 通常在交叉编译 BPF 的环境下比较有用，即编译 BPF 的平台
   和最终执行 BPF 的平台不同（因此 BPF 内核特性可能也会不同）。
 
@@ -2086,16 +2083,16 @@ if (ip4->protocol == IPPROTO_TCP) {
 
 ## 2.3 iproute2
 
-**很多前端工具，例如 bcc、perf、iproute2，都可以将 BPF 程序加载到内核**。Linux
-内核源码树中还提供了一个用户空间库 `tools/lib/bpf/`，目前主要是 perf 在使用，用
+**<mark>很多前端工具，例如 bcc、perf、iproute2，都可以将 BPF 程序加载到内核</mark>**。
+Linux 内核源码树中还提供了一个用户空间库 `tools/lib/bpf/`，目前主要是 perf 在使用，用
 于加载 BPF 程序到内核，这个库的开发也主要是由 perf 在驱动。但这个库是通用的，并非
 只能被 perf 使用。bcc 是一个 BPF 工具套件，里面提供了很多有用的 BPF 程序，主要用
 于跟踪（tracing）；这些程序通过一个专门的 Python 接口加载，Python 代码中内嵌了
 BPF C 代码。
 
-但通常来说，不同前端在实现 BPF 程序时，语法和语义稍有不同。另外，内核源码树（
-`samples/bpf/`）中也有一些示例程序，它们解析生成的对象文件，通过系统调用直接
-加载代码到内核。
+但通常来说，**<mark>不同前端在实现 BPF 程序时，语法和语义稍有不同</mark>**。另外，
+内核源码树（`samples/bpf/`）中也有一些示例程序，它们解析生成的对象文件，通过系统
+调用直接加载代码到内核。
 
 本节和前一节主要关注**如何使用 `iproute2` 提供的 BPF 前端加载 XDP、`tc` 或 `lwt`
 类型的网络程序**，因为 **Cilium 的 BPF 程序就是面向这个加载器实现的**。将来
@@ -2107,8 +2104,11 @@ iproute2 套件的兼容性。
 
 前面 LLVM 小节介绍了一些和编写 BPF C 程序相关的 iproute2 内容，本文接下来将关注
 编写这些程序时，和 tc 与 XDP 特定的方面。因此，本节将关注焦点放置使用例子上，展示
-**如何使用 iproute2 加载对象文件，以及加载器的一些通用机制**。本节不会覆盖所有细
-节，但对于入门来说足够了。
+**<mark>如何使用 iproute2 加载对象文件，以及加载器的一些通用机制</mark>**。本节
+不会覆盖所有细节，但对于入门来说足够了。
+
+> iproute2/tc 加载 BPF 程序到内核的**<mark>底层实现</mark>**，可参考
+> [Firewalling with BPF/XDP: Examples and Deep Dive]({ % link _posts/2021-06-27-firewalling-with-bpf-xdp.md %})，译注。
 
 <a name="ch_2.3.1"></a>
 
@@ -2118,18 +2118,18 @@ iproute2 套件的兼容性。
 netdevice `em1`：
 
 ```shell
-$ ip link set dev em1 xdp obj prog.o
+$ ip link set dev em1 xdp obj prog.o # 等价于 ip link set dev em1 xdp obj prog.o sec prog
 ```
 
-以上命令假设程序代码存储在默认的 section，在 XDP 的场景下就是 `prog` section。如
-果是在其他 section，例如 `foobar`，那就需要用如下命令：
+以上命令**<mark>假设程序代码存储在默认的 section</mark>**，在 XDP 的场景下就是
+`prog` section。如果是在其他 section，例如 `foobar`，那就需要用如下命令：
 
 ```shell
 $ ip link set dev em1 xdp obj prog.o sec foobar
 ```
 
-注意，我们还可以将程序加载到 `.text` section。修改程序，从 `xdp_drop` 入口去掉
-`__section()` 注解：
+注意，我们**<mark>还可以从默认的 <code>.text</code> section 加载程序</mark>**：
+修改程序，从 `xdp_drop` 入口去掉 `__section()` 注解（这样程序默认就会放到 `.text` 区域）：
 
 ```c
 #include <linux/bpf.h>
@@ -2154,23 +2154,26 @@ $ ip link set dev em1 xdp obj prog.o sec .text
 ```
 
 默认情况下，如果 XDP 程序已经 attach 到网络接口，那再次加载会报错，这样设计是为
-了防止程序被无意中覆盖。要强制替换当前正在运行的 XDP 程序，必须指定 `-force` 参数：
+了防止程序被无意中覆盖。要**<mark>强制替换当前正在运行的 XDP 程序</mark>**，必须
+指定 `-force` 参数：
 
 ```shell
 $ ip -force link set dev em1 xdp obj prog.o
 ```
 
-今天，大部分支持 XDP 的驱动都支持**在不会引起流量中断（traffic interrupt）的前提
-下原子地替换运行中的程序**。出于性能考虑，支持 XDP 的驱动只允许 attach 一个程序
-，不支持程序链（a chain of programs）。但正如上一节讨论的，如果有必要的话，可以
+今天，大部分支持 XDP 的驱动都能够在**<mark>不会引起流量中断（traffic interrupt）的前提
+下，原子地替换运行中的程序</mark>**。出于性能考虑，支持 XDP 的驱动只允许 attach 一个程序
+，不支持程序链（a chain of programs）。但正如上一节讨论的，如果有必要，可以
 通过尾调用来对程序进行拆分，以达到与程序链类似的效果。
 
 如果一个接口上有 XDP 程序 attach，`ip link` 命令会显示一个 **`xdp` 标记**。因
-此可以用 `ip link | grep xdp` 查看所有有 XDP 程序运行的接口。`ip -d link` 可以查
-看进一步信息；另外，`bpftool` 指定 BPF 程序 ID 可以获取 attached 程序的信息，其
-中程序 ID 可以通过 `ip link` 看到。
+此，
 
-要从接口**删除 XDP 程序**，执行下面的命令：
+* 可以用 `ip link | grep xdp` 列出**<mark>所有有 XDP 程序在运行的网络接口</mark>**。
+* `ip -d link` 可以查看进一步信息；
+* 另外，`bpftool` 指定 BPF 程序 ID 可以获取 attached 程序的信息，其中程序 ID 可以通过 `ip link` 看到。
+
+从接口**<mark>删除 XDP 程序</mark>**，执行下面的命令：
 
 ```shell
 $ ip link set dev em1 xdp off
@@ -2218,12 +2221,14 @@ generic XDP 模式。
 
 ```shell
 $ ip -force link set dev em1 xdpdrv obj prog.o
+
 $ ip link show
 [...]
 6: em1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 xdp qdisc mq state UP mode DORMANT group default qlen 1000
     link/ether be:08:4d:b6:85:65 brd ff:ff:ff:ff:ff:ff
     prog/xdp id 1 tag 57cd311f2e27366b
 [...]
+
 $ ip link set dev em1 xdpdrv off
 ```
 
@@ -2232,15 +2237,18 @@ bpftool 打印 attached 的这个 dummy 程序内具体的 BPF 指令：
 
 ```shell
 $ ip -force link set dev em1 xdpgeneric obj prog.o
+
 $ ip link show
 [...]
 6: em1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 xdpgeneric qdisc mq state UP mode DORMANT group default qlen 1000
     link/ether be:08:4d:b6:85:65 brd ff:ff:ff:ff:ff:ff
     prog/xdp id 4 tag 57cd311f2e27366b                <-- BPF program ID 4
 [...]
+
 $ bpftool prog dump xlated id 4                       <-- Dump of instructions running on em1
 0: (b7) r0 = 1
 1: (95) exit
+
 $ ip link set dev em1 xdpgeneric off
 ```
 
@@ -2248,6 +2256,7 @@ $ ip link set dev em1 xdpgeneric off
 
 ```
 $ ip -force link set dev em1 xdpoffload obj prog.o
+
 $ ip link show
 [...]
 6: em1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 xdpoffload qdisc mq state UP mode DORMANT group default qlen 1000
@@ -2266,11 +2275,12 @@ $ ip link set dev em1 xdpoffload off
 注意，每个程序只能选择用一种 XDP 模式加载，无法同时使用多种模式，例如 `xdpdrv`
 和 `xdpgeneric`。
 
-**无法原子地在不同 XDP 模式之间切换**，例如从 generic 模式切换到 native 模式。但
-重复设置为同一种模式是可以的：
+**<mark>无法原子地在不同 XDP 模式之间切换</mark>**，例如从 generic 模式切换到
+native 模式。但重复设置为同一种模式是可以的：
 
 ```shell
 $ ip -force link set dev em1 xdpgeneric obj prog.o
+
 $ ip -force link set dev em1 xdpoffload obj prog.o
 RTNETLINK answers: File exists
 
@@ -2315,31 +2325,29 @@ $ tc filter add dev em1 ingress bpf da obj prog.o
 
 第一步创建了一个 `clsact` qdisc (Linux 排队规则，Linux **queueing discipline**)。
 
-**`clsact` 是一个 dummy qdisc，和 `ingress` qdisc 类似，可以持有（hold）分类器和
-动作（classifier and actions），但不执行真正的排队（queueing）**。后面 attach
-`bpf` 分类器需要用到它。`clsact` qdisc 提供了两个特殊的 hook：`ingress` and
-`egress`，分类器可以 attach 到这两个 hook 点。这两个 hook 都位于 datapath 的
-关键收发路径上，设备 `em1` 的每个包都会经过这两个点。这两个 hook 分别会被下面的内
-核函数调用：
+1. `clsact` 是一个 **<mark>dummy qdisc</mark>**，和 `ingress` qdisc 类似，用于
+  **<mark>持有（hold）分类器和动作</mark>**（classifier and actions），但
+  **<mark>不执行真正的排队</mark>**（queueing）。后面 attach `bpf` 分类器需要用到它。
+1. `clsact` qdisc 提供了**<mark>两个特殊的 hook</mark>**：`ingress` and `egress`，分类器可以
+  attach 到这两个 hook 点。这两个 hook 都位于 datapath 的关键收发路径上，设备
+  `em1` 的每个包都会经过这两个点。二者的内核调用路径：
 
-* `ingress` hook：`__netif_receive_skb_core() -> sch_handle_ingress()`
-* `egress` hook：`__dev_queue_xmit() -> sch_handle_egress()`
+    * `ingress` hook：**<mark><code>__netif_receive_skb_core() -> sch_handle_ingress()</code></mark>**
+    * `egress` hook：**<mark><code>__dev_queue_xmit() -> sch_handle_egress()</code></mark>**
 
-类似地，将程序 attach 到 `egress` hook：
-
-```shell
-$ tc filter add dev em1 egress bpf da obj prog.o
-```
-
-`clsact` qdisc **在 `ingress` 和 `egress` 方向以无锁（lockless）方式执行**，而且
-可以 attach 到虚拟的、无队列的设备（virtual, queue-less devices），例如连接容器和
-宿主机的 `veth` 设备。
+1. 类似地，将程序 attach 到 `egress` hook 的命令：`tc filter add dev em1 egress bpf da obj prog.o`
+1. `clsact` qdisc **<mark>在 ingress 和 egress 方向以无锁（lockless）方式执行</mark>**，
+  而且可以 attach 到**<mark>虚拟的、无队列的设备</mark>**（virtual,
+   queue-less devices），例如连接容器和宿主机的 **<mark>veth 设备</mark>**。
 
 第二条命令，`tc filter` 选择了在 `da`（direct-action）模式中使用 `bpf`。`da` 是
 推荐的模式，并且应该永远指定这个参数。粗略地说，**`da` 模式表示 `bpf` 分类器不需
 要调用外部的 `tc` action 模块**。事实上 `bpf` 分类器也完全不需要调用外部模块，因
 为所有的 packet mangling、转发或其他类型的 action 都可以在这单个 BPF 程序内完成
 ，因此执行会明显更快。
+
+> 更多关于 da 模式的信息，可参考：
+> [<mark>(译) 深入理解 tc ebpf 的 direct-action (da) 模式（2020）</mark>]({% link _posts/2021-02-21-understanding-tc-da-mode-zh.md %}) 译注。
 
 配置了这两条命令之后，程序就 attach 完成了，接下来只要有包经过这个设备，就会触发
 这个程序执行。和 XDP 类似，如果没有使用默认 section 名字，那可以在加载时指定，例
@@ -2352,7 +2360,7 @@ $ tc filter add dev em1 egress bpf da obj prog.o sec foobar
 iproute2 BPF 加载器的命令行语法对不同的程序类型都是一样的，因此
 `obj prog.o sec foobar` 命令行格式和前面看到的 XDP 的加载是类似的。
 
-查看已经 attach 的程序：
+#### 查看已经 attach 的程序
 
 ```shell
 $ tc filter show dev em1 ingress
@@ -2366,9 +2374,9 @@ filter protocol all pref 49152 bpf handle 0x1 prog.o:[egress] direct-action id 2
 
 输出中的 `prog.o:[ingress]` 表示 section `ingress` 中的程序是从 文件 `prog.o` 加
 载的，而且 `bpf` 工作在 `direct-action` 模式。上面还打印了程序的 `id` 和 `tag`，
-其中 `tag` 是指令流（instruction stream）的哈希，可以**关联到对应的对象文件或用
-`perf` 查看调用栈信息**。`id` 是一个操作系统层唯一的 BPF 程序标识符，可以**用
-`bpftool` 进一步查看或 dump 相关的程序信息**。
+其中 **<mark>tag 是指令流（instruction stream）的哈希</mark>**，可以
+**<mark>关联到对应的对象文件或用 perf 查看调用栈信息</mark>**。
+`id` 是一个操作系统层唯一的 BPF 程序标识符，可以**用 `bpftool` 进一步查看或 dump 相关的程序信息**。
 
 tc 可以 attach 多个 BPF 程序，并提供了其他的一些分类器，这些分类器可以 chain 到
 一起使用。但是，attach 单个 BPF 程序已经完全足够了，因为有了 `da` 模式，所有的包
@@ -2379,16 +2387,19 @@ tc 可以 attach 多个 BPF 程序，并提供了其他的一些分类器，这�
 #### 程序优先级（`pref`）和句柄（`handle`）
 
 在上面的 `show` 命令中，tc 还打印出了 `pref 49152` 和 `handle 0x1`。如果之前没有
-通过命令行显式指定，这两个数据就会自动生成。`pref` 表示优先级，如果指定了多个分
-类器，它们会按照优先级从高到低依次执行；`handle` 是一个标识符，在加载了同一分类器的多
-个实例并且它们的优先级（`pref`）都一样的情况下会用到这个标识符。因为
-**在 BPF 的场景下，单个程序就足够了，因此 `pref` 和 `handle` 通常情况下都可以忽略**。
+通过命令行显式指定，这两个数据就会自动生成。
 
-除非打算后面原子地替换 attached BPF 程序，否则不建议在加载时显式指定 `pref` 和
-`handle`。显式指定这两个参数的好处是，后面执行 `replace` 操作时，就不需要再去动
-态地查询这两个值。显式指定 `pref` 和 `handle` 时的加载命令：
+* `pref` 表示**<mark>优先级</mark>**，如果指定了**<mark>多个分类器</mark>**，它们会按照**<mark>优先级从高到低依次执行</mark>**；
+* `handle` 是一个标识符，在**<mark>加载了同一分类器的多个实例</mark>**并且它们的优先级（`pref`）都一样的情况下会用到这个标识符。
 
-```
+因为**<mark>在 BPF 的场景下，单个程序就足够了</mark>**，因此 `pref` 和 `handle` 通常情况下都可以忽略。
+
+* **<mark>除非打算后面原子地替换 attached BPF 程序</mark>**，否则不建议在加载时显式指定 `pref` 和 `handle`。
+* 显式指定这两个参数的好处是，后面执行 `replace` 操作时，就不需要再去动态地查询这两个值。
+
+显式指定 `pref` 和 `handle` 时的加载命令：
+
+```shell
 $ tc filter add dev em1 ingress pref 1 handle 1 bpf da obj prog.o sec foobar
 
 $ tc filter show dev em1 ingress
@@ -2399,7 +2410,7 @@ filter protocol all pref 1 bpf handle 0x1 prog.o:[foobar] direct-action id 1 tag
 对应的原子 `replace` 命令：将 `ingress` hook 处的已有程序替换为 `prog.o` 文件中
 `foobar` section 中的新 BPF 程序，
 
-```
+```shell
 $ tc filter replace dev em1 ingress pref 1 handle 1 bpf da obj prog.o sec foobar
 ```
 
@@ -2458,7 +2469,7 @@ BPF 程序的 offload 接口，以及其他一些设施，这些设施可以用�
 
 可以用如下命令创建一个 netdevsim 设备：
 
-```
+```shell
 $ modprobe netdevsim
 // [ID] [PORT_COUNT]
 $ echo "1 1" > /sys/bus/netdevsim/new_device
@@ -2477,7 +2488,7 @@ $ ip l
 
 然后就可以加载 XDP 或 tc BPF 程序，命令和前面的一些例子一样：
 
-```
+```shell
 $ ip -force link set dev eth0 xdpoffload obj prog.o
 $ ip l
 [...]
@@ -2527,7 +2538,7 @@ $ ip l
     ```
 
 在加载 BPF 程序时，iproute2 会自动检测挂载的文件系统实例。如果发现还没有挂载，tc
-就会自动将其挂载到默认位置 `/sys/fs/bpf/`。
+就会自动将其挂载到**<mark>默认位置</mark>** `/sys/fs/bpf/`。
 
 如果发现已经挂载了一个 BPF 文件系统实例，接下来就会使用这个实例，不会再挂载新的
 了：
