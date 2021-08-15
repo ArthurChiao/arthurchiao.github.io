@@ -942,7 +942,7 @@ So finally, this ends our journey!
 ## 4.1 Intro
 
 XDP happens before BPF hooking points, so it's more efficient - even the `skb`
-hasn't benn allocated when XDP programs are triggered.
+hasn't been allocated when XDP programs are triggered.
 
 Borrow a picture from [4,5]:
 
