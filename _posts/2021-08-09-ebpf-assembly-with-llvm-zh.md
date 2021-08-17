@@ -2,7 +2,7 @@
 layout    : post
 title     : "[译] LLVM eBPF 汇编编程（2020）"
 date      : 2021-08-15
-lastupdate: 2021-08-15
+lastupdate: 2021-08-17
 categories: bpf assembly
 ---
 
@@ -12,15 +12,17 @@ categories: bpf assembly
 [eBPF assembly with LLVM](https://qmonnet.github.io/whirl-offload/2020/04/12/llvm-ebpf-asm/)。
 Quentin Monnet 是 Cilium 开发者之一，此前也在从事网络、eBPF 相关的开发。
 
+翻译已获得 Quentin Monnet 授权。
+
 文章介绍了如何直接**<mark>基于 LLVM eBPF 汇编开发 BPF 程序</mark>**，虽然给出的
-两个例子极其简单，但开发更大的程序，流程也是类似的。**<mark>为什么不用 C，而用汇编</mark>**
+两个例子极其简单，但其流程对于开发更大的程序也是适用的。**<mark>为什么不用 C，而用汇编</mark>**
 这么不友好的编程方式呢？至少有两个特殊场景：
 
 1. **<mark>测试特定的 eBPF 指令流</mark>**
 1. 对程序的某个特定部分进行**<mark>深度调优</mark>**
 
-原文历时（开头之后拖延）了好几年，因此文中存在一些（文件名等）前后不一致之处，翻译时已经改正；
-另外，译文基于 clang/llvm 10.0 验证了其中的每个步骤，因此代码、输出等与原文不完全一致。
+原文历时（开头之后拖延）了好几年，~~因此文中存在一些（文件名等）前后不一致之处，翻译时已经改正~~
+（交流之后，作者已经修正）；另外，译文基于 clang/llvm 10.0 验证了其中的每个步骤，因此代码、输出等与原文不完全一致。
 
 **由于译者水平有限，本文不免存在遗漏或错误之处。如有疑问，请查阅原文。**
 
