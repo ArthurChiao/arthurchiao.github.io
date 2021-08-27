@@ -293,9 +293,9 @@ pod 建连和通信**，如下图所示，这里能 hook 的系统调用包括 `
 **不存在 packet 级别的 NAT！**目前已经支持 TCP/UDP v4/v6, v4-in-v6。
 **应用对此是无感知的，它以为自己连接到的还是 Service IP，但其实是 PodIP**。
 
-> <mark>想知道 socket-level translation 具体是如何实现的</mark>，
+> <mark>socket-level translation 具体是如何实现的</mark>，
 > 可参考 [Cracking kubernetes node proxy (aka kube-proxy)]({% link _posts/2019-11-30-cracking-k8s-node-proxy.md %})，
-> 其中有一个 20 多行 bpf 代码实现的例子，可认为是 Cilium 相关代码的极度简化。译注。
+> 其中有一个 20 多行 bpf 代码实现的例子，可认为是极度简化的 Cilium 相关代码。译注。
 
 ### 查找后端 pods
 

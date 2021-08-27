@@ -138,7 +138,8 @@ BPF 由下面几部分组成：
 
 1. 11 个 64 位寄存器（这些寄存器包含 32 位子寄存器）
 1. 一个程序计数器（program counter，PC）
-1. 一个 512 字节大小的 BPF 栈空间
+1. 一个 512 字节大小的 BPF 栈空间（从实现的层面理解为什么有 512 字节的限制，
+  可参考 [<mark>(译) Linux Socket Filtering (LSF, aka BPF)（Kernel，2021）</mark>]({% link _posts/2021-08-27-linux-socket-filtering-aka-bpf-zh.md %})，译注。）
 
 寄存器的名字从 **`r0` 到 `r10`**。**默认的运行模式是 64 位**，32 位子寄存器只能
 通过特殊的 ALU（arithmetic logic unit）访问。向 32 位子寄存器写入时，会用 0 填充
@@ -332,10 +333,15 @@ const struct bpf_func_proto bpf_map_update_elem_proto = {
 };
 ```
 
-这种方式有很多优点：虽然 cBPF 允许其加载指令（load instructions）进行超出范围的
-访问（overload），以便从一个看似不可能的包偏移量（packet offset）获取数据以唤醒
-多功能辅助函数，但每个 cBPF JIT 仍然需要为这个 cBPF 扩展实现对应的支持。而在
-eBPF 中，JIT 编译器会以一种透明和高效的方式编译新加入的辅助函数，这意味着 JIT 编
+这种方式有很多优点：虽然 cBPF 允许其加载指令（load instructions）进行
+**<mark>超出范围的访问</mark>**（overload），以便从一个**<mark>看似不可能的包偏移量</mark>**（packet offset，负的）位置
+获取数据以唤醒多功能辅助函数，但每个 cBPF JIT 仍然需要为这个 cBPF extension 实现对应的支持。
+
+> 更多关于 Linux BPF extension 的内容，可参考
+> [<mark>(译) Linux Socket Filtering (LSF, aka BPF)（Kernel，2021）</mark>]({% link _posts/2021-08-27-linux-socket-filtering-aka-bpf-zh.md %})，
+> 译注中附录了一些相关的**<mark>内核实现</mark>**。译注。
+
+而在 eBPF 中，JIT 编译器会以一种透明和高效的方式编译新加入的辅助函数，这意味着 JIT 编
 译器只需要发射（emit）一条调用指令（call instruction），因为寄存器映射的方式使得
 BPF 排列参数的方式（assignments）已经和底层架构的调用约定相匹配了。这使得基于辅
 助函数扩展核心内核（core kernel）非常方便。**所有的 BPF 辅助函数都是核心内核的一
