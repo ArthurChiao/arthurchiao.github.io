@@ -11,7 +11,7 @@ title: About ArthurChiao
 ## Working Experience
 
 1. Ericsson (2014-2016), Software Engineer
-1. Ctrip (2016-), Senior Architect, Tech Expert
+1. Trip.com (Ctrip, 2016-), Senior Architect, Tech Expert
 
 ## Focus & Interests
 
