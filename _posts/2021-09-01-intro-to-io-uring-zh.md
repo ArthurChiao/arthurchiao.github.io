@@ -33,7 +33,12 @@ categories: io_uring storage ebpf
 2. 在**<mark>设计上是真正的异步 I/O</mark>**，作为对比，Linux AIO 虽然也
    是异步的，但仍然可能会阻塞，某些情况下的行为也无法预测；
 
-3. **<mark>灵活性和可扩展性</mark>**非常好，甚至能基于 `io_uring` 重新所有系统调用，而 Linux AIO 设计时就没考虑扩展性。
+   似乎之前 Windows 在这块反而是领先的，更多参考：
+
+   * [浅析开源项目之 io_uring](https://zhuanlan.zhihu.com/p/361955546)，“分步试存储”专栏，知乎
+   * [Is there really no asynchronous block I/O on Linux?](https://stackoverflow.com/questions/13407542/is-there-really-no-asynchronous-block-i-o-on-linux)，stackoverflow
+
+3. **<mark>灵活性和可扩展性</mark>**非常好，甚至能基于 `io_uring` 重写所有系统调用，而 Linux AIO 设计时就没考虑扩展性。
 
 eBPF 也算是异步框架（事件驱动），但与 `io_uring` 没有本质联系，二者属于不同子系统，
 并且在模型上有一个本质区别：
@@ -281,7 +286,8 @@ io_uring 实例可工作在三种模式：
     Busy-waiting for an I/O completion，而不是通过异步 IRQ（Interrupt Request）接收通知。
 
     这种模式需要文件系统（如果有）和块设备（block device）支持轮询功能。
-    相比中断驱动方式，这种方式延迟更低，但可能会消耗更多 CPU 资源。
+    相比中断驱动方式，这种方式延迟更低（[连系统调用都省了](https://www.phoronix.com/scan.php?page=news_item&px=Linux-io_uring-Fast-Efficient)），
+    但可能会消耗更多 CPU 资源。
 
     目前，只有指定了 O_DIRECT flag 打开的文件描述符，才能使用这种模式。当一个读
     或写请求提交给轮询上下文（polled context）之后，应用（application）必须调用
@@ -936,7 +942,7 @@ to hit the storage），**<mark>完全绕开操作系统的页缓存</mark>**（
 2. `posix-aio` 性能最差，直接原因是**<mark>上下文切换次数太多</mark>**，这也和场景相关：
    在这种 **<mark>CPU 饱和的情况下</mark>**，它的线程池反而是累赘，会完全拖慢性能。
 
-3. `linux-aio` 并**<mark>不是针对 buffered I/O 设计的</mark>**，在这种 page cache直接返回的场景，
+3. `linux-aio` 并**<mark>不是针对 buffered I/O 设计的</mark>**，在这种 page cache 直接返回的场景，
    它的**<mark>异步接口反而会造成性能损失</mark>** —— 将操作分
    为 dispatch 和 consume 两步不但没有性能收益，反而有额外开销。
 

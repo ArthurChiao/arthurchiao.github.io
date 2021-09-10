@@ -1620,7 +1620,7 @@ gives a 4-byte alignment，因此通过这个指针进行 word-sized accesses �
 
 ### `PTR_TO_SOCKET`
 
-与上面用途类似，只要一个指针验证是非空的，其他共享同一 `id` 的PTR_TO_SOCKET 指针就都是非空的；此外，
+与上面用途类似，只要一个指针验证是非空的，其他共享同一 `id` 的 PTR_TO_SOCKET 指针就都是非空的；此外，
 还**<mark>负责跟踪指针的引用</mark>**（reference tracking for the pointer）。
 
 PTR_TO_SOCKET 隐式地表示对一个 `struct sock` 的引用。为确保引用没有泄露，需要强制对引用进行非空（检查），

@@ -2,7 +2,7 @@
 layout    : post
 title     : "BPF 进阶笔记（一）：BPF 程序（BPF Prog）类型详解：使用场景、函数签名、执行位置及程序示例"
 date      : 2021-07-04
-lastupdate: 2021-07-17
+lastupdate: 2021-09-07
 categories: bpf xdp socket cgroup
 ---
 
@@ -137,6 +137,7 @@ enum bpf_attach_type {
 };
 ```
 
+`BPF_CGROUP_DEVICE` 使用场景可参考 [(译) Control Group v2 (cgroupv2)（KernelDoc, 2021）]({% link _posts/2021-09-10-cgroupv2-zh.md %})。
 
 # ------------------------------------------------------------------------
 # Socket 相关类型
@@ -468,7 +469,7 @@ struct bpf_sock_ops {
 
 * 创建 sockmap
 * 拦截 socket 操作，将 socket 信息存入 sockmap
-* 拦截 socket sendmsg/recvmsg 等系统调用，从 msg 中提取信息（IP、port等），然后
+* 拦截 socket sendmsg/recvmsg 等系统调用，从 msg 中提取信息（IP、port 等），然后
   在 sockmap 中查找对端 socket，然后重定向过去。
 
 根据提取到的 socket 信息判断接下来应该做什么的过程称为 <mark>verdict（判决）</mark>。
@@ -755,25 +756,75 @@ enum xdp_action {
 TODO
 
 # ------------------------------------------------------------------------
-# CGroups 相关的类型
+# cgroup (v2) 相关类型
 # ------------------------------------------------------------------------
 
-CGroups 用于**<mark>对一组进程</mark>**（a group of processes）进行控制，
+**<mark>cgroup</mark>** 最典型的使用场景是容器（containers）。
+
+* 命名空间（namespace）：控制资源视图，即**<mark>能看到什么，不能看到什么</mark>**，
+* cgroup：控制的**<mark>能使用多少</mark>**？
+
+**<mark>cgroup BPF</mark>** 用于在 cgroup 级别对**<mark>进程、socket、设备文件</mark>**
+（device file）等进行动态控制，
 
 * 处理资源分配，例如 CPU、网络带宽等。
 * 系统资源权限控制（allowing or denying）。
+* 控制访问权限（allow or deny），程序的返回结果只有两种：
 
-CGroups **<mark>最典型的使用场景是容器</mark>**（containers）。
+    1. 放行
+    2. 禁止（导致随后包被丢弃）
 
-* 命名空间（namespace）：控制资源视图，即**<mark>能看到什么，不能看到什么</mark>**，
-* CGroups：控制的**<mark>能使用多少</mark>**？
+完整的 cgroups BPF hook 列表见 [前面](#enum-bpf_attach_type) `enum bpf_attach_type`
+列表，其中的 `BPF_CGROUP_*`。
 
-具体到 eBPF 方面，可以**<mark>用 CGroups 来控制访问权限</mark>**（allow or deny），程序的返回结果只有两种：
+# 0 cgroup BPF 通用调用栈
 
-1. 放行
-2. 禁止（导致随后包被丢弃）
+## 0.1 创建 socket 时初始化其 cgroupv2 配置
 
-例如，很多 hook 会执行到宏 `__cgroup_bpf_run_filter_skb()`，它负责执行 cgroup BPF 程序：
+```c
+// https://github.com/torvalds/linux/blob/v5.10/net/core/sock.c#L1715
+/**
+ *    sk_alloc - All socket objects are allocated here
+ *    @net: the applicable net namespace
+ *    @family: protocol family
+ *    @priority: for allocation (%GFP_KERNEL, %GFP_ATOMIC, etc)
+ *    @prot: struct proto associated with this new sock instance
+ *    @kern: is this to be a kernel socket?
+ */
+struct sock *sk_alloc(struct net *net, int family, gfp_t priority, struct proto *prot, int kern)
+{
+    struct sock *sk = sk_prot_alloc(prot, priority | __GFP_ZERO, family);
+    if (sk) {
+        sk->sk_family = family;
+        sk->sk_prot = sk->sk_prot_creator = prot;
+        sk->sk_kern_sock = kern;
+        sk->sk_net_refcnt = kern ? 0 : 1;
+        if (likely(sk->sk_net_refcnt)) {
+            get_net(net);                          // 网络命名空间
+            sock_inuse_add(net, 1);
+        }
+
+        sock_net_set(sk, net);
+        refcount_set(&sk->sk_wmem_alloc, 1);
+
+        mem_cgroup_sk_alloc(sk);                   // memory cgroup 信息单独维护
+        cgroup_sk_alloc(&sk->sk_cgrp_data);        // per-socket cgroup 信息，包括了 memory cgroup 之外
+                                                   // 该 socket 的 cgroup 信息
+        sock_update_classid(&sk->sk_cgrp_data);
+        sock_update_netprioidx(&sk->sk_cgrp_data);
+        sk_tx_queue_clear(sk);
+    }
+
+    return sk;
+}
+```
+
+可以看到，创建 socket 时会初始化其所属的 cgroup 信息，因此后面就能
+**<mark>在 cgroup 级别</mark>**监听 socket 事件或拦截 socket 操作。
+
+## 0.2 入向（ingress）hook 处理
+
+很多 hook 点会执行到下面两个宏来**<mark>执行 cgroup BPF 代码</mark>**：
 
 ```c
 // include/linux/bpf-cgroup.h
@@ -787,6 +838,46 @@ CGroups **<mark>最典型的使用场景是容器</mark>**（containers）。
                                                                    \
     __ret;                                                         \
 })
+```
+
+函数的定义：
+
+```c
+// https://github.com/torvalds/linux/blob/v5.10/kernel/bpf/cgroup.c#L987
+
+int __cgroup_bpf_run_filter_skb(struct sock *sk, struct sk_buff *skb, enum bpf_attach_type type)
+{
+    unsigned int offset = skb->data - skb_network_header(skb);
+    struct sock *save_sk;
+    void *saved_data_end;
+    struct cgroup *cgrp;
+    int ret;
+
+    cgrp = sock_cgroup_ptr(&sk->sk_cgrp_data); // 获取 socket cgroup 信息
+    save_sk = skb->sk;
+    skb->sk = sk;
+    __skb_push(skb, offset);
+
+    bpf_compute_and_save_data_end(skb, &saved_data_end);
+
+    if (type == BPF_CGROUP_INET_EGRESS) {
+        ret = BPF_PROG_CGROUP_INET_EGRESS_RUN_ARRAY(cgrp->bpf.effective[type], skb, __bpf_prog_run_save_cb);
+    } else {
+        ret = BPF_PROG_RUN_ARRAY(cgrp->bpf.effective[type], skb, __bpf_prog_run_save_cb);
+        ret = (ret == 1 ? 0 : -EPERM);
+    }
+    bpf_restore_data_end(skb, saved_data_end);
+    __skb_pull(skb, offset);
+    skb->sk = save_sk;
+
+    return ret;
+}
+```
+
+## 0.3 出向（egress）hook 处理
+
+```c
+// include/linux/bpf-cgroup.h
 
 #define BPF_CGROUP_RUN_SK_PROG(sk, type)                       \
 ({                                                                 \
@@ -798,23 +889,73 @@ CGroups **<mark>最典型的使用场景是容器</mark>**（containers）。
 })
 ```
 
-完整的 cgroups hook 列表见 [前面](#enum-bpf_attach_type) `enum bpf_attach_type`
-列表，其中的 `BPF_CGROUP_*`。
+函数的定义：
+
+```c
+// https://github.com/torvalds/linux/blob/v5.10/kernel/bpf/cgroup.c#L1040
+int __cgroup_bpf_run_filter_sk(struct sock *sk, enum bpf_attach_type type)
+{
+    struct cgroup *cgrp = sock_cgroup_ptr(&sk->sk_cgrp_data); // 获取 socket cgroup 信息
+
+    ret = BPF_PROG_RUN_ARRAY(cgrp->bpf.effective[type], sk, BPF_PROG_RUN);
+    return ret == 1 ? 0 : -EPERM;
+}
+```
 
 # 1 `BPF_PROG_TYPE_CGROUP_SKB`
 
 ## 使用场景
 
-### 场景一：在 CGroup 级别：放行/丢弃数据包
+### 场景一：在 cgroup 级别：放行/丢弃数据包
 
 在 IP egress/ingress 层禁止或允许网络访问。
 
-## Hook 位置：`sk_filter_trim_cap()`
+## Hook 位置
 
-对于 inet ingress，`sk_filter_trim_cap()` 会调用
-`BPF_CGROUP_RUN_PROG_INET_INGRESS(sk, skb)`；如果返回值非零，错误信息会传递给调
-用方（例如，`__sk_receive_skb()`），随后包会被丢弃并释放（discarded and freed）
-。
+### 入向：`__sk_receive_skb`/`tcp_v4_rcv->tcp_filter`/`udp_queue_rcv_one_skb` -> `sk_filter_trim_cap()`
+
+对于 ingress，上述三个函数会分别从 **<mark>IP/TCP/UDP 处理逻辑</mark>**里调用到 `sk_filter_trim_cap()`，
+后者又会调用 `BPF_CGROUP_RUN_PROG_INET_INGRESS(sk, skb)`。这个宏上面有介绍。
+
+下面代码忽略了一些错误处理：
+
+```c
+// https://github.com/torvalds/linux/blob/v5.10/net/core/filter.c#L120
+
+/**
+ *    sk_filter_trim_cap - run a packet through a socket filter
+ *    @cap: limit on how short the eBPF program may trim the packet
+ *
+ * Run the eBPF program and then cut skb->data to correct size returned by
+ * the program. If pkt_len is 0 we toss packet. If skb->len is smaller
+ * than pkt_len we keep whole skb->data. This is the socket level
+ * wrapper to BPF_PROG_RUN. It returns 0 if the packet should
+ * be accepted or -EPERM if the packet should be tossed.
+ *
+ */
+int sk_filter_trim_cap(struct sock *sk, struct sk_buff *skb, unsigned int cap)
+{
+    BPF_CGROUP_RUN_PROG_INET_INGRESS(sk, skb); // 上面有介绍
+    security_sock_rcv_skb(sk, skb);
+
+    struct sk_filter *filter = rcu_dereference(sk->sk_filter);
+    if (filter) {
+        struct sock *save_sk = skb->sk;
+        unsigned int pkt_len;
+
+        skb->sk = sk;
+        pkt_len = bpf_prog_run_save_cb(filter->prog, skb);
+        skb->sk = save_sk;
+        err = pkt_len ? pskb_trim(skb, max(cap, pkt_len)) : -EPERM;
+    }
+
+    return err;
+}
+```
+
+如果返回值非零，调用方（例如 `__sk_receive_skb()`）随后会将包丢弃并释放。
+
+### 出向：`ip[6]_finish_output()`
 
 egress 是类似的，但在 `ip[6]_finish_output()` 中。
 
@@ -839,7 +980,7 @@ egress 是类似的，但在 `ip[6]_finish_output()` 中。
 
 ## 使用场景
 
-### 场景一：在 CGroup 级别：触发 socket 操作时拒绝/放行网络访问
+### 场景一：在 cgroup 级别：触发 socket 操作时拒绝/放行网络访问
 
 这里的 socket 相关事件包括
 BPF_CGROUP_INET_SOCK_CREATE、BPF_CGROUP_SOCK_OPS。
@@ -861,6 +1002,53 @@ Socket 创建时会执行 `inet_create()`，里面会调用
 ## 加载方式：attach 到 cgroup 文件描述符
 
 TODO
+
+# 3 `BPF_PROG_TYPE_CGROUP_DEVICE`
+
+## 使用场景
+
+### 场景一：设备文件（device file）访问控制
+
+## 程序签名
+
+### 传入参数：`struct bpf_cgroup_dev_ctx *`
+
+```c
+// https://github.com/torvalds/linux/blob/v5.10/include/uapi/linux/bpf.h#L4833
+
+struct bpf_cgroup_dev_ctx {
+    __u32 access_type; /* encoded as (BPF_DEVCG_ACC_* << 16) | BPF_DEVCG_DEV_* */
+    __u32 major;
+    __u32 minor;
+};
+```
+
+字段含义：
+
+* `access_type`：访问操作的类型，例如 **<mark><code>mknod/read/write</code></mark>**；
+* `major` 和 `minor`：主次设备号；
+
+### 返回值
+
+1. `0`：访问失败（`-EPERM`）
+2. 其他值：访问成功。
+
+## 触发执行：创建或访问设备文件时
+
+## 加载方式：attach 到 cgroup 文件描述符
+
+指定 attach 类型为 `BPF_CGROUP_DEVICE`。
+
+## 程序示例
+
+内核测试用例：
+
+1. [tools/testing/selftests/bpf/progs/dev_cgroup.c](https://github.com/torvalds/linux/blob/v5.10/tools/testing/selftests/bpf/progs/dev_cgroup.c)
+1. [tools/testing/selftests/bpf/test_dev_cgroup.c](https://github.com/torvalds/linux/blob/v5.10/tools/testing/selftests/bpf/test_dev_cgroup.c)
+
+## 延伸阅读
+
+可参考 [(译) Control Group v2 (cgroupv2)（KernelDoc, 2021）]({% link _posts/2021-09-10-cgroupv2-zh.md %})。
 
 # ------------------------------------------------------------------------
 # kprobes、tracepoints、perf events
@@ -905,7 +1093,7 @@ TODO
 * [Perf events](https://perf.wiki.kernel.org/index.php/Main_Page)：是这里提到的几种 eBPF 程序的基础。
 
     BPF 基于已有的基础设施来完成事件采样（event sampling），允许 attach 程序到
-    感兴趣的 perf 事件，包括kprobes, uprobes, tracepoints 以及软件和硬件事件。
+    感兴趣的 perf 事件，包括 kprobes, uprobes, tracepoints 以及软件和硬件事件。
 
 这些 instrumentation points **<mark>使 BPF 成为了一个通用的跟踪工具</mark>**，
 超越了最初的网络范畴。
@@ -1077,7 +1265,7 @@ Perf 事件监控能具体到某个进程、组、处理器，也可以指定采
 ## 加载方式：`ioctl()`
 
 1. perf_event_open() ，带一些采样配置信息；
-2. <code>ioctl(fd, <mark>PERF_EVENT_IOC_SET_BPF</mark>)</code> 设置 BPF程序，
+2. <code>ioctl(fd, <mark>PERF_EVENT_IOC_SET_BPF</mark>)</code> 设置 BPF 程序，
 3. 然后用 ioctl(fd, PERF_EVENT_IOC_ENABLE) 启用事件，
 
 ## 程序签名

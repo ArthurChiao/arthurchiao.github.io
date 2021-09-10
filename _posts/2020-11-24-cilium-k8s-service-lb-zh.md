@@ -277,10 +277,11 @@ pod 建连和通信**，如下图所示，这里能 hook 的系统调用包括 `
 
 <p align="center"><img src="/assets/img/cilium-service-lb/e-w-lb.png" width="75%" height="75%"></p>
 
-这里的一个问题是，<mark>K8s 使用的还是 cgroup v1，但这个功能需要使用 v2</mark>，
+这里的一个问题是，**<mark>K8s 使用的还是 cgroup v1，但这个功能需要使用 v2</mark>**，
 而由于兼容性问题，v2 完全替换 v1 还需要很长时间。所以我们目前所能做的就是
 支持 v1 和 v2 的混合模式。这也是为什么 Cilium 会 mount 自己的 cgroup v2 instance
-的原因（将宿主机 `/var/run/cilium/cgroupv2` mount 到 cilium-agent 容器内，译注）。
+的原因（将宿主机 `/var/run/cilium/cgroupv2` mount 到 cilium-agent 容器内。另外，
+启用这个功能需要设置 **<mark><code>--sockops-enable=true</code></mark>** 及高版本内核，译注）。
 
 > Cilium mounts cgroup v2, attaches BPF to root cgroup. Hybrid use works well for root v2.
 
@@ -313,8 +314,8 @@ loopback 地址，能在宿主机 netns 访问 Service。但这种方式不会�
 
 ### 好处
 
-显然，这种 **socket 级别的转换是非常高效和实用的**，它可以直接将客户端 pod 连
-接到某个 backend pod，与 kube-proxy 这样的实现相比，转发路径少了好几跳。
+显然，这种 **socket 级别的转换是非常高效和实用的**，它可以**<mark>直接将客户端
+pod 连接到某个 backend pod</mark>**，与 kube-proxy 这样的实现相比，转发路径少了好几跳。
 
 此外，`bind` BPF 程序在 NodePort 冲突时会**直接拒绝应用的请求**，因此相比产生流
 量（packet）然后在后面的协议栈中被拒绝，bind 这里要更加高效，**因为此时
@@ -324,17 +325,17 @@ loopback 地址，能在宿主机 netns 访问 Service。但这种方式不会�
 
 * `bpf_get_socket_cookie()`
 
-    主要用于 UDP sockets，我们希望每个 UDP flow 都能选中相同的 backend pods。
+  主要用于 UDP sockets，我们希望每个 UDP flow 都能选中相同的 backend pods。
 
 * `bpf_get_netns_cookie()`
 
-    用在两个地方：
+  用在两个地方：
 
-    1. 用于区分 host netns 和  pod  netns，例如检测到在 host netns 执行 bind 时，直接拒绝（reject）；
-    2. 用于 serviceSessionAffinity，实现在某段时间内永远选择相同的 backend pods。
+  1. 用于区分 host netns 和  pod  netns，例如检测到在 host netns 执行 bind 时，直接拒绝（reject）；
+  2. 用于 serviceSessionAffinity，实现在某段时间内永远选择相同的 backend pods。
 
-    由于 **cgroup v2 不感知 netns**，因此在这个 context 中我们没用 Pod 源 IP 信
-    息，通过这个 helper 能让它感知到源 IP，并以此作为它的 source identifier。
+  由于 **<mark>cgroupv2 不感知 netns</mark>**，因此在这个 context 中我们没有
+  Pod 源 IP 信息，通过这个 helper 能让它感知到源 IP，并以此作为它的 source identifier。
 
 ## 2.2 TC & XDP 层负载均衡（南北向流量）
 
@@ -389,8 +390,8 @@ BPF 代码中用 context 结构体传递数据包信息。
 
 ### 避免在用户侧使用 generic XDP
 
-5.6 内核对 XDP 来说是一个里程碑式的版本（但可能不会是一个 LTS 版本），这个版本使
-得 **XDP 在公有云上大规模可用了**，例如 AWS ENA 和 Azure `hv_netvsc` 驱动。
+**<mark>5.6 内核</mark>**对 XDP 来说是一个里程碑式的版本（但**<mark>不是 LTS</mark>** 版本，后记），
+这个版本使得 **<mark>XDP 在公有云上大规模可用了</mark>**，例如 AWS ENA 和 Azure `hv_netvsc` 驱动。
 但如果想**跨平台使用 XDP**，那你只应该使用最基本的一些 API，例如
 XDP_PASS/DROP/TX 等等。
 
@@ -437,7 +438,7 @@ tc BPF 中大量使用 `skb->cb[]` 来传递数据，显然，XDP 中也是没�
 
 ### bpf_fib_lookup()
 
-`bpf_fib_lookup()` 开销非常大，但在 XDP 中，例如 hairpin LB 场景，是不需要这个
+`bpf_fib_lookup()` **<mark>开销非常大</mark>**，但在 XDP 中，例如 hairpin LB 场景，是不需要这个
 函数的，可以在编译时去掉。我们在测试环境的结果显示可以提高 `1.5Mpps`。
 
 ### 静态 key
