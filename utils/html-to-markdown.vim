@@ -46,3 +46,6 @@
 %s/<\/ol>//g
 %s/<ul.\{-\}>//g
 %s/<\/ul>//g
+
+" delete trailing whitespaces
+%s/\s\+$//g
