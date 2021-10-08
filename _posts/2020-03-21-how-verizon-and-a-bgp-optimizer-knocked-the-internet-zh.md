@@ -33,6 +33,11 @@ Cloudflare 等公司是受害者；按照 Cloudflare 这篇博客的说法，如
 
 ----
 
+* TOC
+{:toc}
+
+----
+
 > 大规模路由泄露（route leak）影响了包括 Cloudflare 在内的全球主干互联网基础设施。
 
 # 1. 发生了什么？

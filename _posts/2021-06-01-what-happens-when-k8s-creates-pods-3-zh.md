@@ -377,6 +377,14 @@ func createHandler(r rest.NamedCreater, scope *RequestScope, admit Interface, in
 
 1. 首先解析 HTTP request，然后执行基本的验证，例如保证 JSON 与 versioned API resource 期望的是一致的；
 1. 执行审计和最终 admission；
+
+    这里会执行所谓的 **<mark>Mutation</mark>** 操作，例如，如果 pod 打了 `sidecar-injector-webhook.xxx/inject: true` 标签，并且配置了合适的 Mutation webhook 和 server，
+    在这一步就会给它**<mark>自动注入 sidecar</mark>**，完整例子可参考 IBM Cloud 博客
+    [Diving into Kubernetes MutatingAdmissionWebhook](https://medium.com/ibm-cloud/diving-into-kubernetes-mutatingadmissionwebhook-6ef3c5695f74)。
+
+    <p align="center"><img src="/assets/img/what-happens-when-k8s-creates-pods/mutating-admission-webhook.jpg" width="80%" height="80%"></p>
+    <p align="center">Image Credit: <a href="https://medium.com/ibm-cloud/diving-into-kubernetes-mutatingadmissionwebhook-6ef3c5695f74">IBM Cloud</a></p>
+
 1. 将资源最终[写到 etcd](https://github.com/kubernetes/kubernetes/blob/v1.21.0/staging/src/k8s.io/apiserver/pkg/endpoints/handlers/create.go#L401)，
    这会进一步调用到 [storage provider](https://github.com/kubernetes/kubernetes/blob/v1.21.0/staging/src/k8s.io/apiserver/pkg/registry/generic/registry/store.go#L362)。
 

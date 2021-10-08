@@ -1,6 +1,6 @@
 ---
 layout    : post
-title     : "Cilium: What the Agents Do When Enabling ClusterMesh"
+title     : "Cilium: What the Agents Do When ClusterMesh Enabled"
 date      : 2020-08-17
 lastupdate: 2021-06-20
 categories: cilium clustermesh

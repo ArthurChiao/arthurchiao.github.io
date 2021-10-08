@@ -49,3 +49,10 @@
 
 " delete trailing whitespaces
 %s/\s\+$//g
+
+" un-escape special characters
+%s/&rsquo;/'/g
+%s/&ldquo;/"/g
+%s/&rdquo;/"/g
+%s/&ndash;/-/g
+%s/&mldr;/.../g

@@ -1,6 +1,6 @@
 ---
 layout    : post
-title     : "[笔记] Cloud Native Data Center Networking (O'Reilly 2019)"
+title     : "[笔记] Cloud Native Data Center Networking（云原生数据中心网络设计）(O'Reilly 2019)"
 date      : 2021-01-10
 lastupdate: 2021-01-10
 categories: bgp datacenter cloud-native
