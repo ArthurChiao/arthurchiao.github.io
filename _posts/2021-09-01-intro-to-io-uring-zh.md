@@ -2,8 +2,8 @@
 layout    : post
 title     : "[译] Linux 异步 I/O 框架 io_uring：基本原理、程序示例与性能压测（2020）"
 date      : 2021-09-01
-lastupdate: 2021-09-01
-categories: io_uring storage ebpf
+lastupdate: 2021-11-19
+categories: io_uring storage ceph
 ---
 
 ### 译者序
@@ -51,6 +51,28 @@ eBPF 作为动态跟踪工具，能够更方便地排查和观测 `io_uring` 等
 本文介绍 Linux 异步 I/O 的发展历史，`io_uring` 的原理和功能，
 并给出了一些**<mark>程序示例</mark>**和**<mark>性能压测</mark>**结果（我们在 5.10
 内核做了类似测试，结论与原文差不多）。
+
+另外，Ceph 已经支持了 `io_uring`。我们对 `kernel 5.10 + ceph 15.x` 的压测显示，
+`bluestore` 打开 `io_uring` 优化之后，
+
+* **<mark>吞吐（iops）</mark>**提升 `20%~30%`，同时
+* **<mark>延迟</mark>**降低 `20~30%`。
+
+> Ceph 关于 io_uring 的资料非常少，这里提供一点参考配置：
+>
+> ```shell
+> $ cat /etc/ceph/ceph.conf
+> [osd]
+> bluestore_ioring = true
+> ...
+> ```
+>
+> 确认配置生效（这是只是随便挑一个 OSD）：
+>
+> ```shell
+> $ ceph config show osd.16 | grep ioring
+> bluestore_ioring                       true                                            file
+> ```
 
 **由于译者水平有限，本文不免存在遗漏或错误之处。如有疑问，请查阅原文。**
 

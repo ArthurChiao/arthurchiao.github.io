@@ -56,3 +56,9 @@
 %s/&rdquo;/"/g
 %s/&ndash;/-/g
 %s/&mldr;/.../g
+
+" must use escape character for the target '&'
+%s/&amp;/\&/g
+
+%s/&lt;/</g
+%s/&gt;/>/g
