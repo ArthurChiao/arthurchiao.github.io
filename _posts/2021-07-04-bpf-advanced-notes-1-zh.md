@@ -2,7 +2,7 @@
 layout    : post
 title     : "BPF 进阶笔记（一）：BPF 程序（BPF Prog）类型详解：使用场景、函数签名、执行位置及程序示例"
 date      : 2021-07-04
-lastupdate: 2021-09-07
+lastupdate: 2021-12-11
 categories: bpf xdp socket cgroup
 ---
 
@@ -535,7 +535,24 @@ TODO
 
 ## 使用场景
 
-### 场景一：加速 socket 查找
+### 场景一：发布系统：新老进程无损流量切换
+
+发布系统要做到服务发布时客户端完全无感知，一种实现方式就是让
+**<mark>运行老代码的进程和运行新代码的进程共享同一个端口</mark>**（例如 `80`），
+这对 BPF 程序提出的要求就是：能够正确对 `<dst_ip:dst_port>` 相同的流量正确进行分流：
+
+* 一部分转发给老进程（老连接）
+* 一部分转发给新进程（新连接）
+
+`BPF_PROG_TYPE_SK_REUSEPORT` + `BPF_MAP_TYPE_REUSEPORT_SOCKARRAY` 最初就是针对这个需求引入的，
+前者 hook 到 cgroup level 的socket 事件，后者存储特定信息（BPF 程序的设计者来决定）到 socket 的映射。
+
+更多参考 ：
+
+* [(译) Facebook 流量路由最佳实践：从公网入口到内网业务的全路径 XDP/BPF 基础设施（LPC, 2021）]({% link _posts/2021-12-05-facebook-from-xdp-to-socket-zh.md %})。
+* 内核 patch [Introduce BPF_MAP_TYPE_REUSEPORT_SOCKARRAY and BPF_PROG_TYPE_SK_REUSEPORT](http://archive.lwn.net:8080/netdev/20180808080131.3014367-1-kafai@fb.com/t/)。
+
+### 场景二：加速 socket 查找
 
 这种程序类型是为了加速 listener socket 的查找速度，使用方式：
 

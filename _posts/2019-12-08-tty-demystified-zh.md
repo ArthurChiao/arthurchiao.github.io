@@ -2,7 +2,7 @@
 layout    : post
 title     : "[译] TTY 的前世今生（2008）"
 date      : 2019-12-08
-lastupdate: 2019-12-08
+lastupdate: 2021-12-01
 categories: tty
 ---
 
@@ -16,17 +16,10 @@ categories: tty
 
 ----
 
-## 目录
+* TOC
+{:toc}
 
-1. [历史](#ch_1)
-2. [使用场景](#ch_2)
-3. [进程](#ch_3)
-4. [作业（Jobs）和会话](#ch_4)
-5. [简单粗暴的信号机制](#ch_5)
-6. [一个例子](#ch_6)
-7. [流控和阻塞式 I/O](#ch_7)
-8. [配置 TTY 设备](#ch_8)
-9. [结束语](#ch_9)
+----
 
 TTY 子系统是 Linux 乃至 Unix 家族中最核心的设计之一。
 
@@ -57,8 +50,8 @@ computers）。
 机的输入和输出设备（input and output devices），因为这些设备在市场上很容易买到。**
 
 但此时面临的一个问题是：**市场上有大量的电传打印机模型**，所有模型之间都有一些细
-微差别，因此就需要**某种层面的软件中间层来屏蔽这些差异**。Unix 世界中的方式是**
-让操作系统内核来处理所有的低层（low-level）细节**，例如 word 长度、波特率（baud
+微差别，因此就需要**某种层面的软件中间层来屏蔽这些差异**。Unix 世界中的方式是
+**让操作系统内核来处理所有的低层（low-level）细节**，例如 word 长度、波特率（baud
 rate）、流控（flow control）、奇偶校验（parity）、基本的行编辑（line editing）功
 能所用的控制码等等。而 20 世纪 70 年代随着例如 VT-100 这样的固态视频终端（solid
 state video terminals）的出现而变成为现实的**光标炫酷移动、彩色输入和其他高级特
@@ -67,7 +60,7 @@ state video terminals）的出现而变成为现实的**光标炫酷移动、彩
 如今在我们的世界中，物理电传打印机和视频终端事实上已经绝迹了。除非你去参观某个博
 物馆或者硬件爱好者的私藏，否则你能看到的所有 TTY 很可能都是**仿真（模拟）的视频
 终端**（emulated video terminals）——用软件去模拟真实硬件。但我们将会看到，这些传
-统的钢铁浇筑的怪兽仍然潜伏在表面的平静之下。
+统的钢铁怪兽仍然潜伏在表面的平静之下。
 
 <a name="ch_2"></a>
 
@@ -79,7 +72,7 @@ state video terminals）的出现而变成为现实的**光标炫酷移动、彩
 到计算机上的一个 **UART**（Universal Asynchronous Receiver and Transmitter，通用
 异步收发器）。操作系统中安装了 UART 驱动，能够**处理字节的物理传输**，包括奇偶校
 验和流控。在一个简陋的系统中，UART 驱动会**将收到的字节直接发送给某个应用进程**
-。但是，以上方式缺少下列必备特性：
+。但是，以上方式缺少下面几个必备特性。
 
 ## 2.1 行编辑（Line editing）
 
@@ -100,9 +93,9 @@ carriage returns and linefeeds）自动转换**的功能。如果你愿意，可
 
 出于某些偶然的原因，**内核提供了多种 line discipline**。但在任何时刻，对于某个给
 定的串行设备，内核只会 attach 其中的一种到这个设备。**默认的 discipline** 叫
-`N_TTY`（位于 `drivers/char/n_tty.c`，如果你喜欢刨根究底）。其他几种 disciplines
-用于不同目的，例如管理包交换数据（packet switched data，例如 ppp, IrDA, serial
-mice 等等），但这些超出了本文的范围。
+`N_TTY`（[drivers/char/n_tty.c](https://github.com/torvalds/linux/blob/v5.10/drivers/tty/n_tty.c) ——
+如果你喜欢刨根究底）。其他几种 disciplines用于不同目的，例如管理包交换数据（
+packet switched data，例如 ppp, IrDA, serial mice 等等），但这些超出了本文的范围。
 
 ## 2.2 会话管理（Session management）
 
@@ -118,7 +111,7 @@ TTY 驱动（`drivers/char/tty_io.c`）中实现了这些特性。
 它在某个进程或某个内核中断处理函数的上下文中被调用时，它才能够执行。同样的，line
 discipline 也是一个被动实体（passive entity）。
 
-**UART 驱动、line discipline 实例和 TTY 驱动**三者组成一个 **TTY 设备**，
+**<mark>UART 驱动、line discipline 实例和 TTY 驱动</mark>**三者组成一个 **<mark>TTY 设备</mark>**，
 有时简称为 TTY。用户进程能够通过操作 `/dev` 目录下的相应设备文件来改变 TTY
 设备的行为。进程需要对设备文件有写权限，因此当一个**用户登陆到某个特定的 TTY 时
 ，该用户必须成为相应设备文件的 owner**。传统上这是**通过 `login(1)` 程序实现**的

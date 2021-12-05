@@ -134,19 +134,3 @@ and letting cloud）。确实，但这种职责模型转变（paradigm shift）�
 如果有一天，你的云原生蜘蛛侠（cloud-native Spidey）意识开始变得模糊，有一点还请
 牢记：**有时候，责任越小，能力越大**（sometimes, great power comes from less
 responsibility）。
-
-----
-
-全文结束，下面是译者广告。
-
-年前翻译了一本 IBM 资深安全专家编写的云安全相关的书，介绍公有云平台上（AWS、
-Azure、IBM Cloud）以及 Kubernetes（内容很少）的一些安全实践。如书名所示
-，本书偏实践而非理论，有兴趣的可以关注主流图书电商平台（预计 2020.03 底能印出来
-，但受疫情影响，时间也不好说）。
-
-最后，**有兴趣的到时务必先看看目录，不要被上面列的名词误导** —— 尤其是：
-
-* 这本书和这篇译文  **没有**  任何直接关系（例如，节选、同作者等等）
-* 这本书关于 Kubernetes 的内容 **很少**
-
-<p align="center"><img src="/assets/img/do-i-really-need-a-vpc-zh/pcs_cover_zh.jpeg" width="35%" height="35%"></p>
