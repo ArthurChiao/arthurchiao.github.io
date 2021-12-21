@@ -1,6 +1,6 @@
 ---
 layout    : post
-title     : "Trip.com: First Step towards Cloud-native Networking"
+title     : "Trip.com: First Step towards Cloud Native Networking"
 date      : 2020-01-19
 lastupdate: 2020-04-25
 author    : ArthurChiao
