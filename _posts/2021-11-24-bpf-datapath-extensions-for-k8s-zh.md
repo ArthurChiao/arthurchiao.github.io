@@ -369,7 +369,7 @@ k8s-node 内的路径会被 bypass。或者说，像 cilium agent 这样 attach 
 
 本小节为译注，方便大家理解后面的内容。有基础的可以跳过。
 
-### 2.0.1 TCP Pacing
+### 2.0.1 TCP Pacing（在每个 RTT 窗口内均匀发送数据）
 
 > [Understanding the Performance of TCP Pacing](https://homes.cs.washington.edu/~tom/pubs/pacing.pdf)
 >
