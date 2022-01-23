@@ -250,7 +250,7 @@ As long as clients come from the same cluster, each agent would know their secur
 by looking up its local cache, then decide whether to let the traffic go:
 
 <p align="center"><img src="/assets/img/trip-cloud-native-security/pod-policy-enforcement.png" width="70%" height="70%"></p>
-<p align="center">Fig 2-2. Ingress policy enforcing inside a Cilium node</p>
+<p align="center">Fig 2-2. Ingress policy enforcement inside a Cilium node</p>
 
 Some code-level details can be found in our previous post [9]:
 
