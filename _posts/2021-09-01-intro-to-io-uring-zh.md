@@ -52,13 +52,9 @@ eBPF 作为动态跟踪工具，能够更方便地排查和观测 `io_uring` 等
 并给出了一些**<mark>程序示例</mark>**和**<mark>性能压测</mark>**结果（我们在 5.10
 内核做了类似测试，结论与原文差不多）。
 
-另外，Ceph 已经支持了 `io_uring`。我们对 `kernel 5.10 + ceph 15.x` 的压测显示，
-`bluestore` 打开 `io_uring` 优化之后，
-
-* **<mark>吞吐（iops）</mark>**提升 `20%~30%`，同时
-* **<mark>延迟</mark>**降低 `20~30%`。
-
-> Ceph 关于 io_uring 的资料非常少，这里提供一点参考配置：
+> Ceph 代码上已经支持了 `io_uring`，但发行版在编译时没有打开这个配置，判断是否支持 io_uring
+> [直接返回的 `false`](https://github.com/ceph/ceph/blob/a67d1cf2a7a4031609a5d37baa01ffdfef80e993/src/blk/kernel/io_uring.cc#L256)，
+> 因此想测试得自己重新编译。测试时的参考配置：
 >
 > ```shell
 > $ cat /etc/ceph/ceph.conf
@@ -73,6 +69,8 @@ eBPF 作为动态跟踪工具，能够更方便地排查和观测 `io_uring` 等
 > $ ceph config show osd.16 | grep ioring
 > bluestore_ioring                       true                                            file
 > ```
+>
+> 还要去看下日志，是否因为检测 io_uring 失败而 fallback 回了 libaio。
 
 **由于译者水平有限，本文不免存在遗漏或错误之处。如有疑问，请查阅原文。**
 
