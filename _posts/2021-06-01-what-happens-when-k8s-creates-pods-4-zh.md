@@ -2,7 +2,7 @@
 layout    : post
 title     : "源码解析：K8s 创建 pod 时，背后发生了什么（四）（2021）"
 date      : 2021-06-01
-lastupdate: 2021-06-01
+lastupdate: 2022-03-17
 categories: k8s
 ---
 
@@ -391,7 +391,7 @@ RBAC authorizer 会用这个信息获取 etcd 中所有与这个用户相关的 
 **<mark>informer 是一种 controller 订阅存储（etcd）事件的机制</mark>**，能方便地获取它们感兴趣的资源。
 
 * 这种方式除了提供一种很好的抽象之外，还负责处理缓存（caching，非常重要，因为可
-  以减少 kube-apiserver 连接数，降低 controller 测和 kube-apiserver 侧的序列化
+  以减少 kube-apiserver 连接数，降低 controller 侧和 kube-apiserver 侧的序列化
   成本）问题。
 * 此外，这种设计还使得 controller 的行为是 threadsafe 的，避免影响其他组件或服务。
 
@@ -480,7 +480,7 @@ func (g *genericScheduler) findNodesThatFitPod(ctx context.Context, fwk framewor
 }
 ```
 
-它会过滤 [过滤 PodSpect 中 NodeName 字段为空的 pods](https://github.com/kubernetes/kubernetes/blob/v1.21.0/plugin/pkg/scheduler/factory/factory.go#L190)
+它会 [过滤 PodSpect 中 NodeName 字段为空的 pods](https://github.com/kubernetes/kubernetes/blob/v1.21.0/plugin/pkg/scheduler/factory/factory.go#L190)
 ，尝试为这样的 pods 挑选一个 node 调度上去。
 
 ### 调度算法

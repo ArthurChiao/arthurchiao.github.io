@@ -2,7 +2,7 @@
 layout    : post
 title     : "源码解析：K8s 创建 pod 时，背后发生了什么（一）（2021）"
 date      : 2021-06-01
-lastupdate: 2021-06-01
+lastupdate: 2022-03-16
 categories: k8s
 ---
 
@@ -73,7 +73,7 @@ Run()          // cmd/kube-apiserver/app/server.go
  |           |   |   |-genericapiserver.NewConfig()     // staging/src/k8s.io/apiserver/pkg/server/config.go
  |           |   |   |  |-return &Config{
  |           |   |   |       Serializer:             codecs,
- |           |   |   |       BuildHandlerChainFunc:  DefaultBuildHandlerChain, // 注册 handler
+ |           |   |   |       BuildHandlerChainFunc:  DefaultBuildHandlerChain, // 注册 handler，例如 AuthN
  |           |   |   |    } 
  |           |   |   |
  |           |   |   |-OpenAPIConfig = DefaultOpenAPIConfig()  // OpenAPI schema
@@ -125,8 +125,9 @@ Run()          // cmd/kube-apiserver/app/server.go
     |-s.runnable.Run()
 ```
 
-### 一些重要步骤
+一些重要步骤：
 
+1. 注册命令行参数
 1. **创建 server chain**。Server aggregation（聚合）是一种支持多 apiserver 的方式，其中
    包括了一个 [generic apiserver](https://github.com/kubernetes/kubernetes/blob/v1.21.0/cmd/kube-apiserver/app/server.go#L219)，作为默认实现。
 1. **<mark>生成 OpenAPI schema</mark>**，保存到 apiserver 的 [Config.OpenAPIConfig 字段](https://github.com/kubernetes/kubernetes/blob/v1.21.0/staging/src/k8s.io/apiserver/pkg/server/config.go#L167)。
@@ -136,6 +137,96 @@ Run()          // cmd/kube-apiserver/app/server.go
 1. 遍历每个 group 版本，为每个 HTTP route
    [配置 REST mappings](https://github.com/kubernetes/kubernetes/blob/v1.21.0/staging/src/k8s.io/apiserver/pkg/endpoints/groupversion.go#L92)。
    稍后处理请求时，就能将 requests 匹配到合适的 handler。
+
+### 注册命令行参数
+
+这里特别介绍下 AuthN 相关的配置，后面
+[源码解析：K8s 创建 pod 时，背后发生了什么（三）（2021）]({% link _posts/2021-06-01-what-happens-when-k8s-creates-pods-3-zh.md %})
+会用到：
+
+```go
+// https://github.com/kubernetes/kubernetes/blob/v1.23.1/pkg/kubeapiserver/options/authentication.go#L48
+
+// BuiltInAuthenticationOptions contains all build-in authentication options for API Server
+type BuiltInAuthenticationOptions struct {
+    Anonymous       *AnonymousAuthenticationOptions
+    BootstrapToken  *BootstrapTokenAuthenticationOptions
+    ClientCert      *genericoptions.ClientCertAuthenticationOptions
+    OIDC            *OIDCAuthenticationOptions
+    RequestHeader   *genericoptions.RequestHeaderAuthenticationOptions
+    ServiceAccounts *ServiceAccountAuthenticationOptions
+    TokenFile       *TokenFileAuthenticationOptions
+    WebHook         *WebHookAuthenticationOptions
+    ...
+}
+
+// WithAll set default value for every build-in authentication option
+func (o *BuiltInAuthenticationOptions) WithAll() *BuiltInAuthenticationOptions {
+    return o.
+        WithAnonymous().
+        WithBootstrapToken().
+        WithClientCert().
+        WithOIDC().
+        WithRequestHeader().
+        WithServiceAccounts().
+        WithTokenFile().
+        WithWebHook()
+}
+
+// 注册各种 AuthN 相关的命令行参数到 API Server
+func (o *BuiltInAuthenticationOptions) AddFlags(fs *pflag.FlagSet) {
+    BoolVar("anonymous-auth")
+    BoolVar("enable-bootstrap-token-auth")
+
+    // Client certificate flags
+    ClientCert.AddFlags
+      |-StringVar("client-ca-file")
+
+    // OIDC flags
+
+    // Request header flags
+    RequestHeader.AddFlags
+      |-StringSliceVar("requestheader-username-headers") // e.g. `X-Remote-User`
+      |-StringSliceVar("requestheader-group-headers")    // e.g. `X-Remote-Group`
+      |-StringSliceVar("requestheader-extra-headers-prefix") // e.g. `X-Remote-Extra-`
+      |-StringVar("requestheader-client-ca-file")
+      |-StringSliceVar("requestheader-allowed-names")
+
+    // ServiceAccount flags
+    StringVar("service-account-key-file") // e.g. --service-account-key-file=/etc/kubernetes/pki/sa.pub
+
+    // Token file
+    StringVar("token-auth-file")
+
+    // Webhook
+}
+```
+
+K8s 支持多种认证方式，并且不同认证方式可以一起使用，这种情况下，任何一种方式认证成功就算成功。
+因此，这些配置最终形成一个 authenticator list，例如，
+
+* 如果指定了 `--service-account-key-file=/etc/kubernetes/pki/sa.pub`，就会将这个公钥加到这个列表；
+* 如果指定了 `--client-ca-file`，就会将 x509 证书加到这个列表；
+* 如果指定了 `--token-auth-file`，就会将 token 加到这个列表；
+
+### 注册各种 handler
+
+`NewConfig()` 里面会调用下面的方法注册认证、鉴权、审计等等各种 handler，
+
+```go
+// https://github.com/kubernetes/kubernetes/blob/v1.23.0/staging/src/k8s.io/apiserver/pkg/server/config.go#L764
+
+func DefaultBuildHandlerChain(apiHandler http.Handler, c *Config) http.Handler {
+    handler = genericapifilters.WithAuthorization(handler, c.Authorization.Authorizer, c.Serializer)
+    handler = genericapifilters.WithAudit(handler, c.AuditBackend, c.AuditPolicyRuleEvaluator, c.LongRunningFunc)
+    handler = genericapifilters.WithAuthentication(handler, c.Authentication.Authenticator, failedHandler, c.Authentication.APIAudiences)
+    ...
+}
+```
+
+例如 `WithAuthentication()` 注册成功之后，就会对客户端的每个请求执行认证。
+[源码解析：K8s 创建 pod 时，背后发生了什么（三）（2021）]({% link _posts/2021-06-01-what-happens-when-k8s-creates-pods-3-zh.md %})
+将有进一步介绍。
 
 ## 0.2 controller-manager 启动
 

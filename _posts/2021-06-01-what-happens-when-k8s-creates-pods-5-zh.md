@@ -2,7 +2,7 @@
 layout    : post
 title     : "源码解析：K8s 创建 pod 时，背后发生了什么（五）（2021）"
 date      : 2021-06-01
-lastupdate: 2021-06-23
+lastupdate: 2022-03-17
 categories: k8s kubelet cni
 ---
 

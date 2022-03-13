@@ -2,7 +2,7 @@
 layout    : post
 title     : "源码解析：K8s 创建 pod 时，背后发生了什么（三）（2021）"
 date      : 2021-06-01
-lastupdate: 2021-06-01
+lastupdate: 2022-03-16
 categories: k8s
 ---
 
@@ -38,7 +38,7 @@ categories: k8s
 ## 2.0 调用栈概览
 
 ```
-
+// 启动时注册 AuthN/AuthZ/Audit 等等各种 request handler
 buildGenericConfig
   |-genericConfig = genericapiserver.NewConfig(legacyscheme.Codecs)  // cmd/kube-apiserver/app/server.go
 
@@ -51,13 +51,14 @@ NewConfig       // staging/src/k8s.io/apiserver/pkg/server/config.go
                           /
                         /
 DefaultBuildHandlerChain       // staging/src/k8s.io/apiserver/pkg/server/config.go
- |-handler := filterlatency.TrackCompleted(apiHandler)
  |-handler = genericapifilters.WithAuthorization(handler)
  |-handler = genericapifilters.WithAudit(handler)
  |-handler = genericapifilters.WithAuthentication(handler)
+ |-handler = ...
  |-return handler
 
 
+// 请求来了之后会依次执行相关 handler，其中之一就是 AuthN handler
 WithAuthentication
  |-withAuthentication
     |-resp, ok := AuthenticateRequest(req)
@@ -81,28 +82,25 @@ WithAuthentication
 kube-apiserver 首先会对请求进行**<mark>认证（authentication）</mark>**，以确保
 用户身份是合法的（verify that the requester is who they say they are）。
 
-具体过程：启动时，检查所有的 [命令行参数](https://kubernetes.io/docs/admin/kube-apiserver/)
-，组织成一个 authenticator list，例如，
+apiserver 启动时，会注册一些 AuthN 相关的配置项，
+具体见 [源码解析：K8s 创建 pod 时，背后发生了什么（一）（2021）]({% link _posts/2021-06-01-what-happens-when-k8s-creates-pods-1-zh.md %})。
+用户可以配置多个 authenticator，不同 authenticator 做的事情有所不同：
 
-* 如果指定了 `--client-ca-file`，就会将 x509 证书加到这个列表；
-* 如果指定了 `--token-auth-file`，就会将 token 加到这个列表；
-
-不同 anthenticator 做的事情有所不同：
-
-* [x509 handler](https://github.com/kubernetes/kubernetes/blob/v1.21.0/staging/src/k8s.io/apiserver/pkg/authentication/request/x509/x509.go#L60)
+* [x509 handler](https://github.com/kubernetes/kubernetes/blob/v1.21.0/staging/src/k8s.io/apiserver/pkg/authentication/request/x509/x509.go#L198)
   验证该 HTTP 请求是用 TLS key 加密的，并且有 CA root 证书的签名。
 * [bearer token handler](https://github.com/kubernetes/kubernetes/blob/v1.21.0/staging/src/k8s.io/apiserver/pkg/authentication/request/bearertoken/bearertoken.go#L38)
   验证请求中带的 token（HTTP Authorization 头中），在 apiserver 的 auth file 中是存在的（`--token-auth-file`）。
 * [basicauth handler](https://github.com/kubernetes/kubernetes/blob/v1.21.0/staging/src/k8s.io/apiserver/plugin/pkg/authenticator/request/basicauth/basicauth.go#L37) 对 basic auth 信息进行校验。
 
-**如果认证成功，就会将 `Authorization` 头从请求中删除**，然后在上下文中
-[加上用户信息](https://github.com/kubernetes/kubernetes/blob/v1.21.0/staging/src/k8s.io/apiserver/pkg/endpoints/filters/authentication.go#L71-L75)。
+**<mark>如果认证成功，就会将 Authorization header 从请求中删除</mark>**，然后在上下文中
+[<mark>加上用户信息</mark>](https://github.com/kubernetes/kubernetes/blob/v1.21.0/staging/src/k8s.io/apiserver/pkg/endpoints/filters/authentication.go#L71-L75)，
 这使得后面的步骤（例如鉴权和 admission control）能用到这里已经识别出的用户身份信息。
 
 ```go
 // staging/src/k8s.io/apiserver/pkg/endpoints/filters/authentication.go
 
-// WithAuthentication creates an http handler that tries to authenticate the given request as a user, and then
+// 注册 AuthN handler
+// Create an http handler that tries to authenticate the given request as a user, and then
 // stores any such user found onto the provided context for the request.
 // On success, "Authorization" header is removed from the request and handler
 // is invoked to serve the request.
@@ -115,9 +113,8 @@ func withAuthentication(handler http.Handler, auth authenticator.Request, failed
     apiAuds authenticator.Audiences, metrics recordMetrics) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
         resp, ok := auth.AuthenticateRequest(req) // 遍历所有 authenticator，任何一个成功就返回 OK
-        if !ok {
+        if !ok
             return failed.ServeHTTP(w, req)       // 所有认证方式都失败了
-        }
 
         if !audiencesAreAcceptable(apiAuds, resp.Audiences) {
             fmt.Errorf("unable to match the audience: %v , accepted: %v", resp.Audiences, apiAuds)
@@ -142,9 +139,8 @@ func withAuthentication(handler http.Handler, auth authenticator.Request, failed
 func (authHandler *unionAuthRequestHandler) AuthenticateRequest(req) (*Response, bool) {
     for currAuthRequestHandler := range authHandler.Handlers {
         resp, ok := currAuthRequestHandler.AuthenticateRequest(req)
-        if ok {
+        if ok
             return resp, ok, err
-        }
     }
 
     return nil, false, utilerrors.NewAggregate(errlist)
@@ -302,7 +298,7 @@ func (d director) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 如果能匹配到请求（例如匹配到前面注册的路由），它将
 [分派给相应的 handler](https://github.com/kubernetes/kubernetes/blob/v1.21.0/staging/src/k8s.io/apiserver/pkg/server/handler.go#L136)
 ；否则，fall back 到
-[path-based handler](https://github.com/kubernetes/kubernetes/blob/v1.21.0/staging/src/k8s.io/apiserver/pkg/server/mux/pathrecorder.go#L146)
+[path-based handler](https://github.com/kubernetes/kubernetes/blob/v1.21.0/staging/src/k8s.io/apiserver/pkg/server/mux/pathrecorder.go#L238)
 （`GET /apis` 到达的就是这里）；
 
 基于 path 的 handlers：

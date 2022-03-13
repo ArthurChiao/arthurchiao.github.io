@@ -2,7 +2,7 @@
 layout    : post
 title     : "源码解析：K8s 创建 pod 时，背后发生了什么（二）（2021）"
 date      : 2021-06-01
-lastupdate: 2021-06-01
+lastupdate: 2022-03-17
 categories: k8s
 ---
 
@@ -79,7 +79,7 @@ NewKubectlCommand                                    // staging/src/k8s.io/kubec
 此外，kubectl 还会检查其他一些配置，例如
 
 * 是否需要记录（record）这条命令（用于 rollout 或审计）
-* 是否只是测试执行（`--dry-run`）
+* 是否是空跑（`--dry-run`）
 
 ### 创建 HTTP 请求
 
@@ -240,4 +240,4 @@ users:
   [发送](https://github.com/kubernetes/client-go/blob/c6f8cf2c47d21d55fa0df928291b2580544886c8/transport/round_trippers.go#L314)；
 - **<mark>用户名密码</mark>**：放到 HTTP basic auth
   [发送](https://github.com/kubernetes/client-go/blob/c6f8cf2c47d21d55fa0df928291b2580544886c8/transport/round_trippers.go#L223)；
-- **<mark>OpenID auth</mark>**：需要先由用户手动处理，将其转成一个 token，然后和 bearer token 类似发送。
+- **<mark>OpenID Connect (OIDC)</mark>** 认证（例如和外部的 Keystone、Google 账号打通）：需要先由用户手动处理，将其转成一个 token，然后和 bearer token 类似发送。
