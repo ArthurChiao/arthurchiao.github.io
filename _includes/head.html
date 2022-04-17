@@ -23,12 +23,19 @@
     <link rel="stylesheet" href="{{ "/assets/css/style.css" | prepend: site.baseurl }}">
     <link rel="stylesheet" href="{{ "/assets/css/github-markdown.css" | prepend: site.baseurl }}">
     <link rel="stylesheet" href="{{ "/assets/css/rouge-syntax-github.css" | prepend: site.baseurl }}">
-    <link rel="canonical" href="{{ page.url | replace:'index.html','' | prepend: site.baseurl | prepend: site.url }}">
+
+    {% if page.canonical_url And page.canonical_url != "" And page.canonical_url != nil %}
+      <link rel="canonical" href="{{ page.canonical_url }}">
+    {% else %}
+      <link rel="canonical" href="{{ page.url | replace:'index.html','' | prepend: site.baseurl | prepend: site.url }}">
+    {% endif %}
 
     <!-- Modernizr -->
     <script src="{{ "/assets/js/modernizr.custom.15390.js" | prepend: site.baseurl }}" type="text/javascript"></script>
 
     {% if jekyll.environment == 'production' %}
-    {% if site.google_analytics %} {% include google_analytics.html %} {% endif %}
+      {% if site.google_analytics %}
+        {% include google_analytics.html %}
+      {% endif %}
     {% endif %}
 </head>
