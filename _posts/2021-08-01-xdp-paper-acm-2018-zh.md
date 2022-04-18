@@ -454,7 +454,7 @@ BPF map 是 key/value 存储，**<mark>在加载 eBPF 程序时定义</mark>**�
 为跟踪数据访问，校验器会跟踪
 
 1. **<mark>数据类型</mark>**
-2. **<mark>指针偏置</mark>**（pointer offsets）
+2. **<mark>指针偏移</mark>**（pointer offsets）
 3. 所有**<mark>寄存器的可能值范围</mark>**
 
 程序开始时，

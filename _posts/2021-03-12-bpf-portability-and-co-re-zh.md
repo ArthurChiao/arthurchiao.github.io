@@ -2,7 +2,7 @@
 layout    : post
 title     : "[译] BPF 可移植性和 CO-RE（一次编译，到处运行）（Facebook，2020）"
 date      : 2021-03-12
-lastupdate: 2021-03-12
+lastupdate: 2022-04-22
 categories: bpf
 ---
 
@@ -18,7 +18,7 @@ categories: bpf
 > * 作为一种**<mark>简单的方式</mark>**，帮助 BPF 开发者解决**<mark>简单的移植性问题</mark>**（例如读取结构体的字段），并且
 > * 作为一种**<mark>不是最优，但可用的方式</mark>**，帮助 BPF 开发者
 >   解决**<mark>复杂的移植性问题</mark>**（例如不兼容的数据结构改动、复杂的用户空间控制条件等）。
-> * 使开发者能遵循”一次编译、到处运行“（Compile Once – Run Everywhere）范式。
+> * 使开发者能遵循**<mark>“一次编译、到处运行”</mark>**（Compile Once – Run Everywhere）范式。
 
 **由于译者水平有限，本文不免存在遗漏或错误之处。如有疑问，请查阅原文。**
 
@@ -38,32 +38,32 @@ categories: bpf
 
 (e)BPF 出来之后，社区一直在试图**简化 BPF 程序的开发过程** —— 最好能像开发
 用户空间应用程序（userspace application）一样简单直接 —— 可惜这个目标从未实现。
-具体来说，在使用性（usability）方面确实有很大进步，但另一个重要方面却被忽略了
+具体来说，在使用性（usability）上确实有很大进步，但另一个重要方面却被忽略了
 （**大部分出于技术原因**）：可移植性。
 
 那么，什么是 <mark>”BPF 可移植性“</mark>（BPF portability）？我们定义它是
 **这样一种能力**：编写的程序**通过编译和内核校验之后**，能<mark>正确地</mark>在
 **不同版本的内核**上运行 —— 而**无需针对不同内核重新编译**。
 
-本文首先介绍 BPF 可移植性面临的问题，然后介绍我们的**<mark>解决方案：BPF CO-RE</mark>**
-（Compile Once – Run Everywhere）。接下来内容如下：
+本文首先介绍 BPF 可移植性面临的问题，然后介绍我们的**<mark>解决方案：BPF CO-RE</mark>**。
+接下来内容如下：
 
-* 首先讨论 BPF 可移植性问题本身，分析它所面临的挑战，以及为什么解决这些挑战如此重要；
-* 然后从较高层次查看 BPF CO-RE 的各组件，以及它们是如何组织成一个完整方案解决这个问题的；
-* 最后以一些例子（BPF 代码片段）结束本文，这些例子展示了 BPF CO-RE 中用户可见 API。
+1. 讨论 BPF 可移植性问题本身，分析它所面临的挑战，以及为什么解决这些挑战如此重要；
+1. 从较高层次查看 BPF CO-RE 的各组件，以及它们是如何组织成一个完整方案的；
+1. 以一些例子（BPF 代码片段）结束本文，展示 BPF CO-RE 中用户可见的 API。
 
 # 2 BPF 可移植性面临的问题
 
 BPF 程序是**由用户提供的**、经过验证之后**<mark>在内核上下文中执行</mark>**的程序。
-BPF <mark>运行在内核内存空间</mark>（kernel memory space）执行，<mark>能访问大量的
+BPF <mark>运行在内核内存空间</mark>（kernel memory space），<mark>能访问大量的
 内核内部状态</mark>（internal kernel state）。
 这使得 BPF 程序功能极其强大，也是为什么它能成功地应用在大量不同场景的原因之一。
 
-但另一方面，与强大能力相伴而生的是我们如今面临的可移植性问题：<mark>BPF 程序
+然而，与强大能力相伴而生的是我们如今面临的可移植性问题：<mark>BPF 程序
 并不控制它<strong>运行时所在内核</strong>的内存布局</mark>（memory layout）。
 因此，BPF 程序只能运行在**开发和编译这些程序时**所在的内核。
 
-另外，**内核类型（kernel types）和数据结构（data structures）也在不断变化**。
+另外，**内核字段类型（kernel types）和数据结构（data structures）也在不断变化**。
 不同的内核版本中，同一结构体的同一字段所在的位置可能会不同 —— 甚至已经
 移到一个新的内部结构体（inner struct）中。此外，字段还可能会被重命名、删除、
 改变类型，或者（根据不同内核配置）被条件编译掉。
@@ -72,45 +72,44 @@ BPF <mark>运行在内核内存空间</mark>（kernel memory space）执行，<m
 
 以上分析可知，内核版本升级时很多东西都会发生变化，而 BPF 开发者希望能够<mark>
 避免这些变化对 BPF 程序造成影响</mark>。这听上去似乎不可能 —— 内核环境都在不断变化，
-依赖内核环境执行的 BPF 程序又如何能幸免于难呢？
+依赖内核环境执行的 BPF 程序又如何能置身事外呢？
 
-但实际上，这是可能的：
+但实际上，这是可能的，有下面几个原因。
 
-* 首先，**<mark>不是所有 BPF 程序都依赖内核内部数据结构</mark>**。
+### 2.1.1 不是所有 BPF 程序都依赖内核内部数据结构
 
-    一个例子是 BPF 工具 `opensnoop`，它基于 kprobes/tracepoints 跟踪进程打开的文件，
-    因此**<mark>只要能拦截到少数几个系统调用</mark>**就能工作。由于系统调用接口
-    提供稳定的 ABI，不会随着内核版本而变，因此这样的 BPF 程序做到可移植是问题不大的。
+一个例子是 BPF 工具 `opensnoop`，它基于 kprobes/tracepoints 跟踪进程打开的文件，
+因此**<mark>只要能拦截到少数几个系统调用</mark>**就能工作。由于系统调用接口
+提供稳定的 ABI，不会随着内核版本而变，因此这样的 BPF 程序做到可移植是问题不大的。
 
-    不幸的是，这种类型的 BPF 程序很少，而且它们能做的事情通常也是非常有限的。
+不幸的是，这种类型的 BPF 程序很少，而且它们能做的事情通常也是非常有限的。
 
-* 其次，内核 BPF 基础设施**<mark>提供了一组有限的”稳定接口“</mark>**（stable interfaces），
-  内核版本升级时保证稳定，因此 BPF 程序可以依赖这组接口。
+### 2.1.2 内核 BPF 基础设施提供了一组有限的“稳定接口”
 
-  实际上，底层结构体和工作机制都可能发生变化，但这组稳定接口向用户程序屏蔽了这些变动。
-  一个例子是网络应用中的 `struct sk_buff` 和 `struct __sk_buff`。
+内核版本升级时保证稳定，因此 BPF 程序可以依赖这组接口。
+实际上，底层结构体和工作机制都可能发生变化，但这组稳定接口向用户程序屏蔽了这些变动。
 
-  * `struct sk_buff` 是内核中的数据包表示，字段非常多，并且经常发生变化；
-  * `struct __sk_buff` 是 **<mark>BPF 校验器提供的一个 sk_buff 的稳定接口</mark>**，
-    或者说一组属性集合。将用户程序与底层的 `struct sk_buff` 解耦开来，
-    因此后者内存布局发生变化时，不会影响 BPF 程序。 
-  * 所有对 `struct __sk_buff` 字段的访问都会被**透明地转换成对 `struct sk_buff` 的访问**。
+**<mark>一个例子是网络应用中的 <code>struct sk_buff</code> 和 <code>struct __sk_buff</code></mark>**：
 
-  很多 BPF 程序类型都有类似的机制，**这种封装在 BPF 中称为上下文（context）**，触发
-  BPF 程序执行时，一般传递的就是这样的上下文（指针类型，例如 `struct __sk_buff
-  *ctx`）。因此，如果开发 BPF 程序时使用的是这些结构体，那这样的程序大概率是可移
-  植的。
+* `struct sk_buff` 是内核中的数据包（socket buffer）表示，字段非常多，并且经常发生变化；
+* `struct __sk_buff` 是 **<mark>BPF 校验器提供的一个屏蔽 sk_buff 变化的稳定接口（属性集合）</mark>**，
+    将用户程序与底层的 `struct sk_buff` 解耦开来，因此后者内存布局发生变化时，不会影响 BPF 程序。 
+* 所有对 `struct __sk_buff` 字段的访问都会被**<mark>透明地转换成对 struct sk_buff 的访问</mark>**。
+
+很多 BPF 程序类型都有类似的机制，**<mark>这种结构体在 BPF 中称为上下文（context）</mark>**，
+触发 BPF 程序执行时，传递 BPF 程序的参数一般就是这种上下文指针（例如 `struct __sk_buff *ctx`）。
+因此，如果开发 BPF 程序时使用的是这些结构体，那这样的程序大概率是可移植的。
 
 ## 2.2 可移植：挑战
 
-但是，一旦需要查看原始的内核内部数据（raw internal kernel data）—— 例如
+但是，一旦需要获取原始的内核内部数据（raw internal kernel data）—— 例如
 常见的表示进程或线程的 `struct task_struct`，这个结构体中有非常详细的进程信息 —— 
 那你就只能靠自己了。对于 **tracing、monitoring 和 profiling 应用**来说这个需求
 非常常见，而这类 BPF 程序也是极其有用的。
 
-### 内核版本不同：字段被重命名或移动位置
+### 2.2.1 内核版本不同：字段被重命名或移动位置
 
-在这种情况下，**<mark>如何保证读到的一定是我们期望读的那个字段呢</mark>** —— 例如，
+在这种情况下，**<mark>如何保证读到的一定是我们期望的那个字段呢</mark>** —— 例如，
 
 * 原来的程序是从 `struct task_struct` offset 8 地址读取数据，
 * 由于新内核加个了 16 字节新字段，那此时正确的方式应该是从 offset 24 地址读，
@@ -118,14 +117,14 @@ BPF <mark>运行在内核内存空间</mark>（kernel memory space）执行，<m
 这还没完：如果这个字段被改名了呢？例如，`thread_struct` 的 `fs` 字段（获取 thread-local storage 用），
 在 4.6 到 4.7 内核升级时就被重命名为了 `fsbase`。
 
-### 内核版本相同但配置不同：字段在编译时被移除（compile out）
+### 2.2.2 内核版本相同但配置不同：字段在编译时被移除（compile out）
 
 另一种情况：内核版本相同，但内核编译时的配置不同，导致
 结构体的某些字段在编译器时被完全移除了。
 
 具体例子：某些可选的<mark>审计字段</mark>。
 
-### 小结
+### 2.2.3 小结
 
 所有这些都意味着：依赖**<mark>开发环境本地的内核头文件</mark>**编译的 BPF 程序，
 是无法直接分发到其他机器运行 —— 然后期待它们返回正确结果的。
@@ -134,7 +133,9 @@ BPF <mark>运行在内核内存空间</mark>（kernel memory space）执行，<m
 ## 2.3 可移植：BCC 方式
 
 目前，人们可以用 <a href="https://github.com/iovisor/bcc/">BCC</a> (BPF Compiler Collection)
-解决这个问题，使用方式如下：
+解决这个问题。
+
+### 2.3.1 开发和部署工作流
 
 1. 开发：将 BPF C 源码以**<mark>文本字符串</mark>**形式，**嵌入（Python 编写的）用户空间控制应用**（control application）；
 2. 部署：将控制应用以源码的形式拷贝到目标机器；
@@ -147,7 +148,7 @@ BPF <mark>运行在内核内存空间</mark>（kernel memory space）执行，<m
 用 `#ifdef`/`#else` 做处理，BCC 内置的 Clang 能正确处理这些宏，最终剩下的就是与
 当前内核相匹配的源代码。这就是 BCC 解决内核版本差异的方式。
 
-## 2.4 BCC 方式的缺点
+### 2.3.2 缺点
 
 BCC 方式可行，但存在一些很大的缺点：
 
@@ -157,20 +158,22 @@ BCC 方式可行，但存在一些很大的缺点：
     * 尤其在线上的生产机器，现场编译可能会使机器负载瞬间飙高，导致生产问题。
     * 同样，如果机器本身已经负载很高，那编译一段很小的 BPF 程序可能都要几分钟。
 
-1. 此外，这里有个很强的**<mark>前提：内核头文件在目标机器上一定存在</mark>**。
+1. **<mark>内核头文件强依赖：这些头文件必须已经在目标机器上了</mark>**。
    在大部分情况下这都不是问题，但有时可能会带来麻烦。
 
     这对内核开发者来说也尤其头疼，因为他们经常要编译和部署一次性的内核，用于在
     开发过程中验证某些问题。而机器上没有指定的、版本正确的内核头文件包，基于 BCC
     的应用就无法正常工作。
 
-1. 这种方式会拖慢开发和迭代速度。
+1. 拖慢开发和迭代速度。
 
     BPF 程序的**<mark>测试和开发过程也非常繁琐</mark>**，很多错误只有到了运行时
    （runtime）才会出现，而一旦出现就只能重启用户空间控制应用。
 
-总体来说，虽然 bcc 是一个很伟大的工具 —— 尤其是用于快速原型、实验和开发小工具 —— 但
-当用于广泛部署生产 BPF 应用时，它存在非常明显的不足。
+总体来说，虽然 bcc 是一个很伟大的工具 —— 尤其是用于快速原型、实验和开发小工具 ——
+但广泛用于生产部署时，它存在非常明显的不足。
+
+## 2.4 可移植：新方式（BPF CO-RE）
 
 为了更彻底地解决 BPF 移植性问题，我们**设计了 BPF CO-RE**，并相信这是
 <mark>BPF 程序的未来开发方式</mark>，尤其适用于开发复杂、真实环境中的 BPF 应用。
@@ -183,12 +186,14 @@ BPF CO-RE 将它所依赖的如下软件栈和它的数据集中到了一起，
 * <mark>用户空间 BPF 加载器库（libbpf）</mark>
 * 编译器（clang）
 
-使得我们能以一种轻松的方式编写可移植 BPF 程序，在**单个预编译的 BPF 程序内
+从而使我们能以一种轻松的方式编写可移植 BPF 程序，在**单个预编译的 BPF 程序内
 （pre-compiled BPF program）处理不同内核之间的差异**。
+
+## 3.1 组件与工作流
 
 BPF CO-RE 需要下列组件之间的紧密合作：
 
-1. BTF 类型信息：使得我们能获取<mark>内核、BPF 程序类型及 BPF 代码的关键信息</mark>，
+1. BTF 类型信息：用于获取<mark>内核、BPF 程序类型及 BPF 代码的关键信息</mark>，
    这也是下面其他部分的基础；
 1. 编译器（clang）：给 BPF C 代码提供了<mark>表达能力和记录重定位（relocation）信息的能力</mark>；
 1. BPF loader (<a href="https://github.com/libbpf/libbpf">libbpf</a>)：将内核的 BTF 与 BPF 程序联系起来，
@@ -200,44 +205,44 @@ BPF CO-RE 需要下列组件之间的紧密合作：
 在此之前，实现同样的可移植效果只能通过 BCC 在运行时编译 BPF C 程序，而前面也分析了，
 BCC 开销非常高。
 
-## 3.1 BTF（BPF Type Format）
+## 3.2 BTF（BPF Type Format）
 
 [BTF](https://www.kernel.org/doc/html/latest/bpf/btf.html) 是 BPF CO-RE 的核心之一，
-它是是一种与 DWARF 类似的调试信息，但
+它是一种**<mark>与 DWARF 类似的调试信息</mark>**，但
 
-* 更通用、表达更丰富，用于描述 C 程序的所有类型信息。
+* 更通用、表达更丰富，用于描述 C 程序的所有类型信息；
 * 更简单，空间效率更高（使用 <a href="https://facebookmicrosites.github.io/bpf/blog/2018/11/14/btf-enhancement.html">BTF 去重算法</a>），
   占用空间比 DWARF 低 100x。
 
-如今，让 Linux **内核在运行时（runtime）一直携带 BTF 信息**是可行的，
-只需在编译时指定 `CONFIG_DEBUG_INFO_BTF=y`。内核的 BTF 除了被内核自身使用，
-现在还用于增强 BPF 校验器自身的能力 —— 某些能力甚至超越了一年之前我们的想象力所及（例
+启用 BTF 需要在**<mark>编译内核时指定 CONFIG_DEBUG_INFO_BTF=y</mark>**，
+这样内核在运行时（runtime）就会携带 BTF 信息。
+
+BTF 除了被内核自身使用，现在还用于增强 BPF 校验器自身的能力 —— 某些能力甚至超过了一年前我们的想象力天花板（例
 如，已经有了直接读取内核内存的能力，不再需要通过 `bpf_probe_read()` 间接读取了）。
 
 更重要的是，内核已经将这个<mark>自描述的权威 BTF 信息</mark>（定义结构体的精确内存布局等信息）
 <mark>通过 sysfs 暴露出来</mark>，在 `/sys/kernel/btf/vmlinux`。
-下面的命令将生成一个**<mark>与所有内核类型兼容的 C 头文件</mark>**（通常称为 "<strong>vmlinux.h</strong>"）：
+下面的命令将**<mark>生成一个与所有内核类型兼容的 C 头文件</mark>**（通常称为 **<mark><code>vmlinux.h</code></mark>**）：
 
 ```shell
 $ bpftool btf dump file /sys/kernel/btf/vmlinux format c
 ```
 
-这里说的”所有“真的是**”所有“**：<mark>包括那些并未通过 kernel-devel package 导出的类型</mark>！
+这里说的“所有”真的是**“所有”**：<mark>包括那些并未通过 kernel-devel package 导出的类型</mark>！
 
-## 3.2 编译器支持
+## 3.3 编译器（clang）支持
 
 为了让 BPF 加载器（例如 libbpf）将 BPF 程序适配到目标机器所运行的内核上，
-**Clang 增加了几个新的 built-in**。它们的功能是导出（emit）
+**Clang 增加了几个新的 built-in**，功能是导出（emit）
 <mark>BTF relocations</mark>（重定位信息），后者是对 **BPF 程序想读取的那些信息的高层描述**。
-
 例如，如果想访问 `task_struct->pid`，那 <mark>clang 将做如下记录</mark>：这是一个
-**位于结构体 `struct task_struct` 中、类型为 `pid_t`、名为 `pid` 的字段**。
+位于结构体 `struct task_struct` 中、类型为 `pid_t`、名为 `pid` 的字段。
 
-有了这种方式，即使目标内核的 `task_struct` 结构体中，`pid` 字段位置已经发生了变
+有了这种方式，即使目标内核的 `task_struct` 结构体中 `pid` 字段位置已经发生了变
 化（例如，由于这个字段前面加了新字段），甚至已经移到了某个内部嵌套的匿名结构体
 或 union 中（在 C 语言中这种行为是完全透明的，因此内核开发者这样做时并不会有特别
 的顾虑），我们<mark>仍然能通过名字和类型信息找到这个字段</mark>。这称为
-**<mark>field offset relocation</mark>**（字段偏置重定位）。
+**<mark>field offset relocation</mark>**（字段偏移重定位）。
 
 除了字段重定位，其他一些字段相关的操作，例如判断 <mark>field existence</mark>（
 字段是否存在）或者 <mark>field size（字段长度）</mark>都是支持的。
@@ -245,29 +250,29 @@ $ bpftool btf dump file /sys/kernel/btf/vmlinux format c
 ，我们仍然能基于 BTF 信息来使它们可重定位（relocatable），并且整个过程对 BPF 开
 发者透明。
 
-## 3.3 BPF 加载器（libbpf）
+## 3.4 加载器（libbpf）
 
 <a href="https://github.com/libbpf/libbpf">libbpf</a> 作为一个 <mark>BPF 程序加载器</mark>（loader），
 处理前面介绍的内核 BTF 和 clang 重定位信息。它
 
 1. 读取编译之后得到的 BPF ELF 目标文件，
 2. 进行一些必要的后处理，
-3. <mark>设置各种内核对象</mark>（bpf maps、bpf 程序等），然后
+3. <mark>设置各种内核对象</mark>（bpf maps、bpf 程序等），
 4. 将 BPF 程序加载到内核，然后触发校验器的验证过程。
 
-**<mark>libbpf 知道如何对 BPF 程序进行裁剪，以适配到目标机器的内核上</mark>**。
+**<mark>libbpf 知道如何对 BPF 程序进行裁剪，以适配到目标机器的内核上</mark>**：
 
-* 它会查看 BPF 程序记录的 BTF 和重定位信息，然后
-* 拿这些信息跟当前内核提供的 BTF 信息相匹配。然后
-* 解析和匹配所有的类型和字段，更新所有必要的 offsets 和其他可重定位数据。
+1. 查看 BPF 程序记录的 BTF 和重定位信息，
+1. 拿这些信息跟当前内核提供的 BTF 信息相匹配，
+1. 解析和匹配所有的类型和字段，更新所有必要的 offsets 和其他可重定位数据。
 
 最终确保 BPF 程序在这个特定的内核上是能正确工作的。
 
-如果一切顺利，你（作为 BPF 应用开发者）将得到一个针对目标机器”定制化裁剪“的 BPF
+如果一切顺利，你（作为 BPF 应用开发者）将得到一个针对目标机器“裁剪定制”的 BPF
 程序，就像这个程序是专门针对这个内核编译的一样。但这种工作方式无需将 clang 与
 BPF 一起打包部署，也没有在目标机器上运行时编译（runtime）的开销。
 
-## 3.4 内核
+## 3.5 内核
 
 **<mark>内核无需太多改动就能支持 BPF CO-RE</mark>**，这一点可能令很多人感到惊讶。
 由于设计合理，因此**对于内核来说，libbpf 处理之后的 BPF 程序，与
@@ -291,17 +296,17 @@ BPF 程序并无区别。这意味要 <mark>BPF CO-RE 并不依赖最新的内�
 
 ## 4.1 摆脱内核头文件依赖
 
-内核 BTF 信息除了用来做字段重定位之外，还可以用来<mark>生成一个大的头文件</mark>（"`vmlinux.h`"），
-这个头文件中**<mark>包含了所有的内部内核类型，从而避免了依赖系统层面的内核头文件</mark>**。
+内核 BTF 信息除了用来做字段重定位之外，还可以用来<mark>生成一个大的头文件</mark> `vmlinux.h`，
+它**<mark>包含了所有的内部内核类型，从而避免了依赖系统层面的内核头文件</mark>**。
 
-通过 `bpftool` 获得 `vmlinux.h`：
+通过 `bpftool` 生成 `vmlinux.h`：
 
 ```shell
 $ bpftool btf dump file /sys/kernel/btf/vmlinux format c > vmlinux.h
 ```
 
-有了 `vmlinux.h`，就**无需再像通常的 BPF 程序那样 `#include <linux/sched.h>`、`#include <linux/fs.h>` 等等头文件**，
-现在只需要 `#include "vmlinux.h"`，**<mark>也不用再安装 kernel-devel </mark>**了。
+有了 `vmlinux.h`，就无需再像通常的 BPF 程序那样 `#include <linux/sched.h>`、`#include <linux/fs.h>` 等很多头文件，
+**<mark>也不用再安装 kernel-devel </mark>**，只要 `#include "vmlinux.h"` 就够了。
 
 `vmlinux.h` 包含了**所有的内核类型**：
 
@@ -312,7 +317,7 @@ $ bpftool btf dump file /sys/kernel/btf/vmlinux format c > vmlinux.h
 不幸的是，<mark>BPF（以及 DWARF）并不记录 <code>#define</code> 宏，因此某些常用
 的宏可能在 vmlinux.h 中是缺失的</mark>。但这些没有记录的宏中
 ，最常见的一些已经在 <a href="https://github.com/libbpf/libbpf/blob/master/src/bpf_helpers.h">bpf_helpers.h</a>
-（libbpf 提供的内核侧”库“）提供了。
+（libbpf 提供的内核侧“库”）提供了。
 
 ## 4.2 读取内核结构体字段
 
@@ -470,9 +475,9 @@ BCC 会对这个表达式进行重写（rewrite），<mark>转换成 4 次 bpf_p
 * libbpf 提供的 <mark>extern Kconfig 变量</mark>
 * <mark>struct flavors</mark>
 
-### libbpf 提供的 `externs` Kconfig 全局变量
+### 4.3.1 libbpf 提供的 `externs` Kconfig 全局变量
 
-* 系统中已经有一些”知名的“变量，例如 `LINUX_KERNEL_VERSION`，表示当前内核的版本。
+* 系统中已经有一些“知名”变量，例如 `LINUX_KERNEL_VERSION`，表示当前内核的版本。
   BPF 程序能<mark>用 extern 关键字声明这些变量</mark>。
 * 另外，BPF 还能用 extern 的方式声明 <mark>Kconfig 的某些 key 的名字</mark>（例如
   `CONFIG_HZ`，表示内核的 HZ 数）。
@@ -480,8 +485,8 @@ BCC 会对这个表达式进行重写（rewrite），<mark>转换成 4 次 bpf_p
 接下来的事情交给 libbpf，它会将这些变量<mark>分别匹配到系统中相应的值</mark>（都是常量），
 并保证这些 extern 变量<mark>与全局变量的效果是一样的</mark>。
 
-此外，由于这些 extern ”变量“都是常量，因此 **BPF 校验器**能用它们来做一些
-<mark>高级控制流分析和死代码消除</mark>。
+此外，由于这些 extern “变量”都是常量，因此 **BPF 校验器**能用它们来做一些
+<mark>高级控制流分析和无效代码消除</mark>。
 
 下面是个例子，如何用 BPF CO-RE 来提取线程的 CPU user time：
 
@@ -498,7 +503,7 @@ BCC 会对这个表达式进行重写（rewrite），<mark>转换成 4 次 bpf_p
         utime_ns = BPF_CORE_READ(task, utime) * (1000000000UL / CONFIG_HZ);
 ```
 
-### struct flavors
+### 4.3.2 struct flavors
 
 有些场景中，**不同版本的内核中有不兼容的类型**，无法用单个通用结构体来为所有内核
 编译同一个 BPF 程序。struct flavor 在这种情况下可以派上用场。
@@ -557,7 +562,7 @@ BPF 程序**知道内核版本和配置信息**，有时还不足以判断如何
 究竟需要做哪些事情，以及需要启用或禁用哪些特性的主体。
 这通常是**在用户空间和 BPF 程序之间**<mark>通过某种形式的配置数据来通信</mark>的。
 
-### BPF map 方式
+### 4.4.1 BPF map 方式
 
 要实现这种目的，一种不依赖 BPF CO-RE 的方式是：<mark>将 BPF map 作为一个存储配置
 数据的地方</mark>。BPF 程序**从 map 中提取配置信息，然后基于这些信息改变它的控制流**。
@@ -571,12 +576,12 @@ BPF 程序**知道内核版本和配置信息**，有时还不足以判断如何
 1. <mark>配置内容</mark>（config value），虽然在 **BPF 程序启动之后就是不可变和只读**
   （immutable and read-only）的了，但 <mark>BPF 校验器在校验时扔把它们当作未知的黑盒值</mark>。
 
-    这意味着校验器<mark>无法消除死代码，也无法执行其他高级代码分析</mark>。进一步，
+    这意味着校验器<mark>无法消除无效代码，也无法执行其他高级代码分析</mark>。进一步，
     这意味着我们无法将代码逻辑放到 map 中，例如，能处理不同内核版本差异的 BPF 代
     码，因为 map 中的内容对校验器都是黑盒，因此校验器对它们是不信任的 ——
     即使用户配置信息是安全的。
 
-### 只读的全局数据方式
+### 4.4.2 只读的全局数据方式
 
 这种（确实复杂的）场景的<mark>解决方案：使用只读的全局数据</mark>（read-only global data）。
 这些数据是在 **BPF 程序加载到内核之前，由控制应用设置**的。
@@ -587,7 +592,7 @@ BPF 程序**知道内核版本和配置信息**，有时还不足以判断如何
   访问且只读（well known and read-only）的了。
 
     这<mark>使得 BPF 校验器能将它们作为常量对待</mark>，然后就能执行**高级控制流分析**
-    （advanced control flow analysis）来消除死代码。
+    （advanced control flow analysis）来消除无效代码。
 
 因此，针对上面那个例子，
 
@@ -627,7 +632,7 @@ BPF CO-RE 的目标是：
 这是通过几个 BPF CO-RE 模块的组合实现的：
 
 1. `vmlinux.h` <mark>消除了对内核头文件的依赖</mark>；
-1. <mark>字段重定位信息</mark>（字段偏置、字段是否存在、字段大小等等）使得<mark>从内核提取数据这个过程变得可移植</mark>；
+1. <mark>字段重定位信息</mark>（字段偏移、字段是否存在、字段大小等等）使得<mark>从内核提取数据这个过程变得可移植</mark>；
 1. libbpf 提供的 <mark>Kconfig extern 变量</mark>允许 BPF 程序适应不同的内核版本 —— 以及配置相关的差异；
 1. 当其他方式都失效时，应用提供的<mark>只读配置和 struct flavor 最终救场</mark>，能解决
    任何需要复杂处理的场景。

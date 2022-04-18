@@ -2657,7 +2657,7 @@ $ echo 1 > /proc/sys/net/core/bpf_jit_kallsyms
 ```
 
 BPF-to-BPF 调用在解释器和 JIT 镜像中也做了关联。对于后者，子程序的 tag 会显示为
-调用目标（call target）。在两种情况下，`pc+2` 都是调用目标的程序计数器偏置（
+调用目标（call target）。在两种情况下，`pc+2` 都是调用目标的程序计数器偏移（
 pc-relative offset），表示就是子程序的地址。
 
 ```shell

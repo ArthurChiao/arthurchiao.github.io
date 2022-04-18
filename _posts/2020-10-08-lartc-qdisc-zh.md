@@ -2,7 +2,7 @@
 layout    : post
 title     : "[译] 《Linux 高级路由与流量控制手册（2012）》第九章：用 tc qdisc 管理 Linux 网络带宽"
 date      : 2020-10-08
-lastupdate: 2021-01-09
+lastupdate: 2022-04-19
 categories: tc qdisc
 ---
 
@@ -33,7 +33,7 @@ tc/qdisc 是 Cilium/eBPF 依赖的最重要的网络基础设施之一。
 初识 Linux 的这些功能时，我感到无比震惊。Linux 的**带宽管理**能力足以媲美许多
 **高端、专用的带宽管理系统**（high-end dedicated bandwidth management systems）。
 
-## 9.1 队列（Queues）和排队规则（Queueing Disciplines）
+# 9.1 队列（Queues）和排队规则（Queueing Disciplines）
 
 通过对包进行**排队**（queuing），我们可以决定数据的**发送**方式（the way in
 which data is SENT）。但理解下面这一点非常重要：我们**只能对发送（transmit）的数
@@ -62,7 +62,7 @@ which data is SENT）。但理解下面这一点非常重要：我们**只能对
 queue"），这里的“发送队列”也就是**整条链路上最慢的一段**（slowest link in the chain）。
 幸运的是，大多数情况下这个条件都是能满足的。
 
-## 9.2 Simple, classless qdisc（简单、不分类排队规则）
+# 9.2 Simple, classless qdisc（简单、不分类排队规则）
 
 如前所述，**排队规则（queueing disciplines）改变了数据的发送方式**。
 
@@ -78,9 +78,9 @@ queue"），这里的“发送队列”也就是**整条链路上最慢的一段
 排队规则（qdisc-containing-qdiscs）**！先理解了 classless qdisc，才能理解
 classful qdisc。
 
-目前最常用的 classless qdisc 是 **`pfifo_fast qdisc`，这也是默认排队规则**。
-<mark>这也解释了为什么这些高级功能如此健壮</mark>：本质上来说，它们不过是
-“另一个队列”而已（nothing more than 'just another queue'）。
+**<mark>目前最常用的 classless qdisc 是 pfifo_fast，这也是默认排队规则</mark>**。
+这也解释了为什么这些高级功能如此健壮：本质上来说，它们
+**<mark>不过是“另一个队列”而已</mark>**（nothing more than 'just another queue'）。
 
 每种队列都有自己的优缺点。某些队列可能并未充分测试。
 
@@ -136,7 +136,7 @@ classful qdisc。
     0000   0         Normal Service
     ```
 
-    `tcpdump -vv` 会打印包的 TOS 字段，其中的 TOS 值对应下面的第一列：
+    **<mark><code>tcpdump -vv</code> 会打印包的 TOS 字段</mark>**，其中的 TOS 值对应下面的第一列：
 
     ```
     TOS     Bits  Means                    Linux Priority    Band
@@ -162,8 +162,8 @@ classful qdisc。
     第二列是对应的十进制表示，第三列是对应的含义。例如，`15` 表示这个包期望
     `Minimal Monetary Cost` + `Maximum Reliability` + `Maximum Throughput` +
     `Minimum Delay`。我把这样的包称为“荷兰包”（a 'Dutch Packet'。荷兰人比较
-    节俭/抠门，译注）。**第四列是对应到 Linux 内核的优先级；最后一列是
-    映射到的 band**，从命令行输出看，形式为：
+    节俭/抠门，译注）。**<mark>第四列是对应到 Linux 内核的优先级；最后一列是映射到的 band</mark>**，
+    从命令行输出看，形式为：
 
     ```
     1, 2, 2, 2, 1, 2, 0, 0 , 1, 1, 1, 1, 1, 1, 1, 1
@@ -201,6 +201,95 @@ classful qdisc。
     如，`ifconfig eth0 txqueuelen 10`。
 
     `tc` 命令无法修改这个值。
+
+#### 9.2.1.2 举例（译注）
+
+下面是一台两个网卡的机器，`bond0 -> eth0/eth1` active-standby 模式：
+
+```shell
+$ tc qdisc show dev bond0 ingress
+qdisc noqueue 0: root refcnt 2
+$ tc class show dev bond0
+$ tc filter show dev bond0
+```
+
+```shell
+$ tc qdisc show dev eth0 ingress # 注意 parent :<N> 是十六进制
+qdisc mq 0: root
+qdisc pfifo_fast 0: parent :28 bands 3 priomap  1 2 2 2 1 2 0 0 1 1 1 1 1 1 1 1
+qdisc pfifo_fast 0: parent :27 bands 3 priomap  1 2 2 2 1 2 0 0 1 1 1 1 1 1 1 1
+qdisc pfifo_fast 0: parent :26 bands 3 priomap  1 2 2 2 1 2 0 0 1 1 1 1 1 1 1 1
+...
+qdisc pfifo_fast 0: parent :b  bands 3 priomap  1 2 2 2 1 2 0 0 1 1 1 1 1 1 1 1
+qdisc pfifo_fast 0: parent :a  bands 3 priomap  1 2 2 2 1 2 0 0 1 1 1 1 1 1 1 1
+qdisc pfifo_fast 0: parent :9  bands 3 priomap  1 2 2 2 1 2 0 0 1 1 1 1 1 1 1 1
+qdisc pfifo_fast 0: parent :8  bands 3 priomap  1 2 2 2 1 2 0 0 1 1 1 1 1 1 1 1
+qdisc pfifo_fast 0: parent :7  bands 3 priomap  1 2 2 2 1 2 0 0 1 1 1 1 1 1 1 1
+qdisc pfifo_fast 0: parent :6  bands 3 priomap  1 2 2 2 1 2 0 0 1 1 1 1 1 1 1 1
+qdisc pfifo_fast 0: parent :5  bands 3 priomap  1 2 2 2 1 2 0 0 1 1 1 1 1 1 1 1
+qdisc pfifo_fast 0: parent :4  bands 3 priomap  1 2 2 2 1 2 0 0 1 1 1 1 1 1 1 1
+qdisc pfifo_fast 0: parent :3  bands 3 priomap  1 2 2 2 1 2 0 0 1 1 1 1 1 1 1 1
+qdisc pfifo_fast 0: parent :2  bands 3 priomap  1 2 2 2 1 2 0 0 1 1 1 1 1 1 1 1
+qdisc pfifo_fast 0: parent :1  bands 3 priomap  1 2 2 2 1 2 0 0 1 1 1 1 1 1 1 1
+
+$ tc -s qdisc show dev eth0 # -s 打印详细信息
+qdisc mq 0: root
+ Sent 24132018546 bytes 32764201 pkt (dropped 0, overlimits 0 requeues 5644)
+ backlog 0b 0p requeues 5644
+
+qdisc pfifo_fast 0: parent :28 bands 3 priomap  1 2 2 2 1 2 0 0 1 1 1 1 1 1 1 1
+ Sent 4761407 bytes 3607 pkt (dropped 0, overlimits 0 requeues 2)
+ backlog 0b 0p requeues 2
+
+qdisc pfifo_fast 0: parent :27 bands 3 priomap  1 2 2 2 1 2 0 0 1 1 1 1 1 1 1 1
+ Sent 4810246 bytes 3996 pkt (dropped 0, overlimits 0 requeues 1)
+ backlog 0b 0p requeues 1
+...
+qdisc pfifo_fast 0: parent :1  bands 3 priomap  1 2 2 2 1 2 0 0 1 1 1 1 1 1 1 1
+ Sent 2255173769 bytes 2847811 pkt (dropped 0, overlimits 0 requeues 425)
+ backlog 0b 0p requeues 425
+```
+
+```shell
+$ tc -s -d -p class show dev eth0 # 注意 mq :<N> 是十六进制
+class mq :1 root
+ Sent 2277361407 bytes 2893507 pkt (dropped 0, overlimits 0 requeues 426)
+ backlog 0b 0p requeues 426
+class mq :2 root
+ Sent 1840467735 bytes 2426113 pkt (dropped 0, overlimits 0 requeues 466)
+ backlog 0b 0p requeues 466
+...
+class mq :28 root
+ Sent 4828555 bytes 3677 pkt (dropped 0, overlimits 0 requeues 2)
+ backlog 0b 0p requeues 2
+
+class mq :29 root  # 从 0x29 开始往后的 sent/backlog 全是 0 了
+ Sent 0 bytes 0 pkt (dropped 0, overlimits 0 requeues 0)
+ backlog 0b 0p requeues 0
+...
+class mq :47 root
+ Sent 0 bytes 0 pkt (dropped 0, overlimits 0 requeues 0)
+ backlog 0b 0p requeues 0
+```
+
+```shell
+$ tc filter show dev eth0
+# nothing
+```
+
+拓扑：
+
+```
+                                    1:                                     # root qdisc
+                                    |
+     +------------------------------+---------------------------------+
+     |    |    |    |    |    |     |    |   |    |    |    |    |    |
+     |    |    |    |    |    |     |    |   |    |    |    |    |    |
+    :1   :2    :3   :4   :5   :6   ...      :28   ...          :46   :47   # class (classifier)
+     |    |    |    |    |    |     |    |   |
+     |    |    |    |    |    |     |    |   |
+ pfifo_fast           ...                 pfifo_fast                       # qdisc (pfifo_fast)
+```
 
 ### 9.2.2 TBF（Token Bucket Filter，令牌桶过滤器）
 
@@ -382,7 +471,7 @@ qdisc sfq 800c: dev ppp0 quantum 1514b limit 128p flows 128/1024 perturb 10sec
   数据待发送。
 * `perturb 10sec`：每隔 10s 换一次哈希算法。
 
-## 9.3 使用建议：何时选择哪种队列？
+# 9.3 使用建议：何时选择哪种队列？
 
 总结起来，上面几种都是简单的 qdisc，通过重排序（reordering）、降速（slowing）或
 丢包（dropping）来实现流量管理。
@@ -406,7 +495,7 @@ qdisc sfq 800c: dev ppp0 quantum 1514b limit 128p flows 128/1024 perturb 10sec
   用技术解决的。用户会对技术限制充满敌意。和气地对别人说几句好话，也许你需要的
   带宽就解决了。
 
-## 9.4 术语
+# 9.4 术语
 
 为方便理解接下来更复杂的配置，我们需要先引入一些概念。由于这项技术本身比较复杂，
 发展也还处在较为早期的阶段，因此大家可能会用不同的术语描述同一样东西。
@@ -534,7 +623,7 @@ Egress Classifier 中会用到很多 qdisc。**默认情况下只有一个：`pf
 
 以上画的是单网卡的情况。**在多网卡的情况下，每个网卡都有自己的 ingress 和 egress hooks**。
 
-## 9.5 Classful qdisc（分类别排队规则）
+# 9.5 Classful qdisc（分类别排队规则）
 
 如果想**对不同类型的流量做不同处理**，那 classful qdisc 非常有用。其中一种是 CBQ（
 Class Based Queueing，基于类别的排队），由于这种类型的 qdisc 使用太广泛了，导致
@@ -544,7 +633,7 @@ CBQ），但实际并非如此。
 **CBQ 只是其中最古老 —— 也是最复杂 —— 的一种**。它的行为有时可能在你的意料之外。
 那些钟爱 “sendmail effect” 的人可能感到震惊。
 
-> sendmail effect：对于任何复杂的技术，没有文档的实现一定是最好的实现。
+> sendmail effect：**<mark>对于任何一项复杂技术，没有文档的实现一定是最好的实现</mark>**。
 >
 > Any complex technology which doesn't come with documentation must be the best available.
 
@@ -596,7 +685,7 @@ CBQ），但实际并非如此。
 >
 > 所有 qdiscs、classes 和 filters 都有 ID，这些 ID 可以是指定的，也可以是自动分的。
 >
-> ID 格式 `major:minor`，`major` 和 `minor` 都是 16 进制数字，不超过 2 字节。
+> ID 格式 `major:minor`，`major` 和 `minor` **<mark>都是 16 进制数字</mark>**，不超过 2 字节。
 > 两个特殊值：
 >
 > * `root` 的 `major` 和 `minor` 初始化全 1。
@@ -673,9 +762,16 @@ node）上都 attach 了一个 filter，每个 filter 都会给出一个判断�
 简单来说，**嵌套类（nested classes）只会和它们的 parent qdiscs 通信，而永远不会直
 接和接口交互**。<mark>内核只会调用 root qdisc 的</mark> `dequeue()` 方法！
 
-最终结果是，**classes dequeue 的速度永远不会超过它们的 parents 允许的速度**。而这正
+最终结果是，classes dequeue 的速度永远不会超过它们的 parents 允许的速度【译注】。而这正
 是我们所期望的：这样就能在内层使用一个 SFQ 做纯调度，它不用做任何整形的工作
 ；然后在外层使用一个整形 qdisc 专门负责整形。
+
+> 【译注】有朋友验证，这里是可以超过的，
+>
+> <p align="center"><img src="/assets/img/lartc-qdisc/nested-class-test.jpg" width="70%" height="70%"></p>
+>
+> “nested classes rate（最低保障带宽）不受制于父类 class rate 和 ceil 的限制，但可借用带宽会受限”。
+> 感谢来信！
 
 ### 9.5.3 `PRIO` qdisc（优先级排队规则）
 
@@ -1231,7 +1327,7 @@ bandwidth），并且总带宽中还有很多剩余，它们还可以 `5:3` 的�
 够从剩余的可用带宽中借带宽来用。由于我们用了的 SFQ（随机公平调度），我们还获得了
 公平调度而没有增加额外成本！
 
-## 9.6 用过滤器对流量进行分类
+# 9.6 用过滤器对流量进行分类
 
 每次要判断将包送到哪个 class 进行处理时，都会调用所谓的“classifier chain”（分类
 器链）。这个 chain 由 attach 到 classful qdisc 的所有 filter 构成。
@@ -1382,7 +1478,7 @@ $ tc filter add dev eth0 parent 1:0 protocol ip prio 1 u32 ..
 
 更多过滤相关的命令（filtering commands），见 Advanced Filters 章节。
 
-## 9.7 IMQ（Intermediate queueing device，中转排队设备）
+# 9.7 IMQ（Intermediate queueing device，中转排队设备）
 
 **IMQ 并不是一种 qdisc，但其使用是与 qdisc 紧密关联的**。
 

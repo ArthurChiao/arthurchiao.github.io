@@ -2,7 +2,7 @@
 layout    : post
 title     : "[译] BPF 对象（BPF objects）的生命周期（Facebook，2018）"
 date      : 2021-05-07
-lastupdate: 2021-05-07
+lastupdate: 2022-04-18
 categories: bpf
 ---
 
@@ -12,7 +12,7 @@ categories: bpf
 [Lifetime of BPF objects](https://facebookmicrosites.github.io/bpf/blog/2018/08/31/object-lifetime.html)，
 作者 Alexei Starovoitov。
 
-译文附录了一些内核（`4.19`）代码片段，方便在实现层面理解文中提到的一些东西。
+译文调整了一些内容顺序，并附录了一些内核（`4.19`）代码片段，方便在实现层面理解文中提到的一些东西。
 
 **由于译者水平有限，本文不免存在遗漏或错误之处。如有疑问，请查阅原文。**
 
@@ -28,7 +28,9 @@ categories: bpf
 BPF 校验器（verifier）保证了内核能安全地执行 BPF 程序，但要想更安全地使用 BPF，
 还需要理解 **<mark>BPF 对象（objects）的生命周期</mark>**。本文就这一主题展开深入讨论。
 
-# 1 文件描述符（FD）和引用计数（refcnt）
+# 1 引言
+
+## 1.1 文件描述符（FD）和引用计数（refcnt）
 
 **BPF 对象（objects）包括**：
 
@@ -38,7 +40,7 @@ BPF 校验器（verifier）保证了内核能安全地执行 BPF 程序，但要
 
 **<mark>每个对象都有自己的 refcnt</mark>**，用户空间程序可以通过**文件描述符**（FD）访问这些对象。
 
-## 1.1 创建 BPF map 过程
+## 1.2 举例：创建 BPF map：`refcnt=1`
 
 调用 `bpf_create_map()` 创建一个 map 时，内核会
 
@@ -47,10 +49,10 @@ BPF 校验器（verifier）保证了内核能安全地执行 BPF 程序，但要
 3. 返回一个 `fd` 给用户空间进程。
 
 **如果进程退出或者 crash 了**，这个 `fd` 将被关闭，相应 `refcnt--`。
-在这个例子中， `refcnt--` 之后就变成 0 了，因此过了 **<mark>RCU grace period</mark>**
+如果 `refcnt--` 之后变成 0，那过了 **<mark>RCU grace period</mark>**
 之后，就会触发释放内存（memory free）操作。
 
-## 1.2 加载 BPF 程序（和它使用的 BPF map）过程
+## 1.3 举例：加载 BPF prog：`prog.refcnt=1, map.refcnt++`
 
 用到了 BPF map 的 BPF 程序，加载（load）过程分为两个阶段：
 
@@ -67,33 +69,37 @@ BPF 校验器（verifier）保证了内核能安全地执行 BPF 程序，但要
 
 此后，
 
-* 用户空间**<mark>关闭与 map 关联的 FD 时</mark>**，map 并不会消失，
-  因为 BPF 程序还在“使用”它们（虽然此时程序还没有 attach 到任何地方）。
+* 用户空间**<mark>关闭 map FD 时，map 并不会消失</mark>**，
+  因为 BPF 程序还在“使用”它们（虽然此时程序还没有 attach 到任何地方）；
 
-* 当 **<mark>与 BPF 程序关联的 FD 关闭时</mark>**，如果 refcnt 变成 0，销毁逻辑会
-  **遍历该程序用到的所有 map**，并将它们的 `refcnt--`。
+* 当 **<mark>BPF 程序的 FD 关闭时</mark>**，如果 BPF 程序的 refcnt 变成 0，
+  销毁逻辑会**遍历该程序用到的所有 map**，并将它们的 `refcnt--`。
 
-    这种方式使得单个 BPF map 能同时被多个 BPF 程序（甚至是**<mark>不同类型的 BPF 程序</mark>**
-    ）使用。例如，某个 tracing 类型的 BPF 程序将收集到的数据写入一个 BPF map，
-    另一个 networking 类型的 BPF 程序读取其中的数据，用来做转发决策。
+这种方式使单个 BPF map 能同时被多个 BPF 程序（甚至是**<mark>不同类型的 BPF 程序</mark>**
+）使用。例如，某个 tracing 类型的 BPF 程序将收集到的数据写入一个 BPF map，
+另一个 networking 类型的 BPF 程序读取其中的数据，用来做转发决策。
 
-## 1.3 Attach BPF 程序到 hook 点
+## 1.4 BPF 对象的生命周期
+
+根据 BPF 对象（prog/map）的引用计数来判断：
+
+1. `refcnt > 0` 时，这个对象是正常可用的（kernel will keep it alive）；
+2. `refcnt == 0` 时，再经过一段 **<mark>RCU grace period</mark>**，对象就会被内核释放（memory free）。
+
+# 2 生命周期相关操作：attach/detach/replace BPF 程序
+
+## 2.1 Attach：`refcnt++`
 
 **<mark>BPF 程序 attach 到某个 hook 之后，refcnt 就会加 1</mark>**。
 创建、加载和 attach BPF 程序的用户空间程序，此时就可以退出了。用户空间程序退出后
 ，内核空间的 BPF map 和 BPF 程序（map+program）还是 alive 的，因为程序的 `refcnt > 0`。
 
-这就是该 BPF 对象的生命周期：只要 BPF 对象（程序或 map）的引用计
-数大于 0，内核就会 keep it alive。
+但不是所有 attach 到 hook 点的 BPF prog/map 的生命周期都是这样的，
+**<mark>attach/hook 也是分类型的</mark>**，下面具体来看。
 
-但并不是所有 attach 到 hook 点的 BPF program/map 的生命周期都是这样的，
-attach 点（hook 点）也是分类型的。
+### 2.1.1 Global 类型（tc/xdp/lwt/cgroup/...）
 
-## 1.4 Attach point 类型
-
-### Global 类型（全局可访问）
-
-包括：
+这种 attach 类型的 BPF 对象是全局可访问的，包括：
 
 * xdp
 * tc clsact
@@ -104,9 +110,9 @@ attach 点（hook 点）也是分类型的。
 例如，tc `clsact` 程序会 attach 到网络设备的 ingress 或 egress qdisc。只要不执行
 `tc qdisc del` 之类的操作，这些程序就会一直在 qdisc 上处理包 —— 即使用户空间进程已经退出了。
 
-### Local 类型（通过 FD 访问）
+### 2.1.2 Local 类型（kprobe/uprobe/tracepoint/...）
 
-包括：
+这种类型只能通过 local FD 访问，包括：
 
 * kprobe
 * uprobe 
@@ -118,7 +124,6 @@ attach 点（hook 点）也是分类型的。
 
 这种类型的程序**<mark>通过 FD 访问，因此其生命周期限制在持有 FD 的进程</mark>**
 （the process that holds FD to tracing event）**<mark>生命周期内</mark>**。
-
 例如对于 tracing 场景，
 
 1. 程序首先调用 `fd = perf_event_open()`（`fd = bpf_raw_tracepoint_open(“tracepoint_name”, bpf_prog_fd))` ）
@@ -132,7 +137,7 @@ attach 点（hook 点）也是分类型的。
 > FD 的 cgroup object（即 local 方式），因此将在 cgroup object 可能既是 global
 > 的又是 local 的。
 
-### 优缺点比较
+### 2.1.3 优缺点比较
 
 Local 类型（基于 FD）主要优势：**<mark>自动清理</mark>**（auto cleaning），这意
 味着一旦用户空间进程异常，内核会自动清理所有的对象。
@@ -154,11 +159,35 @@ Widely Deployed Binary (WDB) 中存在一个忘记清理 tc clsact BPF 程序的
 路径上添加相应的hook，但实际上并不是基于 tc，而是基于 FD 的、带自动清理特性的
 API。
 
-# 2 BPF 文件系统（BPFFS）
+## 2.1 Detach：`refcnt--`
+
+Detach 是 BPF 程序生命周期中的重要步骤。
+
+将 BPF 程序从 hook 点 detach 之后，**<mark>接下来再有相应事件发生时，不会再触发
+该 BPF 程序的执行</mark>**。
+
+但是，**如果 detach 时 BPF 程序正在执行**，那 detach 操作会先返回，BPF 程序会完成此次执行。
+
+## 2.3 Replace：`refcnt` 不变
+
+Replace 是 BPF 程序生命周期中的另一重要步骤。
+
+**<mark>cgroup-bpf hooks 支持 BPF 程序的替换（replace）操作</mark>**。
+内核保证所有事件（events）都会得到 BPF 程序的处理 —— 但**中间存在一个窗口**，
+例如，在某个时刻，可能 CPU 1 上执行的是老程序，CPU 2 上执行的是新程序 ——
+**<mark>没有“原子”替换操作</mark>**（“atomic” replacement）。
+
+一些 BPF 开发者用下面的方式避免这个问题：
+新程序仍然使用老程序的 BPF map —— 因此在替换过程中数据只有一份，
+只是程序被替换了。这种替换方式是安全的，不管新老程序是否同时在不同 CPU 上运行。
+但这种方式**仅适用于新/老程序比较相似，没有引入新数据结构的情况**。
+例如，新老程序的区别仅仅是编译时 debug 开关 on/off 的区别。
+
+# 3 生命周期相关操作：BPF 文件系统 pin/unpin
 
 另一种**<mark>保持 BPF 程序和 BPF map alive 的方式</mark>**是 BPFFS（BPF 文件系统）。
 
-## 2.1 Pin 操作
+## 3.1 Pin：`refcnt++`
 
 用户空间进程可以将一个 BPF 程序或 BPF map “pin”（固定）到 BPFFS。
 **<mark>Pin 操作会使 BPF object 的 refcnt++</mark>**，因此即使 BPF 程序接下来没有
@@ -171,12 +200,12 @@ attach 到任何地方，或者 BPF map 没有在任何地方被使用，这个 
 * 技术需求：**管理员希望能时不时登录到机器，查看处理状态**。
 * 解决方式：管理员用 `bpf_obj_get(obj_path_in_bpffs)` 直接从 BPFFS 获取 object（返回一个新的 FD 及指向该对象的 handle）。
 
-## 2.2 Unpin 操作
+## 3.2 Unpin：`refcnt--`
 
 **<mark>要 unpin 某个 object</mark>**，**只需要调用 `unlink()` 将文件从 BPFS 中
 删除**，**<mark>内核将对相应对象执行 refcnt--</mark>**。
 
-## 2.3 小结：对象操作与 refcnt 变化
+# 4 小结：对象操作与 refcnt 变化
 
 * `create  -> refcnt=1`
 * `attach  -> refcnt++`
@@ -186,32 +215,6 @@ attach 到任何地方，或者 BPF map 没有在任何地方被使用，这个 
 * `unlink  -> refcnt--`
 * `close   -> refcnt--`
 
-# 3 BPF 程序的 detach 和 replace
-
-## 3.1 Detach 操作
-
-Detach 是 BPF 程序生命周期中的重要步骤。
-
-将 BPF 程序从 hook 点 detach 之后，**<mark>接下来再有相应事件发生时，不会再触发
-该 BPF 程序的执行</mark>**。
-
-但是，**如果 detach 时 BPF 程序正在执行**，那 detach 操作会先返回，BPF 程序会完全此次执行。
-
-## 3.2 替换（replace）操作
-
-Replace 是 BPF 程序生命周期中的另一重要步骤。
-
-**<mark>cgroup-bpf hooks 支持 BPF 程序的替换（replace）操作</mark>**。
-内核保证所有事件（events）都会得到 BPF 程序的处理 —— 但**中间存在一个窗口**，
-例如，在某个时刻，可能 CPU 1 上执行的是老程序，CPU 2 上执行的是新程序 ——
-**<mark>没有“原子”替换操作</mark>**（“atomic” replacement）。
-
-一些 BPF 开发者用下面的方式避免这个问题：
-新程序仍然使用老程序的 BPF map —— 因此在替换过程中数据只有一份，
-只是程序文本被替换了。这种替换方式是安全的，不管新老程序是否同时在不同 CPU 上运行。
-
-但这种方式**仅适用于新/老程序比较相似，没有引入新数据结构的情况**。
-例如，新老程序的区别仅仅是编译时 debug 开关 on/off 的区别。
 
 # 译文附录：一些相关的 BPF 内核实现
 
@@ -250,7 +253,7 @@ int bpf_create_map_xattr(const struct bpf_create_map_attr *create_attr)
 }
 ```
 
-### `SYSCALL_DEFINE3(bpf, ...) -> case BPF_MAP_CREATE -> map_create()`：创建 map
+### `case BPF_MAP_CREATE -> map_create()`：创建 map
 
 `bpf()` 系统调用：
 
@@ -290,7 +293,7 @@ static int map_create(union bpf_attr *attr)
 
 ### `bpf(BPF_PROG_LOAD) -> sys_bpf() -> SYSCALL_DEFINE3(bpf, ...)`：系统调用
 
-### `SYSCALL_DEFINE3(bpf, ...) -> case BPF_PROG_LOAD -> bpf_prog_load()`：加载逻辑
+### `case BPF_PROG_LOAD -> bpf_prog_load()`：加载逻辑
 
 通过 `bpf(BPF_PROG_LOAD)` 系统调用加载程序时，会调用到下面的函数：
 
@@ -347,7 +350,7 @@ static int bpf_prog_load(union bpf_attr *attr)
 >
 > bpf() -> SYSCALL_DEFINE3(bpf, ...) -> bpf_obj_get() -> bpf_obj_get_user() -> bpf_any_get() -> bpf_prog_inc()
 
-### `bpf_prog_load() -> bpf_check()`：执行内核校验
+### `bpf_check()`：执行内核校验
 
 校验器逻辑（忽略错误处理）：
 
@@ -400,7 +403,7 @@ skip_full_check:
 }
 ```
 
-### `bpf_check() -> replace_map_fd_with_map_ptr() -> bpf_map_inc()`：更新 map refcnt
+### `replace_map_fd_with_map_ptr() -> bpf_map_inc()`：更新 map refcnt
 
 `replace_map_fd_with_map_ptr(env)` 会更新这个程序用到的 BPF map 的引用计数：
 

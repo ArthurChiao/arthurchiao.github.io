@@ -66,7 +66,7 @@ Linux 程序使用 [ELF binary format](https://en.wikipedia.org/wiki/Executable_
 许多特性。出于本文目的，我们这里只介绍两个：
 
 * 过程链接表（Procedire Linkage Table，PLT）
-* 全局偏置表（Global Offset Table，GOT）
+* 全局偏移表（Global Offset Table，GOT）
 
 库函数在 PLT 里都有一组对应的汇编指令，通常称作 trampoline，在函数被调用的时候执行。 
 
