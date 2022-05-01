@@ -2,7 +2,7 @@
 layout    : post
 title     : "BPF 进阶笔记（一）：BPF 程序（BPF Prog）类型详解：使用场景、函数签名、执行位置及程序示例"
 date      : 2021-07-04
-lastupdate: 2021-12-11
+lastupdate: 2022-05-01
 categories: bpf xdp socket cgroup
 ---
 
@@ -47,17 +47,17 @@ BPF 程序类型。对于主要的程序类型，本文将介绍其：
 
 ## BPF 程序类型：完整列表
 
-Kernel 5.8 支持的 [BPF 程序类型](https://github.com/torvalds/linux/blob/v5.8/include/uapi/linux/bpf.h#L153)：
+Kernel 5.10 支持的 BPF 程序类型：
 
 ```c
-// include/uapi/linux/bpf.h
+// https://github.com/torvalds/linux/blob/v5.10/include/uapi/linux/bpf.h#L170
 
 enum bpf_prog_type {
     BPF_PROG_TYPE_UNSPEC,
     BPF_PROG_TYPE_SOCKET_FILTER,
     BPF_PROG_TYPE_KPROBE,
-    BPF_PROG_TYPE_SCHED_CLS,                // CLS: tc classifier，分类器
-    BPF_PROG_TYPE_SCHED_ACT,                // ACT: tc action，动作
+    BPF_PROG_TYPE_SCHED_CLS,
+    BPF_PROG_TYPE_SCHED_ACT,
     BPF_PROG_TYPE_TRACEPOINT,
     BPF_PROG_TYPE_XDP,
     BPF_PROG_TYPE_PERF_EVENT,
@@ -83,6 +83,7 @@ enum bpf_prog_type {
     BPF_PROG_TYPE_STRUCT_OPS,
     BPF_PROG_TYPE_EXT,
     BPF_PROG_TYPE_LSM,
+    BPF_PROG_TYPE_SK_LOOKUP,
 };
 ```
 
@@ -93,10 +94,9 @@ enum bpf_prog_type {
 ## BPF attach 类型：完整列表
 
 通过 `socket()` 系统调用将 BPF 程序 attach 到 hook 点时用到，
-[定义](https://github.com/torvalds/linux/blob/v5.8/include/uapi/linux/bpf.h#L194)：
 
 ```c
-// include/uapi/linux/bpf.h
+// https://github.com/torvalds/linux/blob/v5.10/include/uapi/linux/bpf.h#L204
 
 enum bpf_attach_type {
     BPF_CGROUP_INET_INGRESS,
@@ -133,6 +133,10 @@ enum bpf_attach_type {
     BPF_CGROUP_INET4_GETSOCKNAME,
     BPF_CGROUP_INET6_GETSOCKNAME,
     BPF_XDP_DEVMAP,
+    BPF_CGROUP_INET_SOCK_RELEASE,
+    BPF_XDP_CPUMAP,
+    BPF_SK_LOOKUP,
+    BPF_XDP,
     __MAX_BPF_ATTACH_TYPE
 };
 ```

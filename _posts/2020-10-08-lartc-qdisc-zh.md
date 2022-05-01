@@ -2,7 +2,7 @@
 layout    : post
 title     : "[译] 《Linux 高级路由与流量控制手册（2012）》第九章：用 tc qdisc 管理 Linux 网络带宽"
 date      : 2020-10-08
-lastupdate: 2022-04-19
+lastupdate: 2022-04-27
 categories: tc qdisc
 ---
 
@@ -16,6 +16,7 @@ categories: tc qdisc
 性最好的 tc qdisc 教程。
 
 另外，看到 [1,2] 中几张 qdisc 图画的非常不错，形象直观，易于理解，因此拿来插入到译文中。
+此外还加入了一些原文没有覆盖到的内容，例如 `fq_codel`。
 
 tc/qdisc 是 Cilium/eBPF 依赖的最重要的网络基础设施之一。
 
@@ -30,8 +31,8 @@ tc/qdisc 是 Cilium/eBPF 依赖的最重要的网络基础设施之一。
 
 ----
 
-初识 Linux 的这些功能时，我感到无比震惊。Linux 的**带宽管理**能力足以媲美许多
-**高端、专用的带宽管理系统**（high-end dedicated bandwidth management systems）。
+初识 Linux 的这些功能时，我感到无比震惊。Linux 的**<mark>带宽管理能力</mark>**
+足以媲美许多高端、专用的带宽管理系统。
 
 # 9.1 队列（Queues）和排队规则（Queueing Disciplines）
 
@@ -1326,6 +1327,22 @@ bandwidth），并且总带宽中还有很多剩余，它们还可以 `5:3` 的�
 未分类的流量（unclassified traffic）会进入 `30:`，这个 band 只有很小的带宽，但能
 够从剩余的可用带宽中借带宽来用。由于我们用了的 SFQ（随机公平调度），我们还获得了
 公平调度而没有增加额外成本！
+
+### 9.5.6 `fq_codel`（Fair Queuing Controlled Delay，延迟受控的公平排队）
+
+> 本小节为译注。
+
+这种 qdisc 组合了 FQ 和 ColDel AQM，使用一个随机模型（a stochastic model）
+将入向包分为不同 flow，确保使用这个队列的所有 flow 公平分享总带宽。
+
+每个 flow 由 CoDel 排队规则来管理，每个 flow 内不能重排序，因为 CoDel 内部使用了一个 FIFO 队列。
+
+Ubuntu 20.04 默认使用的这种队列：
+
+```shell
+$ tc qdisc show # 默认网卡 enp0s3
+qdisc fq_codel 0: dev enp0s3 root refcnt 2 limit 10240p flows 1024 quantum 1514 target 5.0ms interval 100.0ms memory_limit 32Mb ecn
+```
 
 # 9.6 用过滤器对流量进行分类
 

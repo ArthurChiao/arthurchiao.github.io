@@ -2,7 +2,7 @@
 layout    : post
 title     : "BPF 进阶笔记（三）：BPF Map 内核实现"
 date      : 2021-07-13
-lastupdate: 2021-07-17
+lastupdate: 2022-05-01
 categories: bpf xdp
 ---
 
@@ -36,10 +36,10 @@ BPF map 类型。
 
 ## BPF map 类型：完整列表
 
-所有 map 类型的[定义](https://github.com/torvalds/linux/blob/v5.8/include/uapi/linux/bpf.h#L122)：
+所有 map 类型的定义：
 
 ```c
-// include/uapi/linux/bpf.h
+// https://github.com/torvalds/linux/blob/v5.10/include/uapi/linux/bpf.h#L130
 
 enum bpf_map_type {
     BPF_MAP_TYPE_UNSPEC,
@@ -70,6 +70,8 @@ enum bpf_map_type {
     BPF_MAP_TYPE_DEVMAP_HASH,
     BPF_MAP_TYPE_STRUCT_OPS,
     BPF_MAP_TYPE_RINGBUF,
+    BPF_MAP_TYPE_INODE_STORAGE,
+
 };
 ```
 

@@ -2,7 +2,7 @@
 layout    : post
 title     : "[译] Linux Socket Filtering (LSF, aka BPF)（KernelDoc，2021）"
 date      : 2021-08-27
-lastupdate: 2021-08-27
+lastupdate: 2022-05-01
 categories: bpf lsf assembly
 ---
 
@@ -50,9 +50,9 @@ Linux Socket Filtering (LSF) 从 Berkeley Packet Filter（BPF）**<mark>衍生�
 ## 1.1 LSF (cBPF) 与 BSD BPF
 
 BPF 允许用户空间程序**<mark>向任意 socket attach 过滤器（filter）</mark>**，
-以此**<mark>对流经 socket 的数据进行控制</mark>**（放行或拒绝）。
-LSF 完全遵循了 BSD BPF 的过滤代码结构（filter code structure），因此实现过滤器
-（filters）时，BSD bpf.4 manpage 是很好的参考文档。
+**<mark>对流经 socket 的数据进行控制</mark>**（放行或拒绝）。
+LSF 完全遵循了 BSD BPF 的过滤器代码结构（filter code structure），因此实现过滤器时，
+BSD bpf.4 manpage 是很好的参考文档。
 
 但 **<mark>Linux BPF 要比 BSD BPF 简单很多</mark>**：
 
@@ -60,7 +60,7 @@ LSF 完全遵循了 BSD BPF 的过滤代码结构（filter code structure），�
 * 只需要创建自己的过滤器代码（filter code），通过 `SO_ATTACH_FILTER` 选项将其发送到内核；
 * 接下来只要这段代码能通过内核校验，用户就能立即在 socket 上开始过滤数据了。
 
-## 1.2 `ATTACH`/`DETACH`/`LOCK` 给定过滤器
+## 1.2 `ATTACH`/`DETACH`/`LOCK` 操作
 
 * `SO_ATTACH_FILTER` 用于将 filter attach 到 socket。
 
@@ -92,7 +92,7 @@ BPF 模块的**<mark>最大用户</mark>**可能就是 `libpcap`。例如，对�
 
 * netfilter 中的 `xt_bpf`
 * 内核 qdisc 层的 `cls_bpf`
-* SECCOMP-BPF ([SECure COMPuting](https://github.com/torvalds/linux/blob/v5.10/Documentation/userspace-api/seccomp_filter.rst))
+* seccomp-bpf ([SECure COMPuting](https://github.com/torvalds/linux/blob/v5.10/Documentation/userspace-api/seccomp_filter.rst))
 * 其他很多地方，包括 team driver、PTP。
 
 ## 1.4 cBPF 经典论文
@@ -139,7 +139,7 @@ struct sock_fprog {                /* Required for SO_ATTACH_FILTER. */
 
 ## 3.1 `setsockopt()` 将字节码 attach 到 socket
 
-里面用到的两个结构体  `struct sock_filter` 和 `struct sock_fprog` 在前一节介绍过了：
+两个结构体  `struct sock_filter` 和 `struct sock_fprog` 在前一节介绍过了：
 
 ```c
 #include <sys/socket.h>
@@ -193,10 +193,10 @@ if (ret < 0)
 close(sock);
 ```
 
-以上代码将一个 filter attach 到了一个 `PF_PACKET` 类型的 socket，filter 的功能是
+以上代码将一个 filter attach 到了一个 `PF_PACKET` 类型的 socket，功能是
 **<mark>放行所有 IPv4/IPv6 22 端口的包，其他包一律丢弃</mark>**。
 
-以上只展示了 attach 代码；detach 时，`setsockopt(2)` 除了 `SO_DETACH_FILTER` 不需要其他参数；
+这里只展示了 attach 代码；detach 时，`setsockopt(2)` 除了 `SO_DETACH_FILTER` 不需要其他参数；
 `SO_LOCK_FILTER` 可用于防止 filter 被 detach，需要带一个整形参数 0 或 1。
 
 注意 socket filters 并不是只能用于 PF_PACKET 类型的 socket，也可以用于其他 socket 家族。

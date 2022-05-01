@@ -2,7 +2,7 @@
 layout    : post
 title     : "BPF 进阶笔记（二）：BPF Map 类型详解：使用场景、程序示例"
 date      : 2021-07-13
-lastupdate: 2021-07-17
+lastupdate: 2022-05-01
 categories: bpf xdp
 ---
 
@@ -41,16 +41,16 @@ BPF map 类型。对于主要的类型，本文将介绍其：
 
 ## BPF map 类型：完整列表
 
-所有 map 类型的[定义](https://github.com/torvalds/linux/blob/v5.8/include/uapi/linux/bpf.h#L122)：
+所有 map 类型的定义：
 
 ```c
-// include/uapi/linux/bpf.h
+// https://github.com/torvalds/linux/blob/v5.10/include/uapi/linux/bpf.h#L130
 
 enum bpf_map_type {
     BPF_MAP_TYPE_UNSPEC,
-    BPF_MAP_TYPE_HASH,               // 哈希表
-    BPF_MAP_TYPE_ARRAY,              // 数组
-    BPF_MAP_TYPE_PROG_ARRAY,         // 存放 BPF 程序的数组
+    BPF_MAP_TYPE_HASH,
+    BPF_MAP_TYPE_ARRAY,
+    BPF_MAP_TYPE_PROG_ARRAY,
     BPF_MAP_TYPE_PERF_EVENT_ARRAY,
     BPF_MAP_TYPE_PERCPU_HASH,
     BPF_MAP_TYPE_PERCPU_ARRAY,
@@ -75,6 +75,8 @@ enum bpf_map_type {
     BPF_MAP_TYPE_DEVMAP_HASH,
     BPF_MAP_TYPE_STRUCT_OPS,
     BPF_MAP_TYPE_RINGBUF,
+    BPF_MAP_TYPE_INODE_STORAGE,
+
 };
 ```
 
@@ -485,6 +487,7 @@ struct {
 指令指针地址（instruction pointer address）进行 32-bit hash</mark>** 得到的。
 
 ## 使用场景
+
 ### 场景一：存储 profiling 信息
 
 在内核中获取 stack id，用它作为 key 更新另一个 map。
@@ -498,14 +501,26 @@ trace 信息与当前 pid 关联起来。
 # 2 `BPF_MAP_TYPE_STACK`
 
 ## 使用场景
+
 ### 场景一：
 
 
 # 3 `BPF_MAP_TYPE_RINGBUF`
 
+依赖：内核 5.7+。
+
 ## 使用场景
 
-### 场景一：
+### 场景一：更高效、保证事件顺序地往用户空间发送数据
+
+详见
+[(译) BPF ring buffer：使用场景、核心设计及程序示例（2020）]({% link _posts/2022-04-24-bpf-ringbuf-zh.md %})。
+
+## 程序示例
+
+### 1. 替代 perf event array
+
+[(译) BPF ring buffer：使用场景、核心设计及程序示例（2020）]({% link _posts/2022-04-24-bpf-ringbuf-zh.md %})
 
 
 # 4 `BPF_MAP_TYPE_PERF_EVENT_ARRAY`
