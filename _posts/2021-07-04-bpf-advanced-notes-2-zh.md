@@ -6,8 +6,6 @@ lastupdate: 2022-05-01
 categories: bpf xdp
 ---
 
-## 关于本文
-
 内核目前支持 [30 来种](https://github.com/torvalds/linux/blob/v5.8/include/uapi/linux/bpf.h#L122)
 BPF map 类型。对于主要的类型，本文将介绍其：
 
@@ -21,14 +19,15 @@ BPF map 类型。对于主要的类型，本文将介绍其：
 
 ## 关于 “BPF 进阶笔记” 系列
 
-平时学习使用 BPF 时所整理。由于是笔记而非教程，因此内容不会追求连贯，有基础的
+平时学习和使用 BPF 时所整理。由于是笔记而非教程，因此内容不会追求连贯，有基础的
 同学可作查漏补缺之用。
 
-文中涉及的代码，如无特殊说明，均基于内核 **<mark>5.8/5.10</mark>** 版本。
+文中涉及的代码，如无特殊说明，均基于内核 **<mark>5.8/5.10</mark>**。
 
 * [BPF 进阶笔记（一）：BPF 程序（BPF Prog）类型详解：使用场景、函数签名、执行位置及程序示例]({% link _posts/2021-07-04-bpf-advanced-notes-1-zh.md %})
 * [BPF 进阶笔记（二）：BPF Map 类型详解：使用场景、程序示例]({% link _posts/2021-07-04-bpf-advanced-notes-2-zh.md %})
 * [BPF 进阶笔记（三）：BPF Map 内核实现]({% link _posts/2021-07-04-bpf-advanced-notes-3-zh.md %})
+* [BPF 进阶笔记（四）：调试 BPF 程序]({% link _posts/2021-07-04-bpf-advanced-notes-4-zh.md %})
 
 ----
 

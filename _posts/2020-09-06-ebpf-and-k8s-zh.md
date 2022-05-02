@@ -3,7 +3,7 @@ layout    : post
 title     : "[译] 大规模微服务利器：eBPF + Kubernetes（KubeCon, 2020）"
 date      : 2020-09-06
 lastupdate: 2021-02-21
-categories: ebpf kernel k8s networking
+categories: bpf kernel k8s networking
 ---
 
 ### 译者序

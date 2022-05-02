@@ -2,14 +2,15 @@
 layout    : post
 title     : "[译] eBPF 内核探测：如何将任意系统调用转换成事件（2016）"
 date      : 2018-12-03
-lastupdate: 2021-01-24
+lastupdate: 2022-05-04
 author    : ArthurChiao
 categories: bpf tracing bcc
 ---
 
 ### 译者序
 
-本文翻译自 2016 年的一篇英文博客 [How to turn any syscall into an event: Introducing eBPF Kernel probes](https://blog.yadutaf.fr/2016/03/30/turn-any-syscall-into-event-introducing-ebpf-kernel-probes/)。
+本文翻译自 2016 年的一篇英文博客
+[How to turn any syscall into an event: Introducing eBPF Kernel probes](https://blog.yadutaf.fr/2016/03/30/turn-any-syscall-into-event-introducing-ebpf-kernel-probes/)。
 
 **由于译者水平有限，本文不免存在遗漏或错误之处。如有疑问，请查阅原文。**
 
@@ -24,12 +25,12 @@ categories: bpf tracing bcc
 
 ## 太长不读（TL; DR）
 
-Linux `4.4+` 支持 `eBPF`。基于 `eBPF` 可以将任何**内核函数调用**转换成**可带任何
-数据**的**用户空间事件**。`bcc` 作为一个更上层的工具使这个过程更加方便。内核探测
+Linux `4.4+` 支持 `eBPF`。基于 `eBPF` 可以将任何**内核函数调用**转换成可带任何
+数据的**用户空间事件**。`bcc` 作为一个更上层的工具使这个过程更加方便。内核探测
 代码用 C 写，数据处理代码用 Python。
 
-如果对 eBPF 或 Linux tracing 不是太熟悉，建议你阅读全文。本文循序渐进，并介绍
-了我在上手 bcc/eBPF 时遇到的一些坑，这会节省你大量的时间。
+如果对 eBPF 或 Linux tracing 不是太熟悉，建议阅读全文。本文循序渐进，并介绍
+了我在上手 bcc/eBPF 时遇到的一些坑，这会节省你大量时间。
 
 # 1 消息系统：Push 还是 Pull
 
@@ -70,21 +71,25 @@ Linux `4.4+` 支持 `eBPF`。基于 `eBPF` 可以将任何**内核函数调用**
 
 直到最近，唯一的通用方式是**给内核打补丁，或者使用
 [SystemTap](https://en.wikipedia.org/wiki/SystemTap)**。SystemTap 是一个 tracing
-系统，**简单来说，它提供了一种领域特定语言（DSL），代码编译成内核模块，然后热加
-载到运行中的内核**。但**出于安全考虑，一些生产系统禁止动态模块加载**，例如我研究
-eBPF 时所用的系统就不允许。
+系统，简单来说，它**<mark>提供了一种领域特定语言（DSL），代码编译成内核模块，
+然后热加载到运行中的内核</mark>**。但**出于安全考虑，一些生产系统禁止动态模块加载**，
+例如我研究 eBPF 时所用的系统就不允许。
 
 **另一种方式是给内核打补丁来触发事件，可能会基于 Netlink**。这种方式不太方便，内
 核 hacking 有副作用，例如新引入的特性也许有毒，而且会增加维护成本。
 
-从 Linux 3.15 开始，**将任何可跟踪的内核函数** ***安全地*** **转换成事件，很可能
-将成为现实**。在计算机科学的表述中，**“安全地”**经常是指通过“一类虚拟机”（some
-virtual machines）执行代码，这里也不例外。事实上，Linux 内部的这个“虚拟机”已经存
+从 Linux 3.15 开始，将任何可跟踪的内核函数**<mark>安全地</mark>**转换成事件，
+很可能将成为现实。在计算机科学的表述中，**“安全地”**经常是指通过“某种类型的虚拟机”
+来执行代码，这里也不例外。事实上，Linux 内部的这个“虚拟机”已经存
 在几年了，从 1997 年的 `2.1.75` 版本有了，称作伯克利包过滤器（Berkeley Packet
 Filter），缩写 BPF。从名字就可以看出，它最开始是为 BSD 防火墙开发的。**它只有两
 个寄存器，只允许前向跳转，这意味着无法用它实现循环**（如果非要说行也可以：如果
 你知道最大的循环次数，那可以手动做循环展开）。这样设计是为了**保证程序会在有限步骤
-内结束**，而不会让操作系统卡住。你可能在考虑，我已经有 iptables 做防火墙了，要这个有
+内结束**，而不会让操作系统卡住。
+
+> 更多信息见 [(译) Linux Socket Filtering (LSF, aka BPF)（Kernel，2021）]({% link _posts/2021-08-27-linux-socket-filtering-aka-bpf-zh.md %})。
+
+你可能在考虑，我已经有 iptables 做防火墙了，要这个有
 什么用？（作为一个例子，）它是 CloudFlare 的防 DDOS 攻击工具
 [AntiDDos](https://blog.cloudflare.com/bpf-the-forgotten-bytecode/)的基础。
 
@@ -100,7 +105,7 @@ Filter），缩写 BPF。从名字就可以看出，它最开始是为 BSD 防�
 
 下面让我们正式开始。
 
-# 3 你好，世界
+# 3 Hello,  World!
 
 即使对大神级程序员来说写汇编代码也并不是一件方便的事，因此我们这里使用 `bcc`。
 `bcc` 是基于 LLVM 的工具集，用 Python 封装了底层机器相关的细节。探测代码用 C 写，
@@ -411,7 +416,5 @@ Listening on 7f000001 6588 with 1 pending connections in container 4026531957
 [这里](https://github.com/iovisor/bcc/blob/master/tools/solisten.py)，
 感谢 bcc team 的支持，现在它已经是一个正式工具。
 
-想更深入的了解这个 topic，建议阅读 Brendan Gregg 的博客，尤其是关于 eBPF 的 maps
-和 statistics 的[这一篇
-](http://www.brendangregg.com/blog/2015-05-15/ebpf-one-small-step.html)。Brendan
+想更深入了解这个 topic，建议阅读 Brendan Gregg 的博客。Brendan
 Gregg 是这个项目的主要贡献者之一。

@@ -3,7 +3,7 @@ layout    : post
 title     : "[译] 为容器时代设计的高级 eBPF 内核特性（FOSDEM, 2021）"
 date      : 2021-02-13
 lastupdate: 2021-02-13
-categories: ebpf maglev
+categories: bpf maglev
 ---
 
 ### 译者序

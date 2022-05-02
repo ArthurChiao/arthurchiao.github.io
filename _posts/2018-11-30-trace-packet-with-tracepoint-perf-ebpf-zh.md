@@ -2,7 +2,7 @@
 layout    : post
 title     : "[译] 使用 Linux tracepoint、perf 和 eBPF 跟踪数据包 (2017)"
 date      : 2018-11-30
-lastupdate: 2021-01-24
+lastupdate: 2022-05-04
 author    : ArthurChiao
 categories: bpf tracing perf
 ---
@@ -29,7 +29,7 @@ eBPF](https://blog.yadutaf.fr/2017/07/28/tracing-a-packet-journey-using-linux-tr
 
 Linux 允许在主机上用**虚拟网卡**（virtual interface）和**网络命名空间**（network
 namespace）构建复杂的网络。但出现故障时，排障（troubleshooting）相当痛苦。如果是
-3 层路由问题，`mtr` 可以排上用场。但如果是更底层的问题，通常只能手动检查每个网
+3 层路由问题，`mtr` 可以排上用场；但如果是更底层的问题，通常只能手动检查每个网
 卡/网桥/网络命名空间/iptables 规则，用 tcpdump 抓一些包，以确定到底是什么状况。
 **如果不了解故障之前的网络配置，那排障时的感觉就像在走迷宫**。
 
@@ -37,12 +37,12 @@ namespace）构建复杂的网络。但出现故障时，排障（troubleshootin
 
 ## 1.1 逃离迷宫：上帝视角
 
-逃离迷宫的一种方式是在**迷宫内**不断左右尝试（exploring），寻找通往出口的路
-。当你在玩迷宫游戏（置身迷宫内）时，你只能如此。不过，如果不是在游戏内，那还有另
-一种方式：**转换视角，高空俯视**。
+逃离迷宫的一种方式是在**迷宫内**不断左右尝试，寻找通往出口的道路。
+如果是在玩迷宫游戏（置身迷宫内），那确实只能如此；但如果不是在玩游戏，
+那还有另一种逃离方式：**<mark>转换视角，高空俯视</mark>**。
 
 用 Linux 术语来说，就是转换到**内核视角**（the kernel point of view）。在这种视
-角下，**网络命名空间不再是容器（"containers"），而只是一些标签（labels）。内核、
+角下，**网络命名空间不再是容器（“containers”），而只是一些标签（labels）。内核、
 数据包、网卡等此时都是“肉眼可见”的对象（objects）**。
 
 > **原文注**：上面的 "containers" 我加了引号，因为从技术上说，网络命名空间是
@@ -51,12 +51,12 @@ namespace）构建复杂的网络。但出现故障时，排障（troubleshootin
 ## 1.2 网络跟踪：渴求利器
 
 所以我想要的是这样一个工具，它可以直接告诉我 “嗨，我看到你的包了：它从**属于这个
-网络命名空间**的**这个网卡**上发出来，然后**依次经过这些函数**”。
+网络命名空间**的**这个网卡**上发出，然后**依次经过这些函数**”。
 
 本质上，我想要的是一个 **2 层的 `mtr`**。这样的工具存在吗？不存在我们就造一个！
 
 本文结束时，我们将拥有一个简单、易于使用的底层**网络包跟踪器**（packet tracker
-）。如果你 ping 本机上的一个 Docker 容器，它会显示类似如下信息：
+）。如果 ping 本机上的一个 Docker 容器，它会显示类似如下信息：
 
 ```shell
 # ping -4 172.17.0.2
@@ -74,7 +74,7 @@ namespace）构建复杂的网络。但出现故障时，排障（troubleshootin
 
 `perf` 是 Linux 上的最重要的性能分析工具之一。它和内核出自同一个源码树（source
 tree），但编译需要针对指定的内核版本。`perf` 可以跟踪内核，也可以跟踪用户程序，
-还可用于采样或者设置跟踪点。**可以把它想象成开销更低，但功能更强大的 `strace`**。
+还可用于采样或者设置跟踪点，可以把它想象成**<mark>开销更低但功能更强大的 strace</mark>**。
 本文只会使用非常简单的 `perf` 命令。想了解更多，强烈建议访问 [Brendan
 Gregg](http://www.brendangregg.com/perf.html)的博客。
 
@@ -87,13 +87,12 @@ Gregg](http://www.brendangregg.com/perf.html)的博客。
 
 eBPF 程序可用于 **QoS 网络分类器**（network classifier）、**XDP**（eXpress Data Plane）
 很底层的网络功能和过滤功能组件、**跟踪代理**（tracing agent），以及其他很多方面。
-**任何在 `/proc/kallsyms` 导出的符号（内核函数）或者跟踪点（tracepoints），
-都可以插入 eBPF 跟踪点**（tracing probes）。
+**<mark>任何在 /proc/kallsyms 导出的符号（内核函数）和 tracepoint，
+都可以插入 eBPF tracing 代码</mark>**。
 
 本文将主要关注 attach 到 tracepoints 的跟踪代理（tracing agents attached to
-tracepoints）。如果想看一些在内核函数埋点进行跟踪的例子，或者入门级介绍，建议阅
-读我之前的 eBPF 文章[英文
-](https://blog.yadutaf.fr/2016/03/30/turn-any-syscall-into-event-introducing-ebpf-kernel-probes/)
+tracepoints）。想看在内核函数埋点进行跟踪的例子，或者入门级介绍，建议阅读我之前的
+eBPF 文章[英文](https://blog.yadutaf.fr/2016/03/30/turn-any-syscall-into-event-introducing-ebpf-kernel-probes/)
 ，[中文翻译](/blog/ebpf-turn-syscall-to-event-zh)。
 
 # 2 Perf
@@ -189,8 +188,8 @@ netif_receive_skb       dev=docker0     skbaddr=0xffff96d481988b00
 $ sudo perf list 'net:*'
 ```
 
-这个命令会列出 `tracepoint` 列表，名字类似于 `net:netif_rx`。**冒号前面是事件类型
-，后面是事件名字**。这里我选择了 4 个：
+这个命令会列出 `tracepoint` 列表，格式 `net:netif_rx`。**冒号前面是事件类型
+，后面是事件名字**。这里我选择 4 个：
 
 * `net_dev_queue`
 * `netif_receive_skb_entry`
@@ -323,8 +322,8 @@ TRACEPOINT_PROBE(net, netif_receive_skb_entry) {
 哪里来的**？答案是，每次用 `TRACEPONT_PROBE` 定义一个 tracepoint，**`bcc` 就会为其自
 动生成 `args` 参数**，由于它是动态生成的，因此要查看它的定义不太容易。
 
-不过，有另外一种简单的方式可以查看。在 Linux 上**每个 tracepoint 都对应一个
-`/sys/kernel/debug/tracing/events` 条目**。例如，查看 `net:netif_rx`：
+不过，有另外一种简单的方式可以查看。在 Linux 上**<mark>每个 tracepoint 都对应一个</mark>**
+**<mark><code>/sys/kernel/debug/tracing/events</code></mark>** entry。例如对于 `net:netif_rx`：
 
 ```shell
 $ cat /sys/kernel/debug/tracing/events/net/netif_rx/format

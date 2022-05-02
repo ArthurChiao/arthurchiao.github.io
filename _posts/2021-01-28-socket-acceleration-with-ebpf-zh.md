@@ -3,7 +3,7 @@ layout    : post
 title     : "[译] 利用 ebpf sockmap/redirection 提升 socket 性能（2020）"
 date      : 2021-01-28
 lastupdate: 2021-01-28
-categories: socket ebpf
+categories: socket bpf
 ---
 
 ### 译者序

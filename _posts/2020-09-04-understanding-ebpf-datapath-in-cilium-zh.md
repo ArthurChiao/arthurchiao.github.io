@@ -3,7 +3,7 @@ layout    : post
 title     : "[译] 深入理解 Cilium 的 eBPF 收发包路径（datapath）（KubeCon, 2019）"
 date      : 2020-09-04
 lastupdate: 2020-09-04
-categories: cilium ebpf kernel
+categories: cilium bpf kernel
 ---
 
 ### 译者序
