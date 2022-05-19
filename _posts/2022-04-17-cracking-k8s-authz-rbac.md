@@ -2,7 +2,7 @@
 layout    : post
 title     : "Cracking Kubernetes RBAC Authorization Model"
 date      : 2022-04-17
-lastupdate: 2022-04-17
+lastupdate: 2022-05-10
 categories: k8s authz rbac
 canonical_url: https://learnk8s.io/rbac-kubernetes
 ---
@@ -862,6 +862,25 @@ subjects:
   name: system:unauthenticated         # for all unauthenticated users
   apiGroup: rbac.authorization.k8s.io
 ```
+
+## 4.9 Virtual `resource` types
+
+From the [documentation](https://kubernetes.io/docs/reference/using-api/api-concepts/#standard-api-terminology),
+in Kubernetes,
+
+* Most resource types are
+  [objects](https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#kubernetes-objects):
+  they represent a **<mark>concrete instance of a concept on the cluster</mark>**, such as
+
+  1. a `pod`,
+  1. a `namespace`.
+
+* A smaller number of API resource types are **<mark>virtual</mark>**, in that
+  they often **<mark>represent operations on objects</mark>**, rather than
+  objects themsellves, such as
+
+  1. **<mark>a permission check</mark>** (use a POST with a JSON-encoded body of `SubjectAccessReview` to the `subjectaccessreviews` resource),
+  1. the `eviction` sub-resource of a Pod (used to trigger API-initiated eviction).
 
 # References
 
