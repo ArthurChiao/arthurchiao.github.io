@@ -1,10 +1,10 @@
 ---
-layout: post
-title:  "[译] Linux 网络栈监控和调优：接收数据（2016）"
-date:   2018-12-05
-lastupdate: 2021-08-02
+layout    : post
+title     : "[译] Linux 网络栈监控和调优：接收数据（2016）"
+date      : 2018-12-05
+lastupdate: 2022-06-04
 author: ArthurChiao
-categories: network-stack kernel monitoring tuning
+categories: network kernel monitoring tuning
 ---
 
 ## 译者序
@@ -21,7 +21,7 @@ categories: network-stack kernel monitoring tuning
 3. 调优：修改网络配置参数
 
 本文的另一个特色是，几乎所有讨论的内核代码，都在相应的地方给出了 github 上的链接
-，具体到行。
+，具体到行。本文在翻译时将部分链接更新到 5.10 版本。
 
 网络栈非常复杂，原文太长又没有任何章节号，看起来非常累。因此本文翻译时添加了适当
 的章节号，以期按图索骥。
@@ -490,7 +490,7 @@ for (i = 0; i < adapter->num_q_vectors; i++)
 尝试下一种（没测试过的）类型。
 
 **MSI-X 中断是比较推荐的方式，尤其是对于支持多队列的网卡**。因为每个 RX 队列有独
-立的MSI-X 中断，因此可以被不同的 CPU 处理（通过 `irqbalance` 方式，或者修改
+立的 MSI-X 中断，因此可以被不同的 CPU 处理（通过 `irqbalance` 方式，或者修改
 `/proc/irq/IRQ_NUMBER/smp_affinity`）。我们后面会看到，处理中断的 CPU 也是随后处
 理这个包的 CPU。这样的话，从网卡硬件中断的层面就可以设置让收到的包被不同的 CPU
 处理。
@@ -1266,7 +1266,7 @@ while (!list_empty(&sd->poll_list)) {
 
 这里可以看到内核是如何防止处理数据包过程霸占整个 CPU 的，其中 budget 是该 CPU 的
 所有 NAPI 变量的总预算。这也是多队列网卡应该精心调整 IRQ Affinity 的原因。回忆前
-面讲的，**处理硬中断的 CPU接下来会处理相应的软中断**，进而执行上面包含 budget 的
+面讲的，**处理硬中断的 CPU 接下来会处理相应的软中断**，进而执行上面包含 budget 的
 这段逻辑。
 
 多网卡多队列可能会出现这样的情况：多个 NAPI 变量注册到同一个 CPU 上。每个 CPU 上
@@ -1512,17 +1512,23 @@ static int igb_poll(struct napi_struct *napi, int budget)
 循环之前会更新统计信息。这个信息存储在该 CPU 的 `struct softnet_data` 变量中。
 
 这些统计信息打到了`/proc/net/softnet_stat`，但不幸的是，关于这个的文档很少。每一
-列代表什么并没有标题，而且列的内容会随着内核版本可能发生变化。
-
-在内核 3.13.0 中，你可以阅读内核源码，查看每一列分别对应什么。
-[net/core/net-procfs.c](https://github.com/torvalds/linux/blob/v3.13/net/core/net-procfs.c#L161-L165):
+列代表什么并没有标题，而且列的内容会随着内核版本可能发生变化，所以应该以内核源码为准，
+下面是内核 5.10，可以看到每列分别对应什么：
 
 ```c
-seq_printf(seq,
-       "%08x %08x %08x %08x %08x %08x %08x %08x %08x %08x %08x\n",
-       sd->processed, sd->dropped, sd->time_squeeze, 0,
-       0, 0, 0, 0, /* was fastroute */
-       sd->cpu_collision, sd->received_rps, flow_limit_count);
+// https://github.com/torvalds/linux/blob/v5.10/net/core/net-procfs.c#L172
+
+static int softnet_seq_show(struct seq_file *seq, void *v)
+{
+    ...
+    seq_printf(seq,
+           "%08x %08x %08x %08x %08x %08x %08x %08x %08x %08x %08x %08x %08x\n",
+           sd->processed, sd->dropped, sd->time_squeeze, 0,
+           0, 0, 0, 0, /* was fastroute */
+           0,    /* was cpu_collision */
+           sd->received_rps, flow_limit_count,
+           softnet_backlog_len(sd), (int)seq->index);
+}
 ```
 
 其中一些的名字让人很困惑，而且在你意想不到的地方更新。在接下来的网络栈分析说，我
@@ -1559,20 +1565,33 @@ $ cat /proc/net/softnet_stat
 如果你要画图监控这些数据，确保你的列和相应的字段是对的上的，最保险的方式是阅读相
 应版本的内核代码。
 
-### 5.3.8 网络数据处理调优
+### 5.3.8 配置调优：增大收包 budget
 
-#### 调整 `net_rx_action` budget
+#### sysctl 参数：`netdev_budget` 和 `netdev_budget_usecs`
 
-`net_rx_action` budget 表示一个 CPU 单次轮询（`poll`）所允许的最大收包数量。单次
-poll 收包时，所有注册到这个 CPU 的 NAPI 变量收包数量之和不能大于这个阈值。 调整：
+权威解释见 [内核文档](https://github.com/torvalds/linux/blob/v5.10/Documentation/admin-guide/sysctl/net.rst#netdev_budget)。
+
+* **<mark><code>netdev_budget</code></mark>**：一个 **<mark>CPU 单次轮询所允许的最大收包数量</mark>**。
+  单次 poll 收包时，所有注册到这个 CPU 的 NAPI 变量收包数量之和不能大于这个阈值。
+* **<mark><code>netdev_budget_usecs</code></mark>**：每次 NAPI poll cycle 的最长允许时间，单位是 `us`。
+* 触发二者中任何一个条件后，都会导致一次轮询结束。
+
+查看当前配置：
 
 ```shell
-$ sudo sysctl -w net.core.netdev_budget=600
+$ sysctl -a | grep netdev_budget
+net.core.netdev_budget = 2400
+net.core.netdev_budget_usecs = 8000
 ```
 
-如果要保证重启仍然生效，需要将这个配置写到`/etc/sysctl.conf`。
+修改配置：
 
-Linux 3.13.0 的默认配置是 300。
+```shell
+$ sudo sysctl -w net.core.netdev_budget=3600
+$ sudo sysctl -w net.core.netdev_budget_usecs = 10000
+```
+
+要保证重启不丢失，需要将这个配置写到 `/etc/sysctl.conf`。
 
 <a name="chap_5.4"></a>
 
@@ -1587,14 +1606,14 @@ Linux 3.13.0 的默认配置是 300。
 户程序。
 
 这类优化方式的缺点是 **信息丢失**：包的 option 或者 flag 信息在合并时会丢
-失。这也是为什么大部分人不使用或不推荐使用LRO 的原因。
+失。这也是为什么大部分人不使用或不推荐使用 LRO 的原因。
 
 LRO 的实现，一般来说，对合并包的规则非常宽松。GRO 是 LRO 的软件实现，但是对于包合并
 的规则更严苛。
 
 顺便说一下，**如果用 tcpdump 抓包，有时会看到机器收到了看起来不现实的、非常大的包**，
 这很可能是你的系统开启了 GRO。接下来会看到，**tcpdump 的抓包点（捕获包的 tap
-）在整个栈的更后面一些，在GRO 之后**。
+）在整个栈的更后面一些，在 GRO 之后**。
 
 ### 使用 ethtool 修改 GRO 配置
 
@@ -2730,7 +2749,7 @@ Netpoll API 的消费者可以通过 `netpoll_setup` 函数注册 `struct netpol
 
 ## 12.4 `SO_INCOMING_CPU`
 
-`SO_INCOMING_CPU` 直到 Linux 3.19 才添加, 但它非常有用，所以这里讨论一下。
+`SO_INCOMING_CPU` 直到 Linux 3.19 才添加， 但它非常有用，所以这里讨论一下。
 
 使用 `getsockopt` 带 `SO_INCOMING_CPU` 选项，可以判断当前哪个 CPU 在处理这个 socket 的网
 络包。你的应用程序可以据此将 socket 交给在期望的 CPU 上运行的线程，增加数据本地性（
