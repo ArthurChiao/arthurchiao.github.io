@@ -28,10 +28,10 @@ picture like following [1]:
 <p align="center"><img src="/assets/img/cilium-life-of-a-packet/neutron-ovs-path.png" width="80%" height="80%"></p>
 <p align="center">Fig 1. Network topology inside an OpenStack compute node</p>
 
-When network problems are reported, such as one container can't reach another
+When network problems are reported, such as one container not reaching another
 one, you could capture the traffic along the forwarding path, and by combining
 routing table and ARP table information, most of the time you could quickly
-locate the question.
+locate the problem.
 
 Unfortunately, **the topology is no longer that straight forward in Cilium
 networking solution**. For example, below is the network topology inside
@@ -205,7 +205,7 @@ and,
 
 As the output shows, it is the address of a device named `lxc00aa`.
 **The `@` symbol indicates that it is one end of a veth pair, with interface
-index (ifindex) 699, and its peer end has an ifindex 198**.
+index (ifindex) 699, and its peer end has an ifindex 698**.
 
 With this in mind, execute `ip link` inside POD1:
 
