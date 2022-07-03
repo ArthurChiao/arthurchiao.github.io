@@ -659,12 +659,12 @@ $ tc filter add dev eth0 egress bpf da obj toy-proxy-bpf.o sec egress
 ```
 
 加载过程分为 tc 前端和内核 bpf 后端两部分，**<mark>中间通过 netlink socket 通信，源码分析见</mark>**
-[Firewalling with BPF/XDP: Examples and Deep Dive]({ % link _posts/2021-06-27-firewalling-with-bpf-xdp.md %})
+[Firewalling with BPF/XDP: Examples and Deep Dive]({% link _posts/2021-06-27-firewalling-with-bpf-xdp.md %})
 
 ## 程序示例
 
-1. [Firewalling with BPF/XDP: Examples and Deep Dive]({ % link _posts/2021-06-27-firewalling-with-bpf-xdp.md %})
-1. [Cracking Kubernetes Node Proxy (aka kube-proxy)]({ % link _posts/2019-11-30-cracking-k8s-node-proxy.md %})
+1. [Firewalling with BPF/XDP: Examples and Deep Dive]({% link _posts/2021-06-27-firewalling-with-bpf-xdp.md %})
+1. [Cracking Kubernetes Node Proxy (aka kube-proxy)]({% link _posts/2019-11-30-cracking-k8s-node-proxy.md %})
 
 ## 延伸阅读
 

@@ -361,7 +361,7 @@ filtering (and dropping if you like) the ingress packets, as shown in the above
 picture.
 
 For more information on Linux's traffic control subsystem, refer to [5,2] and
-[this translation]({ % link _posts/2020-10-08-lartc-qdisc-zh.md % }) if you can read Chinese.
+[this translation]({% link _posts/2020-10-08-lartc-qdisc-zh.md %}) if you can read Chinese.
 
 For simplicity, we'll only mirror the ingress packets in the next.
 

@@ -2114,7 +2114,7 @@ iproute2 套件的兼容性。
 不会覆盖所有细节，但对于入门来说足够了。
 
 > iproute2/tc 加载 BPF 程序到内核的**<mark>底层实现</mark>**，可参考
-> [Firewalling with BPF/XDP: Examples and Deep Dive]({ % link _posts/2021-06-27-firewalling-with-bpf-xdp.md %})，译注。
+> [Firewalling with BPF/XDP: Examples and Deep Dive]({% link _posts/2021-06-27-firewalling-with-bpf-xdp.md %})，译注。
 
 <a name="ch_2.3.1"></a>
 

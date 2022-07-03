@@ -31,7 +31,7 @@ categories: network-stack kernel monitoring tuning
 
 **2020 更新**:
 
-* 基于 Prometheus+Grafana 监控网络栈：[Monitoring Network Stack]({% link _posts/2020-04-22-monitoring-network-stack.md %})。
+* 基于 Prometheus+Grafana 监控网络栈：[Monitoring Network Stack]({% link _posts/2022-07-02-monitoring-network-stack.md %})。
 
 以下是翻译。
 

@@ -714,6 +714,6 @@ After reading through this post, users should be more familiar with the
 # References
 
 1. [Trip.com: First Step towards Cloud Native Security]({% link _posts/2021-12-19-trip-first-step-towards-cloud-native-security.md %}), 2021
-2. [Cracking Kubernetes Node Proxy (aka kube-proxy)]({ % link _posts/2019-11-30-cracking-k8s-node-proxy.md %}), 2019
+2. [Cracking Kubernetes Node Proxy (aka kube-proxy)]({% link _posts/2019-11-30-cracking-k8s-node-proxy.md %}), 2019
 3. [Connection Tracking (conntrack): Design and Implementation Inside Linux Kernel]({% link _posts/2020-08-09-conntrack-design-and-implementation.md %})
 4. [What's inside Cilium Etcd (kvstore)]({% link _posts/2020-05-20-whats-inside-cilium-etcd.md %})

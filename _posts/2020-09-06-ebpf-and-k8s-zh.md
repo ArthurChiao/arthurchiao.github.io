@@ -206,9 +206,9 @@ agent 来生成。
 
 > 相关阅读，有助于理解以上过程：
 >
-> 1. [Cracking Kubernetes Node Proxy (aka kube-proxy)]({ % link _posts/2019-11-30-cracking-k8s-node-proxy.md %})
-> 2. [(译) 深入理解 iptables 和 netfilter 架构]({ % link _posts/2019-02-18-deep-dive-into-iptables-and-netfilter-arch-zh.md %})
-> 3. [连接跟踪（conntrack）：原理、应用及 Linux 内核实现]({ % link _posts/2020-08-05-conntrack-design-and-implementation-zh.md %})
+> 1. [Cracking Kubernetes Node Proxy (aka kube-proxy)]({% link _posts/2019-11-30-cracking-k8s-node-proxy.md %})
+> 2. [(译) 深入理解 iptables 和 netfilter 架构]({% link _posts/2019-02-18-deep-dive-into-iptables-and-netfilter-arch-zh.md %})
+> 3. [连接跟踪（conntrack）：原理、应用及 Linux 内核实现]({% link _posts/2020-08-05-conntrack-design-and-implementation-zh.md %})
 > 4. [(译) 深入理解 Cilium 的 eBPF 收发包路径（datapath）]({% link _posts/2020-09-04-understanding-ebpf-datapath-in-cilium-zh.md %}) 
 >
 > 译者注。
@@ -599,7 +599,7 @@ $ kubectl -n kube-system delete ds kube-proxy
 
 作为例子，我们来看看 Cilium 是怎么做 Service 的负载均衡的。
 
-> Service 细节实现可参考 [Cracking Kubernetes Node Proxy (aka kube-proxy)]({ % link _posts/2019-11-30-cracking-k8s-node-proxy.md %})。
+> Service 细节实现可参考 [Cracking Kubernetes Node Proxy (aka kube-proxy)]({% link _posts/2019-11-30-cracking-k8s-node-proxy.md %})。
 >
 > 译者注。
 

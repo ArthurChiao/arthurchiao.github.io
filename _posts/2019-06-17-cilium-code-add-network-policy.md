@@ -2,17 +2,27 @@
 layout    : post
 title     : "Cilium Code Walk Through: Add Network Policy"
 date      : 2020-07-03
-lastupdate: 2020-07-03
+lastupdate: 2022-06-09
 categories: cilium
 ---
 
-This post belongs to
-[Cilium Code Walk Through Series]({% link _posts/2019-06-17-cilium-code-series.md %}).
+This is a
+[Cilium Code Walk Through Series]({% link _posts/2019-06-17-cilium-code-series.md %})
+post.
 
 This post walks you through the network policy enforcement process. Code based
-on Cilium `1.8.0`.
+on Cilium `1.8.0/1.10.7`.
 
-Call flows：
+NOTE: this post is not well organized yet, posted mainly to memorize the calling stack.
+
+----
+
+* TOC
+{:toc}
+
+----
+
+# Call stack: start from `policyAdd()`
 
 ```
 policyAdd                                                  // daemon/policy.go
@@ -60,9 +70,18 @@ EndpointRegenerationEvent.Handle                                              //
        |  |  |     |     |-resolveIngressPolicy                               // -> pkg/policy/rule.go
        |  |  |     |        |-GetSourceEndpointSelectorsWithRequirements      // -> pkg/policy/api/ingress.go
        |  |  |     |        |-mergeIngress                                    //    pkg/policy/rule.go
-       |  |  |     |           |-mergeIngressPortProto                        //    pkg/policy/rule.go
-       |  |  |     |              |-createL4IngressFilter                     // -> pkg/policy/l4.go
-       |  |  |     |              |-mergePortProto                            //    pkg/policy/rule.go
+       |  |  |     |           |-mergeIngressPortProto         // L3-only rule
+       |  |  |     |           |-toPorts.Iterate(func(ports) { // L4/L7 rule
+       |  |  |     |               for p := range GetPortProtocols() {
+       |  |  |     |                 mergeIngressPortProto(TCP/UDP/...)
+       |  |  |     |                   |-createL4IngressFilter
+       |  |  |     |                   |-addL4Filter(ruleLabels)
+       |  |  |     |                       |-mergePortProto
+       |  |  |     |                       |-if ruleLabels in existingRuleLabels
+       |  |  |     |                       |    exists = true
+       |  |  |     |                       |-if !exists:
+       |  |  |     |                       |    existingFilter.DerivedFromRules.append(ruleLabels)
+       |  |  |     |               }
        |  |  |     |-cip.setPolicy(selPolicy)                                 //    pkg/policy/distillery.go
        |  |  |-e.selectorPolicy.Consume                                       //    pkg/policy/distillery.go
        |  |     |-if !IngressPolicyEnabled || !EgressPolicyEnabled
@@ -115,7 +134,7 @@ EndpointRegenerationEvent.Handle                                              //
        |-waitForProxyCompletions
 ```
 
-# addNewRedirects
+# `addNewRedirects()`
 
 ```go
 // adding an l7 redirect for the specified policy.
@@ -370,4 +389,69 @@ regeneratePolicy  // pkg/endpoint/policy.go
 computeDirectionL4PolicyMapEntries   // pkg/policy/resolve.go
   |-ToMapState                       // pkg/policy/l4.go
       |-NewMapStateEntry
+```
+
+# Skip duplicated labels
+
+When there are duplicated label selectors in the rule, such as,
+
+```yaml
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+spec:
+  endpointSelector:
+    matchLabels:
+      k8s:redis-cluster-name: my-test-cluster
+  ingress:
+  - fromEndpoints:
+    - matchLabels:
+        k8s:appid: "0001"
+    - matchLabels:
+        k8s:appid: "0001"  # duplicated from the adjacent above label selectors
+    - matchLabels:
+        k8s:appid: "0002"
+    toPorts:
+    - ports:
+      - port: "6379"
+        protocol: TCP
+```
+
+cilium-agent will skip the duplicated ones:
+
+```
+       mergeIngress                                    //    pkg/policy/rule.go
+        |-mergeIngressPortProto         // L3-only rule
+        |-toPorts.Iterate(func(ports) { // L4/L7 rule
+            for p := range GetPortProtocols() {
+              mergeIngressPortProto(TCP/UDP/...)
+                |-createL4IngressFilter
+                |-addL4Filter(ruleLabels)
+                    |-mergePortProto
+                    |-if ruleLabels in existingRuleLabels
+                    |    exists = true
+                    |-if !exists:
+                    |    existingFilter.DerivedFromRules.append(ruleLabels)
+            }
+```
+
+Only unique rule labels will be included to the final rule, so the final effect is
+equivalent to this:
+
+```yaml
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+spec:
+  endpointSelector:
+    matchLabels:
+      k8s:redis-cluster-name: my-test-cluster
+  ingress:
+  - fromEndpoints:
+    - matchLabels:
+        k8s:appid: "0001"
+    - matchLabels:
+        k8s:appid: "0002"
+    toPorts:
+    - ports:
+      - port: "6379"
+        protocol: TCP
 ```

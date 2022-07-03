@@ -49,7 +49,7 @@ eBPF 相比于 cBPF（经典 BPF）的优势之一是：Clang/LLVM 为它提供�
 还无法直接编写字节码程序来使用 [CO-RE](https://facebookmicrosites.github.io/bpf/blog/2020/02/19/bpf-portability-and-co-re.html) 
 等复杂特性。
 
-> [<mark>(译) BPF 可移植性和 CO-RE（一次编译，到处运行）</mark>（Facebook，2020）]({ % link _posts/2021-03-12-bpf-portability-and-co-re-zh.md %})。
+> [<mark>(译) BPF 可移植性和 CO-RE（一次编译，到处运行）</mark>（Facebook，2020）]({% link _posts/2021-03-12-bpf-portability-and-co-re-zh.md %})。
 > 译注。
 
 因此，Clang 和 LLVM 仍然是 eBPF 工作流不可或缺的部分。

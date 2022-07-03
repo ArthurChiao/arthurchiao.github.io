@@ -1,40 +1,80 @@
 ---
 layout    : post
-title     : "Monitoring Network Stack"
-date      : 2020-04-22
-lastupdate: 2020-04-22
+title     : "Monitoring Linux Network Stack"
+date      : 2020-04-25
+lastupdate: 2022-07-02
 author    : ArthurChiao
-categories: network
+categories: network kernel
 ---
 
 This post shows how to collecte metrics from your Linux network stack (with
 bash scripts), and monitoring the stack status with Prometheus and Grafana.
 
-This post assumes you have read through the following posts:
+This post assumes you have read through the following posts (kernel 3.13 + intel 1Gbps NIC driver):
 
 1. [Monitoring and Tuning the Linux Networking Stack: Receiving Data](https://blog.packagecloud.io/eng/2016/06/22/monitoring-tuning-linux-networking-stack-receiving-data/)
 2. [Monitoring and Tuning the Linux Networking Stack: Sending Data](https://blog.packagecloud.io/eng/2017/02/06/monitoring-tuning-linux-networking-stack-sending-data)
 
-Or my translations if you'd like to read Chinese:
+Or my updated versions (kernel 5.10 + mellanox 25Gbps NIC driver) if you can read Chinese:
 
-1. [Linux 网络栈监控和调优：接收数据（2016）]({% link _posts/2018-12-05-tuning-stack-rx-zh.md %})
-2. [Linux 网络栈监控和调优：发送数据（2017）]({% link _posts/2018-12-17-tuning-stack-tx-zh.md %})
+1. [Linux 网络栈原理、监控与调优：前言]({% link _posts/2022-07-02-linux-net-stack-zh.md %})
+1. [Linux 中断（IRQ/softirq）基础：原理及内核实现]({% link _posts/2022-07-02-linux-irq-softirq-zh.md %})
+1. [Linux 网络栈接收数据（RX）：原理及内核实现]({% link _posts/2022-07-02-linux-net-stack-implementation-rx-zh.md %})
+1. [Linux 网络栈接收数据（RX）：配置调优]({% link _posts/2022-07-02-linux-net-stack-tuning-rx-zh.md %})
 
-Besides that, some basic understandings of Prometheus and Grafana are also needed.
+Besides, some basic understandings of Prometheus and Grafana are needed.
 
-**Metrics from bottom to up**:
+----
 
-1. NIC statistics
-2. Hardware interrupts
-3. Software interrupts
-4. Kernel processing drops
-5. Abnormal TCP statistics
+* TOC
+{:toc}
 
-No more words, let start.
+----
+
+<p align="center"><img src="/assets/img/linux-net-stack/rx-overview.png" width="70%" height="70%"></p>
+<p align="center">Fig. Steps of Linux kernel receiving data process and the corresponding chapters in this post</p>
 
 # 1. NIC
 
-## 1.1 Raw Data
+## 1.1 Data sources
+
+### `ethtool -S`
+
+```shell
+$ sudo ethtool -S eth0
+NIC statistics:
+     rx_packets: 597028087
+     tx_packets: 5924278060
+     rx_bytes: 112643393747
+     tx_bytes: 990080156714
+     rx_broadcast: 96
+     tx_broadcast: 116
+     rx_multicast: 20294528
+     ....
+```
+
+Note that depending on specific NICs/drivers, some of the metrics may be
+updated in the kernel code (software), some may be in hardware.  Refer to the
+datasheets of the your NICs and the corresponding drivers if needed.
+
+### `/proc/net/dev`
+
+`/proc/net/dev` also provides some network device level statistics:
+
+```shell
+$ cat /proc/net/dev
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes  packets errs drop fifo colls carrier compressed
+  eth0: 152214  9700    0    2    0     0          0    203860 9905984   62604    0    0    0     0       0          0
+    lo: 463836  57535   0    0    0     0          0         0 4263836   18535    0    0    0     0       0          0
+```
+
+Actually this is only a subnet of `/sys/class/net/<nic>/statistics`, as introduced in the
+below section.
+
+### `/sys/class/net/<nic>/statistics`
+
+Statistics from sysfs provides an uppper layer view of the NIC RX/TX stats.
 
 NIC stats from `/sys/class/net/<nic>/statistics`:
 
@@ -50,7 +90,9 @@ $ cat /sys/class/net/eth0/statistics/rx_crc_errors
 0
 ```
 
-## 1.2 Metric
+Again, look into the spcific driver code if you'd like to ensure when and where a specific counter is updated.
+
+## 1.2 Metrics
 
 We will arrange our metrics in [Prometheus format](https://prometheus.io/docs/concepts/data_model/):
 
@@ -89,7 +131,7 @@ network_nic_stats{"nic":"eth0","type":"rx_errors"} 0
 ...
 ```
 
-## 1.3 Monitoring Panels
+## 1.3 Panels
 
 Push the metrics into your prometheus server, or, configure your prometheus to
 pull this data, we could create a panel like this:
@@ -107,7 +149,16 @@ to all the metrics, so we could filter the metrics with `host="$hostname"`.
 
 # 2. Hardware Interrupts
 
-## 2.1 Raw Data
+## 2.1 Data source (`/proc/interrupts`)
+
+Information included:
+
+1. IRQ->CPU mapping
+2. Total count of specific interrupts (e.g. RX/TX interrupts, timer interrupts), on specific CPU
+3. IRQ handler type and name
+
+Note that these are interrupt counts, not number of packets - for example, if
+Interrupt Coalescing is enabled, a batch of packets will trigger only one IRQ.
 
 ```shell
 $ cat /proc/interrupts
@@ -189,7 +240,7 @@ avg(irate(network_interrupts_by_queue{host=~"$hostname"})) by (queue)
 
 # 3. Software Interrupts (softirq)
 
-## 3.1 Data
+## 3.1 Data source (`/proc/softirqs`)
 
 ```shell
 $ cat /proc/softirqs
@@ -252,9 +303,9 @@ avg(irate(network_interrupts_by_cpu{host="$hostname",direction="NET_RX"})) by (c
 avg(irate(network_interrupts_by_cpu{host="$hostname",direction="NET_TX"})) by (cpu)
 ```
 
-# 4. Kernel Processing Drops (`/proc/net/softnet_stat`)
+# 4. Kernel Processing Drops
 
-## 4.1 Raw Data
+## 4.1 Data source (`/proc/net/softnet_stat`)
 
 ```shell
 $ cat /proc/net/softnet_stat
@@ -321,9 +372,35 @@ Grafana queries:
 avg(irate(network_softnet_stat{host="$hostname"})) by (type)
 ```
 
-# 5. TCP Statistics from `netstat -s`
+# 5. L3 statistics (IPv4)
 
-## 5.1 Raw Data
+## 5.1 Data source (`/proc/net/snmp`)
+
+```shell
+$ cat /proc/net/snmp
+Ip: Forwarding DefaultTTL InReceives InHdrErrors InAddrErrors ForwDatagrams InUnknownProtos InDiscards InDelivers OutRequests OutDiscards OutNoRoutes ReasmTimeout ReasmReqds ReasmOKs ReasmFails FragOKs FragFails FragCreates
+Ip: 1 64 25922988125 0 0 15771700 0 0 25898327616 22789396404 12987882 51 1 10129840 2196520 1 0 0 0
+...
+```
+
+Fields:
+
+```c
+// https://github.com/torvalds/linux/blob/v5.10/include/uapi/linux/snmp.h#L21
+
+/* ipstats mib definitions */
+
+enum {
+  IPSTATS_MIB_NUM = 0,
+  IPSTATS_MIB_INPKTS,       /* InReceives */
+  IPSTATS_MIB_INOCTETS,     /* InOctets */
+  IPSTATS_MIB_INDELIVERS,   /* InDelivers */
+  ...
+```
+
+# 6. L4 statistics (TCP)
+
+## 6.1 Data source
 
 ```shell
 $ netstat -s
@@ -347,7 +424,7 @@ TcpExt:
 ...
 ```
 
-## 5.2 Metric
+## 6.2 Metric
 
 ```shell
 netstat_output() {
@@ -402,7 +479,7 @@ network_tcp{"type":"connections_reset_due_to_unexpected_data"} 93589
 network_tcp{"type":"connections_reset_due_to_early_user_close"} 6522
 ```
 
-## 5.3 Panel
+## 6.3 Panel
 
 <p align="center"><img src="/assets/img/monitoring-network-stack/tcp-stats.png" width="80%" height="80%"></p>
 
@@ -412,7 +489,52 @@ Grafana queries:
 avg(irate(network_tcp{host="$hostname"})*60) by (type)
 ```
 
-# 6. Top N nodes
+# 7. L4 statistics (UDP)
+
+## 7.1 Data source
+
+### `/proc/net/snmp`
+
+```shell
+$ cat /proc/net/snmp
+...
+Udp: InDatagrams NoPorts InErrors OutDatagrams RcvbufErrors SndbufErrors InCsumErrors IgnoredMulti
+Udp: 3251496 356 0 3251774 0 0 0 0
+UdpLite: InDatagrams NoPorts InErrors OutDatagrams RcvbufErrors SndbufErrors InCsumErrors IgnoredMulti
+UdpLite: 0 0 0 0 0 0 0 0
+```
+
+## `/proc/net/udp`
+
+```shell
+$ cat /proc/net/udp
+  sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode ref pointer drops
+52544: 3F40160A:007B 00000000:0000 07 00000000:00000000 00:00000000 00000000    38        0 190750 2 000000009f44ff46 0
+52544: 016C000A:007B 00000000:0000 07 00000000:00000000 00:00000000 00000000    38        0 85972 2 00000000ab7f749c 0
+52544: 7136060A:007B 00000000:0000 07 00000000:00000000 00:00000000 00000000    38        0 59580 2 000000004c64a4a4 0
+52544: 0100007F:007B 00000000:0000 07 00000000:00000000 00:00000000 00000000     0        0 55725 2 0000000051afcbdd 0
+52544: 00000000:007B 00000000:0000 07 00000000:00000000 00:00000000 00000000     0        0 55719 2 000000008c653c2d 0
+```
+
+The first line describes each of the fields in the lines following:
+
+* `sl`: Kernel hash slot for the socket
+* `local_address`: Hexadecimal local address of the socket and port number, separated by :.
+* `rem_address`: Hexadecimal remote address of the socket and port number, separated by :.
+* `st`: The state of the socket. Oddly enough, the UDP protocol layer seems to use some TCP socket states. In the example above, 7 is TCP_CLOSE.
+* `tx_queue`: The amount of memory allocated in the kernel for outgoing UDP datagrams.
+* `rx_queue`: The amount of memory allocated in the kernel for incoming UDP datagrams.
+* `tr`, tm->when, retrnsmt: These fields are unused by the UDP protocol layer.
+* `uid`: The effective user id of the user who created this socket.
+* `timeout`: Unused by the UDP protocol layer.
+* `inode`: The inode number corresponding to this socket. You can use this to help you determine which user process has this socket open. Check /proc/[pid]/fd, which will contain symlinks to socket[:inode].
+* `ref`: The current reference count for the socket.
+* `pointer`: The memory address in the kernel of the struct sock.
+* `drops`: The number of datagram drops associated with this socket. Note that this does not include any drops related to sending datagrams (on corked UDP sockets or otherwise); this is only incremented in receive paths as of the kernel version examined by this blog post.
+
+Printing code: [net/ipv4/udp.c](https://github.com/torvalds/linux/blob/master/net/ipv4/udp.c).
+
+# 8. Top N nodes
 
 Top-N nodes for some specific metrics:
 
@@ -427,7 +549,7 @@ Queries for these panels are very similar, we list some here:
 * `topk(10, avg(irate(k8s.node.network.nic.errors{type=~'rx_.*'})*60) by (host))`
 * `topk(10, avg(irate(k8s.node.network.nic.errors{type=~'tx_.*'})*60) by (host))`
 
-# 7. More metrics
+# 9. More metrics
 
 This post serves as a introductory guide for how to monitoring you network
 stack with Prometheus and Grafana.

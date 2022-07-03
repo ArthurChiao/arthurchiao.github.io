@@ -292,8 +292,8 @@ Step 2 中提到，如果网卡驱动不支持 XDP，那 XDP 程序将延迟到�
 图中有个 `*check_taps` 框，但其实并没有这个方法：`receive_skb()` 会轮询所有的
 socket tap，将包放到正确的 tap 设备的缓冲区。
 
-tap 设备监听的是三层协议（L3 protocols），例如 IPv4、ARP、IPv6 等等。如果 tap 设
-备存在，它就可以操作这个 skb 了。
+**<mark>tap 设备监听的是三层协议</mark>**（L3 protocols），例如 IPv4、ARP、IPv6 等等。
+如果 tap 设备存在，它就可以操作这个 skb 了。
 
 ### Step 8：`tc`（traffic classifier）处理
 

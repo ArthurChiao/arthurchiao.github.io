@@ -2,10 +2,40 @@
 layout    : post
 title     : "[译] Linux 网络栈监控和调优：接收数据（2016）"
 date      : 2018-12-05
-lastupdate: 2022-06-04
+lastupdate: 2022-07-02
 author: ArthurChiao
-categories: network kernel monitoring tuning
+categories: network kernel tuning
 ---
+
+**<mark>注意</mark>**：本文内容已经太老，基于 kernel `3.13` 和 1Gbps 网卡驱动 `igb`，建议移步 kernel 5.10 + 25Gbps 驱动版：
+
+1. [Linux 网络栈原理、监控与调优：前言]({% link _posts/2022-07-02-linux-net-stack-zh.md %})
+1. [Linux 中断（IRQ/softirq）基础：原理及内核实现]({% link _posts/2022-07-02-linux-irq-softirq-zh.md %})
+1. [Linux 网络栈接收数据（RX）：原理及内核实现]({% link _posts/2022-07-02-linux-net-stack-implementation-rx-zh.md %})
+1. [Monitoring Linux Network Stack]({% link _posts/2022-07-02-monitoring-network-stack.md %})
+1. [Linux 网络栈接收数据（RX）：配置调优]({% link _posts/2022-07-02-linux-net-stack-tuning-rx-zh.md %})
+
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
 
 ## 译者序
 
@@ -25,12 +55,6 @@ categories: network kernel monitoring tuning
 
 网络栈非常复杂，原文太长又没有任何章节号，看起来非常累。因此本文翻译时添加了适当
 的章节号，以期按图索骥。
-
-----
-
-**2020 更新：**
-
-基于 Prometheus+Grafana 监控网络栈：[Monitoring Network Stack]({% link _posts/2020-04-22-monitoring-network-stack.md %})。
 
 以下是翻译。
 
