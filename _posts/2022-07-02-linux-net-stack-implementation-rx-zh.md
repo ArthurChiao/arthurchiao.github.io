@@ -1,8 +1,8 @@
 ---
 layout    : post
-title     : "Linux 网络栈接收数据（RX）：原理及内核实现"
+title     : "Linux 网络栈接收数据（RX）：原理及内核实现（2022）"
 date      : 2022-07-02
-lastupdate: 2022-07-02
+lastupdate: 2022-07-12
 author: ArthurChiao
 categories: network kernel
 ---
@@ -821,6 +821,9 @@ mlx5e_open(netdev);
 在包从网卡到达应用层的过程中，会经历几次数据复制，这个对性能影响非常大，所以我们记录一下：
 
 * 第一次是将包**<mark>从网卡通过 DMA 复制到 ring buffer</mark>**；
+
+<p align="center"><img src="/assets/img/linux-net-stack/dma-ringbuffer.png" width="75%" height="75%"></p>
+<p align="center">Fig. DMA, ring buffer and the data copy steps</p>
 
 ## 3.2 下一步：更上层来收包
 

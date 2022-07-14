@@ -16,6 +16,13 @@ on **<mark>how network policies are enforced in the underlying</mark>**.
 
 **Code and scripts in this post**: [here](https://github.com/ArthurChiao/arthurchiao.github.io/tree/master/assets/code/cracking-k8s-network-policy).
 
+Related posts:
+
+1. [Cracking Kubernetes Node Proxy (aka kube-proxy)]({% link _posts/2019-11-30-cracking-k8s-node-proxy.md %})
+2. [Cracking Kubernetes Network Policy]({% link _posts/2022-01-23-cracking-k8s-network-policy.md %})
+3. [Cracking Kubernetes Authentication (AuthN) Model]({% link _posts/2022-07-14-cracking-k8s-authn.md %})
+4. [Cracking Kubernetes RBAC Authorization (AuthZ) Model]({% link _posts/2022-04-17-cracking-k8s-authz-rbac.md %})
+
 ----
 
 * TOC

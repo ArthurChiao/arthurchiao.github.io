@@ -2,7 +2,7 @@
 layout    : post
 title     : "[译] [论文] Dynamo: Amazon's Highly Available Key-value Store（SOSP 2007）"
 date      : 2019-07-06
-lastupdate: 2019-07-06
+lastupdate: 2022-07-11
 categories: dynamo file-system paper
 ---
 
@@ -41,7 +41,12 @@ Dynamo 是 Amazon 的高可用分布式键值存储（key/value storage）系统
 
 ----
 
-## 摘要
+* TOC
+{:toc}
+
+----
+
+# 摘要
 
 Amazon 是世界上最大的电商之一。
 
@@ -59,7 +64,7 @@ massive scale）。即使是最微小的故障（the slightest outage），也�
 外，Dynamo 大量使用了**对象版本化**（object versioning）和**应用协助的冲突解决**
 （application-assisted conflict resolution）机制，给开发者提供了一种新颖的接口。
 
-## 1. 引言
+# 1. 引言
 
 Amazon 是一个全球电商平台，峰值用户达到几千万。支撑 Amazon 的是分布在全球的数据
 中心中成千上万的服务器。Amazon 平台对**性能、可靠性和效率**等指标有着很高的要求
@@ -104,7 +109,7 @@ Amazon 的一些服务**只需以主键（primary key）的方式访问数据仓
 常见的关系型数据库会非常低效，而且限制了规模的扩展性和可用性。Dynamo 提供了只使
 用主键（primary key only）的访问接口来满足这类应用的需求。
 
-**Dynamo 基于一些众所周知的（well known）技术实现了可扩展性和高可用性**：
+**Dynamo 基于一些业内熟知的技术实现了可扩展性和高可用性**：
 
 * 数据通过**一致性哈希**分散和复制（partitioned and replicated）[10]
 * 通过**对象版本化**（object versioning）实现一致性 [12]
@@ -133,7 +138,7 @@ Dynamo 在过去的几年已经成为 Amazon 很多核心服务的底层存储�
 
 本文章节结构介绍（略，见下面全文）。
 
-## 2. 背景
+# 2. 背景
 
 Amazon 的电商平台由几百个服务组成，它们协同工作，提供的服务包罗万象，从推荐系统
 到订单处理到欺诈检测等等。每个服务对外提供定义良好的 API，被其他服务通过网络的方
@@ -142,12 +147,14 @@ Amazon 的电商平台由几百个服务组成，它们协同工作，提供的�
 于存储在数据仓库里的状态，执行业务逻辑并产生响应的服务）。
 
 传统上，生产系统使用关系型数据库来存储状态。但对很多**持久状态的存储**需求来说，
-关系型数据库并不是一种理想的方式。这一类型中的大多数服务只用主键去检索，并不需要
-RDBMS 提供的复杂查询和管理功能。这些额外的功能需要昂贵的硬件和专门的技能，而实际
-上服务根本用不到，最终的结果就是使用关系型数据库非常不经济。另外，这类数据库的复
-制功能很受限，而且通常是靠**牺牲可用性来换一致性**。虽然近些年有了一些改进，但总
-体来说水平扩展（scale-out）以及使用智能（smart）partitioning 来做负载均衡还是很不
-方便。
+关系型数据库并不是一种理想的方式。
+
+* 这类服务大多数**<mark>只用主键去检索</mark>**，并不需要RDBMS 提供的复杂查询和管理功能。
+  这些额外的功能需要昂贵的硬件和专门的技能，而实际上服务根本用不到，最终的结果就是
+  使用关系型数据库非常不经济；
+* 另外，关系型数据库的复制功能很受限，而且通常是靠**牺牲可用性来换一致性**。虽然
+  近些年有了一些改进，但总体来说水平扩展（scale-out）以及使用智能（smart）
+  partitioning 来做负载均衡还是很不方便。
 
 本文介绍 Dynamo 是如何解决以上需求的。Dynamo 有易用的 key/value 接口，高度可用
 ，有定义清晰的一致性窗口（clearly defined consistency window），资源使用效率很高
@@ -156,11 +163,11 @@ RDBMS 提供的复杂查询和管理功能。这些额外的功能需要昂贵�
 
 > Each service that uses Dynamo runs its own Dynamo instances.
 
-### 2.1 系统假设与需求
+## 2.1 系统假设与需求
 
 Dynamo 对使用它的服务有如下几点假设。
 
-#### 查询模型（Query Model）
+### 查询模型（Query Model）
 
 **通过唯一的 key 对数据进行读写**。状态以**二进制对象**（binary objects，e.g.
 blobs）形式存储，以唯一的 key 索引。
@@ -169,7 +176,7 @@ blobs）形式存储，以唯一的 key 索引。
 
 Dynamo 面向的应用**存储的都是相对较小的文件（一般小于 1 MB）**。
 
-#### ACID 特性
+### ACID 特性
 
 ACID（Atomicity, Consistency, Isolation, Durability）是一组保证数据库事务可
 靠执行的特性。在数据库领域，对数据的单次逻辑操作（single logical operation）
@@ -183,7 +190,7 @@ ACID（Atomicity, Consistency, Isolation, Durability）是一组保证数据库�
 Dynamo 不提供任何隔离保证，并且只允许带单个 key 的更新操作（permit only single
 key updates）。
 
-#### 效率（Efficiency）
+### 效率（Efficiency）
 
 系统需要运行在通用硬件（commodity hardware）之上。Amazon 的服务对延迟有着严格的
 要求，通常用百分位值（percentile）`P99.9` 衡量。
@@ -192,7 +199,7 @@ key updates）。
 （见 Section 2.2）。另外，服务要有配置 Dynamo 的能力，以便能满足服务的延迟和吞吐
 需求。最终，就是在性能、成本效率、可用性和持久性之间取得折中。
 
-#### 其他方面
+### 其他方面
 
 Dynamo 定位是 Amazon 内部使用，因此我们假设环境是安全的，不需要考虑认证和鉴权
 等安全方面的问题。
@@ -200,7 +207,7 @@ Dynamo 定位是 Amazon 内部使用，因此我们假设环境是安全的，�
 另外，**由于设计中每个服务都使用各自的一套 Dynamo，因此 Dynamo 的初始设计规模是
 几百个存储节点**。后面会讨论可扩展性限制的问题，以及可能的解决方式。
 
-### 2.2 SLA (Service Level Agreements)
+## 2.2 SLA (Service Level Agreements)
 
 要**保证一个应用完成请求所花的时间有一个上限**（bounded time），它所依赖的那些服
 务就要有一个更低的上限。**对于给定的系统特性**，其中最主要的是客户端期望的**请求
@@ -252,7 +259,7 @@ coordinator（写操作协调者），是完全面向 P99.9 来控制性能的�
 > durability and consistency, and to let services make their own
 > tradeoffs between functionality, performance and cost-effectiveness.
 
-### 2.3 设计考虑
+## 2.3 设计考虑
 
 **商业系统中数据复制算法一般都是同步的，以提供一个强一致性的数据访问接口。
 为了达到这种级别的一致性，这些算法被迫牺牲了某些故障场景下的数据可用性**。例如，
@@ -274,7 +281,7 @@ coordinator（写操作协调者），是完全面向 P99.9 来控制性能的�
 **Dynamo 设计为最终一致数据仓库**（eventually consistent data store），即，最终
 所有的更新会应用到所有的副本。
 
-#### 何时解决冲突？
+### 何时解决冲突？
 
 设计时的一个重要考虑是：**何时解决更新冲突**，例如，是读的时候还是写的时候。
 
@@ -291,20 +298,19 @@ Dynamo 的设计与此相反，它的目标是提供一个**“永远可写”�
 加或删除商品。**这个需求使我们将解决冲突的复杂度放到了读操作，以保证写永远不会
 被拒绝**。
 
-#### 谁来解决冲突？
+### 谁来解决冲突？
 
 下一个需要考虑的问题是：**谁来解决冲突**。**数据仓库**和**应用**都可以做这件事情。
 
-**如果由数据仓库来做，那选择会相当受限**。在这种情况下，数据仓库只能使用一些
-非常简单的策略，例如**“最后一次写有效”**（last write wins） [22]，来解决更新冲突。
+* **如果由数据仓库来做，那选择会相当受限**。在这种情况下，数据仓库只能使用一些
+  非常简单的策略，例如**“最后一次写有效”**（last write wins） [22]，来解决更新冲突。
+* 另一方面，由于**应用理解数据描述的是什么**（application is aware of the data
+  schema），**它可以自主选择对用户体验最好的冲突解决算法**。例如，购物车应用可
+  以选择“合并”冲突的版本，返回一个合并后的（unified）购物车。尽管这样可以带来很
+  大的灵活性，但一些应用开发者并不想自己实现一套冲突解决机制，因此在这种情况下
+  ，解决冲突的问题就下放给了数据仓库，由后者来选择一些简单的策略，例如 "last write wins"。
 
-另一方面，由于**应用理解数据描述的是什么**（application is aware of the data
-schema），**它可以自主选择对用户体验最好的冲突解决算法**。例如，购物车应用可以选择“
-合并”冲突的版本，返回一个合并后的（unified）购物车。尽管这样可以带来很大的灵活性
-，但一些应用开发者并不想自己实现一套冲突解决机制，因此在这种情况下，解决冲突的问
-题就下放给了数据仓库，由后者来选择一些简单的策略，例如 "last write wins"。
-
-#### 其他设计原则
+### 其他设计原则
 
 * **增量扩展性**（Incremental scalability）：应当支持**逐机器（节点）扩容**，而
   且对系统及运维人员带来的影响尽量小
@@ -318,14 +324,14 @@ schema），**它可以自主选择对用户体验最好的冲突解决算法**�
   分布要和存储节点的能力成比例**。对于逐步加入能力更强的新节点，而不是一次升级所
   有节点来说，这种异构支持能力是不可或缺的
 
-## 3. 相关工作
+# 3. 相关工作
 
-### 3.1 点对点系统（Peer to Peer Systems）
+## 3.1 点对点系统（Peer to Peer Systems）
 
 一些点对点（peer-to-peer, P2P）系统关注了**数据存储和分散**（data storage and
 distribution）的问题。
 
-#### P2P 系统
+### P2P 系统
 
 第一代 P2P 系统，例如 Freenet 和 Gnutella，在文件共享系统（file sharing system）
 领域使用广泛。它们都是**非受信（untrusted）P2P 网络**的代表，节点之间的 overlay
@@ -333,7 +339,7 @@ distribution）的问题。
 （随意）建立的（established arbitrarily）。在这种网络中，一次查询请求通常是**泛
 洪（flood）到整张网络，找到尽量多的共享这个数据的节点**。
 
-#### 结构化 P2P 系统
+### 结构化 P2P 系统
 
 P2P 网络到下一代，就是有名的**结构化 P2P 网络**（structured P2P network）。这种
 网络使用了全局一致性协议（globally consistent protocol），保证**任何一个节点可以
@@ -360,7 +366,7 @@ Oceanstore 是为在**不受信的基础设施上做数据复制的场景**设�
 象**（persistent and immutable objects）。它假设**应用可以在它之上构建自己需要的
 存储语义**（storage semantics）（例如可变文件）。
 
-### 3.2 分布式文件系统与数据库
+## 3.2 分布式文件系统与数据库
 
 文件系统和数据库系统领域已经对**通过分散数据（distributing data）来提高性能、可
 用性和持久性**进行了广泛研究。和 **P2P 存储系统只支持扁平命名空间**（flat
@@ -406,7 +412,7 @@ protocols）保证数据一致性。与此不同，**Dynamo 并不将数据完�
 在**保证副本的强一致性**。虽然强一致性可以**给应用的写操作提供方便的编程模型**，
 但导致系统的扩展性和可用性非常受限 [7]，无法处理网络分裂的情况。
 
-### 3.3 讨论
+## 3.3 讨论
 
 Dynamo 面临的需求使得它与前面提到的集中式存储系统都不相同。
 
@@ -426,7 +432,7 @@ Dynamo 面临的需求使得它与前面提到的集中式存储系统都不相�
 Dynamo 可以被描述为：一个**零跳（zero hop）分布式哈希表（DHT）**，每个节点在本地
 维护了足够多的路由信息，能够将请求直接路由到合适节点。
 
-## 4. 系统架构
+# 4. 系统架构
 
 生产级别的存储系统的架构是很复杂的。除了最终存储数据的组件之外，系统还要针对下列
 方面制定可扩展和健壮的解决方案：负载均衡、成员管理（membership）、故障检测、故障
@@ -448,32 +454,32 @@ marshalling、请求路由（routing）、系统监控和告警，以及配置�
 <p align="center">表 1 Dynamo 用到的技术及其好处</p>
 <p align="center"><img src="/assets/img/amazon-dynamo/table-1.png" width="60%" height="60%"></p>
 
-#### Partition
+### Partition
 
 * 技术：**一致性哈希**
 * 好处：增量可扩展性
 
-#### 写高可用
+### 写高可用
 
 * 技术：读时协调（解决冲突）的**向量时钟**（vector clocks with reconciliation during reads）
 * 好处：version size（？）和更新频率（update rates）解耦
 
-#### 短时故障处理
+### 短时故障处理
 
 * 技术：**宽松的选举和 hinted handoff**（移交给其他节点处理，附带提示信息）
 * 好处：部分副本不可用时，仍然可以提供高可用性和持久性
 
-#### 持久（permanent）故障恢复
+### 持久（permanent）故障恢复
 
 * 技术：**基于 Merkle tree 的逆熵**（anti-entropy）
 * 好处：后台同步版本不一致的副本
 
-#### 成员管理和故障检测
+### 成员管理和故障检测
 
 * 技术：**基于 Gossip 的成员管理协议和故障检测**
 * 好处：保持了**架构的对称性**，无需一个中心组件（centralized registry）来存储成员和节点状态等信息
 
-### 4.1 系统接口
+## 4.1 系统接口
 
 Dynamo 存储键值对象的接口非常简单，它提供两个操作：
 
@@ -499,7 +505,7 @@ Dynamo **将调用方提供的 key 和对象都视为不透明的字节序列**�
 > generate a 128-bit identifier, which is used to determine the
 > storage nodes that are responsible for serving the key.
 
-### 4.2 数据分散（Partitioning）算法
+## 4.2 数据分散（Partitioning）算法
 
 Dynamo 的核心需求之一是：系统必须支持**增量扩展**（scale incrementally）。
 这就要求有一种机制能够将数据分散到系统中的不同的节点（例如，以一台机器作为一个
@@ -544,7 +550,7 @@ Dynamo 的**分散方案基于一致性哈希** [10]。在一致性哈希中，�
 1. 一个节点负责的虚拟节点的数量可用根据节点容量来决定，这样可用充分利用物理基础
    设施中的异构性信息
 
-### 4.3 数据复制（Replication）
+## 4.3 数据复制（Replication）
 
 为了实现高可用性和持久性，Dynamo 将数据复制到多台机器上。每个数据会被复制到 N 台
 机器，这里的 N 是每套 Dynamo 可以自己配置的。
@@ -573,7 +579,7 @@ B]` 范围内的 key 会沿顺时针方向找到第一个值比它大的节点�
 ，**preference list 在选择节点的时候会跳过一些位置，以保证 list 里面的节点都在不
 同的物理节点上**。
 
-### 4.4 数据版本化（Data Versioning）
+## 4.4 数据版本化（Data Versioning）
 
 Dynamo 提供最终一致性，所有更新操作会异步地传递给所有的副本。
 
@@ -590,7 +596,7 @@ Amazon 有些应用是可以容忍这种不一致性的，应用在这种情况�
 。如果最新的状态不可用，而用户又基于稍的大版本做了修改，那这两个版本都需要保留，
 由随后的步骤来处理更新冲突。
 
-#### 如何解决更新冲突
+### 如何解决更新冲突
 
 为了满足以上需求，Dynamo **将每次修改结果都作为一个新的、不可变的版本**。
 
@@ -599,7 +605,7 @@ Amazon 有些应用是可以容忍这种不一致性的，应用在这种情况�
 
 即，允许系统中同时存在多个不同版本。
 
-##### 冲突调和（使一致化）方式
+#### 冲突调和（使一致化）方式
 
 * syntactic reconciliation（**基于句法的调和**）
 * semantic reconciliation（**基于语义的调和**）
@@ -618,7 +624,7 @@ Amazon 有些应用是可以容忍这种不一致性的，应用在这种情况�
 史（version sub-histories），随后要由系统来将它们一致化。这需要**将应用
 设计为：显式承认多版本存在的可能性（以避免丢失任何更新）**
 
-##### 向量时钟
+#### 向量时钟
 
 **Dynamo 使用向量时钟（vector clock）[12] 来跟踪同一对象不同版本之间的因果性**。
 一个向量时钟就是一个 `(node, counter)` 列表。一个向量时钟关联了一个对象的所有版
@@ -639,7 +645,7 @@ context。
 > An update using this context is considered to have reconciled the
 > divergent versions and the branches are collapsed into a single new version.
 
-#### 一个具体例子
+### 一个具体例子
 
 我们通过 图 3 来展示 vector clock 是如何工作的。
 
@@ -671,7 +677,7 @@ context。
 the write），`Sx` 会更新自己在 clock 中的序列号。最终新生成的数据 `D5` 的 clock
 格式如下：`[(Sx, 3), (Sy, 1), (Sz, 1)]`。
 
-#### Vector clock 的潜在问题
+### Vector clock 的潜在问题
 
 vector clock 的一个潜在问题是：**如果有多个节点先后 coordinate 同一个对象
 的写操作，那这个对象的 clock vector 会变得很长**。但在实际中这不太可能发生，因为
@@ -689,7 +695,7 @@ Dynamo 采用了一种 clock 截断方案（clock truncation scheme）：
 分后代的因果关系。但到目前为止，我们还没有在生产环境遇到这个问题，因此没有继续深
 入研究下去。
 
-### 4.5 `get()` 和 `put()` 的执行过程
+## 4.5 `get()` 和 `put()` 的执行过程
 
 **在 Dynamo 中，任何存储节点都可以接受任何 key 的 `get` 和 `put` 操作请求**。
 
@@ -717,7 +723,7 @@ preference list 前 N 个节点中的第一个节点。
 访问状态的节点，要跳过。如果所有节点都是健康的，那就取 preference list 的前 N 个
 节点。如果发生节点故障或网络分裂，优先访问 preference list 中编号较小的节点。
 
-#### 读写操作仲裁算法
+### 读写操作仲裁算法
 
 为了保证副本的一致性，Dynamo 使用了一种类似仲裁系统（quorum systems）的一致性协议。
 这个协议有两个配置参数：`R` 和 `W`：
@@ -731,7 +737,7 @@ preference list 前 N 个节点中的第一个节点。
 在这种模型下，一次 `get` （或 `put`）的延迟由 `R`（或 `W`）个**副本中最慢的一个决
 定**。因此，为了降低延迟，`R` 和 `W` 通常设置的比 `N` 小。
 
-#### 写和读过程
+### 写和读过程
 
 当收到一个 `put()` 请求后，coordinator 会为新版本生成 vector clock，并将其保存到
 节点本地；然后，将新版本（及对应的新 vector clock）发送给 N 个排在最前面的、可到
@@ -743,7 +749,7 @@ preference list 前 N 个节点中的第一个节点。
 回给客户端**。客户端需要对版本进行 reconcile，合并成一个最新版本，然后将结果写回
 Dynamo。
 
-### 4.6 短时故障处理: Hinted Handoff（移交给其他节点临时保存）
+## 4.6 短时故障处理: Hinted Handoff（移交给其他节点临时保存）
 
 如果使用传统仲裁算法，Dynamo 无法在服务器宕机或网络分裂的时候仍然保持可用，而且
 在遇到最简单故障情况下，持久性（durability）也会降低。
@@ -773,7 +779,7 @@ preference list 的前 N 个健康节点上执行**；注意这 N 个节点不�
 副本**，只要**将 preference list 里的节点分散到不同数据中心**。这些数据中心之间
 通过高速网络互连。这使得我们可以在整个数据中心挂掉的情况下仍然可以提供服务。
 
-### 4.7 持久（permanent）故障处理: 副本跨数据中心同步
+## 4.7 持久（permanent）故障处理: 副本跨数据中心同步
 
 在节点成员变动较小、节点故障只是短时的情况下，hinted handoff 方式工作良好。但也
 有一些场景，在 hinted 副本移交给原本应该存储这个副本的节点之前，该副本就不可用了
@@ -784,7 +790,7 @@ preference list 的前 N 个健康节点上执行**；注意这 N 个节点不�
 > durability, Dynamo implements an anti-entropy (replica
 > synchronization) protocol to keep the replicas synchronized.
 
-#### Merkle Tree
+### Merkle Tree
 
 为了实现**快速检测副本之间的不一致性，以及最小化转移的数据量**，Dynamo 使用了
  Merkle trees [13].
@@ -815,9 +821,9 @@ date）。在这种方案中，两个节点会交换他们都有的 key range �
 tree 需要重新计算**。我们会在 6.2 节介绍如何通过改进的 partitioning scheme 解决
 这个问题。
 
-### 4.8 节点成员（Membership）管理和故障检测
+## 4.8 节点成员（Membership）管理和故障检测
 
-#### 4.8.1 哈希环（ring）成员
+### 4.8.1 哈希环（ring）成员
 
 在 Amazon 的环境中，节点服务不可用（故障或维护导致的）通常情况下持续时间都很短，
 但也存在中断比较长的情况。一个节点服务中断并不能说明这个节点永久性的离开了系统，
@@ -855,7 +861,7 @@ propagete）成员变动信息**，维护成员的一份最终一致视图。
 
 这**使得每个节点可以将一个 key 的读/写操作直接发送给正确的节点**进行处理。
 
-#### 4.8.2 系统外部发现（External Discovery）和种子节点
+### 4.8.2 系统外部发现（External Discovery）和种子节点
 
 以上机制**可能导致 Dynamo ring 在逻辑上临时分裂**。
 
@@ -869,7 +875,7 @@ propagete）成员变动信息**，维护成员的一份最终一致视图。
 种子或者从静态配置文件中获取，或者从一个配置中心获取。通常情况下，种子节点具有普
 通节点的全部功能。
 
-#### 4.8.3 故障检测
+### 4.8.3 故障检测
 
 故障检测在 Dynamo 中用于如下场景下跳过不可达的节点：
 
@@ -900,7 +906,7 @@ Dynamo 的早期设计中使用了一个去中心化的故障检测器来维护�
 为节点的真正（permanent）加入和离开消息，依靠的是我们的显式添加和删除节点机制，
 而临时的加入和离开，由于节点之间的互相通信（转发请求时），它们自己就会发现。
 
-### 4.9 添加/移除存储节点
+## 4.9 添加/移除存储节点
 
 当一个新节点 `X` 加入到系统后，它会**获得一些随机分散在 ring 上的 token**。对每
 个分配给 `X` 的 key range，当前可能已经有一些（小于等于 `N` 个）节点在负责处理了
@@ -919,7 +925,7 @@ range 了。因此，在收到 `X` 的转移 key 请求之后，**`B`、`C` 和 
 于保证延迟需求和快速 bootstrapping 是非常重要的。另外，在源和目的节点之间加了确
 认（转移），可以保证不会转移重复的 key range。
 
-## 5. 实现
+# 5. 实现
 
 Dynamo 中的**每个存储节点上主要有三个组件**，都是用 Java 实现的：
 
@@ -927,7 +933,7 @@ Dynamo 中的**每个存储节点上主要有三个组件**，都是用 Java 实
 * 成员验证和故障检测组件
 * 本地持久存储引擎
 
-### 本地存储引擎
+## 本地存储引擎
 
 Dynamo 的本地持久存储组件支持以插件的方式使用不同的存储引擎。在使用的引擎包括：
 
@@ -942,7 +948,7 @@ Dynamo 的本地持久存储组件支持以插件的方式使用不同的存储�
 
 我们生产环境的 Dynamo 大部分使用的都是 BDB Transactional Data Store。
 
-### 请求协调
+## 请求协调
 
 request coordination 组件构建在一个事件驱动的消息系统之上，其中的消息处理 pipeline
 分为多个阶段，和 SEDA 架构类似 [24]。所有通信都基于 Java NIO channel 实现。
@@ -952,7 +958,7 @@ request coordination 组件构建在一个事件驱动的消息系统之上，�
 态机**。这个状态机包含了识别 key 对应的节点、发送请求、等待响应、重试、处理响应和
 组合响应返回给客户端等所有逻辑。
 
-#### read coordination
+### read coordination
 
 每个状态机处理且只处理一个客户端请求。例如，一个读操作实现了包含如下步骤的状态机：
 
@@ -974,7 +980,7 @@ outstanding responses，例如最小数量响应之外的其他节点的响应�
 that have missed a recent update），**减少了逆熵协议的工作**（本来应该是稍后由逆
 熵协议做的）。
 
-#### write coordination
+### write coordination
 
 前面提到过，写请求是由 preference list 内的前 N 个节点中的任意一个 coordinate 的
 。总是让 N 个节点中的第一个来 coordinate 有一些好处，例如可以使得在同一个地方完
@@ -995,7 +1001,7 @@ uniformly distributed across objects）。
 
 同时，还降低了请求处理性能的抖动性，提高了 `P99.9` 性能。
 
-## 6. 测试结果及学到的经验
+# 6. 测试结果及学到的经验
 
 Dynamo 被几种不同类型的服务使用，每种场景下的配置不同。这些不同体现在 vesion
 reconciliation 逻辑和读/写仲裁特点上。几种主要的场景：
@@ -1045,7 +1051,7 @@ W 和 R 的值会影响对象的可用性、持久性和一致性。例如，如
 发送响应，因此很明显，数据中心之间的时延会影响到响应时间，因此在选择节点（以及它
 所在的数据中心的位置）的时候要特别注意，以保证能满足应用期望的 SLA。
 
-### 6.1 性能和持久性的平衡
+## 6.1 性能和持久性的平衡
 
 虽然 Dynamo 的首要设计目标是一个高可用数据仓库，但性能指标在 Amazon 也同样重要。
 前面提到过，为了提供一致的用户体验，Amazon 的服务会设置一个很高的用百分比衡量的
@@ -1057,7 +1063,7 @@ W 和 R 的值会影响对象的可用性、持久性和一致性。例如，如
 及多台节点，给这项工作带来了更大的挑战性，因为**最终的性能受限于最慢的那个副本所
 在的节点**。
 
-#### 通用配置下的性能
+### 通用配置下的性能
 
 图 4 显示了 30 天内 Dynamo 的读和写操作延迟平均值和 `P99.9`：
 
@@ -1071,7 +1077,7 @@ X 轴一个刻度 12 小时。延迟走势和每天的请求量走势一致，�
 个数量级**。这是因为 P99.9 有很多影响因素，例如请求负载变化、对象大小和 locality
 patterns。
 
-#### 低延迟配置下的性能
+### 低延迟配置下的性能
 
 以上性能对很多服务来说都足够了，但有少数面向用户的服务，它们对性能有更高的要求。
 对于这种情况，Dynamo 提供了**牺牲持久性换性能**的能力。具体来说，每个存储节点会
@@ -1098,7 +1104,7 @@ patterns。
 > 点（相对）很慢，但 coordinator 并不会依赖它的结果才返回，因此文中说对写性能来
 > 说是没有影响的，译者注。
 
-### 6.2 均匀负载分布（Uniform Load distribution）
+## 6.2 均匀负载分布（Uniform Load distribution）
 
 Dynamo 通过一致性哈希将它的 key 空间进行 partition，保证负载分布的均匀性。
 只要 key 的访问不是极度不均衡，均匀的 key 分布就可以帮助我们实现负载的均衡分布。
@@ -1125,7 +1131,7 @@ Dynamo 通过一致性哈希将它的 key 空间进行 partition，保证负载�
 本节接下来介绍 Dynamo 的 partition scheme 是如何随时间演进的，以及它对负载分布的
 影响。
 
-#### 策略 1：每个节点 T 个随机 token，按 token 值分散
+### 策略 1：每个节点 T 个随机 token，按 token 值分散
 
 这是生产环境最早部署的策略（在 4.2 节介绍过了）。
 
@@ -1162,7 +1168,7 @@ intertwined）。例如，在某些场景下希望通过增加节点应对请求
 理想情况下，应该使用独立的数据
 partition 和 placement 方案。为此，我们考察了下面的几种方案。
 
-#### Strategy 2: 每个节点 T 个随机 token，平均分散
+### Strategy 2: 每个节点 T 个随机 token，平均分散
 
 这种策略将哈希空间分为 `Q` 个相同大小的 partition/range，每个节点分配 `T` 个 随
 机 token。`Q` 的选择通常要满足：`Q >> N` 和 `Q >> S*T`（`>>`：远大于，译者注），
@@ -1185,7 +1191,7 @@ C 是 key k1 的 preference list 中的三个独立节点。阴影区域表示 p
 1. 将数据的 partition 和 placement 解耦
 1. 提供了在运行时更改 placement 方案的能力
 
-#### Strategy 3: 每个节点 `Q/S` 个 token, 平均分散
+### Strategy 3: 每个节点 `Q/S` 个 token, 平均分散
 
 和策略 2 类似，策略 3 也将哈希空间等分为 `Q` 个 partition，而且 placement 从
 partition 解耦。不同的是，每个节点会分配 `Q/S` 个 token，其中 `S` 是系统中的节点
@@ -1195,7 +1201,7 @@ partition 解耦。不同的是，每个节点会分配 `Q/S` 个 token，其中
 还是能成立。类似地，当一个节点加入系统时，它会从其他节点“偷”一些 token 过来，同
 时保证 `Q/S` 特性仍然成立。
 
-#### 几种策略的性能对比
+### 几种策略的性能对比
 
 对一套 `S=30`，`N=3` 的 Dynamo 测试了以上三种策略。需要说明的是，公平地比较这三
 种策略的性能是很难做到的，因为它们有各自特殊的配置可以调优。例如，策略 1 的负载
@@ -1239,7 +1245,7 @@ load balancing efficiency）的定义是：每个节点平均处理的请求数 
 策略 3 的不足：**变更节点成员时，需要 coordination**，以保持平均分配所需的前提特
 性（preserve the properties required of the assignment）。
 
-### 6.3 版本分叉：什么时候？有多少？
+## 6.3 版本分叉：什么时候？有多少？
 
 我们已经提到过，Dynamo 是通过牺牲一些一致性（consistency）来换可用性（
 availability）的。要准确地理解不同类型的一致性失败带来的影响需要考虑很多因素：故障时
@@ -1272,11 +1278,11 @@ application）。
 升通常都是 busy robots（自动化客户端程序）导致的，极少是人（的应用）导致的。由于
 涉及商业机密，在此不再就这一问题进行更深入的讨论。
 
-### 6.4 客户端驱动或服务端驱动的 Coordination
+## 6.4 客户端驱动或服务端驱动的 Coordination
 
 第 5 节提到，Dynamo 有一个 request coordination 组件，利用状态机处理收到的请求。
 
-#### 服务端驱动
+### 服务端驱动
 
 客户请求会通过负载均衡器均匀地分发给哈希环上的所有节点。每个节点都可以作为读请求
 的 coordinator，而写操作的 coordinator 必须由 key 的 preference list 里面的节点
@@ -1285,7 +1291,7 @@ application）。
 意，如果 Dynamo 的版本化方案使用的是物理时间戳（physical timestamps），那任何节
 点都可以 coordinate 写操作。
 
-#### 客户端驱动
+### 客户端驱动
 
 另一中 coordinate request 的方式是：**将状态机前移到客户端**（move the state
 machine to the client nodes）。在这种方式中，客户端应用使用库（library）在本地执
@@ -1311,7 +1317,7 @@ information）。当前，每个客户端会每隔 `10s` 随机地轮询（poll�
 因此，如果客户端检测到它的成员表（membership table）过期了（例如，当一些成员不可
 达的时候），它会立即更新它的成员信息。
 
-#### 性能对比
+### 性能对比
 
 表 2 显示了客户端驱动比服务端驱动的 coordination 的性能提升，测量时间为 24 个小时。
 
@@ -1330,7 +1336,7 @@ storage engine caches）和写缓存（write buffer）命中率很高。
 另外，由于负载均衡器和网络会给延迟引入额外的抖动性，因此 `P99.9` 的性能提升要比
 均值更明显。
 
-### 6.5 平衡后台和前台任务
+## 6.5 平衡后台和前台任务
 
 每个节点除了执行正常的前台 `put`/`get` 操作之外，还需要为副本同步和数据移交（
 handoff）（由于 hinting 或添加/删除节点）执行不同种类的后台任务。
@@ -1352,7 +1358,7 @@ handoff）（由于 hinting 或添加/删除节点）执行不同种类的后台
 前台操作评估资源的可用性，然后决定给后台任务分配多少时间片，因此利用反馈回路限制
 了后台任务的侵入性（intrusiveness ）。[4] 也研究了类似的后台任务管理问题。
 
-### 6.6 讨论
+## 6.6 讨论
 
 本节总结我们在开发和维护 Dynamo 的过程中获得的一些经验。
 
@@ -1382,10 +1388,9 @@ resolution mechanisms）。
 
 > this problem is actively addressed by O(1) DHT systems(e.g., [14]).
 
-## 7. 结束语
+# 7. 结束语
 
-本文介绍了 Dynamo，一个高可用、高可扩展的数据仓库（data store），在 Amazon 电商
-平台用于存储许多核心服务的状态数据。
+本文介绍了 Dynamo，一个高可用、高可扩展的数据存储，在 Amazon 电商平台用于存储许多核心服务的状态数据。
 
 Dynamo 提供了期望的可用性和性能等级，可以正确地处理服务器故障、数据中心故障和网
 络分裂。
@@ -1395,8 +1400,8 @@ Dynamo 可以增量扩展，允许服务所有者根据负载高低动态的对 
 数来定制化它们的存储系统。
 
 过去几年 Dynamo 在生产环境的实践表明：一些去中心化技术结合起来，可以提供一个高度
-可用的系统。这种在极具挑战性的应用环境的成功也表明，**最终一致性存储系统可以作为
-高可用应用（highly available applications）的一块基石**。
+可用的系统。这种在极具挑战性的应用环境的成功也表明，
+**<mark>最终一致性存储系统可以作为高可用应用（highly available applications）的一块基石</mark>**。
 
 > The production use of Dynamo for the past year demonstrates that
 > decentralized techniques can be combined to provide a single
@@ -1404,7 +1409,7 @@ Dynamo 可以增量扩展，允许服务所有者根据负载高低动态的对 
 > challenging application environments shows that an eventualconsistent
 > storage system can be a building block for highlyavailable applications.
 
-### 致谢
+# 致谢
 
 The authors would like to thank Pat Helland for his contribution
 to the initial design of Dynamo. We would also like to thank
@@ -1413,7 +1418,7 @@ Finally, we would like to thank our shepherd, Jeff Mogul, for his
 detailed comments and inputs while preparing the camera ready
 version that vastly improved the quality of the paper.
 
-### 参考文献
+# 参考文献
 
 1. Adya, et al.  Farsite: federated, available, and reliable storage for an
    incompletely trusted environment.  SIGOPS  2002

@@ -1,6 +1,6 @@
 ---
 layout    : post
-title     : "Linux 网络栈接收数据（RX）：配置调优"
+title     : "Linux 网络栈接收数据（RX）：配置调优（2022）"
 date      : 2022-07-02
 lastupdate: 2022-07-02
 author: ArthurChiao
@@ -670,6 +670,11 @@ net.ipv4.udp_rmem_min = 4096
 1. 全局：`sysctl` 或 echo sysfs 方式
 2. 应用程序级别：在应用程序里通过 `setsockopt` 带上 `SO_RCVBUF` flag 来修改这个值 (`sk->sk_rcvbuf`)，能设置的最大值不超过 `net.core.rmem_max`。
   如果有 `CAP_NET_ADMIN` 权限，也可以 `setsockopt` 带上 `SO_RCVBUFFORCE` 来覆盖 `net.core.rmem_max`。
+
+实际中比较灵活的方式：
+
+1. `rmem_default` 不动，这样 UDP 应用默认将仍然使用系统预设值；
+2. `rmem_max` 调大（例如 `2.5MB`），有需要的应用可以自己通过 `setsockopt()` 来调大自己的 buffer。
 
 # 参考资料
 

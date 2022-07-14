@@ -1,16 +1,23 @@
 ---
 layout    : post
-title     : "Cracking kubernetes node proxy (aka kube-proxy)"
+title     : "Cracking Kubernetes Node Proxy (aka kube-proxy)"
 date      : 2019-11-30
 lastupdate: 2021-02-03
 categories: kubernetes iptables ipvs
 ---
 
-### TL; DR
+## TL; DR
 
 This post analyzes the Kubernetes node proxy model, and provides 5 
-demo implementations (within couples of lines of code) of the model, each based on
-different tech-stacks (***userspace/iptables/ipvs/tc-ebpf/sock-ebpf***).
+demo implementations (within couples of lines of code) of the model based on
+different kernel infrastructures (**<mark><code>userspace/iptables/ipvs/tc-ebpf/sock-ebpf</code></mark>**).
+
+Related posts:
+
+1. [Cracking Kubernetes Node Proxy (aka kube-proxy)]({% link _posts/2019-11-30-cracking-k8s-node-proxy.md %})
+2. [Cracking Kubernetes Network Policy]({% link _posts/2022-01-23-cracking-k8s-network-policy.md %})
+3. [Cracking Kubernetes Authentication (AuthN) Model]({% link _posts/2022-07-14-cracking-k8s-authn.md %})
+4. [Cracking Kubernetes RBAC Authorization (AuthZ) Model]({% link _posts/2022-04-17-cracking-k8s-authz-rbac.md %})
 
 ----
 
@@ -37,7 +44,7 @@ access K8S services with **ClusterIP** - note that in Kubernetes's design,
 <mark>ClusterIP is only accessible within K8S cluster nodes</mark>.
 (In some sense, our toy proxier turns non-k8s-nodes into K8S nodes.)
 
-**Code and scripts used in this post**: [Github](https://github.com/ArthurChiao/arthurchiao.github.io/tree/master/assets/img/cracking-k8s-node-proxy).
+**Code and scripts used in this post**: [Github](https://github.com/ArthurChiao/arthurchiao.github.io/tree/master/assets/code/cracking-k8s-node-proxy).
 
 <a name="ch_1"></a>
 
@@ -1325,7 +1332,7 @@ In this post, we manually realized the core functionalities of `kube-proxy` with
 different means. Hope now you have a better understanding about kubernetes node
 proxy, and some other aspects about networking.
 
-**Code and scripts used in this post**: [here](https://github.com/ArthurChiao/arthurchiao.github.io/tree/master/assets/img/cracking-k8s-node-proxy).
+**Code and scripts used in this post**: [here](https://github.com/ArthurChiao/arthurchiao.github.io/tree/master/assets/code/cracking-k8s-node-proxy).
 
 <a name="references"></a>
 
