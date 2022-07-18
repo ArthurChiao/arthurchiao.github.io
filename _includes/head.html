@@ -14,24 +14,24 @@
     <title>{{ page.title }}</title>
 
     <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="{{ "/assets/img/favicon.ico" | prepend: site.baseurl }}" />
+    <link rel="icon" type="image/x-icon" href="{{ "/assets/img/favicon.ico" }}" />
 
     <!-- Come and get me RSS readers -->
-    <link rel="alternate" type="application/rss+xml" title="{{ site.title }}" href="{{ "/feed.xml" | prepend: site.baseurl | prepend: site.url }}" />
+    <link rel="alternate" type="application/rss+xml" title="{{ site.title }}" href="{{ "/feed.xml" | prepend: site.url }}" />
     
     <!-- Stylesheet -->
-    <link rel="stylesheet" href="{{ "/assets/css/style.css" | prepend: site.baseurl }}">
-    <link rel="stylesheet" href="{{ "/assets/css/github-markdown.css" | prepend: site.baseurl }}">
-    <link rel="stylesheet" href="{{ "/assets/css/rouge-syntax-github.css" | prepend: site.baseurl }}">
+    <link rel="stylesheet" href="{{ "/assets/css/style.css" }}">
+    <link rel="stylesheet" href="{{ "/assets/css/github-markdown.css" }}">
+    <link rel="stylesheet" href="{{ "/assets/css/rouge-syntax-github.css" }}">
 
     {% if page.canonical_url And page.canonical_url != "" And page.canonical_url != nil %}
       <link rel="canonical" href="{{ page.canonical_url }}">
     {% else %}
-      <link rel="canonical" href="{{ page.url | replace:'index.html','' | prepend: site.baseurl | prepend: site.url }}">
+      <link rel="canonical" href="{{ page.url | replace:'index.html','' | prepend: site.url }}">
     {% endif %}
 
     <!-- Modernizr -->
-    <script src="{{ "/assets/js/modernizr.custom.15390.js" | prepend: site.baseurl }}" type="text/javascript"></script>
+    <script src="{{ "/assets/js/modernizr.custom.15390.js" }}" type="text/javascript"></script>
 
     {% if jekyll.environment == 'production' %}
       {% if site.google_analytics %}

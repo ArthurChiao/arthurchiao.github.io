@@ -1,8 +1,8 @@
 ---
 layout    : post
-title     : "Linux 中断（IRQ/softirq）基础：原理及内核实现"
+title     : "Linux 中断（IRQ/softirq）基础：原理及内核实现（2022）"
 date      : 2022-07-02
-lastupdate: 2022-07-02
+lastupdate: 2022-07-18
 author: ArthurChiao
 categories: network kernel
 ---
@@ -40,10 +40,59 @@ CPU 通过时分复用来处理很多任务，这其中包括一些硬件任务�
 中断随时可能发生，发生之后必须马上得到处理。收到中断事件后的处理流程：
 
 1. **<mark>抢占当前任务</mark>**：内核必须暂停正在执行的进程；
-2. **<mark>执行中断处理函数</mark>**：找到对应的中断处理函数，将 CPU 交给它（执行）；
+2. **<mark>执行中断处理函数</mark>**（ISR）：找到对应的中断处理函数，将 CPU 交给它（执行）；
+
+    ISR 位于 Interrupt Vector table，这个 table 位于内存中的固定地址。
+
 3. **<mark>中断处理完成之后</mark>**：第 1 步被抢占的进程恢复执行。
 
-## 2.2 Maskable and non-maskable
+    在中断处理完成之后，处理器恢复执行被中断的进程（resume the interrupted process）。
+
+## 2.2 中断类型
+
+在内核中，发生异常（exception）之后一般是给被中断的进程发送一个 Unix 信号，以此来唤醒它，这也是为什么内核能如此迅速地处理异常的原因。
+
+但对于外部硬件中断（external hardware interrupts）这种方式是不行的，
+外部中断处理取决于中断的类型（type）：
+
+1. I/O interrupts;
+
+    例如 PCI 总线架构，多个设备共享相同的 IRQ line。必须处理非常快。内核典型处理过程：
+
+    1. 将 IRQ 值和寄存器状态保存到内核栈上（kernel stack）；
+    1. 给负责这个 IRQ line 的硬件控制器发送一个确认通知；
+    1. 执行与这个设备相关的中断服务例程（ISR）；
+    1. 恢复寄存器状态，从中断中返回。
+
+1. Timer interrupts;
+1. Interprocessor interrupts（IPI）
+
+### 系统支持的最大硬中断数量
+
+查看系统支持的**<mark>最大硬中断数量</mark>**（与编译参数 `CONFIG_X86_IO_APIC` 有关）：
+
+```shell
+$ dmesg | grep NR_IRQS
+[    0.146022] NR_IRQS: 524544, nr_irqs: 1624, preallocated irqs: 16
+```
+
+其中有 16 个是预分配的 IRQs。
+
+### MSI（Message Signaled Interrupts）/ MSI-X
+
+除了预分配中断，
+还有另一种称为 [Message Signaled Interrupts](https://en.wikipedia.org/wiki/Message_Signaled_Interrupts)
+的中断，位于 **<mark>PCI 系统</mark>**中。
+
+相比于分配一个固定的中断号，它允许设备在特定的内存地址（particular address of
+RAM, in fact, the display on the Local APIC）记录消息（message）。
+
+* MSI 支持每个设备能分配 1, 2, 4, 8, 16 or 32 个中断，
+* MSI-X 支持每个设备分配多达 2048 个中断。
+
+内核函数 **<mark><code>request_irq()</code></mark>** 注册一个中断处理函数，并启用给定的中断线（enables a given interrupt line）。
+
+## 2.3 Maskable and non-maskable
 
 Maskable interrupts 在 x64_64 上可以用 **<mark><code>sti/cli</code></mark>**
 两个指令来屏蔽（关闭）和恢复：
@@ -65,7 +114,7 @@ static inline void native_irq_enable(void) {
 
 Non-maskable interrupts 不可屏蔽，所以在效果上属于更紧急的类型。
 
-## 2.3 问题：执行足够快 vs 逻辑比较复杂
+## 2.4 问题：执行足够快 vs 逻辑比较复杂
 
 IRQ handler 的两个特点：
 
@@ -74,7 +123,7 @@ IRQ handler 的两个特点：
 
 这里就有了内在矛盾。
 
-## 2.4 解决方式：延后中断处理（deferred interrupt handling）
+## 2.5 解决方式：延后中断处理（deferred interrupt handling）
 
 传统上，解决这个内在矛盾的方式是将中断处理分为两部分：
 
@@ -435,6 +484,39 @@ struct work_struct {
 **<mark>kworker 线程调度 workqueues，原理与 ksoftirqd 线程调度 softirqs 一样</mark>**。
 但是我们可以为 workqueue 创建新的线程，而 softirq 则不行。
 
+# 5 idle process 与中断
+
+## 5.1 为什么需要 idle process
+
+idle process 用于 process accouting，以及降低能耗。
+
+在设计上，调度器没有进程可调度时（例如所有进程都在等待输入），需要停下来，什么都不做，等待下一个中断把它唤醒。
+中断可能来自外设（例如网络包、磁盘读操作完成），也可能来自某个进程的定时器。
+
+Linux 调度器中，实现这种“什么都不做”的方式就是引入了 idle 进程。只有当没有任何其他进程
+需要调度时，才会调度到 idle 进程（因此它的优先级是最低的）。在实现上，这个 idle 进程
+其实就是内核自身的一部分。当执行到 idle 进程时，它的行为就是“等待中断事件”。
+
+Linux 会为每个 CPU 创建一个 idle task，并固定在这个 CPU 上执行。当这个 CPU 上没有其他
+进程可执行时，就会调度到 idle 进程。它的开销就是 `top` 里面的 `id` 统计。
+
+注意，这个 idle process 和 process 的 idle 状态是两个完全不相关的东西，后者指的是 process 在等待
+某个事件（例如 I/O 事件）。
+
+## 5.2 idle process 实现
+
+idle 如何实现视具体处理器和操作系统而定，但目的都是一样的：减少能耗。
+
+最基本的实现方式：[HLT](https://en.wikipedia.org/wiki/HLT_%28x86_instruction%29) 指令
+会让处理器停止执行（并进入节能模式），直到下一个中断触发它继续执行。
+不过有个模块肯定是要保持启用的：中断控制器（interrupt controller）。
+当外设触发中断时，中断控制器会通过特定针脚给 CPU 发送信号，唤醒处理器的执行。
+实际上现代处理器的行为要比这个复杂的多，但主要还是在节能和快速响应之间做出折中。
+有的 CPU 还会在 idle 期间降低处理器频率，以实现节能目标。
+
+Linux 中 x86 的[实现](https://github.com/torvalds/linux/blob/v5.10/arch/x86/kernel/process.c#L678)
+
 # 参考资料
 
 1. Linux Inside (online book), [Interrupts and Interrupt Handling](https://0xax.gitbooks.io/linux-insides/content/Interrupts/linux-interrupts-9.html)
+2. stackexchange.com, [What does an idle CPU process do?](https://unix.stackexchange.com/questions/361245/what-does-an-idle-cpu-process-do)

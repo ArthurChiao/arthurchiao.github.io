@@ -1,6 +1,6 @@
  <div class="header">
      <div class="container">
-         <h1 class="logo"><a href="{{ site.baseurl }}/">{{ site.title }}</a></h1>
+         <h1 class="logo"><a href="{{ site.url }}/">{{ site.title }}</a></h1>
          <nav class="nav-collapse">
              <ul class="noList">
                  {% for link in site.navigation %}
@@ -9,7 +9,7 @@
                      {% assign current = 'current' %}
                    {% endif %}
                    <li class="element {% if forloop.first %}first{% endif %} {{ current }} {% if forloop.last %}last{% endif %}">
-                     <a href="{{ link.url | prepend: site.baseurl }}">{{ link.title }}</a>
+                     <a href="{{ link.url }}">{{ link.title }}</a>
                    </li> 
                  {% endfor %}
                  <!-- <li> <a href="https://github.com/arthurchiao/reading" target="_blank">Reading</a></li> -->
