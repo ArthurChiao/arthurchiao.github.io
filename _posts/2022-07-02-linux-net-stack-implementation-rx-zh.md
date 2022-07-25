@@ -2,7 +2,7 @@
 layout    : post
 title     : "Linux 网络栈接收数据（RX）：原理及内核实现（2022）"
 date      : 2022-07-02
-lastupdate: 2022-07-12
+lastupdate: 2022-07-25
 author: ArthurChiao
 categories: network kernel
 ---
@@ -2491,8 +2491,8 @@ skip_taps: // 如果是使用 goto 跳转过来的，那跳过了抓包逻辑（
     if (static_branch_unlikely(&ingress_needed_key)) {           // TC ingress 处理
         bool another = false;
         skb = sch_handle_ingress(skb, &pt_prev, &ret, orig_dev, &another);
-        if (another)
-            goto another_round;
+        if (another)             // TCP BPF 优化，通过 another round 将包从宿主机网卡直接送到容器 netns 内网卡
+            goto another_round;  // 需要内核 5.10+
         if (!skb)
             goto out;
 
@@ -2654,6 +2654,26 @@ TC（Traffic Control）是 Linux 的流量控制子系统，
 1. [（译）《Linux 高级路由与流量控制手册（2012）》第九章：用 tc qdisc 管理 Linux 网络带宽]({% link _posts/2020-10-08-lartc-qdisc-zh.md %})
 2. [（译）基于 BPF/XDP 实现 K8s Service 负载均衡 (LPC, 2020)]({% link _posts/2020-11-24-cilium-k8s-service-lb-zh.md %})
 3. [（译）利用 eBPF 支撑大规模 K8s Service (LPC, 2019)]({% link _posts/2020-11-29-cilium-scale-k8s-service-with-bpf-zh.md %})
+
+#### TC BPF redirection：将包从宿主机网卡直接送到容器内网卡
+
+这个功能需要内核 5.10+，而且需要网络应用（例如 Cilium）自己 **<mark>attach BPF 程序</mark>**。
+适用场景：**<mark>容器通过 veth pair 连接到宿主机</mark>**（例如 Cilium 默认的网络模式），
+
+* 正常处理：宿主机网卡将包送到 veth pair 的宿主机端，放到它的 per-cpu backlog queue，然后内核通过 NAPI 将它收到容器里；
+* 优化处理：在宿主机网卡的 TC BPF 中直接将包重定向到容器 netns 中，不需要额外的队列。
+* 更多内容见 [Differentiate three types of eBPF redirections]({% link _posts/2022-07-25-differentiate-bpf-redirects.md %})。
+
+好处： 避免重新进入协议栈，显著提升吞吐，降低延迟，具体
+benchmark 见 [Cilium 1.9 Release Notes](https://cilium.io/blog/2020/11/10/cilium-19/#veth)，
+我们自己也压测确认了这个结果；
+
+已知不足：
+
+1. 绕过了完整的协议栈逻辑，**<mark>导致容器网卡的一些 ingress 统计不对</mark>**（**<mark><code>/sys/class/</code></mark>** 下面）。
+
+    kubelet 会通过读 `/sys/class/...` 收集这些 ingress 统计，例如 `/sys/class/net/<dev>/statistics/rx_packets`，然后通过 12050 端口将 metric 暴露出来。
+    所以依赖 kubelet metric 的看板会看到容器 ingress packets/bandwidth 等等都不对（几乎为零）。
 
 ### 7.3.7 Netfilter 处理
 
