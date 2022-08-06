@@ -3,7 +3,7 @@ layout    : post
 title     : "Cracking Kubernetes Node Proxy (aka kube-proxy)"
 date      : 2019-11-30
 lastupdate: 2021-02-03
-categories: kubernetes iptables ipvs
+categories: k8s iptables ipvs bpf
 ---
 
 ## TL; DR
@@ -1350,7 +1350,7 @@ proxy, and some other aspects about networking.
 
 # Appendix
 
-`webapp.yaml`:
+## A1. `webapp.yaml`
 
 ```yaml
 apiVersion: v1
@@ -1400,3 +1400,67 @@ spec:
         - containerPort: 80
           name: web
 ```
+
+## A2. `Service` struct definition in Kubernetes
+
+```go
+// https://github.com/kubernetes/kubernetes/blob/v1.24.0/pkg/apis/core/types.go#L3960
+
+// Service is a named abstraction of software service (for example, mysql) consisting of local port
+// (for example 3306) that the proxy listens on, and the selector that determines which pods
+// will answer requests sent through the proxy.
+type Service struct {
+	metav1.TypeMeta
+	// +optional
+	metav1.ObjectMeta
+
+	// Spec defines the behavior of a service.
+	// +optional
+	Spec ServiceSpec
+
+	// Status represents the current status of a service.
+	// +optional
+	Status ServiceStatus
+}
+```
+
+`ServiceSpec` and `ServiceStatus` are also defined in that file:
+
+```go
+// https://github.com/kubernetes/kubernetes/blob/v1.24.0/pkg/apis/core/types.go#L3675
+
+// ServiceStatus represents the current status of a service
+type ServiceStatus struct {
+	// LoadBalancer contains the current status of the load-balancer, if one is present.
+	// +optional
+	LoadBalancer LoadBalancerStatus
+
+	// Current service condition
+	// +optional
+	Conditions []metav1.Condition
+}
+
+// ServiceSpec describes the attributes that a user creates on a service
+type ServiceSpec struct {
+	Type ServiceType
+	Ports []ServicePort
+	Selector map[string]string
+	ClusterIP string
+	ClusterIPs []string
+	IPFamilies []IPFamily
+	IPFamilyPolicy *IPFamilyPolicyType
+	ExternalName string
+	ExternalIPs []string
+	LoadBalancerIP string
+	SessionAffinity ServiceAffinity
+	SessionAffinityConfig *SessionAffinityConfig
+	LoadBalancerSourceRanges []string
+	ExternalTrafficPolicy ServiceExternalTrafficPolicyType
+	HealthCheckNodePort int32
+	PublishNotReadyAddresses bool
+	AllocateLoadBalancerNodePorts *bool
+	LoadBalancerClass *string
+	InternalTrafficPolicy *ServiceInternalTrafficPolicyType
+}
+```
+

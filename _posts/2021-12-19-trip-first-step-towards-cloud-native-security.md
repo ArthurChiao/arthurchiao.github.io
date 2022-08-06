@@ -3,7 +3,7 @@ layout    : post
 title     : "Trip.com: First Step towards Cloud Native Security"
 date      : 2021-12-19
 lastupdate: 2021-12-19
-categories: k8s cilium security
+categories: k8s cilium security trip.com
 ---
 
 ## TL; DR

@@ -3,7 +3,7 @@ layout    : post
 title     : "Ctrip Network Architecture Evolution in the Cloud Computing Era"
 date      : 2019-04-17
 lastupdate: 2019-05-05
-categories: network datacenter cilium
+categories: network datacenter cilium trip.com
 ---
 
 ## Preface

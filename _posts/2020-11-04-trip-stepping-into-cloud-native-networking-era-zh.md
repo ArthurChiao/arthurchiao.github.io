@@ -4,7 +4,7 @@ title     : "迈入 Cilium+BGP 的云原生网络时代"
 date      : 2020-11-04
 lastupdate: 2020-11-04
 author    : ArthurChiao
-categories: cilium network security
+categories: cilium network security trip.com
 ---
 
 > This post also provides an [English version]({% link _posts/2020-11-04-trip-stepping-into-cloud-native-networking-era.md %}).

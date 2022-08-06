@@ -3,7 +3,7 @@ layout    : post
 title     : "Cracking Kubernetes Network Policy"
 date      : 2022-01-23
 lastupdate: 2022-01-23
-categories: k8s cilium security
+categories: k8s cilium security bpf
 ---
 
 ## TL; DR

@@ -1,6 +1,6 @@
 ---
 layout    : post
-title     : "Cracking Kubernetes RBAC Authorization (AuthZ) Model"
+title     : "Cracking Kubernetes RBAC Authorization (AuthZ) Model (2022)"
 date      : 2022-04-17
 lastupdate: 2022-05-10
 categories: k8s security rbac

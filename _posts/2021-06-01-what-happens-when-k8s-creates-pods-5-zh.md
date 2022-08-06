@@ -341,9 +341,19 @@ func (r *remoteRuntimeService) RunPodSandbox(config *PodSandboxConfig, runtimeHa
 }
 ```
 
+一点调用栈：
+
+```
+podSandboxConfig := m.generatePodSandboxConfig(pod, podContainerChanges.Attempt)
+  |-generatePodSandboxLinuxConfig(pod)
+     |-lc := &runtimeapi.LinuxPodSandboxConfig{}
+     |-lc.Sysctls = sysctls # 用户通过 securityContext 指定的 sysctl 参数，例如 net.core.somaxconn
+```
+
 ### Create sandbox：docker 相关代码
 
-前面是 CRI 通用代码，如果我们的容器 runtime 是 docker，那接下来就会调用到 docker 相关代码。
+前面是 CRI 通用代码，如果我们的容器 runtime 是 docker，那接下来就会调用到 docker/containerd 相关代码。
+具体流程可参考 [1]。
 
 在这种 runtime 中，**<mark>创建一个 sandbox 会转换成创建一个 “pause” 容器的操作</mark>**。
 Pause container 作为一个 pod 内其他所有容器的父角色，hold 了很多 pod-level 的资源，
@@ -723,3 +733,7 @@ func (m *kubeGenericRuntimeManager) startContainer(podSandboxID, podSandboxConfi
 
 至此，应该已经有 3 个 pod 在运行了，取决于系统资源和调度策略，它们可能在一台
 node 上，也可能分散在多台。
+
+# 参考资料
+
+1. [The Mythical Container <code>net.core.somaxconn</code> (2022)]({% link  _posts/2022-08-06-the-mythical-container-somaxconn.md %})

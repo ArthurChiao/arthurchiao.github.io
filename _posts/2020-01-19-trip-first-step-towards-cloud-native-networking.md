@@ -4,7 +4,7 @@ title     : "Trip.com: First Step towards Cloud Native Networking"
 date      : 2020-01-19
 lastupdate: 2020-04-25
 author    : ArthurChiao
-categories: cilium network
+categories: cilium network trip.com
 ---
 
 **Update [2020-04-25]**: This post was summarized by Cilium official blog:

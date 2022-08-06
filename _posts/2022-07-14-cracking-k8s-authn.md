@@ -1,6 +1,6 @@
 ---
 layout    : post
-title     : "Cracking Kubernetes Authentication (AuthN) Model"
+title     : "Cracking Kubernetes Authentication (AuthN) Model (2022)"
 date      : 2022-07-14
 lastupdate: 2022-07-14
 categories: k8s security
