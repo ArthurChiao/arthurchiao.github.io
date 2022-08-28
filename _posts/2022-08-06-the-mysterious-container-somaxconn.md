@@ -1,8 +1,8 @@
 ---
 layout    : post
-title     : "The Mythical Container <code>net.core.somaxconn</code> (2022)"
+title     : "The Mysterious Container <code>net.core.somaxconn</code> (2022)"
 date      : 2022-08-06
-lastupdate: 2022-08-06
+lastupdate: 2022-08-28
 categories: kernel container k8s
 ---
 
@@ -14,7 +14,7 @@ Try to answer several quick questions with a long post:
 2. If changing node's sysctl settings, will they be propagated to pods?
 3. Are all sysctl parameters are equal in terms of initialization and propagation?
 
-<p align="center"><img src="/assets/img/the-mythical-container-somaxconn/create-pod-journey.png" width="80%" height="80%"></p>
+<p align="center"><img src="/assets/img/the-mysterious-container-somaxconn/create-pod-journey.png" width="80%" height="80%"></p>
 
 ----
 
@@ -32,7 +32,7 @@ the request will go through the following components in sequence,
 **<mark><code>kube-apiserver -> kubelet -> dockerd -> containerd (-> containerd-shim) -> runc</code></mark>**,
 as shown below:
 
-<p align="center"><img src="/assets/img/the-mythical-container-somaxconn/create-pod-journey.png" width="80%" height="80%"></p>
+<p align="center"><img src="/assets/img/the-mysterious-container-somaxconn/create-pod-journey.png" width="80%" height="80%"></p>
 <p align="center">Fig. Journey of components when creating a pod in Kubernetes</p>
 
 A few words about each component:
@@ -252,7 +252,7 @@ on":"ContainersNotReady","status":"False","type":"Ready"},{"message":"containers
 Well, we get lots of detailed configurations about the pod/container, but still
 no somaxconn related stuffs.
 
-<p align="center"><img src="/assets/img/the-mythical-container-somaxconn/kube-apiserver-eliminated.png" width="80%" height="80%"></p>
+<p align="center"><img src="/assets/img/the-mysterious-container-somaxconn/kube-apiserver-eliminated.png" width="80%" height="80%"></p>
 <p align="center">Fig. Kubernetes control plane (e.g. kube-apiserver) is eliminated from our suspects list</p>
 
 Kubernetes control plane components eliminated. Will kubelet add this parameter during its internal handling?
@@ -313,7 +313,7 @@ level=debug msg='form data: {
   ...
 ```
 
-<p align="center"><img src="/assets/img/the-mythical-container-somaxconn/kubelet-eliminated.png" width="80%" height="80%"></p>
+<p align="center"><img src="/assets/img/the-mysterious-container-somaxconn/kubelet-eliminated.png" width="80%" height="80%"></p>
 <p align="center">Fig. kubelet is eliminated from our suspects list</p>
 
 kubelet eliminated. Will dockerd add this parameter in its internal handling?
@@ -364,7 +364,7 @@ $ cat /proc/sys/net/core/somaxconn
 Since this is a docker container but not a Kubernetes pod, CNI plugin is not involved,
 so CNI plugin (and the specific Kubernetes networking solution) is also eliminated from our suspects list.
 
-<p align="center"><img src="/assets/img/the-mythical-container-somaxconn/kubelet-and-cni-eliminated.png" width="80%" height="80%"></p>
+<p align="center"><img src="/assets/img/the-mysterious-container-somaxconn/kubelet-and-cni-eliminated.png" width="80%" height="80%"></p>
 <p align="center">Fig. kubelet and CNI plugin is eliminated from our suspects list</p>
 
 Now check the logs of containerd:
@@ -386,7 +386,7 @@ this sysctl parameter if it's provided in `HostConfig.Sysctls[]` option, or prov
 Neither did we do. This indicates that, the initial value is set by somewhere
 further behind.
 
-<p align="center"><img src="/assets/img/the-mythical-container-somaxconn/docker-eliminated.png" width="80%" height="80%"></p>
+<p align="center"><img src="/assets/img/the-mysterious-container-somaxconn/docker-eliminated.png" width="80%" height="80%"></p>
 <p align="center">Fig. docker is eliminated from our suspects list</p>
 
 Move on.
@@ -582,7 +582,7 @@ the container inherits the current settings of the node.
 But at this point, we still have gained something new: containerd didn't set this for us,
 as config.json was created by containerd.
 
-<p align="center"><img src="/assets/img/the-mythical-container-somaxconn/containerd-eliminated.png" width="80%" height="80%"></p>
+<p align="center"><img src="/assets/img/the-mysterious-container-somaxconn/containerd-eliminated.png" width="80%" height="80%"></p>
 <p align="center">Fig. containerd is eliminated from our suspects list</p>
 
 Will runc initialize the parameter internally? The source code tells us that it won't:
@@ -600,7 +600,7 @@ Will runc initialize the parameter internally? The source code tells us that it 
 It just writes those sysctl parameters specified by config.json to the container, and
 doesn't not add any new values, or initialize default values of some fields are not provided.
 
-<p align="center"><img src="/assets/img/the-mythical-container-somaxconn/runc-eliminated.png" width="80%" height="80%"></p>
+<p align="center"><img src="/assets/img/the-mysterious-container-somaxconn/runc-eliminated.png" width="80%" height="80%"></p>
 <p align="center">Fig. runc is eliminated from our suspects list</p>
 
 So, it seems we've come to an end: no component picks and sets the default value for a newly created container.

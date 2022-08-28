@@ -2,12 +2,11 @@
 layout    : post
 title     : "Linux tracing/profiling 基础：符号表、调用栈、perf/bpftrace 示例等（2022）"
 date      : 2022-07-18
-lastupdate: 2022-07-18
+lastupdate: 2022-08-28
 categories: bpf perf
 ---
 
-整理一些 tracing/profiling 笔记，
-内容主要来自
+整理一些 tracing/profiling 笔记，目前内容主要来自
 [Practical Linux tracing](https://medium.com/coccoc-engineering-blog/things-you-should-know-to-begin-playing-with-linux-tracing-tools-part-i-x-225aae1aaf13)
 系列几篇文章。
 
@@ -215,7 +214,45 @@ hello world!
         __libc_start_main+245
 ```
 
-## 2.5 小结
+## 2.5 用 bpftrace 跟踪容器方式部署的应用（container process）
+
+如果应用程序跑在容器内，在宿主机用 bpftrace 跟踪时，需要指定目标文件在宿主机上的绝对路径。
+
+例如，如果想跟踪 cilium-agent 进程（本身是用 docker 容器部署的），首先需要找到 `cilium-agent`
+文件在宿主机上的绝对路径，可以通过 container ID 找，也可以暴力一点直接 `find`：
+
+```shell
+(node) $ find /var/lib/docker/overlay2/ -name cilium-agent
+/var/lib/docker/overlay2/a17f868d/merged/usr/bin/cilium-agent
+```
+
+然后再指定绝对路径 uprobe：
+
+```shell
+(node) $ bpftrace -e 'uprobe:/var/lib/docker/overlay2/a17f868d/merged/usr/bin/cilium-agent:"github.com/cilium/cilium/pkg/endpoint.(*Endpoint).regenerate" {printf("%s\n", ustack); }'
+Attaching 1 probe...
+
+        github.com/cilium/cilium/pkg/endpoint.(*Endpoint).regenerate+0
+        github.com/cilium/cilium/pkg/eventqueue.(*EventQueue).run.func1+363
+        sync.(*Once).doSlow+236
+        github.com/cilium/cilium/pkg/eventqueue.(*EventQueue).run+101
+        runtime.goexit+1
+```
+
+其中可 tracing 的符号（函数）列表：
+
+```shell
+$ nm cilium-agent
+000000000427d1d0 B bufio.ErrBufferFull
+000000000427d1e0 B bufio.ErrFinalToken
+0000000001d3e940 T type..hash.github.com/cilium/cilium/pkg/k8s.ServiceID
+0000000001f32300 T type..hash.github.com/cilium/cilium/pkg/node/types.Identity
+0000000001d05620 T type..hash.github.com/cilium/cilium/pkg/policy/api.FQDNSelector
+0000000001d05e80 T type..hash.github.com/cilium/cilium/pkg/policy.PortProto
+...
+```
+
+## 2.6 小结
 
 这个例子可以看出，**<mark>function tracing 只需要 symbols</mark>**，不需要 debug symbols（`gcc -g`）。
 那 debug info 有什么用呢？在回答这个问题之前，我们先更深入了解下常规 symbols。

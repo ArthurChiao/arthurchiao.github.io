@@ -2,7 +2,7 @@
 layout    : post
 title     : "Customize TCP initial RTO (retransmission timeout) with BPF"
 date      : 2021-04-28
-lastupdate: 2021-05-07
+lastupdate: 2022-08-27
 categories: bpf tcp bpftool
 ---
 
@@ -389,7 +389,27 @@ $ sudo cat /sys/kernel/debug/tracing/trace_pipe
           <idle>-0       [002] ..s. 1492938.675575: 0: Set TCP connect timeout = 3s
 ```
 
-# 5 Summary
+# 5 Related stuffs
+
+## 5.1 `net.ipv4.tcp_syn_retries`
+
+How many times the SYN will be retransmitted (retried) at most?
+
+```shell
+$ sysctl net.ipv4.tcp_syn_retries
+net.ipv4.tcp_syn_retries = 6
+```
+
+Effectively, this takes `1+2+4+8+16+32+64=127s` before the connection finally aborts.
+
+## 5.2 `net.ipv4.tcp_synack_retries`
+
+```shell
+$ sysctl net.ipv4.tcp_synack_retries
+net.ipv4.tcp_synack_retries = 5
+```
+
+# 6 Summary
 
 This post creates a simple BPF program to dynamically change TCP initial RTO, which
 reveals the tip of the BPF iceberg.

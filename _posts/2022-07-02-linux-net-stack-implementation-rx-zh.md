@@ -2,7 +2,7 @@
 layout    : post
 title     : "Linux 网络栈接收数据（RX）：原理及内核实现（2022）"
 date      : 2022-07-02
-lastupdate: 2022-07-25
+lastupdate: 2022-08-28
 author: ArthurChiao
 categories: network kernel
 ---
@@ -3060,6 +3060,44 @@ net_protocol` 变量，并调用该变量中的回调方法。这样将包送到
 <p align="center">Fig. Steps of Linux kernel receiving data process and the corresponding chapters in this post</p>
 
 四层协议的处理，这里以 UDP 为例，因为它比较简单。TCP 太复杂了，得单独写一篇。
+
+## 9.0 UDP 协议初始化
+
+UDP 和 UDP-Lite 都会执行哈希表的创建，
+
+```c
+// net/ipv4/udp.c
+
+void __init udp_table_init(struct udp_table *table, const char *name) {
+    table->hash = alloc_large_system_hash(name,
+                          2 * sizeof(struct udp_hslot),
+                          uhash_entries,
+                          21, /* one slot per 2 MB */
+                          0,
+                          &table->log,
+                          &table->mask,
+                          UDP_HTABLE_SIZE_MIN,
+                          64 * 1024);
+    ...
+}
+```
+
+传过来的 name 分别是 `UDP` 和 `UDP-Lite`。
+`alloc_large_system_hash()` 在哈希表创建成功之后会打印哈希表的信息：
+
+```c
+// mm/page_alloc.c
+
+    pr_info("%s hash table entries: %ld (order: %d, %lu bytes, %s)\n",
+        tablename, 1UL << log2qty, ilog2(size) - PAGE_SHIFT, size,
+        virt ? "vmalloc" : "linear");
+```
+
+```shell
+$ dmesg -T | grep "hash table entries" | grep UDP
+[Thu Jul 28 15:37:27 2022] UDP hash table entries: 65536 (order: 9, 2097152 bytes, vmalloc)
+[Thu Jul 28 15:37:27 2022] UDP-Lite hash table entries: 65536 (order: 9, 2097152 bytes, vmalloc)
+```
 
 ## 9.1 L4 handler 注册：`udp_v4_early_demux()/udp_v4_rcv()`
 
