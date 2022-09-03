@@ -2,7 +2,7 @@
 layout    : post
 title     : "Linux tracing/profiling 基础：符号表、调用栈、perf/bpftrace 示例等（2022）"
 date      : 2022-07-18
-lastupdate: 2022-08-28
+lastupdate: 2022-09-03
 categories: bpf perf
 ---
 
@@ -219,7 +219,25 @@ hello world!
 如果应用程序跑在容器内，在宿主机用 bpftrace 跟踪时，需要指定目标文件在宿主机上的绝对路径。
 
 例如，如果想跟踪 cilium-agent 进程（本身是用 docker 容器部署的），首先需要找到 `cilium-agent`
-文件在宿主机上的绝对路径，可以通过 container ID 找，也可以暴力一点直接 `find`：
+文件在宿主机上的绝对路径，可以通过 container ID 或 name 找，
+
+{% raw%}
+```shell
+# Check cilium-agent container
+$ docker ps | grep cilium-agent
+0eb2e76384b3        cilium:test   "/usr/bin/cilium-agent ..."   4 hours ago    Up 4 hours   cilium-agent
+
+# Find the merged path for cilium-agent container
+$ docker inspect --format "{{.GraphDriver.Data.MergedDir}}" 0eb2e76384b3
+/var/lib/docker/overlay2/a17f868d/merged # a17f868d.. is shortened for better viewing
+
+# The object file we are going to trace
+$ ls -ahl /var/lib/docker/overlay2/a17f868d/merged/usr/bin/cilium-agent
+-rwxr-xr-x 1 root root 86M /var/lib/docker/overlay2/a17f868d/merged/usr/bin/cilium-agent
+```
+{% endraw%}
+
+也可以暴力一点直接 `find`：
 
 ```shell
 (node) $ find /var/lib/docker/overlay2/ -name cilium-agent
@@ -363,7 +381,7 @@ File name           Line number    Starting address
 hello-world.c                 3            0x40055d
 ```
 
-在 `readelf` 输出中搜一下地址 **<mark><code>0x40055d</code></mark>**： 
+在 `readelf` 输出中搜一下地址 **<mark><code>0x40055d</code></mark>**：
 
 ```shell
 $ readelf -s hello | grep 40055d

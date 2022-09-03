@@ -22,6 +22,7 @@ BPF map 类型。
 * [BPF 进阶笔记（二）：BPF Map 类型详解：使用场景、程序示例]({% link _posts/2021-07-04-bpf-advanced-notes-2-zh.md %})
 * [BPF 进阶笔记（三）：BPF Map 内核实现]({% link _posts/2021-07-04-bpf-advanced-notes-3-zh.md %})
 * [BPF 进阶笔记（四）：调试 BPF 程序]({% link _posts/2021-07-04-bpf-advanced-notes-4-zh.md %})
+* [BPF 进阶笔记（五）：几种 TCP 相关的 BPF（sockops、struct_ops、header options）]({% link _posts/2021-07-04-bpf-advanced-notes-5-zh.md %})
 
 ----
 
