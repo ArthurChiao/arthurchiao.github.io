@@ -2,7 +2,7 @@
 layout    : post
 title     : "[译] 为 K8s workload 引入的一些 BPF datapath 扩展（LPC, 2021）"
 date      : 2021-11-24
-lastupdate: 2021-11-24
+lastupdate: 2022-09-08
 categories: bpf k8s
 ---
 
@@ -442,16 +442,39 @@ K8s 模型中可以通过给 pod 打上 ingress/egress bandwidth annotation 对�
 
 ## 2.2 Cilium 中 pod egress 限速的实现
 
-cilium attach 到宿主机的物理设备，然后用 bpf 设置 timestamp，
-通过 earliest departure time 在 fq 中实现限速，下图：
+### 设计原理
+
+cilium attach 到宿主机的物理设备（或 bond 设备），在 BPF 程序中为每个包设置 timestamp，
+然后通过 earliest departure time 在 fq 中实现限速，下图：
 
 <p align="center"><img src="/assets/img/bpf-datapath-ext-for-k8s/pod-egress-rate-limit.png" width="60%" height="60%"></p>
 
-复习下 Cilium datapath，细节见去年的分享：
+从上到下三个步骤：
+
+1. **<mark>BPF 程序</mark>**：管理（计算和设置） skb 的 departure timestamp；
+2. TC **<mark>qdisc (multi-queue) 发包调度</mark>**；
+3. **<mark>物理网卡的队列</mark>**。
+
+> 如果宿主机使用了 bond，那么**<mark>根据 bond 实现方式的不同，FQ 的数量会不一样</mark>**，
+> 可通过 **<mark><code>tc -s -d qdisc show dev {bond}</code></mark>** 查看实际状态。具体来说，
+>
+> * Linux bond [默认支持多队列（multi-queue），会默认创建 16 个 queue](https://www.kernel.org/doc/Documentation/networking/bonding.txt)，
+>   每个 queue 对应一个 FQ，挂在一个 MQ 下面，也就是上面图中画的；
+> * OVS bond 不支持 MQ，因此只有一个 FQ（老版本行为，新版本不知道）。
+>
+> bond 设备的 TXQ 数量，可以通过 **<mark><code>ls /sys/class/net/{dev}/queues/</code></mark>** 查看。
+> 物理网卡的 TXQ 数量也可以通过以上命令看，但 **<mark><code>ethtool -l {dev}</code></mark>**
+> 看到的信息更多，包括了最大支持的数量和实际启用的数量。
+>
+> 译注。
+
+### 工作流程
+
+先复习下 Cilium datapath，细节见去年的分享：
 
 <p align="center"><img src="/assets/img/bpf-datapath-ext-for-k8s/datapath-forwarding.png" width="60%" height="60%"></p>
 
-**<mark>工作流程</mark>**：
+egress 限速工作流程：
 
 <p align="center"><img src="/assets/img/bpf-datapath-ext-for-k8s/datapath-works-today.png" width="85%" height="85%"></p>
 

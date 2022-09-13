@@ -2,13 +2,13 @@
 layout    : post
 title     : "Linux tracing/profiling 基础：符号表、调用栈、perf/bpftrace 示例等（2022）"
 date      : 2022-07-18
-lastupdate: 2022-09-03
+lastupdate: 2022-09-13
 categories: bpf perf
 ---
 
-整理一些 tracing/profiling 笔记，目前内容主要来自
+整理一些 tracing/profiling 笔记，目前大部分内容都来自
 [Practical Linux tracing](https://medium.com/coccoc-engineering-blog/things-you-should-know-to-begin-playing-with-linux-tracing-tools-part-i-x-225aae1aaf13)
-系列几篇文章。
+系列文章。
 
 ----
 
@@ -216,7 +216,11 @@ hello world!
 
 ## 2.5 用 bpftrace 跟踪容器方式部署的应用（container process）
 
-如果应用程序跑在容器内，在宿主机用 bpftrace 跟踪时，需要指定目标文件在宿主机上的绝对路径。
+如果应用程序跑在容器内，在宿主机用 bpftrace 跟踪时，需要一些额外信息 [2]。
+
+### 2.5.1 指定目标文件的绝对路径
+
+目标文件在宿主机上的绝对路径。
 
 例如，如果想跟踪 cilium-agent 进程（本身是用 docker 容器部署的），首先需要找到 `cilium-agent`
 文件在宿主机上的绝对路径，可以通过 container ID 或 name 找，
@@ -270,9 +274,26 @@ $ nm cilium-agent
 ...
 ```
 
+### 2.5.2 指定目标进程 PID `/proc/<PID>`
+
+{% raw%}
+```shell
+$ sudo docker inspect -f '{{.State.Pid}}' cilium-agent
+109997
+
+(node) $ bpftrace -e 'uprobe:/proc/109997/root/usr/bin/cilium-agent:"github.com/cilium/cilium/pkg/endpoint.(*Endpoint).regenerate" {printf("%s\n", ustack); }'
+```
+{% endraw%}
+
+### 2.5.3 指定目标进程 PID `-p <PID>`
+
+```shell
+(node) $ bpftrace -p 109997 -e 'uprobe:/usr/bin/cilium-agent:"github.com/cilium/cilium/pkg/endpoint.(*Endpoint).regenerate" {printf("%s\n", ustack); }'
+```
+
 ## 2.6 小结
 
-这个例子可以看出，**<mark>function tracing 只需要 symbols</mark>**，不需要 debug symbols（`gcc -g`）。
+以上 hello-world 例子可以看出，**<mark>function tracing 只需要 symbols</mark>**，不需要 debug symbols（`gcc -g`）。
 那 debug info 有什么用呢？在回答这个问题之前，我们先更深入了解下常规 symbols。
 
 # 3 符号
@@ -778,3 +799,8 @@ $ cat /proc/10390/maps
 7ffe97106000-7ffe97108000 r-xp 00000000 00:00 0                          [vdso]
 ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsyscall]
 ```
+
+# 参考资料
+
+1. [Practical Linux tracing](https://medium.com/coccoc-engineering-blog/things-you-should-know-to-begin-playing-with-linux-tracing-tools-part-i-x-225aae1aaf13)
+2. [bpftrace, uprobe and containers](https://kirshatrov.com/posts/bpf-docker-uprobe/), 2020

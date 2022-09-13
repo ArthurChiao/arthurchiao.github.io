@@ -2,7 +2,7 @@
 layout    : post
 title     : "Cilium Code Walk Through: Add Network Policy"
 date      : 2020-07-03
-lastupdate: 2022-06-09
+lastupdate: 2022-09-13
 categories: cilium
 ---
 
@@ -22,30 +22,50 @@ NOTE: this post is not well organized yet, posted mainly to memorize the calling
 
 ----
 
-# Call stack: start from `policyAdd()`
+# 1 Call stack: start from `policyAdd()`
 
 ```
 policyAdd                                                  // daemon/policy.go
-  |-TriggerPolicyUpdates                                   // daemon/policy.go
-      |-TriggerWithReason                                  // pkg/trigger/trigger.go
-          |- t.wakeupChan <- true                          // pkg/trigger/trigger.go
-                /\                                        
-                ||                                        
-                \/                                        
+  |-log.Info("Policy imported via API, recalculating...")
+  |-d.policy.AddListLocked(sourceRules)
+  |   |-d.policy.AddListLocked(sourceRules)
+  |       |-p.rules = append(p.rules, newList...)
+  |       |-return newList, newRevsion
+  |
+  |-if Config.SelectiveRegeneration // default true
+  |   ev := eventqueue.NewEvent()
+  |   d.policy.RuleReactionQueue.Enqueue(ev)
+  |-else
+      TriggerPolicyUpdates                                 // daemon/policy.go
+        |-TriggerWithReason                                // pkg/trigger/trigger.go
+           |- t.wakeupChan <- true                         // pkg/trigger/trigger.go
+                /\
+                ||
+                \/
         func (t *Trigger) waiter()                         // pkg/trigger/trigger.go
-		  t.params.TriggerFunc(reasons)                   
-                   /                                      
-                  /                                       
+		  t.params.TriggerFunc(reasons)
+```
+
+## 1.1 `TriggerFunc`: `policyUpdateTrigger`
+
+```
+        func (t *Trigger) waiter()                         // pkg/trigger/trigger.go
+		  t.params.TriggerFunc(reasons)
+                   /
+                  /
    policyUpdateTrigger                                     // daemon/policy.go
-     |-RegenerateAllEndpoints                              // pkg/endpointmanager/manager.go
-         for ep in eps:                                  
-           RegenerateIfAlive                               // pkg/endpoint/policy.go
+	 |-meta := &regeneration.ExternalRegenerationMetadata{
+	 |   RegenerationLevel: RegenerateWithoutDatapath,
+	 | }
+     |-RegenerateAllEndpoints(meta)                        // pkg/endpointmanager/manager.go
+         for ep in eps:
+           RegenerateIfAlive(meta)                         // pkg/endpoint/policy.go
              |-Regenerate(meta)                            // pkg/endpoint/policy.go
-               |- eventqueue.NewEvent(meta)               
+               |- eventqueue.NewEvent(meta)
                   eventQueue.Enqueue()                     // pkg/eventqueue/eventqueue.go
-                              /\                           
-                              ||                           
-                              \/                           
+                              /\
+                              ||
+                              \/
                   eventQueue.Run()                         // pkg/eventqueue/eventqueue.go
                     for ev in events:
                        ev.Metadata.Handle()
@@ -53,11 +73,62 @@ policyAdd                                                  // daemon/policy.go
          EndpointRegenerationEvent.Handle                  // pkg/endpoint/events.go
 ```
 
-And the `Handle` logic:
+## 1.2 `TriggerFunc`: `datapathRegen`
+
+```
+        func (t *Trigger) waiter()                         // pkg/trigger/trigger.go
+		  t.params.TriggerFunc(reasons)
+                   /
+                  /
+   datapathRegen
+	 |-meta := &regeneration.ExternalRegenerationMetadata{
+	 |   RegenerationLevel: RegenerateWithDatapathRewrite,
+	 | }
+     |-RegenerateAllEndpoints(meta)
+```
+
+## 1.3 Add an `allow` policy
+
+Add an `allow` policy: several places will call into the `Allow()` method in the end:
+
+```
+// case 1
+updateSelectorCacheFQDNs  // daemon/cmd/fqdn.go
+ |-UpdatePolicyMaps  // pkg/endpointmanager/
+   |-ApplyPolicyMapChanges
+     |-applyPolicyMapChanges
+       |-addPolicyKey // pkg/endpoint/bpf.go
+         |-AllowKey
+            |-Allow
+
+// case 2
+syncPolicyMapController(1min, "sync-policymap-<ep id>") // pkg/endpoint/bpf.go
+ |-syncPolicyMapWithDump
+    |-applyPolicyMapChanges
+      |-addPolicyKey // pkg/endpoint/bpf.go
+         |-AllowKey
+            |-Allow
+
+// case 3
+regenerateBPF                   // pkg/endpoint/bpf.go
+ |-syncPolicyMap
+    |-applyPolicyMapChanges
+    | |-addPolicyKey            // pkg/endpoint/bpf.go
+    |    |-AllowKey
+    |        |-Allow
+    |-syncDesiredPolicyMapWith
+      |-addPolicyKey // pkg/endpoint/bpf.go
+         |-AllowKey
+             |-Allow
+```
+
+## 1.4 `EndpointRegenerationEvent.Handle()`
 
 ```
 EndpointRegenerationEvent.Handle                                              //    pkg/endpoint/events.go
-  |-regenerate                                                                //    pkg/endpoint/policy.go
+  |-regenerate(ctx)                                                           //    pkg/endpoint/policy.go
+    |-if e.skippedRegenerationLevel > ctx.regenerationLevel
+    |   ctx.regenerationLevel = skippedRegenerationLevel
     |-regenerateBPF                                                           //    pkg/endpoint/bpf.go
        |-runPreCompilationSteps                                               //    pkg/endpoint/bpf.go
        |  |-regeneratePolicy                                                  //    pkg/endpoint/policy.go
@@ -103,8 +174,8 @@ EndpointRegenerationEvent.Handle                                              //
        |  |                           |-listener := kafkaListeners[proxyPort]
        |  |                           |-listenSocket()                        // pkg/proxy/kafka.go
        |  |                           |-go listener.Listen()                  // pkg/proxy/kafka.go
-       |  |                                /                                  
-       |  |                               /                                   
+       |  |                                /
+       |  |                               /
        |  |                  func (l *kafkaListener) Listen() {               // pkg/proxy/kafka.go
        |  |                    for {
        |  |                      pair := l.socket.Accept(true)
@@ -132,9 +203,19 @@ EndpointRegenerationEvent.Handle                                              //
        |-eppolicymap.WriteEndpoint
        |-lxcmap.WriteEndpoint
        |-waitForProxyCompletions
+       |-syncPolicyMap()
+          |-applyPolicyMapChanges
+          |  |-addPolicyKey                                                    // pkg/endpoint/bpf.go
+          |     |-AllowKey
+          |        |-Allow
+          |
+          |-syncDesiredPolicyMapWith
+             |-addPolicyKey                                                    // pkg/endpoint/bpf.go
+                |-AllowKey
+                   |-Allow
 ```
 
-# `addNewRedirects()`
+# 2 L7 policy: `addNewRedirects()`
 
 ```go
 // adding an l7 redirect for the specified policy.
@@ -265,7 +346,7 @@ func (p *Proxy) CreateOrUpdateRedirect(l4 policy.ProxyPolicy, id string, localEn
 }
 ```
 
-# kafka
+# 3 L7 policy: Kafka
 
 ```go
 // HandleRequest must be called when a request is forwarded to the broker, will
@@ -292,7 +373,7 @@ func (cc *CorrelationCache) HandleRequest(req *RequestMessage, finishFunc Finish
 }
 ```
 
-# policy calc
+# 4 policy calc
 
 ```
 // DistillPolicy filters down the specified selectorPolicy (which acts
@@ -338,7 +419,7 @@ func (p *selectorPolicy) DistillPolicy(policyOwner PolicyOwner, npMap NamedPorts
 }
 ```
 
-# Policy Distill
+# 5 Policy Distill
 
 pkg/policy/resolve.go:
 
@@ -391,7 +472,7 @@ computeDirectionL4PolicyMapEntries   // pkg/policy/resolve.go
       |-NewMapStateEntry
 ```
 
-# Skip duplicated labels
+# 6 Skip duplicated labels
 
 When there are duplicated label selectors in the rule, such as,
 
