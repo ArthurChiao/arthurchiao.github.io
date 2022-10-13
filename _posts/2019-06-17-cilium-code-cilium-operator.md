@@ -2,16 +2,68 @@
 layout    : post
 title     : "Cilium Code Walk Through: Cilium Operator"
 date      : 2019-05-30
-lastupdate: 2021-07-24
+lastupdate: 2022-10-13
 categories: cilium
 ---
+
+This post walks you through the `cilium-operator` component. Code based on Cilium `1.8 ~ 1.10`.
+
+This post is included in
+[Cilium Code Walk Through Series]({% link _posts/2019-06-17-cilium-code-series.md %}).
+
+----
 
 * TOC
 {:toc}
 
 ----
 
-```shell
+# 1 Introduction
+
+## 1.1 Cilium operator
+
+<p align="center"><img src="/assets/img/cilium-code-cilium-operator/cilium-operator.png" width="70%" height="70%"></p>
+<p align="center">Fig 1-1. Cilium operator</p>
+
+What is Cilium operator? According to [Cilium documentation](https://docs.cilium.io/en/v1.5/concepts/#cilium-operator) [1]:
+
+> The Cilium Operator is responsible for managing duties in the cluster which
+> should logically be handled once for the entire cluster, rather than once for
+> each node in the cluster. The Cilium operator is ***not in the critical path
+> for any forwarding or network policy decision***. A cluster will generally
+> ***continue to function if the operator is temporarily unavailable***.
+> However, depending on the configuration, failure in availability of the
+> operator can lead to:
+>
+> * Delays in IP Address Management (IPAM) and thus delay in scheduling of new
+>   workloads if the operator is required to allocate new IP addresses
+> * Failure to update the kvstore heartbeat key which will lead agents to declare
+>   kvstore unhealthiness and restart.
+
+that means,
+
+* cilium-operator is a cluster-wide component, responsible for **cluster-scope**
+  affairs, as comparison, cilium-agent manages **node-scope** stuffs
+* if cilium-operator is down:
+    * for existing Pods on any node, traffic forwarding or network policy
+      decision will not be affected
+    * IPAM will be affected if you are using ENI mode (IPs are allocated by
+      cilium-operator in this case)
+    * health-check of kvstore (cilium-etcd) will be affected
+
+## 1.2 Cilium etcd operator
+
+It's important to distinguish cilium-operator from cilium-etcd-operator.
+Cilium etcd operator is a [**Kubernetes operator**](https://coreos.com/operators/) [2]
+implementation, which creates and maintains Cilium's builtin etcd cluster
+(if using internal etcd mode).
+
+Cilium operator, although also named "operator", actually has nothing to do
+with **Kubernetes operator**.
+
+## 1.3 Call stack
+
+```
 init                                                 // operator/flags.go
  |-cobra.OnInitialize(option.InitConfig())           // pkg/option/config.go
     |-option.InitConfig()                            // pkg/option/config.go
@@ -19,8 +71,34 @@ init                                                 // operator/flags.go
       |-MergeConfig
          |-viper.MergeConfigMap
 
-runOperator                                                 // operator/api.go
-  |-startServer                                             // operator/api.go
+runOperator
+ |-onOperatorStartLeading
+
+onOperatorStartLeading
+  |-alloc := allocatorProviders[ipamMode]                         // Get IPAM (e.g. vendor specific IPAM)
+  |-alloc.Init(ctx)                                               // Init IPAM allocator
+  |-nodeManager := alloc.Start(&ciliumNodeUpdateImplementation{}) //
+  |                       |-instancesAPIResync
+  |                          |-instancesAPIs.Resync()             // vendor specific handler
+  |                              |-m.vpcs      = vendorAPI.GetVPCs()
+  |                              |-m.subnets   = vendorAPI.GetSubnets()
+  |                              |-m.instances = vendorAPI.GetInstances()
+  |
+  |-startSynchronizingCiliumNodes(nodeManager)                    // maintain ENI/IP pool for node
+  |  |-ciliumNodeStore, ciliumNodeInformer = NewInformer(
+  |  |  cache.ResourceEventHandlerFuncs{
+  |  |      AddFunc: func(obj interface{}) {
+  |  |          nodeManager.Create(k8s.ObjToCiliumNode(obj))
+  |  |      },
+  |  |      UpdateFunc: func(oldObj, newObj interface{}) {... },
+  |  |      DeleteFunc: func(obj interface{}) {
+  |  |          nodeManager.Delete(k8s.ObjToCiliumNode(obj))
+  |  |      },
+  |  |  },
+  |  | )
+  |  |
+  |  |-go ciliumNodeInformer.Run(wait.NeverStop)
+  |
   |-startSynchronizingServices                              // operator/k8s_service_sync.go
   | |-go JoinSharedStore(ClusterService{})                  // pkg/kvstore/store/store.go
   | |    |-listAndStartWatcher                              // pkg/kvstore/store/store.go
@@ -69,58 +147,6 @@ runOperator                                                 // operator/api.go
   |-enableCCNPWatcher
 ```
 
-# 1 Introduction
-
-This post walks through the implementation of cilium-operator.
-
-Code based on `1.8.2`/`1.9.5`.
-
-## 1.1 Cilium operator
-
-<p align="center"><img src="/assets/img/cilium-code-cilium-operator/cilium-operator.png" width="70%" height="70%"></p>
-<p align="center">Fig 1-1. Cilium operator</p>
-
-What is Cilium operator? According to [Cilium documentation](https://docs.cilium.io/en/v1.5/concepts/#cilium-operator) [1]:
-
-> The Cilium Operator is responsible for managing duties in the cluster which
-> should logically be handled once for the entire cluster, rather than once for
-> each node in the cluster. The Cilium operator is ***not in the critical path
-> for any forwarding or network policy decision***. A cluster will generally
-> ***continue to function if the operator is temporarily unavailable***.
-> However, depending on the configuration, failure in availability of the
-> operator can lead to:
->
-> * Delays in IP Address Management (IPAM) and thus delay in scheduling of new
->   workloads if the operator is required to allocate new IP addresses
-> * Failure to update the kvstore heartbeat key which will lead agents to declare
->   kvstore unhealthiness and restart.
-
-that means,
-
-* cilium-operator is a cluster-wide component, responsible for **cluster-scope**
-  affairs, as comparison, cilium-agent manages **node-scope** stuffs
-* if cilium-operator is down:
-    * for existing Pods on any node, traffic forwarding or network policy
-      decision will not be affected 
-    * IPAM will be affected if you are using ENI mode (IPs are allocated by
-      cilium-operator in this case)
-    * health-check of kvstore (cilium-etcd) will be affected
-
-## 1.2 Cilium etcd operator
-
-It's important to distinguish cilium-operator from cilium-etcd-operator.
-Cilium etcd operator is a [**Kubernetes operator**](https://coreos.com/operators/) [2]
-implementation, which creates and maintains Cilium's builtin etcd cluster
-(if using internal etcd mode).
-
-Cilium operator, although also named "operator", actually has nothing to do
-with **Kubernetes operator**. 
-
-## 1.3 Call stack
-
-The main call stack of cilium-operator is depicted at the beginning of this
-post.
-
 Cilium operator watches 4 kinds of K8S resources:
 
 1. Service
@@ -134,37 +160,145 @@ Cilium operator watches 4 kinds of K8S resources:
 // operator/main.go
 
 func runOperator(cmd *cobra.Command) {
-    go startServer(k8sInitDone, ...)            // start health check handlers for itself
+    k8sInitDone := make(chan struct{})
+    isLeader.Store(false)
 
-    switch ipamMode := Config.IPAM; ipamMode {  // if Cilium is used on AWS, Azure, etc
-        ...
+    // Configure API server for the operator.
+    srv := api.NewServer(shutdownSignal, k8sInitDone, getAPIServerAddr()...)
+
+    go func() {
+        srv.WithStatusCheckFunc(checkStatus).StartServer()
+    }()
+
+    initK8s(k8sInitDone)
+
+    // Register the CRDs after validating that we are running on a supported version of K8s.
+    client.RegisterCRDs(); err != nil {
+
+    operatorID := os.Hostname()
+    operatorID = rand.RandomStringWithPrefix(operatorID+"-", 10)
+
+    ns := option.Config.K8sNamespace
+    // If due to any reason the CILIUM_K8S_NAMESPACE is not set we assume the operator
+    // to be in default namespace.
+    if ns == "" {
+        ns = metav1.NamespaceDefault
     }
 
-    if kvstoreEnabled() {                       // cilium-etcd used
-        startSynchronizingServices()            // sync Service
-
-        kvstore.Setup(option.Config.KVStore)    // connect to kvstore (cilium-etcd)
-
-        runNodeWatcher(nodeManager)             // sync CiliumNode
-        startKvstoreWatchdog()                  // perform lock-files GC and kvstore heartbeat
+    leResourceLock := &resourcelock.LeaseLock{
+        LeaseMeta: metav1.ObjectMeta{
+            Name:      leaderElectionResourceLockName,
+            Namespace: ns,
+        },
+        Client: k8s.Client().CoordinationV1(),
+        LockConfig: resourcelock.ResourceLockConfig{
+            // Identity name of the lock holder
+            Identity: operatorID,
+        },
     }
 
-    switch IdentityAllocationMode {
+    // Start the leader election for running cilium-operators
+    leaderelection.RunOrDie(leaderElectionCtx, leaderelection.LeaderElectionConfig{
+        Name: leaderElectionResourceLockName,
+
+        Lock:            leResourceLock,
+        ReleaseOnCancel: true,
+
+        LeaseDuration: operatorOption.Config.LeaderElectionLeaseDuration,
+        RenewDeadline: operatorOption.Config.LeaderElectionRenewDeadline,
+        RetryPeriod:   operatorOption.Config.LeaderElectionRetryPeriod,
+
+        Callbacks: leaderelection.LeaderCallbacks{
+            OnStartedLeading: onOperatorStartLeading,       // start working as leader
+            OnStoppedLeading: func() { },
+            OnNewLeader: func(identity string) {
+                if identity == operatorID {
+                    log.Info("Leading the operator HA deployment")
+                } else {
+                    log.WithFields(logrus.Fields{
+                        "newLeader":  identity,
+                        "operatorID": operatorID,
+                    }).Info("Leader re-election complete")
+                }
+            },
+        },
+    })
+}
+
+func onOperatorStartLeading(ctx ) {
+    isLeader.Store(true)
     ...
-    case IdentityAllocationModeKVstore:
-        startKvstoreIdentityGC()                // perform identity GC
-    }
-
-    if EnableCEPGC && EndpointGCInterval != 0 {
-        enableCiliumEndpointSyncGC()            // perform CiliumEndpoint GC
-    }
-
-    enableCNPWatcher(apiextensionsK8sClient)
-    enableCCNPWatcher()
 }
 ```
 
-# 3 `startSynchronizingServices()`
+# 3 `startSynchronizingCiliumNodes()`:
+
+## 3.1 maintain ENI/IP pool for nodes (ENI mode)
+
+On `CiliumNode` create/update/delete events, node manager's handlers will be
+called accordingly, e.g. for `create` events:
+
+```
+startSynchronizingCiliumNodes
+ |-AddFunc
+   |-nodeManager.Create(ciliumnode)
+      |-Update
+        |-node, ok := n.nodes[ciliumnode.Name] // pkg/ipam/node.Node{}
+        |-defer node.UpdatedResource(resource)
+        |             |-n.ops.UpdatedNode(resource)
+        |             |-n.instanceRunning = true
+        |             |-n.recalculate()
+        |             |-allocationNeeded := n.allocationNeeded()
+        |             |-if allocationNeeded {
+        |             |   n.requirePoolMaintenance()
+        |             |   n.poolMaintainer.Trigger()
+        |             | }
+        |
+        |-if !ok:
+            |-NewTrigger("ipam-pool-maintainer-<nodename>",       func: node.MaintainIPPool)
+            |  |-n.maintainIPPool
+            |  |   |-determineMaintenanceAction
+            |  |      |-PrepareIPAllocation
+            |  |      |-n.ops.ReleaseIPs
+            |  |      |-n.ops.AllocateIPs
+            |  |      |   |-AssignPrivateIPAddresses(eni, numIPs)
+            |  |      |       |-vendorAPI
+            |  |      |-n.createInterface(ctx, a.allocation)
+            |  |          |-n.ops.CreateInterface
+            |  |              |-vendorAPI CreateNetworkInterface
+            |  |              |-vendorAPI AttachNetworkInterface
+            |  |              |-vendorAPI WaitNetworkInterfaceAttached
+            |  |              |-n.manager.UpdateVNIC(instanceID, eni)
+            |  |
+            |  |-n.poolMaintenanceComplete
+            |  |-recalculate
+            |  |  |-n.ops.ResyncInterfacesAndIPs
+            |  |      |-n.manager.ForeachInstance(func {
+            |  |        for _, ip := range eni.Addresses
+            |  |          available[ip] = ipamTypes.AllocationIP{Resource: e.ID}
+            |  |      })
+            |  |-n.manager.resyncTrigger.Trigger()
+            |
+            |-NewTrigger("ipam-pool-maintainer-<nodename>-retry", func: poolMaintainer.Trigger)
+            |
+            |-NewTrigger("ipam-node-k8s-sync-<nodename>",         func: node.syncToAPIServer)
+               |-n.ops.PopulateStatusFields(node)
+                   |-n.manager.ForeachInstance(n.node.InstanceID(),
+                       func(instanceID, interfaceID string, rev ipamTypes.InterfaceRevision) error {
+                         resource.Status.ENIs[interfaceID] = *e.DeepCopy()
+                       }
+           })
+```
+
+For on-premises nodes which do not rely on ENI for networking, this step is much
+simpler, as no ENI/IP watermarks needs to be maintained.
+
+## 3.2 Update `CiliumNode` status field
+
+The `ipam-node-k8s-sync-<nodename>` controller calls `PopulateStatusFields()`
+to update the `status` field of the CR.
+
+# 4 `startSynchronizingServices()`
 
 The functionality of `startSynchronizingServices()` is: if there are
 Service/Endpoint changes in k8s, synchronize them to kvstore (cilium-etcd). To
@@ -221,7 +355,7 @@ func startSynchronizingServices() {
 }
 ```
 
-## 3.1 `JoinSharedStore()`
+## 4.1 `JoinSharedStore()`
 
 This method will listen to the specified resource, merge them with locally, and
 start a controller to continuously synchronize the local store with the kvstore
@@ -248,7 +382,7 @@ func JoinSharedStore(c Configuration) (*SharedStore, error) {
     s.listAndStartWatcher();   // start watcher
 
     controllers.UpdateController(
-        DoFunc: func(ctx context.Context) error { return s.syncLocalKeys(ctx) },
+        DoFunc: func(ctx ) error { return s.syncLocalKeys(ctx) },
         RunInterval: s.conf.SynchronizationInterval,
     )
 }
@@ -306,7 +440,7 @@ func (s *SharedStore) updateKey(name string, value []byte) error {
 }
 ```
 
-## 3.2 `endpointSlicesInit()` and `endpointsInit()`
+## 4.2 `endpointSlicesInit()` and `endpointsInit()`
 
 These two methods watch for k8s `v1.Endpoints` changes and push changes into
 local cache `k8sSvcCache`, let's look at the latter one:
@@ -333,7 +467,7 @@ func endpointsInit(k8sClient kubernetes.Interface) cache.Controller {
 }
 ```
 
-## 3.3 `k8sServiceHandler()`
+## 4.3 `k8sServiceHandler()`
 
 When there are **Service/Endpoint changes in k8s** (local cache `k8sSvcCache`),
 method `k8sServiceHandler()` will update the changes to **the shared store of
@@ -369,7 +503,7 @@ func k8sServiceHandler() {
 }
 ```
 
-# 4 `runNodeWatcher()`
+# 5 `runNodeWatcher()`
 
 Similar as `startSynchronizingServices()`, `runNodeWatcher()` synchronizing
 `CiliumNode` resources from k8s to a local cache of cilium-etcd by
@@ -422,7 +556,7 @@ func runNodeWatcher(nodeManager *allocator.NodeEventHandler) error {
 }
 ```
 
-# 5 `startKvstoreWatchdog()`: GC of unused lock files in kvstore
+# 6 `startKvstoreWatchdog()`: GC of unused lock files in kvstore
 
 This method:
 
@@ -455,7 +589,7 @@ func startKvstoreWatchdog() {
 }
 ```
 
-# 6 `startKvstoreIdentityGC()`
+# 7 `startKvstoreIdentityGC()`
 
 Perform periodic identity GC. **<mark>GC interval</mark>** is configured through
 `--identity-gc-interval=<interval>`, which defaults to the value of KVstoreLeaseTTL
@@ -468,7 +602,7 @@ And, the GC process will in turn pose periodic QPS peaks on kvstore (default QPS
     kvstore-opt: '{"etcd.config": "/tmp/cilium/config-map/etcd-config", "etcd.qps": "100"}'
 ```
 
-## 6.1 Background: identity allocation in cilium-agent side
+## 7.1 Background: identity allocation in cilium-agent side
 
 ### Agent: create identity allocator
 
@@ -547,7 +681,7 @@ func (a *Allocator) syncLocalKeys() error {
 
 // UpdateKey refreshes the record that this node is using this key -> id mapping.
 // When reliablyMissing is set it will also recreate missing master or slave keys.
-func (k *kvstoreBackend) UpdateKey(ctx context.Context, id idpool.ID, key allocator.AllocatorKey, reliablyMissing bool) error {
+func (k *kvstoreBackend) UpdateKey(ctx , id idpool.ID, key allocator.AllocatorKey, reliablyMissing bool) error {
     var (
         err        error
         recreated  bool
@@ -557,7 +691,7 @@ func (k *kvstoreBackend) UpdateKey(ctx context.Context, id idpool.ID, key alloca
     )
 
     // Ensures that any existing potentially conflicting key is never overwritten.
-    success, err := k.backend.CreateOnly(ctx, keyPath, keyEncoded, false)
+    success := k.backend.CreateOnly(ctx, keyPath, keyEncoded, false)
     switch {
     case err != nil:
         return fmt.Errorf("Unable to re-create missing master key "%s" -> "%s": %s", fieldKey, valueKey, err)
@@ -607,7 +741,7 @@ func (m *CachingIdentityAllocator) AllocateIdentity(ctx, lbls labels.Labels) (*i
 // allocated for this key yet, a key will be allocated. If allocation fails,
 // most likely due to a parallel allocation of the same ID by another user,
 // allocation is re-attempted for maxAllocAttempts times.
-func (a *Allocator) Allocate(ctx context.Context, key AllocatorKey) (idpool.ID, error) {
+func (a *Allocator) Allocate(ctx , key AllocatorKey) (idpool.ID, error) {
     k := a.encodeKey(key)
 
     select {
@@ -640,7 +774,7 @@ func (a *Allocator) Allocate(ctx context.Context, key AllocatorKey) (idpool.ID, 
 // 3. whether this is the first owner that holds a reference to the key in
 //    localkeys store
 // 4. error in case of failure
-func (a *Allocator) lockedAllocate(ctx context.Context, key AllocatorKey) (idpool.ID, bool, bool, error) {
+func (a *Allocator) lockedAllocate(ctx , key AllocatorKey) (idpool.ID, bool, bool, error) {
     k := a.encodeKey(key)
 
     // fetch first key that matches /value/<key> while ignoring the node suffix
@@ -686,7 +820,7 @@ func (a *Allocator) lockedAllocate(ctx context.Context, key AllocatorKey) (idpoo
 }
 ```
 
-## 6.2 Operator: `RunGC`
+## 7.2 Operator: `RunGC`
 
 Now back to cilium-operator, the
 rate-limited kvstore identity garbage collector, GC interval `IdentityGCInterval`:
@@ -728,7 +862,7 @@ Identity key-pair:
 // pkg/kvstore/allocator/allocator.go
 
 // RunGC scans the kvstore for unused master keys and removes them
-func (k *kvstoreBackend) RunGC(ctx context.Context, rateLimit *rate.Limiter, staleKeysPrevRound map[string]uint64) (map[string]uint64) {
+func (k *kvstoreBackend) RunGC(ctx , rateLimit *rate.Limiter, staleKeysPrevRound map[string]uint64) (map[string]uint64) {
     allocated := k.backend.ListPrefix(ctx, k.idPrefix)      // "cilium/state/identities/v1/id/"
     staleKeys := map[string]uint64{}
 

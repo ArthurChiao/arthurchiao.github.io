@@ -6,7 +6,7 @@ lastupdate: 2020-09-24
 categories: cilium bpf cni
 ---
 
-This post belongs to
+This post is included in
 [Cilium Code Walk Through Series]({% link _posts/2019-06-17-cilium-code-series.md %}).
 
 ### TL;DR

@@ -2,7 +2,7 @@
 layout    : post
 title     : "Cilium Network Topology and Traffic Path on AWS"
 date      : 2019-10-26
-lastupdate: 2019-10-26
+lastupdate: 2022-10-13
 categories: cilium aws bpf
 ---
 
@@ -13,7 +13,23 @@ like this:
 
 <p align="center"><img src="/assets/img/cilium-network-topology-on-aws/cilium-aws-global-data-flow.png" width="100%" height="100%"></p>
 
-## 1 Preparation
+Besides, we'll also look into the code to see how Cilium achieve this.
+Code based on `v1.10.7`.
+
+Also, the network topology and routine rules/entries are quite similar in other
+cloud vendors, such as Cilium on AlibabaCloud.
+
+This post is included in
+[Cilium Code Walk Through Series]({% link _posts/2019-06-17-cilium-code-series.md %}).
+
+----
+
+* TOD
+{:toc}
+
+----
+
+# 1 Preparation
 
 ## 1.1 Test Environment
 
@@ -75,9 +91,9 @@ root@node1 # nsenter -t 75869 -n ping 10.5.2.22 -c 2
 OK! Next, we will explore the exact path of these packets, namely the
 network devices, routing table, arp tables, BPF hooks all the way.
 
-## 2 Egress: Pod -> Host -> VPC Network
+# 2 Egress: Pod -> Host -> VPC Network
 
-### 2.1 Network inside container
+## 2.1 Network inside container
 
 Start our journey from pod1. Check the network devices inside pod1:
 
@@ -135,7 +151,7 @@ It can be seen that both container's gateway and host IP point to the same MAC
 address `86:05:d4:99:a9:f5`. Let further determine which device holds this
 address.
 
-### 1.2 Veth Pair connecting to host
+## 2.2 Veth Pair connecting to host
 
 ```shell
 root@node1 # ip link | grep 86:05:d4:99:a9:f5 -B 1
@@ -154,7 +170,7 @@ holds `ifindex=42`, so we are now ensure that:
 
 This is exactly how pod egress traffic flows from container to host.
 
-### 1.3 Egress BPF Code
+## 2.3 Egress BPF Code
 
 One of Cilium's great powers is the dynamic traffic manipulation. It implements this
 by utilizing BPF. Detailed explanations on this topic is beyong the scope of
@@ -232,7 +248,7 @@ OK, no further digging. If the egress traffic was not dropped by the BPF
 code/rules, it will arrive the host, which will be processed by host
 routing facilities.
 
-### 1.4 Host routing table
+## 2.4 Host routing table
 
 Look at the host routing table:
 
@@ -272,13 +288,13 @@ traffic of pod1 will eventually be sent to VPC gateway.
 
 This completes the egress part of our traffic journey.
 
-# 2 Ingress
+# 3 Ingress
 
 If VPC network correctly routes the traffic to Node2 (vendor's responsibility),
 then those packets will arrive at Node2's corresponding ENI. Let's see what will
 be done for those packets.
 
-## 2.1 Host routing table
+## 3.1 Host routing table
 
 ```shell
 root@node2:~  # ip rule list
@@ -307,7 +323,7 @@ As can be seen, there is a decicated route for Pod2:
 This means that all traffic destinated for `10.5.2.22` will be forwarded to
 `lxcd86fc95bf974`.
 
-## 2.2 Ingress BPF code
+## 3.2 Ingress BPF code
 
 Cilium will inject ingress BPF rules for each of the `lxcxx` devices it created.
 Let's check this one:
@@ -344,7 +360,7 @@ root@node2:~  # bpftool prog dump xlated id 165 | head -n 10
   10: (79) r8 = *(u64 *)(r6 +216)
 ```
 
-## 2.3 Container receive
+## 3.4 Container receive
 
 If the traffic is not dropped by Cilium network policy rules (ingress BPF), then
 the packets will go through the host side veth pair and eventually arrive at the 
@@ -354,14 +370,85 @@ Now re-depict the global data flow picture here:
 
 <p align="center"><img src="/assets/img/cilium-network-topology-on-aws/cilium-aws-global-data-flow.png" width="100%" height="100%"></p>
 
-# 3 Summary
+# 4 The implementation: code walk through
+
+```
+// Call stack of cilium-cni
+interfaceAdd               // plugins/cilium-cni/interface.go
+ |-routingInfo.Configure() // pkg/datapath/linux/routing/routing.go
+                |-route.ReplaceRule("from all to 10.5.2.22 lookup main") // INGRESS rule: outside -> pod
+                |
+                |-route.ReplaceRule("from 10.5.2.22 lookup <tableId>")   // EGRESS  rule: pod -> outside
+                |-netlink.RouteReplace("default via <vpc gw> dev <eni>") // EGRESS route entry 1: pod -> outside
+                |-netlink.RouteReplace("<vpc gw> dev <eni> scope link")  // EGRESS route entry 2: pod -> outside
+
+// Call stack of cilium-agent
+reloadDatapath             // pkg/datapath/loader/loader.go
+  |-if ep.RequireEndpointRoute()
+      upsertEndpointRoute(ep, *ip.IPNet(32))                              // INGRESS route entry: outside -> pod
+```
+
+See our [Cilium Code Walk Through Series]({% link _posts/2019-06-17-cilium-code-series.md %})
+for more detailed call stacks of cilium-agent and cilium-cni.
+
+The below table summarizes the rules, route entries, and by whom they are set:
+
+| Direction | Resource | Owner (set by whom) | Command to inspect |
+|:----------|:-----|:------|
+| Ingress | routing rule  | **<mark><code>cilium-cni</code></mark>** (`/opt/cni/bin/cilium-cni`) | `ip rule list` |
+| Ingress | routing entry | **<mark><code>cilium-agent</code></mark>**                           | `ip route show table <table>` |
+| Egress  | routing rule  | **<mark><code>cilium-cni</code></mark>** (`/opt/cni/bin/cilium-cni`) | `ip rule list` |
+| Egress  | routing entry | **<mark><code>cilium-cni</code></mark>** (`/opt/cni/bin/cilium-cni`) | `ip route show table <table>` |
+
+## 4.1 Pod ingress rule & route entry
+
+The rule for all traffic **<mark>ingressing to a pod/endpoint</mark>**
+is set by Cilium CNI plugin **<mark><code>cilium-cni</code></mark>** during
+pod network creation (refer to the above calling stack).
+
+The resulted rule:
+
+```
+(node2) $ ip rule
+20:     from all to 10.5.2.22 lookup main  # outside -> container, lookup main
+```
+
+and the **<mark>routing entry</mark>**:
+
+```shell
+node2 $ ip route show table main
+10.5.2.22 dev lxcd86fc95bf974 scope link
+...
+```
+
+But note that, different from the policy routint rule, the route entry is set by
+**<mark>cilium-agent</mark>** during endpoint creating process, and,
+**<mark><code>--enable-endpoint-routes=true</code></mark>** need to be configured for the agent, which defaults to `false`.
+
+## 4.2 Pod egress rule & route entry
+
+For the egress direction, both the routing rule and routing entries are set by `cilium-cni`, with something
+looks like below:
+
+```shell
+$ ip rule
+111:    from 10.5.2.22 lookup 11           # container -> outside, lookup table 11
+```
+
+```
+$ ip route show table 11
+default via 10.5.2.1 dev eni2              # default via VPC gateway
+10.5.2.1 dev eni2 scope link
+```
+
+# 5 Summary
 
 This post explores the **network topology** and **data flow** of the
 inter-host traffic between two pods in a **Cilium-powered K8S cluster on AWS**.
-We used common Linux command line tools to fulfill this task. Hope it be helpful
-to you!
+We used common Linux command line tools to fulfill this task. We also walked through
+the code a little. Hope these contents be helpful to you!
 
-## References
+# References
 
 1. [Cilium: BPF and XDP Reference Guide](https://docs.cilium.io/en/v1.6/bpf/)
 1. [Cilium: AWS ENI](http://docs.cilium.io/en/stable/concepts/ipam/eni/#ipam-eni)

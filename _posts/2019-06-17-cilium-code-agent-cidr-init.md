@@ -9,7 +9,7 @@ categories: cilium
 This post walks you through the CIDR selection process during Cilium agent
 initialization. Code based on Cilium `1.8.4`/`1.5.0`.
 
-This post belongs to
+This post is included in
 [Cilium Code Walk Through Series]({% link _posts/2019-06-17-cilium-code-series.md %}).
 
 ----

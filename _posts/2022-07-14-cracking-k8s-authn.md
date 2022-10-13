@@ -2,7 +2,7 @@
 layout    : post
 title     : "Cracking Kubernetes Authentication (AuthN) Model (2022)"
 date      : 2022-07-14
-lastupdate: 2022-07-14
+lastupdate: 2022-10-10
 categories: k8s security
 canonical_url: https://learnk8s.io/authentication-kubernetes
 ---
@@ -1284,7 +1284,7 @@ $ go run x509-client.go -cert dylan.pem -key dylan-key.pem -CA ca.pem
 
 ## 4.3 ServiceAccount
 
-For `< v1.24.0`, a secret/token is automatically create for each serviceaccount:
+For `< v1.24.0`, a secret/token is automatically created for each serviceaccount:
 
 ```shell
 $ k create sa my-sa
@@ -1319,7 +1319,40 @@ $ k get secrets my-sa-token-5dx8g -o jsonpath='{.data.token}' | base64 -d
 eyJhb...ZYT-VTp-v-rx8Rv1nopn0-Q
 ```
 
-Put this token into the `Authorization: Bearer <token>` and send the request.
+Put this token into the **<mark><code>Authorization: Bearer <token></code></mark>** and send the request.
+
+Or, you could also use a kubeconfig + token file, such as to configure Cilium:
+
+```shell
+$ cilium-agent --k8s-kubeconfig-path=/etc/cilium/cilium.kubeconfig ...
+```
+
+where,
+
+```shell
+$ cat /etc/cilium/cilium.kubeconfig
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority: /etc/cilium/ca.crt
+    server: https://<addr>:443
+  name: default-cluster
+contexts:
+- context:
+    cluster: default-cluster
+    user: default-user
+  name: default-context
+current-context: default-context
+kind: Config
+preferences: {}
+users:
+- name: default-user
+  user:
+    tokenFile: /etc/cilium/cilium.token
+
+$ cat /etc/cilium/cilium.token
+eyJhbG...xuOMjQ
+```
 
 An excellent example has been provided in 
 [Implementing a custom Kubernetes authentication method](https://learnk8s.io/kubernetes-custom-authentication) [4].

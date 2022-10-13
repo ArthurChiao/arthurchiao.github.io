@@ -6,6 +6,9 @@ lastupdate: 2019-05-28
 categories: cilium bpf
 ---
 
+This post is included in
+[Cilium Code Walk Through Series]({% link _posts/2019-06-17-cilium-code-series.md %}).
+
 ### TL;DR
 
 Code based on `1.5.1`.

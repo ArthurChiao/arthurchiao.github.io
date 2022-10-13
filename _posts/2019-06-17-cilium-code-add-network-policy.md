@@ -6,9 +6,8 @@ lastupdate: 2022-09-13
 categories: cilium
 ---
 
-This is a
-[Cilium Code Walk Through Series]({% link _posts/2019-06-17-cilium-code-series.md %})
-post.
+This post is included in
+[Cilium Code Walk Through Series]({% link _posts/2019-06-17-cilium-code-series.md %}).
 
 This post walks you through the network policy enforcement process. Code based
 on Cilium `1.8.0/1.10.7`.

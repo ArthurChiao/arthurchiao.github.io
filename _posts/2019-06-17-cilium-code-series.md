@@ -2,7 +2,7 @@
 layout    : post
 title     : "Cilium Code Walk Through Series"
 date      : 2019-06-17
-lastupdate: 2021-06-08
+lastupdate: 2022-10-13
 categories: cilium
 ---
 
@@ -18,6 +18,7 @@ categories: cilium
 1. [Cilium Code Walk Through: Node & Endpoint Health Probe]({% link _posts/2020-12-31-cilium-code-health-probe.md %})
 1. [Cilium: Handle Conntrack (CT) related BPF Maps on Agent Restart]({% link _posts/2021-06-08-cilium-handle-conntrack-related-bpf-maps-on-agent-restart.md %})
 1. [Cilium: What the Agents Do When ClusterMesh Enabled]({% link _posts/2020-08-17-cilium-code-clustermesh.md %})
+1. [Cilium Network Topology and Traffic Path on AWS]({% link _posts/2019-10-26-cilium-network-topology-on-aws.md %}), code walk through section added
 
 # Related
 

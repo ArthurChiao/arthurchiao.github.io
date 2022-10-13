@@ -11,7 +11,7 @@ This post also provides an [English version]({% link _posts/2019-04-17-ctrip-net
 ### 前言
 
 本文来自我在 [GOPS 2019 深圳站](https://www.bagevent.com/event/GOPS2019-shenzhen) 
-的分享，但叙述方式稍有调整，以更适合阅读，另外对内容做了少量更新。
+的分享，并对内容做了少量更新。
 
 ----
 

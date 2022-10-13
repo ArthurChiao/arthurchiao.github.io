@@ -13,7 +13,7 @@ It's recommended to read
 [Cilium Code Walk Through: Agent Start Process]({% link _posts/2019-06-17-cilium-code-agent-start.md %})
 before reading this post.
 
-This post belongs to
+This post is included in
 [Cilium Code Walk Through Series]({% link _posts/2019-06-17-cilium-code-series.md %}).
 
 ----

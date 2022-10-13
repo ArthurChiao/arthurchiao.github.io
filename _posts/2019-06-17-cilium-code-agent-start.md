@@ -9,7 +9,7 @@ categories: cilium
 This post walks through the cilium agent start process.
 Code bases on `1.8.2`.
 
-This post belongs to
+This post is included in
 [Cilium Code Walk Through Series]({% link _posts/2019-06-17-cilium-code-series.md %}).
 
 ----
