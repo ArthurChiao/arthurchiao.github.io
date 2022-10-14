@@ -1582,3 +1582,4 @@ IMQ patch 及其更多信息见 [~~IMQ 网站~~](http://luxik.cdi.cz/~patrick/im
 
 1. [Traffic-Control-HOWTO, linux-ip.net](http://linux-ip.net/articles/Traffic-Control-HOWTO/classless-qdiscs.html)
 2. [Practical IP Network QoS](http://softwareopal.com/qos/default.php?p=ds-23)
+3. [(译) 流量控制（TC）五十年：从基于缓冲队列（Queue）到基于时间戳（EDT）的演进（Google, 2018）]({% link _posts/2022-10-07-traffic-control-from-queue-to-edt-zh.md %})。

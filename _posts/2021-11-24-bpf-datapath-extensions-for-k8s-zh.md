@@ -2,7 +2,7 @@
 layout    : post
 title     : "[译] 为 K8s workload 引入的一些 BPF datapath 扩展（LPC, 2021）"
 date      : 2021-11-24
-lastupdate: 2022-09-08
+lastupdate: 2022-10-17
 categories: bpf k8s
 ---
 
@@ -403,10 +403,11 @@ FQ (Fair Queue) 是一个 **<mark>classless packet scheduler</mark>**，设计�
 
 内部设计：
 
-1. 从队列 dequeue 是以 round-robin 方式进行的。
+1. 以 round-robin 方式从 queue dequeue 待发送的数据包；
 2. 对于高优先级（`TC_PRIO_CONTROL` priority）包，预留了一个特殊的 FIFO queue，确保包永远会先被 dequeue。
 
-FQ is non-work-conserving.
+FQ is 不是 **<mark>work-conserving</mark>** 类型的。更多信息可参考
+[(译) 流量控制（TC）五十年：从基于缓冲队列（Queue）到基于时间戳（EDT）的演进（Google, 2018）]({% link _posts/2022-10-07-traffic-control-from-queue-to-edt-zh.md %})。
 
 TCP pacing 对于有 idle time 的 flow 来说比较有用，因为拥塞窗口允许
 TCP stack 将可能非常多的包一次性插入队列。
@@ -460,7 +461,7 @@ cilium attach 到宿主机的物理设备（或 bond 设备），在 BPF 程序�
 >
 > * Linux bond [默认支持多队列（multi-queue），会默认创建 16 个 queue](https://www.kernel.org/doc/Documentation/networking/bonding.txt)，
 >   每个 queue 对应一个 FQ，挂在一个 MQ 下面，也就是上面图中画的；
-> * OVS bond 不支持 MQ，因此只有一个 FQ（老版本行为，新版本不知道）。
+> * OVS bond 不支持 MQ，因此只有一个 FQ（v2.3 等老版本行为，新版本不清楚）。
 >
 > bond 设备的 TXQ 数量，可以通过 **<mark><code>ls /sys/class/net/{dev}/queues/</code></mark>** 查看。
 > 物理网卡的 TXQ 数量也可以通过以上命令看，但 **<mark><code>ethtool -l {dev}</code></mark>**
@@ -507,7 +508,7 @@ egress 限速工作流程：
 
 <p align="center"><img src="/assets/img/bpf-datapath-ext-for-k8s/datapath-next-steps-2.png" width="85%" height="85%"></p>
 
-我们做了个 POC 来保持 the egress timestamp ，在切 netns 时不要重置它，
+我们做了个 POC 来保持 egress timestamp ，在切 netns 时不要重置它，
 然后就非常稳定了：
 
 <p align="center"><img src="/assets/img/bpf-datapath-ext-for-k8s/datapath-next-steps-3.png" width="85%" height="85%"></p>
@@ -606,7 +607,7 @@ receive 方法，后者也会调用这个函数，就会将时间戳覆盖掉。
 
 > 不知道这个延迟是否很明显？
 
-（Denial 好像走神了，没回答。）
+（Daniel 好像走神了，没回答。）
 
 > 不过我觉得你们实现这套新机制已经很不错了。
 
@@ -655,9 +656,8 @@ receive 方法，后者也会调用这个函数，就会将时间戳覆盖掉。
 
 这也是一种方式。
 
-但我认为这种方式太丑陋了，因为你要如何配置这个东西呢？而且这里设计了太多实现
-细节，我们真的要将如此细节的东西（要不清除一个 bit）暴露出来吗？
-我认为这种方式不够简洁。
+但我认为这种方式太丑陋了，因为你要如何配置这个东西呢？而且这里涉及了太多实现细节，
+我们真的要将如此细节的东西（要不要清除一个 bit）暴露出来吗？我认为这种方式不够简洁。
 
 时间有限，我们先继续下面的内容，其他问题可以会后再继续讨论。
 
@@ -804,8 +804,8 @@ static int neigh_add(struct sk_buff *skb, struct nlmsghdr *nlh, struct netlink_e
 但 NTF_EXT_LEARNED 的不足是：
 
 * 没有 auto-refresh 机制来从 STALE 重新回到 REACHABLE 状态，
-* flags 并没有回传给用户空间，导致 `ip neighbor xxx` 命令之后看不到相应字段的状态（denial 的 [patch](https://lore.kernel.org/all/20211115165320.907759698@linuxfoundation.org/)），
-* 在发生 **<mark>carrier-down</mark>** 事件（例如网线接触不良）时会丢失，而 permanent flag 就不会
+* flags 并没有回传给用户空间，导致 `ip neighbor xxx` 命令之后看不到相应字段的状态（Daniel 的 [patch](https://lore.kernel.org/all/20211115165320.907759698@linuxfoundation.org/)），
+* 在发生 **<mark>carrier-down</mark>** 事件（例如网线接触不良）时会丢失，而 permanent flag 就不会。
 
 ### 3.2.6 解决方案：引入一个新 flag `NUD_MANAGED`
 
@@ -814,8 +814,8 @@ static int neigh_add(struct sk_buff *skb, struct nlmsghdr *nlh, struct netlink_e
 1. 使用这个 flag 创建的邻居表项，**<mark>状态是可变的</mark>**（volatile states，例如会进入 reachable state），而不像 NUD_PERMANENT 表项那样是一个永久状态；
     * 意味着内部使用了 NTF_USE
     * 表项是加到一个 per-neigh table list
-1. 使用 delayed system-wq 队列来**<mark>定期</mark>**为这些表项触发 `neigh_event_send()`，即**<mark>触发邻居解析</mark>**；触发频率 `BASE_REACHABLE_TIME/2`；
-1. 这个 flag 还可以**<mark>与 NTF_EXT_LEARNED 一起用</mark>**（表示这是外部控制平面学习到的），**<mark>从而避免被 GC</mark>**
+1. 使用 delayed system worker queue (wq) 来**<mark>定期</mark>**为这些表项触发 `neigh_event_send()`，即**<mark>触发邻居解析</mark>**；触发频率 `BASE_REACHABLE_TIME/2`；
+1. 这个 flag 还可以**<mark>与 NTF_EXT_LEARNED 一起用</mark>**（表示这是外部控制平面学习到的），**<mark>从而避免被 GC</mark>**；
 1. 在发生 carrier-down 事件状态不会丢失，carrier-up 之后会自动刷新状态。
 
 基于 iproute2 的例子：指定 `nud managed` 创建一条邻居表项：
@@ -1078,7 +1078,7 @@ cilium_capture4_masked_key(const struct capture4_wcard *orig,
 
 > Martynas：明确一下，在选择源地址时我们无需任何邻居表项。
 >
-> Denial：哦是的是的。
+> Daniel：哦是的是的。
 
 ### 问题 9：用 libpcap 将 cbpf 编译成 ebpf 是否可以解决你们不支持 port-range 的问题？
 
@@ -1099,7 +1099,7 @@ cilium_capture4_masked_key(const struct capture4_wcard *orig,
 
 # 6 本文翻译时，原作者特别更新
 
-Denial 和 Martynas 在本文翻译时非常热心地提供了以下更新：
+Daniel 和 Martynas 在本文翻译时非常热心地提供了以下更新：
 
 * cgroup v1/v2 patch 已经完全合并到内核；
 * 自维护 neighbor entries 也已经合并到内核；对于不支持这个新特性的老内核，Cilium 1.11 中做了兼容；

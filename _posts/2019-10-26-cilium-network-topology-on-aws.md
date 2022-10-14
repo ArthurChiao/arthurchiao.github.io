@@ -7,8 +7,8 @@ categories: cilium aws bpf
 ---
 
 This post explores the **network topology** and **traffic path** between two
-cross-host Pods in a Cilium powered K8S cluster on AWS. We will use normal Linux
-command to fulfill this task. At the end of this post, we will get a picture
+cross-host Pods in a Cilium powered K8S cluster on AWS. We will use general Linux
+commands to fulfill this task. At the end of this post, we will get a picture
 like this:
 
 <p align="center"><img src="/assets/img/cilium-network-topology-on-aws/cilium-aws-global-data-flow.png" width="100%" height="100%"></p>
@@ -16,7 +16,7 @@ like this:
 Besides, we'll also look into the code to see how Cilium achieve this.
 Code based on `v1.10.7`.
 
-Also, the network topology and routine rules/entries are quite similar in other
+Also, the network topology and routing rules/entries are quite similar in other
 cloud vendors, such as Cilium on AlibabaCloud.
 
 This post is included in
@@ -446,7 +446,7 @@ default via 10.5.2.1 dev eni2              # default via VPC gateway
 This post explores the **network topology** and **data flow** of the
 inter-host traffic between two pods in a **Cilium-powered K8S cluster on AWS**.
 We used common Linux command line tools to fulfill this task. We also walked through
-the code a little. Hope these contents be helpful to you!
+the code a little. Hope these contents are helpful to you!
 
 # References
 
