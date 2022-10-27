@@ -2,7 +2,7 @@
 layout    : post
 title     : "[译] 流量控制（TC）五十年：从基于缓冲队列（Queue）到基于时间戳（EDT）的演进（Google, 2018）"
 date      : 2022-10-07
-lastupdate: 2022-10-07
+lastupdate: 2022-10-27
 categories: kernel tcp tc
 ---
 
@@ -357,7 +357,7 @@ Google 近些年所做的一些工作：
 
 原理前面介绍过了。存在的问题：
 
-* **<mark>CPU 和内存开销</mark>**：开销可能很大
+* **<mark>CPU 和内存开销</mark>**：可能很大
 * 需要同时满足网络带宽策略和拥塞控制需求，例如 TCP
 
     * Pace packets 
@@ -384,12 +384,12 @@ Google 近些年所做的一些工作：
 ### 4.1.3 小结
 
 如果去掉 queue，就可以避免上面两项开销：我们的思路是把**<mark>时间</mark>**
-（time）作为一个基础元素，同样能**<mark>实现整流目的，但开销非常低</mark>**。
+（time）作为一个基础元素，同样能**<mark>实现整流目的，但所需开销非常低</mark>**。
 
 为此，引入了 EDT（earliest departure time）模型：
 
-* **<mark>给每个包设置一个 EDT 时间戳</mark>**，来控制何时发送这个包；
-* Enforcement mechanism 需要在**<mark>网卡前面或者网卡中</mark>**，来根据时间戳控制 egress 发包。
+* **<mark>给每个包设置一个 EDT 时间戳</mark>**，控制何时发送这个包；
+* 在**<mark>网卡前或网卡中</mark>**执行调度机制（enforcement mechanism），根据时间戳控制 egress 发包。
 
 Carousel 正是这样一种机制。
 
@@ -398,20 +398,23 @@ Carousel 正是这样一种机制。
 <p align="center"><img src="/assets/img/traffic-control-from-queue-to-edt/token-bucket-vs-edt.png" width="100%" height="100%"></p>
 <p align="center">Fig. 基于 queue 的 shaper vs. 基于 EDT 的 shaper</p>
 
-如上图所示，核心理念：用两个简单的东西替换原来缓慢、脆弱、级联的排队系统：
+如上图所示，核心理念：用两项简单工作替换原来缓慢、脆弱、级联的排队系统：
 
-1. **<mark>每个包</mark>** skb 上打上一个 Earliest Departure Time (EDT) 时间戳；
-2. 用一个**<mark>时间轮调度器</mark>**（timing-wheel scheduler）代替原来**<mark>网卡前或网卡中的 queue</mark>**。
+1. 给**<mark>每个包</mark>**（`skb`）打上一个 Earliest Departure Time (EDT) 时间戳；
+2. 用一个**<mark>时间轮调度器</mark>**（timing-wheel scheduler）代替原来
+  **<mark>网卡前或网卡中的发包缓冲队列（queue）</mark>**。
 
     时间轮模型，可参考 Hashed and Hierarchical Timing Wheels, Varghese & Lauck, SOSP 87.
+
+下面再展开介绍一下。
 
 ### 4.2.1 原理及特点
 
 <p align="center"><img src="/assets/img/traffic-control-from-queue-to-edt/ts-based-shaper.png" width="60%" height="60%"></p>
 <p align="center">Fig. Design</p>
 
-1. 调度：`O(1)` 复杂的，**<mark>基于包的时间戳的有序队列</mark>**；
-2. 调度器能直接给 socket 反压，控制 socket 发送速率；
+1. 调度复杂度：**<mark><code>O(1)</code></mark>**，待发送的包都是按**<mark>时间戳排好序的</mark>**；
+2. 调度器能**<mark>直接给 socket 反压</mark>**，控制 socket 发送速率；
 3. **<mark>每个 CPU 一个 shaper，无锁</mark>**，开销低。
 
 ### 4.2.2 Life of a packet in Carousel
@@ -436,7 +439,7 @@ timing wheel 能完成 queue 的功能，它不仅能做的事情更多，并且
 
 ### 4.2.4 qdisc 功能变化
 
-有了 EDT， **<mark>qdisc 能做的事情也更多，同时开销也更低了</mark>**：
+有了 EDT， **<mark>qdisc 能做的事情更多，同时开销也更低了</mark>**：
 qdisc 变成了一个纯计算模块，不再需要维护内部队列了（intermediate queues），
 
 * driver gets to see all packets in its event horizon so can easily do informed interrupt mitigation, lazy reclaim, (wifi) endpoint aggregation… 

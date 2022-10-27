@@ -2,12 +2,12 @@
 layout    : post
 title     : "Cilium Code Walk Through: Agent Start"
 date      : 2019-05-29
-lastupdate: 2021-06-22
+lastupdate: 2022-10-27
 categories: cilium
 ---
 
 This post walks through the cilium agent start process.
-Code bases on `1.8.2`.
+Code based on `1.8.2 ~ 1.11.10`.
 
 This post is included in
 [Cilium Code Walk Through Series]({% link _posts/2019-06-17-cilium-code-series.md %}).
@@ -28,36 +28,76 @@ init                                                 // daemon/cmd/daemon_main.g
          |-viper.MergeConfigMap
 
 runDaemon                                                                    //    daemon/cmd/daemon_main.go
-  |-enableIPForwarding                                                       
+  |-enableIPForwarding
   |-k8s.Init                                                                 // -> pkg/k8s/init.go
   |-NewDaemon                                                                // -> daemon/cmd/daemon.go
-  |  |-d := Daemon{}
-  |  |-ctmap.InitMapInfo(maxEntries)
+  |  |-ctmap.InitMapInfo()
   |  |-policymap.InitMapInfo()
-  |  |-lbmap.InitMapInfo()
+  |  |-lbmap.Init()
+  |  |-nd := nodediscovery.NewNodeDiscovery()
+  |  |-d := Daemon{}
+  |  |
+  |  |-d.k8sWatcher = watchers.NewK8sWatcher()
+  |  |-RegisterK8sSyncedChecker
+  |  |
   |  |-d.initMaps                                                            //    daemon/cmd/datapath.go
   |  |  |-lxcmap.LXCMap.OpenOrCreate()
   |  |  |-ipcachemap.IPCache.OpenParallel()
   |  |  |-d.svc.InitMaps
   |  |  |-for m in ctmap.GlobalMaps:
   |  |       m.Create()
-  |  |
   |  |-d.svc.RestoreServices                                                 // -> pkg/service/service.go
   |  |  |-restoreBackendsLocked
   |  |  |-restoreServicesLocked
   |  |-d.k8sWatcher.RunK8sServiceHandler                                     //    pkg/k8s/watchers/watcher.go
   |  |  |-k8sServiceHandler                                                  //    pkg/k8s/watchers/watcher.go
   |  |    |-eventHandler                                                     //    pkg/k8s/watchers/watcher.go
+  |  |
   |  |-k8s.RegisterCRDs
+  |  |
+  |  |-cachesSynced := make(chan struct{})
+  |  |-d.k8sCachesSynced = cachesSynced
+  |  |-InitK8sSubsystem(cachesSynced)
+  |  |   |-EnableK8sWatcher                                                  // pkg/k8s/watchers/watcher.go
+  |  |   | |-initEndpointsOrSlices
+  |  |   |     |-endpointsInit                                               // pkg/k8s/watchers/endpoint.go
+  |  |   |       |-endpointController := informer.NewInformer(
+  |  |   |           k8sClient.CoreV1().RESTClient(), "endpoints",
+  |  |   |           cache.Handlers{
+  |  |   |             UpdateFunc: func() {
+  |  |   |               updateK8sEndpointV1
+  |  |   |                |-k.K8sSvcCache.UpdateEndpoints(newEP, swg)
+  |  |   |                |-addKubeAPIServerServiceEPs
+  |  |   |                   |-handleKubeAPIServerServiceEPChanges
+  |  |   |                      |-ipcache.IPIdentityCache.TriggerLabelInjection
+  |  |   |                          |-DoFunc: InjectLabels
+  |  |   |             }
+  |  |   |           }
+  |  |   |-go func() {
+  |  |   |   log.Info("Waiting until all pre-existing resources have been received")
+  |  |   |   k.WaitForCacheSync(resources...)
+  |  |   |   close(cachesSynced)
+  |  |   | }()
+  |  |   |
+  |  |   |-go func() {
+  |  |       select {
+  |  |       case <-cachesSynced:
+  |  |           log.Info("All pre-existing resources have been received; continuing")
+  |  |       case <-time.After(option.Config.K8sSyncTimeout):
+  |  |           log.Fatal("Timed out waiting for pre-existing resources to be received; exiting")
+  |  |       }
+  |  |     }()
+  |  |
   |  |-d.bootstrapIPAM                                                       // -> daemon/cmd/ipam.go
+  |  |
   |  |-restoredEndpoints := d.restoreOldEndpoints                            // -> daemon/cmd/state.go
-  |  |  |-ioutil.ReadDir                                                   
+  |  |  |-ioutil.ReadDir
   |  |  |-endpoint.FilterEPDir // filter over endpoint directories
   |  |  |-for ep := range possibleEPs
   |  |      validateEndpoint(ep)
   |  |        |-allocateIPsLocked
-  |  |-k8s.Client().AnnotateNode                                           
-  |  |-d.bootstrapClusterMesh                                              
+  |  |-k8s.Client().AnnotateNode
+  |  |-d.bootstrapClusterMesh
   |  |-d.init                                                                //    daemon/cmd/daemon.go
   |  |  |-os.MkdirAll(globalsDir)
   |  |  |-d.createNodeConfigHeaderfile
@@ -110,17 +150,17 @@ This will trigger `runDaemon()` method with provided CLI arguments:
 func runDaemon() {
     enableIPForwarding()                                  // turn on ip forwarding in kernel
     k8s.Init(Config)                                      // init k8s utils
-                                                          
-    d, restoredEndpoints := NewDaemon()                   
+
+    d, restoredEndpoints := NewDaemon()
     gc.Enable(restoredEndpoints.restored)                 // Starting connection tracking garbage collector
     d.initKVStore()                                       // init cilium-etcd
-                                                          
+
     restoreComplete := d.initRestore(restoredEndpoints)
 
     d.initHealth()                                        // init cilium health-checking if enabled
-    d.startStatusCollector()                              
-    d.startAgentHealthHTTPService()                       
-                                                          
+    d.startStatusCollector()
+    d.startAgentHealthHTTPService()
+
     d.SendNotification(monitorAPI.AgentNotifyStart, repr)
 
     go func() { errs <- srv.Serve() }()                   // start Cilium HTTP API server
@@ -178,41 +218,206 @@ func Init(conf k8sconfig.Configuration) error {
 ```go
 // daemon/cmd/daemon.go
 
-func NewDaemon(epMgr *EndpointManager, dp Datapath) (*Daemon, *endpointRestoreState, error) {
-    if Config.ReadCNIConfiguration != ""     // read custom cni conf if specified
-        netConf = cnitypes.ReadNetConf(Config.ReadCNIConfiguration)
+func NewDaemon(ctx , cancel context.CancelFunc, epMgr *endpointmanager.EndpointManager, dp datapath.Datapath) (*Daemon, *endpointRestoreState, error) {
+    if option.Config.ReadCNIConfiguration != "" {
+        netConf = cnitypes.ReadNetConf(option.Config.ReadCNIConfiguration)
+    }
 
-    d := Daemon{ netConf: netConf, datapath: dp }
-    d.initMaps()                // Open or create BPF maps.
+    apiLimiterSet := rate.NewAPILimiterSet(option.Config.APIRateLimit, apiRateLimitDefaults, &apiRateLimitingMetrics{})
 
-    if Config.RestoreState
-        d.svc.RestoreServices() // Read the service IDs of existing services from the BPF map and reserve them.
+    ctmap.InitMapInfo()
+    policymap.InitMapInfo(option.Config.PolicyMapEntries)
+    lbmap.Init()
+
+    authKeySize, encryptKeyID := setupIPSec()
+    nodeMngr := nodemanager.NewManager("all", dp.Node(), ipcache.IPIdentityCache, option.Config, nil, nil)
+    num := identity.InitWellKnownIdentities(option.Config)
+    nd := nodediscovery.NewNodeDiscovery(nodeMngr, mtuConfig, netConf)
+
+    d := Daemon{
+        ctx:               ctx,
+        cancel:            cancel,
+        prefixLengths:     createPrefixLengthCounter(),
+        buildEndpointSem:  semaphore.NewWeighted(int64(numWorkerThreads())),
+        compilationMutex:  new(lock.RWMutex),
+        netConf:           netConf,
+        mtuConfig:         mtuConfig,
+        datapath:          dp,
+        deviceManager:     NewDeviceManager(),
+        nodeDiscovery:     nd,
+        endpointCreations: newEndpointCreationManager(),
+        apiLimiterSet:     apiLimiterSet,
+    }
+
+    d.configModifyQueue = eventqueue.NewEventQueueBuffered("config-modify-queue", ConfigModifyQueueSize)
+    d.configModifyQueue.Run()
+
+    d.svc = service.NewService(&d)
+    d.rec = recorder.NewRecorder(d.ctx, &d)
+
+    d.identityAllocator = NewCachingIdentityAllocator(&d)
+    d.initPolicy(epMgr)
+    nodeMngr = nodeMngr.WithSelectorCacheUpdater(d.policy.GetSelectorCache()) // must be after initPolicy
+    nodeMngr = nodeMngr.WithPolicyTriggerer(d.policyUpdater)                  // must be after initPolicy
+
+    ipcache.IdentityAllocator = d.identityAllocator
+    proxy.Allocator = d.identityAllocator
+
+    restoredCIDRidentities := make(map[string]*identity.Identity)
+
+    d.endpointManager = epMgr
+
+    d.redirectPolicyManager = redirectpolicy.NewRedirectPolicyManager(d.svc)
+
+    d.k8sWatcher = watchers.NewK8sWatcher(
+        d.endpointManager,
+        d.nodeDiscovery.Manager,
+        &d,
+        d.policy,
+        d.svc,
+        d.datapath,
+        d.redirectPolicyManager,
+        d.bgpSpeaker,
+        d.egressGatewayManager,
+        option.Config,
+    )
+    nd.RegisterK8sNodeGetter(d.k8sWatcher)
+
+    ipcache.IPIdentityCache.RegisterK8sSyncedChecker(&d)
+
+    d.k8sWatcher.NodeChain.Register(d.endpointManager)
+    d.k8sWatcher.NodeChain.Register(watchers.NewCiliumNodeUpdater(d.nodeDiscovery))
+
+    d.redirectPolicyManager.RegisterSvcCache(&d.k8sWatcher.K8sSvcCache)
+    d.redirectPolicyManager.RegisterGetStores(d.k8sWatcher)
+
+    // Open or create BPF maps.
+    d.initMaps()
+
+    // Upsert restored CIDRs after the new ipcache has been opened above
+    if len(restoredCIDRidentities) > 0 {
+        ipcache.UpsertGeneratedIdentities(restoredCIDRidentities, nil)
+    }
+
+    d.svc.RestoreServices()
 
     d.k8sWatcher.RunK8sServiceHandler()
+    treatRemoteNodeAsHost := option.Config.AlwaysAllowLocalhost() && !option.Config.EnableRemoteNodeIdentity
+    policyApi.InitEntities(option.Config.ClusterName, treatRemoteNodeAsHost)
 
-    k8s.RegisterCRDs()
-    if Config.IPAM == ipamIPAMOperator
-        d.nodeDiscovery.UpdateCiliumNodeResource()
+    // fetch old endpoints before k8s is configured.
+    restoredEndpoints := d.fetchOldEndpoints(option.Config.StateDir)
 
-    d.k8sCachesSynced = d.k8sWatcher.InitK8sSubsystem()
-    d.bootstrapIPAM()
+    d.bootstrapFQDN(restoredEndpoints.possible, option.Config.ToFQDNsPreCache)
 
-    restoredEndpoints := d.restoreOldEndpoints(Config.StateDir, true)
+    if k8s.IsEnabled() {
+        if err := d.k8sWatcher.WaitForCRDsToRegister(d.ctx); err != nil {
+            return nil, restoredEndpoints, err
+        }
+
+        d.k8sWatcher.NodesInit(k8s.Client())
+
+        if option.Config.IPAM == ipamOption.IPAMClusterPool {
+            // Create the CiliumNode custom resource. This call will block until
+            // the custom resource has been created
+            d.nodeDiscovery.UpdateCiliumNodeResource()
+        }
+
+        k8s.WaitForNodeInformation(d.ctx, d.k8sWatcher)
+
+        if option.Config.AllowLocalhost == option.AllowLocalhostAuto {
+            option.Config.AllowLocalhost = option.AllowLocalhostAlways
+            log.Info("k8s mode: Allowing localhost to reach local endpoints")
+        }
+
+    }
+
+    if wgAgent := dp.WireguardAgent(); option.Config.EnableWireguard {
+        if err := wgAgent.Init(mtuConfig); err != nil {
+            log.WithError(err).Error("failed to initialize wireguard agent")
+        }
+    }
+
+    bandwidth.ProbeBandwidthManager()
+
+    d.deviceManager.Detect()
+    finishKubeProxyReplacementInit(isKubeProxyReplacementStrict)
+
+    if k8s.IsEnabled() {
+        // Initialize d.k8sCachesSynced before any k8s watchers are alive, as they may
+        // access it to check the status of k8s initialization
+        cachesSynced := make(chan struct{})
+        d.k8sCachesSynced = cachesSynced
+
+        // Launch the K8s watchers in parallel as we continue to process other daemon options.
+        d.k8sWatcher.InitK8sSubsystem(d.ctx, cachesSynced)
+    }
+
+    clearCiliumVeths()
+
+    // Must init kvstore before starting node discovery
+    if option.Config.KVStore == "" {
+        log.Info("Skipping kvstore configuration")
+    } else {
+        d.initKVStore()
+    }
+
+    router4FromK8s, router6FromK8s := node.GetInternalIPv4Router(), node.GetIPv6Router()
+
+    d.configureIPAM()
+
+    d.startIPAM()
+
+    if option.Config.EnableIPv4 {
+        d.restoreCiliumHostIPs(false, router4FromK8s)
+    }
+
+    d.restoreOldEndpoints(restoredEndpoints, true)
+
     d.allocateIPs()
 
-    // Annotation must after discovery of the PodCIDR range and allocation of the health IPs.
-    k8s.Client().AnnotateNode(nodeName, GetIPv4AllocRange(), GetInternalIPv4())
+    // Must occur after d.allocateIPs(), see GH-14245 and its fix.
+    d.nodeDiscovery.StartDiscovery()
 
-    d.bootstrapClusterMesh(nodeMngr)
+    // Annotation of the k8s node must happen after discovery of the
+    // PodCIDR range and allocation of the health IPs.
+    if k8s.IsEnabled() && option.Config.AnnotateK8sNode {
+        k8s.Client().AnnotateNode()
+    }
+
+    if option.Config.IPAM == ipamOption.IPAMCRD || option.Config.IPAM == ipamOption.IPAMENI || option.Config.IPAM == ipamOption.IPAMAzure || option.Config.IPAM == ipamOption.IPAMAlibabaCloud {
+        if option.Config.EnableIPv4 {
+            d.ipam.IPv4Allocator.RestoreFinished()
+        }
+    }
+
+    if option.Config.DatapathMode != datapathOption.DatapathModeLBOnly {
+        realIdentityAllocator := d.identityAllocator
+        realIdentityAllocator.InitIdentityAllocator(k8s.CiliumClient(), nil)
+
+        d.bootstrapClusterMesh(nodeMngr)
+    }
+
     d.init()
+
+    d.updateDNSDatapathRules(d.ctx)
+
     d.syncEndpointsAndHostIPs()
 
-    controller.NewManager().UpdateController("sync-endpoints-and-host-ips", ControllerParams{
-            DoFunc: func() { return d.syncEndpointsAndHostIPs() }, })
+    controller.NewManager().UpdateController("sync-endpoints-and-host-ips",
+        controller.ControllerParams{
+            DoFunc: func(ctx ) error {
+                return d.syncEndpointsAndHostIPs()
+            },
+            RunInterval: time.Minute,
+            Context:     d.ctx,
+        })
 
-    loader.RestoreTemplates(Config.StateDir) // restore previous BPF templates
+    loader.RestoreTemplates(option.Config.StateDir)
 
     // Start watcher for endpoint IP --> identity mappings in key-value store.
+    // this needs to be done *after* init() for the daemon in that function,
+    // we populate the IPCache with the host's IP(s).
     ipcache.InitIPIdentityWatcher()
     identitymanager.Subscribe(d.policy)
 
@@ -394,13 +599,13 @@ func (d *Daemon) restoreOldEndpoints(dir string, clean bool) (*endpointRestoreSt
     existingEndpoints = lxcmap.DumpToMap()             // get previous endpoint IDs from BPF map
     dirFiles := ioutil.ReadDir(dir)                    // state dir: `/var/run/cilium/`
     eptsID := endpoint.FilterEPDir(dirFiles)           // `/var/run/cilium/<ep_id>/lxc_config.h`
-                                                       
+
     possibleEPs := ReadEPsFromDirNames(dir, eptsID)    // parse endpoint ID from dir name
-    for ep := range possibleEPs {                      
-        ep.SetAllocator(d.identityAllocator)           
+    for ep := range possibleEPs {
+        ep.SetAllocator(d.identityAllocator)
         d.validateEndpoint(ep)  // further call allocateIPsLocked() to retain IP for this endpoint
-        ep.SetDefaultConfiguration(true)               
-                                                       
+        ep.SetDefaultConfiguration(true)
+
         state.restored.append(ep)                      // insert into restored list, will regen bpf for them
         delete(existingEndpoints, ep.IPv4.String())
     }
@@ -541,7 +746,7 @@ func InitIPIdentityWatcher() {
     }()
 }
 
-func (iw *IPIdentityWatcher) Watch(ctx context.Context) {
+func (iw *IPIdentityWatcher) Watch(ctx ) {
     watcher := iw.backend.ListAndWatch(ctx, "endpointIPWatcher", IPIdentitiesPath) // cilium/state/ip/v1/
 
     for {
@@ -661,7 +866,7 @@ func (d *Daemon) startStatusCollector() {
             Probe: func() { return kvstore.Client().Status() },
         }, {
             Name: "kubernetes",
-            Probe: func() () { return d.getK8sStatus() 
+            Probe: func() () { return d.getK8sStatus()
         }, {
             Name: "ipam", ...
         }, {

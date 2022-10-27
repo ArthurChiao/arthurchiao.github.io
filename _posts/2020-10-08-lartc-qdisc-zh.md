@@ -2,7 +2,7 @@
 layout    : post
 title     : "[译] 《Linux 高级路由与流量控制手册（2012）》第九章：用 tc qdisc 管理 Linux 网络带宽"
 date      : 2020-10-08
-lastupdate: 2022-04-27
+lastupdate: 2022-10-27
 categories: tc qdisc
 ---
 
@@ -12,11 +12,11 @@ categories: tc qdisc
 这是一份在线文档（小书），直译为**《Linux 高级路由与流量控制手册》**。
 本文翻译第九章 [Chapter 9. Queueing Disciplines for Bandwidth Management](https://lartc.org/howto/lartc.qdisc.html)。
 
-这份文档年代略久，但 qdisc 部分整体并未过时，并且是我目前看过的内容最详实、可读
-性最好的 tc qdisc 教程。
+这份文档年代略久，但 qdisc 部分整体并未过时，并且是我目前看过的内容最详实、
+可读性最好的 tc qdisc 教程。
 
 另外，看到 [1,2] 中几张 qdisc 图画的非常不错，形象直观，易于理解，因此拿来插入到译文中。
-此外还加入了一些原文没有覆盖到的内容，例如 `fq_codel`。
+此外还加入了一些原文没有覆盖到的内容，例如 MQ、FQ、`fq_codel` 等。
 
 tc/qdisc 是 Cilium/eBPF 依赖的最重要的网络基础设施之一。
 
@@ -36,31 +36,27 @@ tc/qdisc 是 Cilium/eBPF 依赖的最重要的网络基础设施之一。
 
 # 9.1 队列（Queues）和排队规则（Queueing Disciplines）
 
-通过对包进行**排队**（queuing），我们可以决定数据的**发送**方式（the way in
-which data is SENT）。但理解下面这一点非常重要：我们**只能对发送（transmit）的数
-据进行整形**（shape the data）。
-
-**互联网的工作机制**决定了**接收端无法直接控制发送端的行为**。这就像你家的
-（实体！）邮箱一样：除非能联系到所有人（告诉他们未经同意不要寄信给你），否则
-你无法控制别人寄多少东西过来。
+通过对数据包进行**排队**（queuing），我们可以决定数据的**发送**方式。这里非常
+重要的一点是：我们**<mark>只能对发送数据（transmit）进行整形</mark>**（shape the data）。
+**互联网的工作机制**决定了**接收端无法直接控制发送端的行为**。这就像你家的（实体！）
+信箱一样：除非能联系到所有人（告诉他们未经同意不要寄信过来），
+否则你无法控制多少封信会飞到你的信箱里。
 
 但与实际生活不同的是，互联网基于 TCP/IP 协议栈，这多少会带来一些帮助。TCP/IP
 无法提前知道两台主机之间的网络带宽，因此开始时它会以越来越快的速度发送数据（慢启
 动），直到开始出现丢包，这时它知道已经没有可用空间来存储这些待发送的包了，因此就会
 降低发送速度。TCP/IP 的实际工作过程比这个更智能一点，后面会再讨论。
 
-这就好比你留下一半的信件在实体邮箱里不取，期望别人知道这个状况后会停止给你寄新的信件。
-但不幸的是，**这种方式只对互联网管用，对你的实体邮箱无效** :-)
+这就好比你留下一半的信件在信箱里不取，期望别人看到这个状况后会停止给你寄新的信件。
+不幸的是，**这种方式只对互联网管用，对你的实体信箱无效** :-)
 
-如果内网有一台路由器，你希望**限制某几台主机的下载速度**，那你应该找到发送数据到
-这些主机的路由器内部接口（inner interface of your router），然后在这些
-**路由器内部接口**上做 **整流**（traffic shaping，流量整形）。
-
-此外，还要确保链路瓶颈（bottleneck of the link）也在你的控制范围内。例如，如果网
-卡是 100Mbps，但路由器的链路带宽是 256Kbps，那首先应该确保不要发送过多数据给路由
-器，因为它扛不住。否则，**链路控制和带宽整形的决定权就不在主
-机侧而到路由器侧了**。要达到限速目的，需要对**“发送队列”**有完全的把控（"own the
-queue"），这里的“发送队列”也就是**整条链路上最慢的一段**（slowest link in the chain）。
+如果内网有一台路由器，你希望**限制某几台主机的下载速度**，那首先应该找到主机直连的
+路由器接口，然后在这些接口上做出向**<mark>流量整形</mark>**（traffic shaping，整流）。
+此外，还要确保链路瓶颈（bottleneck of the link）也在你的控制范围内。例如，
+如果网卡是 100Mbps，但路由器的链路带宽是 256Kbps，那首先应该确保不要发送过多数据
+给路由器，因为它扛不住。否则，**链路控制和带宽整形的决定权就不在主机侧而到路由器侧了**。
+**<mark>要达到限速目的，需要对“发送队列”有完全的把控</mark>**，
+这里的“发送队列”也就是**整条链路上最慢的一段**（slowest link in the chain）。
 幸运的是，大多数情况下这个条件都是能满足的。
 
 # 9.2 Simple, classless qdisc（简单、不分类排队规则）
@@ -79,11 +75,10 @@ queue"），这里的“发送队列”也就是**整条链路上最慢的一段
 排队规则（qdisc-containing-qdiscs）**！先理解了 classless qdisc，才能理解
 classful qdisc。
 
-**<mark>目前最常用的 classless qdisc 是 pfifo_fast，这也是默认排队规则</mark>**。
+**<mark>目前最常用的 classless qdisc 是 pfifo_fast</mark>**，这也是很多系统上的
+**<mark>默认排队规则</mark>**。
 这也解释了为什么这些高级功能如此健壮：本质上来说，它们
 **<mark>不过是“另一个队列”而已</mark>**（nothing more than 'just another queue'）。
-
-每种队列都有自己的优缺点。某些队列可能并未充分测试。
 
 <a name="pfifo_fast"></a>
 
@@ -97,12 +92,11 @@ classful qdisc。
 **pfifo_fast 有三个所谓的 “band”**（可理解为三个队列），编号分别为 0、1、2：
 
 * **每个 band 上分别执行 FIFO 规则**。
-* 但是，**如果 band 0 有数据，就不会处理 band 1**；同理，band 1 有数据时，
-  不会去处理 band 2。
-* 内核会检查数据包的 TOS 字段，**将“最小延迟”的包放到 band 0**。
+* **如果 band 0 有数据，就不会处理 band 1**；同理，band 1 有数据时，不会去处理 band 2。
+* 内核会检查数据包的 **<mark><code>TOS</code></mark>** 字段，**将“最小延迟”的包放到 band 0**。
 
 不要将 `pfifo_fast qdisc` 与后面介绍的 `PRIO qdisc` 混淆，后者是 classful 的！
-虽然二者行为类似，但 **`pfifo_fast` 是无类别的，这意味你无法通过 `tc` 命令向
+虽然二者行为类似，但 **`pfifo_fast` 是无类别的，这意味无法用 `tc` 命令向
 `pfifo_fast` 内添加另一个 qdisc**。
 
 #### 9.2.1.1 参数与用法
@@ -472,6 +466,10 @@ qdisc sfq 800c: dev ppp0 quantum 1514b limit 128p flows 128/1024 perturb 10sec
   数据待发送。
 * `perturb 10sec`：每隔 10s 换一次哈希算法。
 
+## 9.2.4 FQ（Fair Queue，公平排队，2013），译注
+
+详细介绍见 [TODO](https://github.com/torvalds/linux/commit/afe4fd062416b)。
+
 # 9.3 使用建议：何时选择哪种队列？
 
 总结起来，上面几种都是简单的 qdisc，通过重排序（reordering）、降速（slowing）或
@@ -750,7 +748,7 @@ node）上都 attach 了一个 filter，每个 filter 都会给出一个判断�
 
 在这种情况下，attach 到 root qdisc 的 filter 决定直接将包发给 `12:2`。
 
-### 9.5.2.2 包是如何从 qdisc 出队（dequeue）然后交给硬件的
+#### 9.5.2.2 包是如何从 qdisc 出队（dequeue）然后交给硬件的
 
 当内核决定从 qdisc dequeue packet 交给接口（interface）发送时，它会
 
@@ -1328,9 +1326,7 @@ bandwidth），并且总带宽中还有很多剩余，它们还可以 `5:3` 的�
 够从剩余的可用带宽中借带宽来用。由于我们用了的 SFQ（随机公平调度），我们还获得了
 公平调度而没有增加额外成本！
 
-### 9.5.6 `fq_codel`（Fair Queuing Controlled Delay，延迟受控的公平排队）
-
-> 本小节为译注。
+### 9.5.6 `fq_codel`（Fair Queuing Controlled Delay，延迟受控的公平排队），译注
 
 这种 qdisc 组合了 FQ 和 ColDel AQM，使用一个随机模型（a stochastic model）
 将入向包分为不同 flow，确保使用这个队列的所有 flow 公平分享总带宽。
@@ -1343,6 +1339,10 @@ Ubuntu 20.04 默认使用的这种队列：
 $ tc qdisc show # 默认网卡 enp0s3
 qdisc fq_codel 0: dev enp0s3 root refcnt 2 limit 10240p flows 1024 quantum 1514 target 5.0ms interval 100.0ms memory_limit 32Mb ecn
 ```
+
+### 9.5.7 MQ （Multi Queue，2009），译注
+
+详细介绍见 [TODO](https://github.com/torvalds/linux/commit/6ec1c69a8f649)。
 
 # 9.6 用过滤器对流量进行分类
 
@@ -1578,7 +1578,7 @@ enum nf_ip_hook_priorities {
 IMQ patch 及其更多信息见 [~~IMQ 网站~~](http://luxik.cdi.cz/~patrick/imq/)（原始
 链接已失效，可移步参考[这篇](https://github.com/imq/linuximq)，译者注）。
 
-# 译文用到的资料
+# 扩展阅读（译注）
 
 1. [Traffic-Control-HOWTO, linux-ip.net](http://linux-ip.net/articles/Traffic-Control-HOWTO/classless-qdiscs.html)
 2. [Practical IP Network QoS](http://softwareopal.com/qos/default.php?p=ds-23)
