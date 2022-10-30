@@ -221,7 +221,7 @@ TCP 的设计机制是**<mark>可靠传输</mark>**，它限制了**<mark>发送
 排队论（queuing theory）也从数学上告诉我们，这是不稳定的（e.g. for M/D/1）：
 
 <p align="center"><img src="/assets/img/traffic-control-from-queue-to-edt/queue-bottleneck.png" width="90%" height="90%"></p>
-<p align="center">Fig. </p>
+<p align="center">Fig. 根据排队论，实际带宽接近瓶颈带宽时，延迟将急剧上升</p>
 
 因为这种情况下的到**<mark>达速率持续大于离开速率</mark>**，队列爆了。
 **<mark>离开速率是网卡线速</mark>**，没法调整了，因此只能调整到达速率，也就是从源头控制发包。
@@ -396,7 +396,7 @@ Carousel 正是这样一种机制。
 ## 4.2 Carousel：基于 EDT 的整流器
 
 <p align="center"><img src="/assets/img/traffic-control-from-queue-to-edt/token-bucket-vs-edt.png" width="100%" height="100%"></p>
-<p align="center">Fig. 基于 queue 的 shaper vs. 基于 EDT 的 shaper</p>
+<p align="center">Fig. 传统基于 queue 的流量整形器 vs. 新的基于 EDT 的流量整形器</p>
 
 如上图所示，核心理念：用两项简单工作替换原来缓慢、脆弱、级联的排队系统：
 

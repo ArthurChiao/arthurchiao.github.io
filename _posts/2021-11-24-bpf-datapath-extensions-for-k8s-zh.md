@@ -445,10 +445,13 @@ K8s 模型中可以通过给 pod 打上 ingress/egress bandwidth annotation 对�
 
 ### 设计原理
 
-cilium attach 到宿主机的物理设备（或 bond 设备），在 BPF 程序中为每个包设置 timestamp，
+Cilium attach 到宿主机的物理网卡（或 bond 设备），在 BPF 程序中为每个包设置 timestamp，
 然后通过 earliest departure time 在 fq 中实现限速，下图：
 
-<p align="center"><img src="/assets/img/bpf-datapath-ext-for-k8s/pod-egress-rate-limit.png" width="60%" height="60%"></p>
+> 注意：容器限速是在**<mark>物理网卡</mark>**上做的，而不是在每个 pod 的 veth 设备上。这跟之前基于 ifb 的限速方案有很大不同。
+
+<p align="center"><img src="/assets/img/bpf-datapath-ext-for-k8s/pod-egress-rate-limit.png" width="70%" height="70%"></p>
+<p align="center">Fig. Cilium 基于 BPF+EDT 的容器限速方案（逻辑架构）</p>
 
 从上到下三个步骤：
 
