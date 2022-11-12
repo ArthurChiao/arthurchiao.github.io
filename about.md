@@ -3,11 +3,6 @@ layout: default
 title: About ArthurChiao
 ---
 
-# About ArthurChiao
-
-* Software developer
-* Part time translator
-
 ## Working Experience
 
 1. Ericsson (2014-2016), Software Engineer
@@ -15,10 +10,15 @@ title: About ArthurChiao
 
 ## Focus & Interests
 
-* Networking, SDN
-* Cloud, Virtualization
+* Networking, BPF
+* Cloud, container, virtualization
 * Distributed storage
 * Low level techniques
+
+## Selected talks
+
+1. [Trip.com: Large Scale Cloud Native Networking & Security with Cilium/eBPF]({% link _posts/2022-09-28-trip-large-scale-cloud-native-networking-and-security-with-cilium-ebpf.md %}), eBPF Summit, 2022
+2. [Ctrip Network Architecture Evolution in the Cloud Computing Era]({% link _posts/2019-04-17-ctrip-network-arch-evolution.md %}), GOPS, 2019
 
 ## Translated Books
 
@@ -31,4 +31,4 @@ title: About ArthurChiao
 
 * [《携程架构实践》](https://item.jd.com/12838702.html)，电子工业出版社，2020
 
-    * Book name: *Ctrip Architecture Distilled*, in Chinese
+    * A book named *Ctrip Architecture Distilled*, in Chinese

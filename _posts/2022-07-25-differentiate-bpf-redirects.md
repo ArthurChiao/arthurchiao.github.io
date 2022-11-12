@@ -1,6 +1,6 @@
 ---
 layout    : post
-title     : "Differentiate three types of eBPF redirections (2022)"
+title     : "Differentiate three types of eBPF redirects (2022)"
 date      : 2022-07-25
 lastupdate: 2022-07-25
 categories: bpf cilium

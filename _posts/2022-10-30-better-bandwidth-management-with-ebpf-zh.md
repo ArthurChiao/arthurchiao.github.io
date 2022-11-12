@@ -1,6 +1,6 @@
 ---
 layout    : post
-title     : "[译] Cilium：基于 BPF+EDT+FQ+BBR 更好地带宽网络管理（KubeCon+CloudNativeCon, 2022）"
+title     : "[译] Cilium：基于 BPF+EDT+FQ+BBR 实现更好的带宽管理（KubeCon, 2022）"
 date      : 2022-10-30
 lastupdate: 2022-10-30
 categories: bpf tc cilium bbr
@@ -13,6 +13,8 @@ categories: bpf tc cilium bbr
 
 作者 Daniel Borkmann, Christopher, Nikolay 都来自 Isovalent（Cilium 母公司）。
 翻译时补充了一些背景知识、代码片段和链接，以方便理解。
+
+翻译已获得 Daniel 授权。
 
 **由于译者水平有限，本文不免存在遗漏或错误之处。如有疑问，请查阅原文。**
 

@@ -9,10 +9,10 @@ categories: network datacenter cilium trip.com
 ## Preface
 
 This article comes from my talk ***Ctrip Network Architecture Evolution in the
-Cloud Computing Era*** at [GOPS 2019
-Shenzhen](https://www.bagevent.com/event/GOPS2019-shenzhen) (a tech conference
-in Chinese). The content is gently re-structured to make it more
-ease of reading as a post, and slightly updated to correct some inaccuracies.
+Cloud Computing Era*** in [GOPS 2019 Shenzhen](https://www.bagevent.com/event/GOPS2019-shenzhen)
+(a tech conference in Chinese).
+
+> 中文版：[云计算时代携程的网络架构变迁]({% link _posts/2019-04-17-ctrip-network-arch-evolution.md %})。
 
 ----
 
@@ -26,19 +26,6 @@ ease of reading as a post, and slightly updated to correct some inaccuracies.
 I'm a senior achitect at Ctrip cloud, currently lead the network & storage
 development team, focusing on **network virtualization** and **distributed
 storage**.
-
-----
-
-Let's start.
-
-This post presents Ctrip's network architecure evolution in the cloud
-computing era. The content is as follows:
-
-* A brief introduction to Ctrip Cloud
-* VLAN-based L2 Network
-* SDN-based Large L2 Network
-* K8S and Hybrid Network
-* Cloud Native Solutions
 
 # 0 About Ctrip Cloud
 

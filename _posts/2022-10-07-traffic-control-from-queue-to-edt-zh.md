@@ -1,14 +1,14 @@
 ---
 layout    : post
-title     : "[译] 流量控制（TC）五十年：从基于缓冲队列（Queue）到基于时间戳（EDT）的演进（Google, 2018）"
+title     : "[译] 流量控制（TC）五十年：从基于缓冲队列（Queue）到基于时间（EDT）的演进（Google, 2018）"
 date      : 2022-10-07
-lastupdate: 2022-10-27
+lastupdate: 2022-11-12
 categories: kernel tcp tc
 ---
 
 ### 译者序
 
-本文组合翻译了 Google 2018 年两篇分享中的技术部分，二者讲地同一件事情，但层次侧重不同：
+本文组合翻译了 Google 2018 年两篇分享中的技术部分，二者讲的同一件事情，但层次侧重不同：
 
 * Netdev 2018: [Evolving from AFAP: Teaching NICs about time](https://www.youtube.com/watch?v=MAni0_lN7zE)，
   视角更宏观，因果关系和历史演进讲地较好；

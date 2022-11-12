@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "[译] 如何基于 Cilium 和 eBPF 打造可感知微服务的 Linux（2019）"
+title:  "[译] 如何基于 Cilium 和 eBPF 打造可感知微服务的 Linux（InfoQ, 2019）"
 date:   2019-04-16
 lastupdate: 2019-09-24
 categories: cilium bpf microservice
