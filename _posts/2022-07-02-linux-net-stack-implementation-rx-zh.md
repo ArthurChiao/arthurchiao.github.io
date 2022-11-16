@@ -75,7 +75,7 @@ Mellanox ConnectX-4/ConnectX-5 `25Gbps/40Gbps` 以太网卡的驱动。
 * i40e：`intel` 40Gbps 以太网
 
 `mlx5_core` 这个驱动有点特殊，它支持以太网驱动，但由于历史原因，它的实现与普通以太网驱动有很大不同：
-Mellanox 是做高性能传输起家的（2019 年被 NVIDIA 收购），早起产品是 InfiniBand，
+Mellanox 是做高性能传输起家的（2019 年被 NVIDIA 收购），早期产品是 InfiniBand，
 这是一个**<mark>平行于以太网</mark>**的二层传输和互联方案：
 
 <p align="center"><img src="/assets/img/linux-net-stack/l2-protocols.png" width="60%" height="60%"></p>
