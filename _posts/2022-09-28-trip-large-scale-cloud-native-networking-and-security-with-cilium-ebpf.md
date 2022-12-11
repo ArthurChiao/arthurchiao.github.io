@@ -2,7 +2,7 @@
 layout    : post
 title     : "Trip.com: Large Scale Cloud Native Networking & Security with Cilium/eBPF (eBPFSummit, 2022)"
 date      : 2022-09-28
-lastupdate: 2022-09-28
+lastupdate: 2022-12-11
 author    : ArthurChiao
 categories: cilium bpf trip.com
 ---
@@ -527,7 +527,7 @@ environments, unless you know what you are doing.
 
 # 4 Summary
 
-We’ve been using Cilium since 1.4 and have upgraded all the way to 1.10 now (1.11 upgrade already planned),
+We’ve been using Cilium since 1.4 and have upgraded all the way to ~~1.10~~ `1.11` (2022.11 updated) now,
 it's supporting our business and infrastructure critical services.
 With 4 years experiences, we believe it’s not only production ready for large scale,
 but also one of the best candidates in terms of performance, feature, community and so on.

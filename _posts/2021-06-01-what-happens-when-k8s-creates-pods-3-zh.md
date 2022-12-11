@@ -2,7 +2,7 @@
 layout    : post
 title     : "源码解析：K8s 创建 pod 时，背后发生了什么（三）（2021）"
 date      : 2021-06-01
-lastupdate: 2022-03-16
+lastupdate: 2022-12-11
 categories: k8s
 ---
 
@@ -393,6 +393,9 @@ func createHandler(r rest.NamedCreater, scope *RequestScope, admit Interface, in
 
 以上过程可以看出，apiserver 做了大量的事情。
 
+另外，kube-apiserver 通过 ListWatch 监听了 etcd 的 pod 资源，因此 etcd 创建 pod 成功之后，
+kube-apiserver 会收到 `create` 事件，将 pod 信息更新到它的 in-memory cache 里。
+
 总结：至此我们的 pod 资源已经在 etcd 中了。但是，此时 `kubectl get pods -n <ns>` 还看不见它。
 
 # 4 Initializers
@@ -451,5 +454,5 @@ pending list 中的 initializers，每次只有第一个 initializer 能执行�
 
 细心的同学可能会有疑问：**前面说这个对象还没有对外可见，那用
 户空间的 initializer controller 又是如何能检测并操作这个对象的呢？**答案是：
-kube-apiserver 提供了一个 `?includeUninitialized` 查询参数，它会返回所有对象，
-包括那些还未完成初始化的（uninitialized ones）。
+kube-apiserver 提供了一个 **<mark><code>?includeUninitialized</code></mark>**
+查询参数，它会返回所有对象，包括那些还未完成初始化的（uninitialized ones）。

@@ -2,7 +2,7 @@
 layout    : post
 title     : "BPF 进阶笔记（一）：BPF 程序（BPF Prog）类型详解：使用场景、函数签名、执行位置及程序示例"
 date      : 2021-07-04
-lastupdate: 2022-05-01
+lastupdate: 2022-12-06
 categories: bpf xdp socket cgroup
 ---
 
@@ -154,6 +154,7 @@ enum bpf_attach_type {
 * `BPF_PROG_TYPE_SK_SKB`
 * `BPF_PROG_TYPE_SK_MSG`
 * `BPF_PROG_TYPE_SK_REUSEPORT`
+* `BPF_PROG_TYPE_SK_LOOKUP`
 
 # 1 `BPF_PROG_TYPE_SOCKET_FILTER`
 
@@ -601,6 +602,15 @@ static struct sock *run_bpf_filter(struct sock_reuseport *reuse, u16 socks,
     return reuse->socks[index];
 }
 ```
+
+# 6 `BPF_PROG_TYPE_SK_LOOKUP`
+
+特点：attach 到 network namespace。
+
+## 使用场景
+
+* [(译) Socket listen 多地址需求与 SK_LOOKUP BPF 的诞生（LPC, 2019）]({% link _posts/2022-12-11-birth-of-sk-lookup-bpf-zh.md %})
+* [Pidfd and Socket-lookup BPF (SK_LOOKUP) Illustrated (2022)]({% link _posts/2022-12-11-pidfd-and-socket-lookup-bpf-illustrated.md %})
 
 # ------------------------------------------------------------------------
 # TC 子系统相关类型

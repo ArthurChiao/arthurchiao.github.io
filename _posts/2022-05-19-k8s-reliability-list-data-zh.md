@@ -2,7 +2,7 @@
 layout    : post
 title     : "K8s 集群稳定性：LIST 请求源码分析、性能评估与大规模基础服务部署调优"
 date      : 2022-05-19
-lastupdate: 2022-05-19
+lastupdate: 2022-12-11
 categories: k8s etcd
 ---
 
@@ -462,7 +462,7 @@ func shouldDelegateList(opts storage.ListOptions) bool {
 3. 问：ResourceVersionMatch 是什么用途？
 
     答：用来告诉 apiserver，该如何解读 ResourceVersion。官方有个很复杂的
-    [表格](https://kubernetes.io/docs/reference/using-api/api-concepts/#the-resourceversion-parameter)
+    [<mark>表格</mark>](https://kubernetes.io/docs/reference/using-api/api-concepts/#the-resourceversion-parameter)
     ，有兴趣可以看看。
 
 接下来再返回到 cacher 的 `GetList()` 逻辑，来看下具体有哪几种处理情况。
@@ -976,9 +976,18 @@ etcd 中 namespace 是前缀的一部分，因此能指定 namespace 过滤资�
 ## 6.1 Get 请求：`GetOptions{}`
 
 基本原理与 `ListOption{}` 一样，不设置 `ResourceVersion=0` 会导致 apiserver 去
-etcd 拿数据，应该尽量避免。
+etcd 拿数据，应该尽量避免。语义[3]：
+
+|:-----------------|:-----------------------|:-------------------------------------|
+| resourceVersion unset	| resourceVersion="0" |	resourceVersion="{value other than 0}" |
+| Most Recent	| Any	| Not older than |
+
+* Most Recent：去 etcd 拿数据；
+* Any：优先用最新的，但不保证一定是最新的；
+* Not older than：不低于某个版本号。
 
 # 参考资料
 
 1. [Kubernetes API Concepts](https://kubernetes.io/docs/reference/using-api/api-concepts/), kubernetes doc
 2. [(译) [论文] Raft 共识算法（及 etcd/raft 源码解析）（USENIX, 2014）]({% link _posts/2022-02-06-raft-paper-zh.md %})
+3. [Kubernetes API Concepts: Resource version semantics](https://kubernetes.io/docs/reference/using-api/api-concepts/#the-resourceversion-parameter)
