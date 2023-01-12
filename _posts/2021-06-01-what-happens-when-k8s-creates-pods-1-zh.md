@@ -2,7 +2,7 @@
 layout    : post
 title     : "源码解析：K8s 创建 pod 时，背后发生了什么（一）（2021）"
 date      : 2021-06-01
-lastupdate: 2022-03-16
+lastupdate: 2023-01-12
 categories: k8s
 ---
 
@@ -30,6 +30,9 @@ categories: k8s
 {:toc}
 
 ----
+
+<p align="center"><img src="/assets/img/what-happens-when-k8s-creates-pods/kube-scheduler.svg" width="100%" height="100%"></p>
+<p align="center">Fig. What happens when create a Pod, image credit <a href="https://kubernetes.io/blog/2023/01/12/protect-mission-critical-pods-priorityclass/">Kubernetes Blog</a></p>
 
 本文试图回答以下问题：**敲下 `kubectl run nginx --image=nginx --replicas=3` 命令后**，
 **<mark>K8s 中发生了哪些事情？</mark>**

@@ -49,6 +49,9 @@ runDaemon                                                                    // 
   |  |-d.svc.RestoreServices                                                 // -> pkg/service/service.go
   |  |  |-restoreBackendsLocked
   |  |  |-restoreServicesLocked
+  |  |
+  |  |-restoredEndpoints := d.fetchOldEndpoints()
+  |  |
   |  |-d.k8sWatcher.RunK8sServiceHandler                                     //    pkg/k8s/watchers/watcher.go
   |  |  |-k8sServiceHandler                                                  //    pkg/k8s/watchers/watcher.go
   |  |    |-eventHandler                                                     //    pkg/k8s/watchers/watcher.go
@@ -115,6 +118,7 @@ runDaemon                                                                    // 
   |     |-watcher = NewIPIdentityWatcher
   |     |-watcher.Watch
   |        |-IPIdentityCache.Upsert/Delete
+  |
   |-gc.Enable                                                                // -> pkg/maps/ctmap/gc/gc.go
   |   |-for { runGC() } // conntrack & nat gc
   |-initKVStore
@@ -123,6 +127,9 @@ runDaemon                                                                    // 
   |-initRestore(restoredEndpoints)
   |  |-regenerateRestoredEndpoints(restoredEndpoints)                        // daemon/cmd/state.go
   |  |-UpdateController("sync-lb-maps-with-k8s-services")
+  |
+  |-d.endpointManager.AddHostEndpoint
+  |
   |-initHealth
   |-startStatusCollector
   |  |-status.NewCollector(probes)                                           // pkg/status

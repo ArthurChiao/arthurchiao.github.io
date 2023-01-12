@@ -2,7 +2,7 @@
 layout    : post
 title     : "TCP Socket Listen: A Tale of Two Queues (2022)"
 date      : 2022-08-28
-lastupdate: 2022-08-28
+lastupdate: 2022-12-30
 categories: tcp kernel socket
 ---
 

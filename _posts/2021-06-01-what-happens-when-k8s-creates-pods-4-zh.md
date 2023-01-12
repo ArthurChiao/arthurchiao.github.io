@@ -2,7 +2,7 @@
 layout    : post
 title     : "源码解析：K8s 创建 pod 时，背后发生了什么（四）（2021）"
 date      : 2021-06-01
-lastupdate: 2022-03-17
+lastupdate: 2023-01-12
 categories: k8s
 ---
 
@@ -406,7 +406,8 @@ RBAC authorizer 会用这个信息获取 etcd 中所有与这个用户相关的 
 **另外一个 controller —— 调度器** —— 负责做这件事情。
 
 scheduler 作为控制平面的一个独立服务运行，但**<mark>工作方式与其他 controller 是一样的</mark>**：
-监听事件，然后尝试 reconcile 状态。
+监听事件，然后尝试 reconcile 状态。作为一个无限循环，scheduler 会寻找所有
+**<mark><code>nodeName</code></mark>** 字段为空的 pod，为它们选择合适的 node，这就是调度过程。
 
 ### 调用栈概览
 
@@ -436,13 +437,11 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
     state *framework.CycleState, pod *v1.Pod) (result ScheduleResult, err error) {
 
     feasibleNodes, diagnosis := g.findNodesThatFitPod(ctx, fwk, state, pod) // 过滤可用 nodes
-    if len(feasibleNodes) == 0 {
+    if len(feasibleNodes) == 0
         return result, &framework.FitError{}
-    }
 
-    if len(feasibleNodes) == 1 { // 可用 node 只有一个，就选它了
+    if len(feasibleNodes) == 1 // 可用 node 只有一个，就选它了
         return ScheduleResult{SuggestedHost:  feasibleNodes[0].Name}, nil
-    }
 
     priorityList := g.prioritizeNodes(ctx, fwk, state, pod, feasibleNodes)
     host := g.selectHost(priorityList)
@@ -480,7 +479,7 @@ func (g *genericScheduler) findNodesThatFitPod(ctx context.Context, fwk framewor
 }
 ```
 
-它会 [过滤 PodSpect 中 NodeName 字段为空的 pods](https://github.com/kubernetes/kubernetes/blob/v1.21.0/plugin/pkg/scheduler/factory/factory.go#L190)
+它会 [过滤 PodSpect 中 NodeName 字段为空的 pods](https://github.com/kubernetes/kubernetes/blob/v1.25.0/pkg/scheduler/)
 ，尝试为这样的 pods 挑选一个 node 调度上去。
 
 ### 调度算法
