@@ -2,7 +2,7 @@
 layout    : post
 title     : "源码解析：K8s 创建 pod 时，背后发生了什么（一）（2021）"
 date      : 2021-06-01
-lastupdate: 2023-01-12
+lastupdate: 2023-01-25
 categories: k8s
 ---
 
@@ -283,6 +283,112 @@ main                                                                            
         |
         |-go http.ListenAndServe(healthz)
 ```
+
+### `NewContainerManager()`
+
+```go
+// cmd/kubelet/app/server.go
+
+func run() {
+        if s.CgroupsPerQOS && s.CgroupRoot == "" {
+            s.CgroupRoot = "/" // if --cgroups-per-qos enabled but --cgroup-root not specified, default to /
+        }
+    ...
+        kubeDeps.ContainerManager = cm.NewContainerManager(
+            kubeDeps.Mounter,
+            kubeDeps.CAdvisorInterface,
+            cm.NodeConfig{
+                RuntimeCgroupsName:    s.RuntimeCgroups,
+                SystemCgroupsName:     s.SystemCgroups,
+                KubeletCgroupsName:    s.KubeletCgroups,
+                KubeletOOMScoreAdj:    s.OOMScoreAdj,
+                CgroupsPerQOS:         s.CgroupsPerQOS,
+                CgroupRoot:            s.CgroupRoot,
+                CgroupDriver:          s.CgroupDriver,
+                KubeletRootDir:        s.RootDirectory,
+                ProtectKernelDefaults: s.ProtectKernelDefaults,
+                NodeAllocatableConfig: cm.NodeAllocatableConfig{
+                    KubeReservedCgroupName:   s.KubeReservedCgroup,
+                    SystemReservedCgroupName: s.SystemReservedCgroup,
+                    EnforceNodeAllocatable:   sets.NewString(s.EnforceNodeAllocatable...),
+                    KubeReserved:             kubeReserved,
+                    SystemReserved:           systemReserved,
+                    ReservedSystemCPUs:       reservedSystemCPUs,
+                    HardEvictionThresholds:   hardEvictionThresholds,
+                },
+                QOSReserved:                              *experimentalQOSReserved,
+                CPUManagerPolicy:                         s.CPUManagerPolicy,
+                CPUManagerPolicyOptions:                  cpuManagerPolicyOptions,
+                CPUManagerReconcilePeriod:                s.CPUManagerReconcilePeriod.Duration,
+                ExperimentalMemoryManagerPolicy:          s.MemoryManagerPolicy,
+                ExperimentalMemoryManagerReservedMemory:  s.ReservedMemory,
+                ExperimentalPodPidsLimit:                 s.PodPidsLimit,
+                EnforceCPULimits:                         s.CPUCFSQuota,
+                CPUCFSQuotaPeriod:                        s.CPUCFSQuotaPeriod.Duration,
+                ExperimentalTopologyManagerPolicy:        s.TopologyManagerPolicy,
+                ExperimentalTopologyManagerScope:         s.TopologyManagerScope,
+                ExperimentalTopologyManagerPolicyOptions: topologyManagerPolicyOptions,
+            },
+            s.FailSwapOn,
+            kubeDeps.Recorder,
+            kubeDeps.KubeClient,
+        )
+}
+```
+
+```go
+// pkg/kubelet/cm/container_manager_linux.go
+
+func NewContainerManager(mountUtil mount.Interface, cadvisorInterface cadvisor.Interface, nodeConfig NodeConfig, failSwapOn bool, recorder record.EventRecorder, kubeClient clientset.Interface) (ContainerManager, error) {
+    subsystems := GetCgroupSubsystems()
+
+    if failSwapOn { // Check whether swap is enabled. The Kubelet does not support running with swap enabled.
+        swapFile := "/proc/swaps"
+        swapData := os.ReadFile(swapFile)
+        ...
+    }
+
+    machineInfo := cadvisorInterface.MachineInfo()
+    capacity := cadvisor.CapacityFromMachineInfo(machineInfo)
+    for k, v := range capacity {
+        internalCapacity[k] = v
+    }
+
+    cgroupRoot    := ParseCgroupfsToCgroupName(nodeConfig.CgroupRoot)      // ""
+    cgroupManager := NewCgroupManager(subsystems, nodeConfig.CgroupDriver) // "cgroupfs"
+
+    if nodeConfig.CgroupsPerQOS { // true by default
+        cgroupManager.Validate(cgroupRoot)
+        cgroupRoot = NewCgroupName(cgroupRoot, defaultNodeAllocatableCgroupName) // -> "/kubepods"
+    }
+    Info("Creating Container Manager object based on Node Config", "nodeConfig", nodeConfig)
+
+    qosContainerManager := NewQOSContainerManager(subsystems, cgroupRoot, nodeConfig, cgroupManager)
+
+    cm := &containerManagerImpl{
+        cadvisorInterface:   cadvisorInterface,
+        mountUtil:           mountUtil,
+        NodeConfig:          nodeConfig,
+        subsystems:          subsystems,
+        cgroupManager:       cgroupManager,
+        capacity:            capacity,
+        internalCapacity:    internalCapacity,
+        cgroupRoot:          cgroupRoot,
+        recorder:            recorder,
+        qosContainerManager: qosContainerManager,
+    }
+
+    cm.topologyManager = topologymanager.NewManager()
+    cm.deviceManager   = devicemanager.NewManagerImpl(machineInfo.Topology, cm.topologyManager)
+    cm.draManager      = dra.NewManagerImpl(kubeClient) // initialize DRA manager
+    cm.cpuManager      = cpumanager.NewManager() // Initialize CPU manager
+    cm.memoryManager   = memorymanager.NewManager()
+
+    return cm, nil
+}
+```
+
+kubelet 要求必须关闭 swap，`cat /proc/swaps`。
 
 ## 0.4 小结
 

@@ -2,7 +2,7 @@
 layout    : post
 title     : "源码解析：K8s 创建 pod 时，背后发生了什么（四）（2021）"
 date      : 2021-06-01
-lastupdate: 2023-01-12
+lastupdate: 2023-01-20
 categories: k8s
 ---
 
@@ -484,14 +484,20 @@ func (g *genericScheduler) findNodesThatFitPod(ctx context.Context, fwk framewor
 
 ### 调度算法
 
+#### Resource requests/limits
+
+如果 PodSpec 里面设置了 **<mark><code>requests/limits</code></mark>**，即
+**<mark>显式要求了 CPU/memory 资源</mark>**，那无法满足这些条件的 node 就会被从备选列表中删除。
+
+但要注意，**<mark>调度只看 requests，不看 limits</mark>**。例如，如果设置了
+memory `request=1GB,limit=2GB`，那只要一台 node 的剩余可分配内存在 1GB 以上，就是符合要求的 node。
+
 下面简单看下内置的默认调度算法。
 
 #### 注册默认 predicates
 
 这些 predicates 其实都是函数，被调用到时，执行相应的
 [过滤](https://github.com/kubernetes/kubernetes/blob/v1.21.0/plugin/pkg/scheduler/core/generic_scheduler.go#L117)。
-例如，**<mark>如果 PodSpec 里面显式要求了 CPU 或 RAM 资源，而一个 node 无法满足这些条件</mark>**，
-那就会将这个 node 从备选列表中删除。
 
 ```go
 // pkg/scheduler/algorithmprovider/registry.go

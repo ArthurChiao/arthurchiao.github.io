@@ -2,7 +2,7 @@
 layout    : post
 title     : "BPF 进阶笔记（四）：调试 BPF 程序"
 date      : 2022-05-02
-lastupdate: 2022-05-02
+lastupdate: 2023-01-13
 categories: bpf
 ---
 
@@ -192,7 +192,7 @@ BPF_CALL_5(bpf_trace_printk, char *, fmt, u32, fmt_size, u64, arg1, u64, arg2, u
 
 [BPF trampoline](https://lwn.net/Articles/804112/) 是
 内核函数和 BPF 程序之间、BPF 程序和其他 BPF 程序之间的桥梁（更多介绍见附录）。
-它的使用场景之一就是 **<mark>tracing 其他 BPF 程序</mark>**，例如 XDP 程序。
+使用场景之一是 **<mark>tracing 其他 BPF 程序</mark>**，例如 XDP 程序。
 现在能向任何网络类型的 BPF 程序 attach 类似 fentry/fexit 的 BPF 程序，因
 此能够看到 XDP、TC、LWT、cgroup 等任何类型 BPF 程序中包的进进出出，而不会影
 响到这些程序的执行，大大降低了基于 BPF 的网络排障难度。
@@ -210,7 +210,7 @@ BPF trampoline 其他使用场景：
 1. **<mark>fentry/fexit</mark>** BPF 程序：**<mark>功能与 kprobe/kretprobe 类似，但性能更好</mark>**，几乎没有性能开销（practically zero overhead）；
 2. **<mark>动态链接 BPF 程序</mark>**（dynamicly link BPF programs）。
 
-    在 tracing、networking、cgroup BPF 程序中，中，是比 prog array 和 prog link list 更加通用的机制。
+    在 tracing、networking、cgroup BPF 程序中，是比 prog array 和 prog link list 更加通用的机制。
     在很多情况下，可直接作为基于 bpf_tail_call 程序链的一种替代方案。
 
 这些特性都需要 root 权限。
@@ -310,4 +310,4 @@ CPU 原生调用约定：
     和普通 C 程序一样，**<mark>直接对指针参数解引用</mark>**，
     不再需要各种繁琐的 probe read helpers 了。
 
-限制：fentry/fexit BPF 程序需要更高的内核版本（5.5+）才能支持。
+限制：fentry/fexit BPF 程序需要更高的内核版本（**<mark><code>5.5+</code></mark>**）才能支持。
