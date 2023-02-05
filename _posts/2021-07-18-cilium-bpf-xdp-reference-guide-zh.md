@@ -2,7 +2,7 @@
 layout    : post
 title     : "[译] Cilium：BPF 和 XDP 参考指南（2021）"
 date      : 2021-07-18
-lastupdate: 2021-08-07
+lastupdate: 2023-02-05
 categories: cilium bpf xdp
 ---
 
@@ -1023,7 +1023,7 @@ $ ip link set dev em1 xdp obj xdp-example.o
 > 以上命令将一个 XDP 程序 attach 到一个网络设备，需要是 Linux 4.11 内核中支持
 > XDP 的设备，或者 4.12+ 版本的内核。
 
-LLVM（>= 3.9） 使用**<mark>正式的 BPF 机器值</mark>**（machine value），即 `EM_BPF`（十进制 `247`
+LLVM（>= 3.9） 使用**<mark>正式的 ISA 值</mark>**（ELF header 中的 [`e_machine` 字段](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format)），即 `EM_BPF`（十进制 `247`
 ，十六进制 `0xf7`），来**生成对象文件**。在这个例子中，程序是用 `bpf` target 在
 `x86_64` 平台上编译的，因此下面显示的大小端标识是 `LSB` (和 `MSB` 相反)：
 
