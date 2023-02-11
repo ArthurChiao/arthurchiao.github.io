@@ -26,7 +26,7 @@ patch 链接，深度和广度兼备，是学习 ring buffer 的极佳参考。
 
 很多场景下，BPF 程序都需要**<mark>将数据发送到用户空间</mark>**（userspace），
 BPF perf buffer（perfbuf）是目前这一过程的事实标准，但它存在一些问题，例如
-浪费内存（因为其 per-CPU 设计）、事件顺序无法保证等。
+**<mark>浪费内存（因为其 per-CPU 设计）、事件顺序无法保证</mark>**等。
 
 作为改进，**<mark>内核 5.8</mark>** 引入另一个新的 BPF 数据结构：BPF ring buffer（环形缓冲区，ringbuf），
 

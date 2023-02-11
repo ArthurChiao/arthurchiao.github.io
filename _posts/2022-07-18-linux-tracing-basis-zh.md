@@ -2,7 +2,7 @@
 layout    : post
 title     : "Linux tracing/profiling 基础：符号表、调用栈、perf/bpftrace 示例等（2022）"
 date      : 2022-07-18
-lastupdate: 2022-09-13
+lastupdate: 2023-02-11
 categories: bpf perf
 ---
 
@@ -21,6 +21,8 @@ categories: bpf perf
 
 ## 1.1 热点与调用栈分析（`perf record/report/script`）
 
+### 1.1.1 采样：`perf record`
+
 `perf` 能够跟踪记录内核及应用程序的执行状态，
 
 ```shell
@@ -29,78 +31,88 @@ $ perf record -a -g -- sleep 5
 [ perf record: Captured and wrote 4.636 MB perf.data (24700 samples) ]
 ```
 
-生成的信息保存在 `perf.data` 中，然后通过 perf report/script，就可以分析性能和调用栈。例如，
+生成的信息保存在 `perf.data` 中，然后通过 perf report/script，就可以分析性能和调用栈。
 
-1. `perf report` 查看看**<mark>哪些函数占用的 CPU 最多</mark>**：
+### 1.1.2 查看函数 CPU 占用量：`perf report`
 
-    ```shell
-    $ perf report
-    Samples: 24K of event 'cycles', Event count (approx.): 4868947877
-      Children      Self  Command   Shared Object        Symbol
-    +   17.08%     0.23%  swapper   [kernel.kallsyms]    [k] do_idle
-    +    5.38%     5.38%  swapper   [kernel.kallsyms]    [k] intel_idle
-    +    4.21%     0.02%  kubelet   [kernel.kallsyms]    [k] entry_SYSCALL_64_after_hwframe
-    +    4.08%     0.00%  kubelet   kubelet              [.] k8s.io/kubernetes/vendor/github.com/google/...
-    +    4.06%     0.00%  dockerd   dockerd              [.] net/http.(*conn).serve
-    +    3.96%     0.00%  dockerd   dockerd              [.] net/http.serverHandler.ServeHTTP
-    ...
-    ```
+`perf report` 查看看**<mark>哪些函数占用的 CPU 最多</mark>**：
 
-    这是一个交互式的窗口，可以选中具体函数展开查看详情。
+```shell
+$ perf report
+Samples: 24K of event 'cycles', Event count (approx.): 4868947877
+  Children      Self  Command   Shared Object        Symbol
++   17.08%     0.23%  swapper   [kernel.kallsyms]    [k] do_idle
++    5.38%     5.38%  swapper   [kernel.kallsyms]    [k] intel_idle
++    4.21%     0.02%  kubelet   [kernel.kallsyms]    [k] entry_SYSCALL_64_after_hwframe
++    4.08%     0.00%  kubelet   kubelet              [.] k8s.io/kubernetes/vendor/github.com/google/...
++    4.06%     0.00%  dockerd   dockerd              [.] net/http.(*conn).serve
++    3.96%     0.00%  dockerd   dockerd              [.] net/http.serverHandler.ServeHTTP
+...
+```
 
-2. `perf script` 展示采集到的事件及其**<mark>调用栈</mark>**：
+这是一个交互式的窗口，可以选中具体函数展开查看详情。
 
-    ```shell
-    $ perf script
-    perf 44564 [000] 743873.947847:          1   cycles:
-            ffffffffa786af46 native_write_msr+0x6 ([kernel.kallsyms])
-            ffffffffa780d92f __intel_pmu_enable_all.constprop.0+0x3f ([kernel.kallsyms])
-            ffffffffa79fb3a9 event_function+0x89 ([kernel.kallsyms])
-            ffffffffa79f48ee remote_function+0x3e ([kernel.kallsyms])
-            ffffffffa7933199 generic_exec_single+0x59 ([kernel.kallsyms])
-            ffffffffa79332ac smp_call_function_single+0xdc ([kernel.kallsyms])
-            ...
-    ```
+### 1.1.3 打印调用栈：`perf script`
 
-3. 将 `perf script` 的输出重定向到 perl 脚本做进一步处理，就得到了著名的**<mark>火焰图</mark>**：
+展示采集到的事件及其**<mark>调用栈</mark>**：
+
+```shell
+$ perf script
+perf 44564 [000] 743873.947847:          1   cycles:
+        ffffffffa786af46 native_write_msr+0x6 ([kernel.kallsyms])
+        ffffffffa780d92f __intel_pmu_enable_all.constprop.0+0x3f ([kernel.kallsyms])
+        ffffffffa79fb3a9 event_function+0x89 ([kernel.kallsyms])
+        ffffffffa79f48ee remote_function+0x3e ([kernel.kallsyms])
+        ffffffffa7933199 generic_exec_single+0x59 ([kernel.kallsyms])
+        ffffffffa79332ac smp_call_function_single+0xdc ([kernel.kallsyms])
+        ...
+```
+
+### 1.1.4 生成火焰图：`perf script | ... > result.svg`
+
+将 `perf script` 的输出重定向到 perl 脚本做进一步处理，就得到了著名的**<mark>火焰图</mark>**：
 
 
-    ```shell
-    $ perf script | ./stackcollapse-perf.pl | ./flamegraph.pl > result.svg
-    ```
+```shell
+$ perf script | ./stackcollapse-perf.pl | ./flamegraph.pl > result.svg
+```
 
-这些都是基于 tracing 功能。
+以上这些都是基于 tracing 功能。
 
 ## 1.2 符号（symbols）
 
 Tracing 功能的基础是符号（symbols），即**<mark>目标文件中的函数信息</mark>**。
 Symbols 对 kprobe/uprobe event tracing 至关重要，因为知道函数名字才能跟踪。来看两个例子：
 
-1. 查看 `grep` 这个最常用的命令（可执行文件）中包含哪些符号：
+### 1.2.1 查看 object/binary file 中有哪些符号
 
-    ```shell
-    $ readelf -s `which grep`
-    Symbol table '.dynsym' contains 137 entries:
-       Num:    Value          Size Type    Bind   Vis      Ndx Name
-         0: 0000000000000000     0 NOTYPE  LOCAL  DEFAULT  UND
-         1: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND __ctype_toupper_loc@GLIBC_2.3 (2)
-         2: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND __uflow@GLIBC_2.2.5 (3)
-         3: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND getenv@GLIBC_2.2.5 (3)
-         ...
-    ```
+查看 `grep` 这个最常用的命令（可执行文件）中包含哪些符号：
 
-2. 查看内核符号表：
+```shell
+$ readelf -s `which grep`
+Symbol table '.dynsym' contains 137 entries:
+   Num:    Value          Size Type    Bind   Vis      Ndx Name
+     0: 0000000000000000     0 NOTYPE  LOCAL  DEFAULT  UND
+     1: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND __ctype_toupper_loc@GLIBC_2.3 (2)
+     2: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND __uflow@GLIBC_2.2.5 (3)
+     3: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND getenv@GLIBC_2.2.5 (3)
+     ...
+```
 
-    ```shell
-    $ cat /proc/kallsyms | egrep ' (t|T) ' | head
-    0000000000000000 T startup_64
-    0000000000000000 T secondary_startup_64
-    0000000000000000 t verify_cpu
-    0000000000000000 T sev_verify_cbit
-    0000000000000000 T start_cpu0
-    0000000000000000 T __startup_64
-    ...
-    ```
+### 1.2.2 查看内核符号表
+
+```shell
+$ cat /proc/kallsyms | egrep ' (t|T) ' | head
+0000000000000000 T startup_64
+0000000000000000 T secondary_startup_64
+0000000000000000 t verify_cpu
+0000000000000000 T sev_verify_cbit
+0000000000000000 T start_cpu0
+0000000000000000 T __startup_64
+...
+```
+
+### 1.2.3 小结
 
 以上看出，**<mark>符号可以位于目标文件中，也可以存放在单独的文件</mark>**。
 
@@ -167,7 +179,7 @@ Idx Name          Size      VMA               LMA               File off  Algn
                   CONTENTS, READONLY
 ```
 
-确认其中并没有 debug section：
+**<mark>确认其中并没有</mark>** debug section：
 
 ```shell
 $ objdump -h hello | grep debug
@@ -570,8 +582,8 @@ Hello world from C
         func_c+0
 ```
 
-很多系统上这都是默认选项，尤其是性能敏感的软件，例如 C 标准库、JVM。
-很多时候用 frame pointer 方式展开调用栈时，会看到 `unknown symbol` 之类的错误，就是因为这个原因。
+很多系统上这都是默认选项，尤其是**<mark>性能敏感的软件，例如 C 标准库、JVM</mark>**。
+很多时候用 frame pointer 方式展开调用栈时，会看到 **<mark><code>unknown symbol</code></mark>** 之类的错误，就是因为这个原因。
 
 在 C 世界中，`-g` 比 `-fno-omit-frame-pointer` 要更常用，因此很多场景下都是可以拿到 DWARF 信息的。
 

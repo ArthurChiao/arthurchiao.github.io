@@ -7,7 +7,7 @@ author    : ArthurChiao
 categories: cilium bpf trip.com
 ---
 
-This is an entended version of our talk at [**eBPF Summit 2022**](https://ebpf.io/summit-2022/):
+This is an entended version of my talk at [**eBPF Summit 2022**](https://ebpf.io/summit-2022/):
 ***<mark>Large scale cloud native networking and security with Cilium/eBPF: 4 years production experiences from Trip.com</mark>***.
 This version covers more contents and details that's missing from the talk (for time limitation).
 
@@ -27,20 +27,20 @@ baremetal and self-managed clusters in public clouds - have switched to Cilium.
 With ~10K nodes, ~300K pods running on Kubernetes now,
 Cilium powers our business critical services such as hotel
 search engines, financial/payment services, in-memory databases, data store
-services, with a wide range of requirements in terms of latency,
+services, which cover a wide range of requirements in terms of latency,
 throughput, etc.
 
 From our 4 years of experiences, the audience will learn cloud native networking and security with Cilium including:
 
 1. How to use CiliumNetworkPolicy for L3/L4 access control including extending the security model to BM/VM instances;
-2. Our new multi-cluster solution called KVStoreMesh as an alternative ClusterMesh and how we made it compatible with the community for easy upgrade;
+2. Our new multi-cluster solution called KVStoreMesh as an alternative to ClusterMesh and how we made it compatible with the community for easy upgrade;
 3. Building stability at scale, like managing control plane and multi-cluster outages, and the improvements we made to Cilium as a result.
 
 # 1 Cloud Infrastructure at Trip.com
 
 ## 1.1 Layered architecture
 
-The Trip.com cloud team is responsible for our infrastructure over the globe, as shown below:
+The Trip.com cloud team is responsible for the corporation's infrastructure over the globe, as shown below:
 
 <p align="center"><img src="/assets/img/trip-ebpf-summit-2022/trip-cloud-infra.png" width="90%" height="90%"></p>
 
@@ -117,27 +117,28 @@ Now the optimization and tuning parts.
 
 ### 2.3.1 Decouple installation
 
-As mentioned just now, the first thing we’ve done is decoupling Cilium deploying/installation from Kubernetes: no daemonset, no configmap.
-All the configurations needed by the agent are on the node.
+As mentioned just now, the first thing we’ve done is decoupling Cilium
+deploying/installation from Kubernetes: no daemonset, no configmap.  All the
+configurations needed by the agent are on the node.
 
 This makes agents suffer less from Kubernetes outages, but more importantly,
-each agent is now completely independent in terms of configuration and upgrade.
+**<mark>each agent is now completely independent in terms of configuration and upgrade</mark>**.
 
 ### 2.3.2 Avoid retry/restart storms
 
 The second consideration is to avoid retry storms and burst starting,
 as requests will surge by two orders of magnitude or even higher
 when outage occurs, which could easily crash or stuck central components
-like Kubernetes and kvstore.
+like Kubernetes apiserver/etcd and kvstore.
 
 We use an internally developed restart backoff (jitter+backoff) mechanism to avoid such cases.
 the **<mark>jitter window is calculated according to cluster scale</mark>**.
 Such as,
 
 * For a cluster with 1000 nodes, the jitter window may be 20 minutes, during which period
-  each agent is allowed to start one and only one time, then backed off.
+  **<mark>each agent is allowed to start one and only one time</mark>**, then backed off.
 * For a cluster with 5000 nodes, the jitter window may be 60 minutes.
-* The backoff mechanism is **<mark>implemented as a bash script</mark>**, used
+* The backoff mechanism is **<mark>implemented as a bash script</mark>** (all states are saved in a local file), used
   in docker-compose as a "pre-start hook", **<mark>Cilium code suffers no changes</mark>**.
 
 Besides, we’ve assigned each agent a distinct certificate (each agent has a
@@ -151,12 +152,11 @@ Refer to our previous blogs if you'd like to learn more about Kubernetes AuthN/A
 
 ### 2.3.3 Stability first
 
-Trip.com provides online booking services worldwide with 7x24h,
-so at any time of any day, business service down would lead to
-instantaneous losses to the company.
-So, we can’t risk letting foundational
-services like networking to restart itself by the simple “fast failure” rule,
-but favor necessary human interventions and decisions.
+Trip.com provides online booking services worldwide with 7x24h, so at any time
+of any day, business service down would lead to instantaneous losses to the
+company. So, we
+**<mark>can’t risk letting foundational services like networking to restart itself by the simple “fast failure”</mark>**
+rule, but favor necessary human interventions and decisions.
 
 When failure arises, we'd like services such as Cilium to be more patient, just
 wait there and keep the current business uninterrupted, letting system developers and
@@ -181,7 +181,8 @@ the **<mark>maximum pods in your cluster</mark>**: a group of labels map to
 one identity in Cilium, so in it's design, all pods with the same labels share the same identity.
 But, if your `--labels=<labels>` is too fine grained (which is unfortunately the default
 case), it may result in each pod has a distinct identity in the worse case, then your cluster scale is
-upper limited to 64K pods, as identity is represented with a `16bit` integer. Refer to [8] for more information.
+upper bound by **<mark><code>64K</code></mark>** pods, as identity is represented
+with a `16bit` integer. Refer to [8] for more information.
 
 Besides, there are parameters that needs to be decided or tuned according to
 your workload throughput, such as identity allocation mode, connection tracking table.
@@ -190,25 +191,25 @@ Options:
 
 * `--cluster-id`/`--cluster-name`: avoid identity conflicts in multi-cluster scenarios;
 * `--labels=<labellist>` identity relavent labels
+* `--identity-allocation-mode` and kvstore benchmarking if kvstore mode is used
 
     We use `kvstore` mode, and **<mark>running kvstore (cilium etcd) on dedicated blade servers</mark>** for large clusters.
 
-* `--identity-allocation-mode` and kvstore benchmarking if kvstore mode is used
 * `--bpf-ct-*`
 * `--api-rate-limit`
 * Monitor aggregation options for reducing volume of observability data
 
 ### 2.3.5 Performance tuning
 
-Cilium includes many high performans options
-such as sockops and BPF host routing, and of course,
-all those features needs specific kernel versions support.
+Cilium includes many high performance options such as sockops and BPF host
+routing, and of course, all those features needs specific kernel versions
+support.
 
 * `--socops-enable`
 * `--bpf-lb-sock-hostns-only`
 * ...
 
-Besides, disable some debug level options are also necessary:
+Besides, **<mark>disable some debug level options</mark>** are also necessary:
 
 * `--disable-cnp-status-updates`
 * ...
@@ -228,7 +229,7 @@ error/warning logs,
 
 <p align="center"><img src="/assets/img/trip-ebpf-summit-2022/cilium-logs-alerting.png" width="100%" height="100%"></p>
 
-Besides, tracing can be helpful too, more on this lader.
+Besides, tracing can be helpful too, more on this later.
 
 ### 2.3.7 Misc options
 
@@ -276,7 +277,7 @@ The three-cluster case show this concept more clearly: only kvstores are involve
 
 <p align="center"><img src="/assets/img/trip-ebpf-summit-2022/kvstoremesh-3-clusters.png" width="80%" height="80%"></p>
 
-In ClusterMesh, agents get remote metadata from remote kvstores; in KVStoreMesh, they get from the local one.
+In ClusterMesh, agents fetch remote metadata from remote kvstores; in KVStoreMesh, they get from the local one.
 
 Thanks to cilium’s good design, this only needs
 **<mark>a few improvements and/or bugfixes to the agent and operator</mark>** [4], and we’ve already
@@ -328,7 +329,7 @@ We’ve tracked down several bugs in this way.
 
 Another useful tool is bpftrace for live tracing.
 
-But note that there are some differences for tracing a process in container.
+But note that there are some differences for **<mark>tracing container processes</mark>**.
 You need to find the PID namespace or absolute path of the cilium-agent binary on the node.
 
 ### 3.2.1 With absolute path

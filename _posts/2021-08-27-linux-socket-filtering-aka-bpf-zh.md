@@ -2,7 +2,7 @@
 layout    : post
 title     : "[译] Linux Socket Filtering (LSF, aka BPF)（KernelDoc，2021）"
 date      : 2021-08-27
-lastupdate: 2022-05-01
+lastupdate: 2023-02-11
 categories: bpf lsf assembly
 ---
 
@@ -45,7 +45,7 @@ BPF（`aka`：as known as）。本文介绍了 Linux BPF 的一些
 
 Linux Socket Filtering (LSF) 从 Berkeley Packet Filter（BPF）**<mark>衍生而来</mark>**。
 虽然 BSD 和 Linux Kernel filtering 有一些重要不同，但**<mark>在 Linux 语境中提到 BPF 或 LSF 时</mark>**，
-我们指的是 Linux 内核中的同一套**<mark>过滤机制</mark>**。
+我们指的都是 Linux 内核中的同一套**<mark>过滤机制</mark>**。
 
 ## 1.1 LSF (cBPF) 与 BSD BPF
 
@@ -54,10 +54,10 @@ BPF 允许用户空间程序**<mark>向任意 socket attach 过滤器（filter�
 LSF 完全遵循了 BSD BPF 的过滤器代码结构（filter code structure），因此实现过滤器时，
 BSD bpf.4 manpage 是很好的参考文档。
 
-但 **<mark>Linux BPF 要比 BSD BPF 简单很多</mark>**：
+不过，**<mark>Linux BPF 要比 BSD BPF 简单很多</mark>**：
 
 * 用户无需关心设备（devices）之类的东西；
-* 只需要创建自己的过滤器代码（filter code），通过 `SO_ATTACH_FILTER` 选项将其发送到内核；
+* 只需要创建自己的过滤器代码，通过 **<mark><code>SO_ATTACH_FILTER</code></mark>** 选项将其发送到内核；
 * 接下来只要这段代码能通过内核校验，用户就能立即在 socket 上开始过滤数据了。
 
 ## 1.2 `ATTACH`/`DETACH`/`LOCK` 操作
@@ -85,7 +85,7 @@ BSD bpf.4 manpage 是很好的参考文档。
 
 BPF 模块的**<mark>最大用户</mark>**可能就是 `libpcap`。例如，对于高层过滤命令 `tcpdump -i em1 port 22`，
 
-* **<mark>libpcap 编译器</mark>**能将其编译生成一个 cBPF 程序，然后通过前面介绍的 `SO_ATTACH_FILTER` 就能加载到内核；
+* **<mark>libpcap 编译器</mark>**能将其编译生成一个 cBPF 程序，然后通过前面介绍的 `SO_ATTACH_FILTER` 加载到内核；
 * 加 `-ddd` 参数，可以 **<mark>dump 这条命令对应的字节码</mark>**：`tcpdump -i em1 port 22 -ddd`。
 
 虽然我们这里讨论的都是 socket，但 **<mark>Linux 中 BPF 还可用于很多其他场景</mark>**。例如
@@ -109,7 +109,7 @@ BPF 模块的**<mark>最大用户</mark>**可能就是 `libpcap`。例如，对�
 
 ## 2.1 `struct sock_filter`
 
-要开发 cBPF 应用，用户空间程序需要 include `<linux/filter.h>`，其中定义了下面的结构体：
+要开发 cBPF 应用，用户空间程序需要 include **<mark><code><linux/filter.h></code></mark>**，其中定义了下面的结构体：
 
 ```c
 struct sock_filter { /* Filter block */
@@ -125,8 +125,8 @@ struct sock_filter { /* Filter block */
 
 ## 2.2 `struct sock_fprog`
 
-要实现 socket filtering，需要通过 `setsockopt(2)` 将一个 `struct sock_fprog` 指针传递给内核（后面有例子）。
-这个结构体的定义：
+要实现 socket filtering，需要通过 **<mark><code>setsockopt(2)</code></mark>**
+将一个 `struct sock_fprog` 指针传递给内核（后面有例子）。这个结构体的定义：
 
 ```c
 struct sock_fprog {                /* Required for SO_ATTACH_FILTER. */
@@ -798,7 +798,7 @@ c:    mov    0x68(%rdi),%r9d
 # 6 BPF kernel internals（eBPF）
 
 在内核内部，解释器（the kernel interpreter）使用的是与 cBPF 类似、但属于**<mark>另一种指令集的格式</mark>**。
-这种指令集格式的参考处理器原生指令集建模，因此**<mark>更接近底层处理器架构</mark>**，
+这种指令集格式参考了**<mark>处理器原生指令集建模</mark>**，因此**<mark>更接近底层处理器架构</mark>**，
 性能更好（后面会详细介绍）。
 
 这种**<mark>新的指令集称为 “eBPF”</mark>**，也叫 “internal BPF”。
@@ -806,7 +806,7 @@ c:    mov    0x68(%rdi),%r9d
 > 注意：eBPF 这个名字源自 **<mark>[e]xtended BPF</mark>**（直译为“扩展的 BPF”），
 > 它与 **<mark>BPF extensions</mark>**（直译为 “BPF 扩展”，见前面章节）并不是一个概念！
 >
-> * eBPF 是一种**<mark>指令集架构（ISA）</mark>**，
+> * eBPF 是一种**<mark>指令集架构（ISA）</mark>**（在 ELF 规范中有正式的 ISA 编号 `0xF7`，译注），
 > * BPF extensions 是早年 **<mark>cBPF</mark>** 中对 `BPF_LD | BPF_{B,H,W} | BPF_ABS` 几个指令**<mark>进行 overloading 的技术</mark>**。
 
 ## 6.1 eBPF 设计考虑

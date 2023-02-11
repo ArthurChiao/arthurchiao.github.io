@@ -580,8 +580,8 @@ offload 到硬件加速。一般来说，软件 VxLAN 的方式性能较差，�
 
 BGP 方案性能更好，而且 IP 可路由，但需要底层网络支持。这种方案需要在每个
 node 上起一个 BGP agent 来和外部网络交换路由，涉及 BGP agent 的选型、AS（自治系
-统）的设计等额外工作。如果是内网，一般就是 BGP agent 与硬件网络做 peering；如果
-是在 AWS 之类的公有云上，还可以调用厂商提供的 BGP API。
+统）的设计等额外工作。如果是内网，一般就是 BGP agent 与硬件网络做 peering；~~如果
+是在 AWS 之类的公有云上，还可以调用厂商提供的 BGP API~~。
 
 ## 4.4 优劣势比较（Pros & Cons）
 

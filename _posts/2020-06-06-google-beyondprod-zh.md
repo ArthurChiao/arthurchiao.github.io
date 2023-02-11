@@ -17,12 +17,12 @@ Google 虽有官方中文版，但机器翻译痕迹略重，相比原文反而�
 
 **由于译者水平有限，本文不免存在遗漏或错误之处。如有疑问，请查阅原文。**
 
+以下是译文。
+
 ----
 
 * TOC
 {:toc}
-
-以下是译文。
 
 ----
 
@@ -36,8 +36,8 @@ Google 虽有官方中文版，但机器翻译痕迹略重，相比原文反而�
 > ~~物理位置~~ [数据中心]，边界内的东西不再是免检的（blessed），边界内也不再
 > 是一个能够安全地存放 ~~个人计算设备和企业应用~~ [微服务]的地方**。”
 >
-> 本白皮书介绍 **Google 基础设施的多个组件是如何协同工作来保证负载（workload）安
-> 全的 —— 我们所使用的架构如今被称为“云原生”（cloud-native）架构**。如果想对
+> 本白皮书介绍 **Google 基础设施的多个组件是如何协同工作来保证 workload 安全的** ——
+> **<mark>我们所使用的架构如今被称为“云原生”（cloud-native）架构</mark>**。如果想对
 > Google 安全有一个整体了解，推荐阅读
 > [Security Infrastructure Design whitepaper](https://cloud.google.com/security/infrastructure/design/)。
 >
@@ -93,7 +93,7 @@ Google 虽有官方中文版，但机器翻译痕迹略重，相比原文反而�
 
   BeyondProd 应用了如下<mark>概念</mark>：
 
-  * 双向认证微服务端点（mutually authenticated service endpoints）
+  * 双向认证服务端点（mutually authenticated service endpoints）
   * 传输安全（transport security）
   * 带 GSLB 和 DoS 防护功能的边界终止（edge termination with global load balancing and denial of service protection）
   * 端到端代码来源验证（end-to-end code provenance）
@@ -109,6 +109,8 @@ Google 虽有官方中文版，但机器翻译痕迹略重，相比原文反而�
 
 # 3 设计动机（Motivation）
 
+## 3.1 为什么 Google 迁移到容器平台
+
 出于下面几个原因，我们迁移到了容器和容器编排平台：
 
 * 获得更高的资源利用率
@@ -122,6 +124,8 @@ Google 虽有官方中文版，但机器翻译痕迹略重，相比原文反而�
 够安全。攻击者一旦攻破了边界，就能够在网络内部任意游走。**我们意识到需要在基础设
 施中引入更强的安全控制，但也希望这些控制对 Google 开发者是友好的**：他们能够轻
 松地编写和部署安全的应用，而不用亲自实现安全特性。
+
+## 3.2 迁移到容器平台的好处
 
 从单体应用迁移到容器化的分布式微服务，并基于容器编排系统来编排这些服务，带来了两
 方面好处，并且这两方面相互交织：
@@ -290,7 +294,7 @@ production network）。
 在零信任安全模型中，内部流量之间默认不再有信任 —— 需要其他的安全控制，例如认证和
 加密。同时，**向微服务的转变提供了一个对传统安全模型进行重新思考的机会**。
 
-1. 当**去掉仅仅依赖网络边界（例如，防火墙）这一假设后**，就可以**按服务（service）对网络进行进一步划分**。
+1. 当**去掉仅仅依赖网络边界（例如，防火墙）这一假设后**，就可以**<mark>按服务（service）对网络进行进一步划分</mark>**。
 2. 更进一步，顺着这个思路可以实现**微服务级别的隔离**（microservice-level
    segmentation），而**服务之间没有内在的信任**（no inherent trust between
    services）。
@@ -445,7 +449,7 @@ strengthen our security） —— 因此制定和优化了下面的这些安全�
       这使得服务之间不需要彼此信任，**基于 ALTS 的对端身份（peer identity via
       ALTS）经常不足以完成授权，因为这种授权决定通常还要基于终端用户的身份**。
 
-* **Borg 蓝绿部署工具集** [3]：在执行维护任务时，这种工具负责对运行中的 workloads 进行迁移。
+* **<mark>Borg 蓝绿部署工具集</mark>** [3]：在执行维护任务时，这种工具负责对运行中的 workloads 进行迁移。
 
     方式：现有的 Borg job 不动，加入一个新 Borg job，然后负载均衡器将流量逐步从
     前者切到后者。
@@ -458,14 +462,14 @@ strengthen our security） —— 因此制定和优化了下面的这些安全�
   ))。如果变更会影响到 Google Cloud 基础设施，我们会使用热迁移（live migration）
   保证虚拟机 workload 不受影响。
 
-* [**gVisor**](https://gvisor.dev/)：用于 workload 隔离。
+* [<mark>gVisor</mark>](https://gvisor.dev/)：用于 **<mark>workload 隔离</mark>**。
 
     gVisor 使用一个用户态内核拦截和处理系统调用，减少与宿主机的交互以及潜在的攻
-    击面。这个内核提供了运行一个应用所需的大部分功能，但缩小了应用能够访问到的宿
-    主机内核表面（host kernel surface）。
+    击面。这个内核提供了运行一个应用所需的大部分功能，但缩小了应用能够访问到的宿主机内核面积
+    （host kernel surface）。
 
-    在 Google 的基础设施中，内部应用和 Google Cloud 客户的应用共享宿主机，而
-    gVisor 就是我们隔离二者的重要工具之一。
+    在 Google 的基础设施中，**<mark>内部应用和 Google Cloud 客户的应用共享宿主机</mark>**，
+    而 gVisor 就是我们隔离二者的重要工具之一。
 
 表 2 列出了 Google 基础设施中，前面提到的各种安全原则所对应的工具。
 
@@ -524,7 +528,7 @@ Service Access Policy 检查，并在出向（outbound）RPC 中带上 EUC ticke
 * **每个机器都有一个由 HINT 系统颁发的 ALTS 凭证**，只有 HINT 验证过这台机器启动
   是正常的（machine boot was successful），这个 ALTS 凭证才能被解密。
 * 大部分 Google服务都以微服务的方式运行在 Borg 上，这些**微服务都有各自的 ALTS身份**。
-* **Borgmaster [5] 基于微服务的身份向 workloads 授予 ALTS 微服务凭证**，如图 1 所示。
+* **<mark>Borgmaster [5] 基于微服务的身份向 workloads 授予 ALTS 微服务凭证</mark>**，如图 1 所示。
 * 机器级别的 ALTS凭证成为了**提供微服务凭证的安全通道**（secure channel for
   provisioning microservice credentials），因此实际上只有成功地通过了 HINT 检查
   的机器才能运行微服务 workloads。

@@ -13,12 +13,12 @@ Commit](https://www.enterpriseintegrationpatterns.com/ramblings/18_starbucks.htm
 
 **由于译者水平有限，本文不免存在遗漏或错误之处。如有疑问，请查阅原文。**
 
+以下是译文。
+
 ----
 
 * TOC
 {:toc}
-
-以下是译文。
 
 ----
 

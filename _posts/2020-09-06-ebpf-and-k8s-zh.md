@@ -21,12 +21,12 @@ Daniel 很多地方只是点到，没有展开。译文中加了一些延展阅�
 
 **由于译者水平有限，本文不免存在遗漏或错误之处。如有疑问，请查阅原文。**
 
+以下是译文。
+
 ----
 
 * TOC
 {:toc}
-
-以下是译文。
 
 ----
 
@@ -259,7 +259,7 @@ eBPF 是如何诞生的呢？我最初开始讲起。这里“最初”我指的
 2. BPF 当时用于 `tcpdump`，**在内核中尽量前面的位置抓包**，它不会 crash 内核；此
    外，它还用于 seccomp，**对系统调用进行过滤**（system call filtering），但当时
    使用的非常受限，远不是今天我们已经在用的样子。
-3. 此外就是前面提到的 feature creeping 问题，以及 **tc 和 netfilter 的代码重复问题，因为这两个子系统是竞争关系**。
+3. 此外就是前面提到的 feature creeping 问题，以及 **<mark>tc 和 netfilter 的代码重复问题，因为这两个子系统是竞争关系</mark>**。
 4. **OVS 当时被认为是内核中最先进的数据平面**，但它最大的问题是：与内核中其他网
    络模块的集成不好【译者注 1】。此外，很多核心的内核开发者也比较抵触 OVS，觉得它很怪。
 
@@ -319,7 +319,7 @@ patch。Linus 会疯的。
 
 ### eBPF 分成两个方向：networking & tracing
 
-到了 2015 年，eBPF 开发分成了两个方向：
+到了 **<mark>2015 年，eBPF 开发分成了两个方向</mark>**：
 
 * networking
 * tracing
@@ -331,7 +331,7 @@ patch。Linus 会疯的。
 
 ### 支持将 eBPF attach 到 kprobes
 
-这是 tracing 的第一个使用案例。
+这是 **<mark>tracing 的第一个使用案例</mark>**。
 
 Alexei 主要负责 tracing 部分，他添加了一个 patch，支持加载 eBPF 用来做 tracing，
 能获取系统的观测数据。
@@ -342,6 +342,8 @@ Alexei 主要负责 tracing 部分，他添加了一个 patch，支持加载 eBP
 datapath 进行编程，获得一个高性能 datapath。
 
 ### 为 tc 添加了一个 lockless ingress & egress hook 点
+
+注意这里的关键词之一是 “lockless”，在著名的 **<mark>qdisc root lock 之外</mark>**执行 TC BPF 代码。
 
 > 译注：可参考：
 >
@@ -354,7 +356,7 @@ datapath 进行编程，获得一个高性能 datapath。
 
 ### bcc 项目发布
 
-作为 tracing frontend for eBPF。
+作为 **<mark>tracing frontend</mark>** for eBPF。
 
 ## 2016
 
@@ -365,7 +367,7 @@ datapath 进行编程，获得一个高性能 datapath。
 
 ### Cilium 项目发布
 
-Cilium 最开始的目标是 **docker 网络解决方案**。
+Cilium 最开始的目标是 **<mark>docker 网络解决方案</mark>**。
 
 * 通过 eBPF 实现高效的 label-based policy、NAT64、tunnel mesh、容器连通性。
 * 整个 datapath & forwarding 逻辑全用 eBPF 实现，不再需要 Docker 或 OVS 桥接设备。
@@ -420,9 +422,9 @@ kTLS 是**将 TLS 处理 offload 到内核**，例如，将加解密过程从 op
 为了检查内核内 eBPF 的状态（introspection）、查看内核加载了哪些 BPF 程序等，
 我们添加了一个新工具 bpftool。现在这个工具已经功能非常强大了。
 
-同样，为了方便用户空间应用使用 eBPF，我们提供了**用户空间 API**（user space API
-for applications） `libbpf`。这是一个 C 库，接管了所有加载工作，这样用户就不需要
-自己处理复杂的加载过程了。
+同样，为了方便用户空间应用使用 eBPF，我们提供了**<mark>用户空间 API</mark>**
+（user space API for applications）**<mark><code>libbpf</code></mark>**。
+这是一个 C 库，接管了所有加载工作，这样用户就不需要自己处理复杂的加载过程了。
 
 ### BPF to BPF function calls
 
@@ -443,8 +445,8 @@ Cilium 此时支持的功能：
 ### BTF（Byte Type Format）
 
 内核添加了一个称为 BTF 的组件。这是一种元数据格式，和 DWARF 这样的 debugging
-data 类似。但 BTF 的 size 要小的多，而更重要的是，有史以来，**内核第一次变得可自
-描述了**（self-descriptive）。什么意思？
+data 类似。但 **<mark>BTF 的 size 要小的多</mark>**，更重要的是，有史以来
+**内核第一次变得可自描述了**（self-descriptive）。什么意思？
 
 想象一下当前正在运行中的内核，它**内置了自己的数据格式**（its own data format）
 和**内部数据结构**（internal structures），你能用工具来查看这些东西（you can
@@ -465,12 +467,11 @@ introspect them）。还是不太懂？这么说吧，**BTF 是后来的 “一�
 
 ### 新 socket 类型：AF_XDP
 
-内核添加了一个**新 socket 类型 `AF_XDP`**。它提供的能力是：**在零拷贝（
-zero-copy）的前提下将包从网卡驱动送到用户空间**。
+内核添加了一个**新 socket 类型 `AF_XDP`**。它提供的能力是：
+**<mark>在零拷贝（zero-copy）的前提下将包从网卡驱动送到用户空间</mark>**。
 
 > 回忆前面的内容，数据包到达网卡后，先经过 XDP，然后才为这个包分配内存。
-> 因此在 XDP 层直接将包送到用户态是无需拷贝的。
->
+> 因此在 XDP 层直接将包送到用户态就绕过了内核内存分配和数据拷贝。
 > 译者注
 
 `AF_XDP` 提供的能力与 DPDK 有点类似，不过
@@ -482,7 +483,7 @@ zero-copy）的前提下将包从网卡驱动送到用户空间**。
 而 DPDK 这种 bypass 内核的方案导致绝大大部分现有工具都用不了了。
 
 由于所有这些操作都是发生在 XDP 层的，因此它称为 `AF_XDP`。插入到这里的 BPF 代码
-能直接将包送到 socket。
+能**<mark>直接将包送到 socket</mark>**。
 
 ### bpffilter
 
@@ -580,7 +581,7 @@ eBPF 内核社区截至 7 月份的一些数据：
 * Cloudflare：L4LB、DDoS。
 * Cilium
 
-上图中，右下角是**前 Netfilter 维护者** Rusty Russel 说的一句，业界对 eBPF
+上图中，右边是**前 Netfilter 维护者** Rusty Russel 说的一句，业界对 eBPF
 的受认可程度可窥一斑。
 
 # 11 eBPF 革命：燃烧到 Kubernetes 社区
@@ -628,7 +629,7 @@ $ kubectl -n kube-system delete ds kube-proxy
 
 这里实现的好处：性能更高。
 
-* **不需要包级别（packet leve）的地址转换**（NAT）。**在系统调用时，还没有创建包**，因此性能更高。
+* **不需要包级别（packet leve）的地址转换**（NAT）。**<mark>在系统调用时，还没有创建包</mark>**，因此性能更高。
 * 省去了 kube-proxy 路径中的很多中间节点（intermediate node hops）
 
 可以看出，应用对这种拦截和重定向是无感知的（符合 k8s Service 的设计）。
@@ -687,7 +688,7 @@ $ kubectl -n kube-system delete ds kube-proxy
 结论与上面吞吐类似。
 
 * XDP 性能最好，是因为 **XDP BPF 在驱动层执行，不需要将包 push 到内核协议栈**。
-* kube-proxy 不管是 iptables 还是 ipvs 模式，都**在处理软中断（softirq）上消耗了大量 CPU**。
+* kube-proxy 不管是 iptables 还是 ipvs 模式，都**<mark>在处理软中断（softirq）上消耗了大量 CPU</mark>**。
 
 # 12 eBPF 和 Kubernetes：未来展望
 

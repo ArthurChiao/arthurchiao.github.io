@@ -1,21 +1,20 @@
 ---
 layout: post
 title:  "[译] strace 是如何工作的（2016）"
-date:   2019-02-02
+date      : 2019-02-02
+lastupdate: 2023-02-11
 categories: strace system-call
 ---
 
 ### 译者序
 
-本文翻译自 2016 年的一篇英文博客 [How Does strace Work
-](https://blog.packagecloud.io/eng/2016/02/29/how-does-strace-work/)
-。**如果能看懂英文，我建议你阅读原文，或者和本文对照看。**
+本文翻译自 2016 年的一篇英文博客 [How Does strace Work](https://blog.packagecloud.io/eng/2016/02/29/how-does-strace-work/)。
 
-阅读本文之前，强烈建议先阅读这篇之前的文章：
-
-1. [(译) Linux 系统调用权威指南]({% link _posts/2019-01-30-system-call-definitive-guide-zh.md %})
-
+阅读本文之前，强烈建议先阅读
+[Linux 系统调用权威指南]({% link _posts/2019-01-30-system-call-definitive-guide-zh.md %})，
 其中包含了本文所需的部分预备知识。
+
+**由于译者水平有限，本文不免存在遗漏或错误之处。如有疑问，请查阅原文。**
 
 以下是译文。
 
@@ -27,20 +26,31 @@ categories: strace system-call
 `ptrace` 系统调用，对其 API 层及内部实现进行分析，以弄清楚 `strace`
 是如何获取被跟踪进程的（系统调用相关的）详细信息的。
 
-## 1 `ptrace` 是什么
+----
 
-`ptrace` 是一个系统调用，可以用来：
+* TOC
+{:toc}
+
+----
+
+# 1 `ptrace` 是什么
+
+## 1.1 `ptrace()` 系统调用
+
+`ptrace()` 是一个系统调用，可以用来：
 
 1. 跟踪（其他）系统调用
 2. 读写内存和寄存器
 3. 控制（manipulate）被跟踪进程的信号传送（signal delivery）
 
-以上可以看出，`ptrace` 在跟踪和控制程序方面非常有用。`strace`、
-[GDB](https://www.gnu.org/software/gdb/)等工具内部都用到了它。
+ptrace [man page](http://man7.org/linux/man-pages/man2/ptrace.2.html) 可以查看更多信息。
 
-可以通过它的 [man page](http://man7.org/linux/man-pages/man2/ptrace.2.html) 查看更多信息。
+## 1.2 使用场景
 
-## 2 跟踪过程
+以上可以看出，`ptrace` 在跟踪和控制程序方面非常有用。**<mark><code>strace</code></mark>**、
+**<mark>GDB 等工具内部都用到了它</mark>**。
+
+# 2 `ptrace` 跟踪过程
 
 本文将使用如下两个术语：
 
@@ -58,12 +68,12 @@ tracee 收到了 `SIGTRAP` 信号而停下来一样。接下来 tracer 就可以
 然后，**恢复 tracee 执行**：再次调用 `ptrace`，带 `PTRACE_SYSCALL` 和 tracee 进程 ID。
 tracee 会继续运行，进入到系统调用；在退出系统调用之前，再次被内核暂停。
 
-以上“暂停-采集-恢复执行”过程不断重复，tracer 就可以获取每次系统调用的信息，打印
+以上**<mark>“暂停-采集-恢复执行”</mark>**过程不断重复，tracer 就可以获取每次系统调用的信息，打印
 出参数、返回值、时间等等。
 
 以上就是 ptrace 跟踪其他系统调用的大致过程，接下来看它在内核中具体是如何工作的。
 
-## 3 内核实现
+# 3 内核实现
 
 内核的 `ptrace` 系统调用是一个很好的起点。接下来的代码会基于内核 3.13，并提供
 github 的代码连接。
@@ -71,7 +81,7 @@ github 的代码连接。
 整个 `ptrace` 系统的代码见
 [kernel/ptrace.c](https://github.com/torvalds/linux/blob/v3.13/kernel/ptrace.c#L1036)。
 
-### 3.1 `PTRACE_ATTACH` 代码流程
+## 3.1 `PTRACE_ATTACH` 代码流程
 
 首先看 `PTRACE_ATTACH` 干了什么事情。
 
@@ -90,7 +100,7 @@ if (request == PTRACE_ATTACH || request == PTRACE_SEIZE) {
 }
 ```
 
-#### 3.1.1 `ptrace_attach`
+### 3.1.1 `ptrace_attach`
 
 这个[函数](https://github.com/torvalds/linux/blob/v3.13/kernel/ptrace.c#L279)做的事情：
 
@@ -107,7 +117,7 @@ tracee](https://github.com/torvalds/linux/blob/v3.13/kernel/ptrace.c#L339)。
 
 函数结束后，执行回到 `ptrace`。
 
-#### 3.1.2 从 `ptrace_attach` 返回到 `ptrace`
+### 3.1.2 从 `ptrace_attach` 返回到 `ptrace`
 
 接下来，`ptrace` 调用
 [ptrace_check_attach](https://github.com/torvalds/linux/blob/v3.13/kernel/ptrace.c#L1066)
@@ -127,7 +137,7 @@ default 分支。default 分支做的事情就是调用 `ptrace_request` 函数�
 
 以上就是 `PTRACE_ATTACH` 的工作流程。接下来看 `PTRACE_SYSCALL`。
 
-### 3.2 `PTRACE_SYSCALL` 代码流程
+## 3.2 `PTRACE_SYSCALL` 代码流程
 
 首先会调用
 [ptrace_check_attach](https://github.com/torvalds/linux/blob/v3.13/kernel/ptrace.c#L1066)
@@ -148,7 +158,7 @@ tracee 的内核结构体变量 `task` 设置 `TIF_SYSCALL_TRACE` flag。
 tracee
 [被唤醒](https://github.com/torvalds/linux/blob/v3.13/kernel/ptrace.c#L751)，直到它遇到下一个系统调用。
 
-## 4 进入系统调用
+# 4 进入系统调用
 
 到目前为止，我们已经通过设置内核结构体变量 `struct task_struct *task` 的
 `TIF_SYSCALL_TRACE` 来使内核跟踪指定进程的系统调用。
@@ -159,7 +169,7 @@ tracee
 x86 平台上，这段代码位于
 [arch/x86/kernel/entry_64.S](https://github.com/torvalds/linux/blob/v3.13/arch/x86/kernel/entry_64.S#L593)。
 
-### 4.1 `_TIF_WORK_SYSCALL_ENTRY`
+## 4.1 `_TIF_WORK_SYSCALL_ENTRY`
 
 如果查看汇编函数 `system_call`，会看到它会检查一个 `_TIF_WORK_SYSCALL_ENTRY` flag：
 
@@ -186,7 +196,7 @@ x86 平台上，这段代码位于
 到这里就明白了，如果进程的内核结构体变量设置了
 `_TIF_SYSCALL_TRACE`，到这里就会检测到，然后执行转到 `tracesys`。
 
-### 4.2 `tracesys`
+## 4.2 `tracesys`
 
 [代码](https://github.com/torvalds/linux/blob/v3.13/arch/x86/kernel/entry_64.S#L723)会调用
 `syscall_trace_enter`。这个函数定义在 `arch/x86/kernel/ptrace.c`，是 CPU
@@ -205,7 +215,7 @@ x86 平台上，这段代码位于
 
 它接下来又调用了 [ptrace_report_syscall](https://github.com/torvalds/linux/blob/v3.13/include/linux/tracehook.h#L58)。
 
-### 4.3 `ptrace_report_syscall`
+## 4.3 `ptrace_report_syscall`
 
 这个函数符合之前我们描述过的：当 tracee 进入系统调用时生成一个 SIGTRAP 信号：
 
@@ -217,14 +227,14 @@ ptrace_notify(SIGTRAP | ((ptrace & PT_TRACESYSGOOD) ? 0x80 : 0));
 [kernel/signal.c](https://github.com/torvalds/linux/blob/v3.13/kernel/signal.c#L1975)。
 它会进一步调用 `ptrace_do_notify`，后者会初始化一个 `siginfo_t info` 变量，交给 `ptrace_stop`。
 
-### 4.4 `SIGTRAP`
+## 4.4 `SIGTRAP`
 
 tracee 一旦收到 SIGTRAP 信号就停止执行，tracer 会收到通知说有信号待处理。接下来
 tracer 就可以查看 tracee 的状态，打印寄存器的值、时间戳等等信息。
 
 当你用 `strace` 工具跟踪进程时，屏幕上的输出就是这么来的。
 
-### 4.5 `syscall_trace_leave`
+## 4.5 `syscall_trace_leave`
 
 退出系统调用的过程与此类似：
 
@@ -234,7 +244,7 @@ tracer 就可以查看 tracee 的状态，打印寄存器的值、时间戳等�
 
 这就是 tracee 的系统调用完成时，tracer 如何获取返回值、时间戳等等信息以打印输出的。
 
-## 6 结束语
+# 5 结束语
 
 `ptrace`
 系统调用对调试器、跟踪器和其他的从进程中提取信息的程序非常有用，`strace`
@@ -246,7 +256,7 @@ tracer 就可以查看 tracee 的状态，打印寄存器的值、时间戳等�
 我建议你也看一看你最喜欢的调试器的源码，看它是如何基于 `ptrace`
 来完成检查程序状态、修改寄存器和内存等工作的。
 
-## 7 我们的相关文章
+# 6 我们的相关文章
 
 如果对本文感兴趣，那么你可能对我们的以下文章也感兴趣：
 

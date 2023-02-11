@@ -2,7 +2,7 @@
 layout    : post
 title     : "[译] Cilium：基于 BPF+EDT+FQ+BBR 实现更好的带宽管理（KubeCon, 2022）"
 date      : 2022-10-30
-lastupdate: 2022-10-30
+lastupdate: 2023-02-11
 categories: bpf tc cilium bbr
 ---
 
@@ -170,7 +170,7 @@ TBF（Token Bucket Filter）是个令牌桶，所有连接/流量都要经过**<
 > 这一节是介绍 Google 的基础性工作，作者引用了 
 > [Evolving from AFAP: Teaching NICs about time (Netdev, 2018)](https://www.youtube.com/watch?v=MAni0_lN7zE)
 > 中的一些内容；之前我们已翻译，见
-> [<mark>流量控制（TC）五十年：从基于缓冲队列（Queue）到基于时间戳（EDT）的演进（Google, 2018）</mark>]({% link _posts/2022-10-07-traffic-control-from-queue-to-edt-zh.md %})，
+> [<mark>流量控制（TC）五十年：从基于缓冲队列（Queue）到基于时间（EDT）的演进（Google, 2018）</mark>]({% link _posts/2022-10-07-traffic-control-from-queue-to-edt-zh.md %})，
 > 因此一些内容不再赘述，只列一下要点。
 >
 > 译注。
@@ -251,10 +251,10 @@ egress 限速工作流程：
 
 <p align="center"><img src="/assets/img/bpf-datapath-ext-for-k8s/datapath-works-today.png" width="80%" height="80%"></p>
 
-1. Pod egress 流量从容器进入宿主机，此时会发生 **<mark>netns 切换</mark>**，但 socket 信息 `skb->sk` 不会丢失；
-2. Host veth 上的 BPF 标记（marking）包的 aggregate（queue_mapping），见 [Cilium 代码](https://github.com/cilium/cilium/blob/v1.10/bpf/lib/edt.h)；
-3. 物理网卡上的 BPF 程序根据 aggregate 设置的限速参数，设置每个包的时间戳 `skb->tstamp`；
-4. FQ+MQ 基本实现了一个 timing-wheel 调度器，根据 `skb->tstamp` 调度发包。
+1. Pod egress 流量从容器进入宿主机，此时会发生 **<mark>netns 切换</mark>**，但 socket 信息 **<mark><code>skb->sk</code></mark>** 不会丢失；
+2. Host 端 **<mark>veth 上的 BPF</mark>** 标记（marking）包的 aggregate（queue_mapping），见 [Cilium 代码](https://github.com/cilium/cilium/blob/v1.10/bpf/lib/edt.h)；
+3. **<mark>物理网卡上的 BPF</mark>** 程序根据 aggregate 设置的限速参数，**<mark>设置每个包的时间戳</mark>** `skb->tstamp`；
+4. **<mark>FQ+MQ</mark>** 基本实现了一个 timing-wheel 调度器，根据 `skb->tstamp` 调度发包。
 
 过程中用**<mark>到了 bpf map 存储 aggregate 信息</mark>**。
 
@@ -282,7 +282,7 @@ netperf 压测。
 
 ## 4.1 BBR 基础
 
-> 想完整了解 BBR 的设计，可参考
+> 完整 BBR 设计可参考
 > [<mark>(论文) BBR：基于拥塞（而非丢包）的拥塞控制（ACM, 2017）</mark>]({ % link _posts/2022-01-02-bbr-paper-zh.md % })。
 > 译注。
 
@@ -306,7 +306,7 @@ netperf 压测。
 
 ## 4.2 BBR + K8s/Cilium
 
-### 4.2.1 存在的问题：跨 netns 时，`skb->tstamp` 要被重置
+### 4.2.1 存在的问题：跨 netns 时，`skb->tstamp` 被重置
 
 BBR 能不能用到 k8s 里面呢？
 
@@ -317,7 +317,7 @@ BBR 能不能用到 k8s 里面呢？
 
 <p align="center"><img src="/assets/img/better-bw-manage-with-ebpf/pod-bbr-1.png" width="80%" height="80%"></p>
 
-### 4.2.2 为什么会被重置
+### 4.2.2 为什么被重置
 
 下面介绍一些背景，为什么这个 ts 会被重置。
 
@@ -403,7 +403,7 @@ K8s/Cilium backed video streaming service: CUBIC vs. BBR
 
 ## 4.4 BBR 使用注意事项
 
-1. 如果同一个环境（例如数据中心）同时启用了 BBR 和 CUBIC，那使用 **<mark>BBR 的机器会强占更多的带宽</mark>**，造成不公平（unfaireness）；
+1. 如果同一个环境（例如数据中心）同时启用了 BBR 和 CUBIC，那使用 **<mark>BBR 的机器会抢占更多的带宽</mark>**，造成不公平（unfaireness）；
 
     <p align="center"><img src="/assets/img/better-bw-manage-with-ebpf/bbr-usage-considerations.png" width="95%" height="95%"></p>
 
@@ -436,15 +436,15 @@ K8s/Cilium backed video streaming service: CUBIC vs. BBR
 # 6 Cilium 限速方案存在的问题（译注）
 
 Cilium 的限速功能[我们]({% link _posts/2022-09-28-trip-large-scale-cloud-native-networking-and-security-with-cilium-ebpf.md %})
-在 v1.10 就在用了，但是使用下来发现两个问题，到目前（2022.11）社区还没有解决，
+在 v1.10 就在用了，但是使用下来发现两个问题，
 
-1. 启用 bandwidth manager 之后，Cilium 会 [hardcode](https://github.com/cilium/cilium/blob/v1.12/pkg/bandwidth/bandwidth.go#L114)
-   somaxconn、netdev_max_backlog 等内核参数，覆盖掉用户自己的内核调优；
+1. ~~启用 bandwidth manager 之后，Cilium 会 hardcode somaxconn、netdev_max_backlog 等内核参数，覆盖掉用户自己的内核调优；~~
+  [2022.12 已解决](https://github.com/cilium/cilium/pull/22468)
 
    例如，如果 node `netdev_max_backlog=8192`，那 Cilium 启动之后，
    就会把它强制覆盖成 1000，导致在大流量场景因为宿主机这个配置太小而出现丢包。
 
-2. **<mark>启用 bandwidth manager 再禁用之后，并不会恢复到原来的 qdisc 配置</mark>**，MQ/FQ 是残留的，导致大流量容器被限流（throttle）。
+2. **<mark>启用 bandwidth manager 再禁用时，并不会恢复到原来的 qdisc 配置</mark>**，MQ/FQ 是残留的，导致大流量容器被限流（throttle）。
 
     例如，如果原来物理网卡使用的默认 `pfifo_fast` qdisc，或者 bond 设备默认使用
     的 `noqueue`，那启用再禁用之后，并不会恢复到原来的 qdisc 配置。残留 FQ 的一

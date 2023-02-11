@@ -6,8 +6,6 @@ lastupdate: 2020-05-05
 categories: sre
 ---
 
-### 编者按
-
 本文是阅读 Brendan Gregg 所著的 ***Systems Performance***: Enterprise and the
 Cloud 一书（中文版名为《性能之巅》）时所做的笔记。
 
@@ -15,22 +13,10 @@ Cloud 一书（中文版名为《性能之巅》）时所做的笔记。
 
 ----
 
-## 目录
-
-1. [绪论](#ch_1)
-2. [方法](#ch_2)
-3. [操作系统](#ch_3)
-4. [观测工具（Observability Tools）](#ch_4)
-5. [应用（Application）](#ch_5)
-6. [CPU](#ch_6)
-7. [内存](#ch_7)
-8. [文件系统](#ch_8)
-9. [磁盘](#ch_9)
-10. [网络](#ch_10)
+* TOC
+{:toc}
 
 ----
-
-<a name="ch_1"></a>
 
 # 1. 绪论
 
@@ -69,7 +55,7 @@ DTrace 之前，系统跟踪常常使用**静态探测**（static probes），
 * 访问一次寄存器需要一个时钟周期，`0.3 ns`
 * **作为对比，光传播 `1` 米所需的时间**是 `3.4 ns`
 
-<p align="center">表 2-1. 系统延迟的时间尺度</p>
+<p align="center">表 2-1. <mark>系统延迟的时间尺度</mark></p>
 
 | Event                       | Latency   | Scaled    |
 |:----------------------------|:--------- |:----------|
@@ -77,13 +63,13 @@ DTrace 之前，系统跟踪常常使用**静态探测**（static probes），
 | L1 cache                    | 0.9  `ns` | 3  秒     |
 | L2 cache                    | 2.8  `ns` | 9  秒     |
 | L3 cache                    | 12.9 `ns` | 43 秒     |
-| 内存 (DRAM, from CPU)       | 120  `ns` | 6  分     |
+| 内存 (DRAM, from CPU)       | 120  `ns` | **<mark>6  分</mark>**     |
 | SSD                         | 50-150 `us` | 2-6 天  |
 | 旋转磁盘                    | 1-10 `ms` | 1-12 月   |
 | 互联网: 旧金山 -> 纽约      | 40 `ms`   | 4  年     |
 | 互联网: 旧金山 -> 英国      | 81 `ms`   | 8  年     |
 | 互联网: 旧金山 -> 澳洲      | 183 `ms`  | 19 年     |
-| TCP 重传                    | 1-3 `s`   | 105-317 年 |
+| TCP 重传                    | 1-3 `s`   | **<mark>105-317 年</mark>** |
 | SCSI command timeout        | 30 `s`    | 3000 年   |
 | 物理系统重启                | 5 `m`     | 32000 年  |
 
@@ -94,10 +80,9 @@ DTrace 之前，系统跟踪常常使用**静态探测**（static probes），
 ### 2.5.1 Streetlight Anti-Method
 
 > 某天晚上，警察看到一个醉汉在路灯下找东西，他声称自己的钥匙丢了。警察帮忙找了
-> 一会也没找到，然后问道：“你确定是丢在这里，路灯下面？”醉汉答：“不确定，但
-> 这里光线最好。”
+> 一会也没找到，然后问道：“你确定是丢在这里，路灯下面？”醉汉答：“不确定，但这里光线最好。”
 
-这就相当于**登到机器之后先执行 `top`**：并不是因为此时
+这就相当于**<mark>登到机器之后先执行</mark>** `top`：并不是因为此时
 `top` 是最优的，而是 暂时也想不到其他更好的工具。
 
 ### 2.5.9 USE（利用率/饱和度/错误数）
@@ -125,7 +110,7 @@ DTrace 之前，系统跟踪常常使用**静态探测**（static probes），
 
 ### 3.2.5 进程
 
-**从某种程度来说，进程像是一台虚拟的早期计算机**（a virtual early computer）：
+从某种程度来说，**<mark>进程像是一台虚拟的早期计算机</mark>**（a virtual early computer）：
 里面只运行一个程序，并且这个程序有自己独立的
 
 * 地址空间
@@ -161,11 +146,11 @@ Sun Microsystem，最初目的是让 UNIX File System (UFS) 和 NFS 更容易共
 
 系统级别工具：
 
-* `vmstat`: 操作系统级别的虚拟和物理内存统计信息
-* `mpstat`: per CPU 使用情况统计（mp: multi-processor?）
-* `iostat`: per-disk I/O 统计， reported from the block device interface
+* `vmstat`: 操作系统级别的**<mark>虚拟和物理内存</mark>**统计信息
+* `mpstat`: **<mark>per-CPU 使用情况</mark>**统计（mp: multi-processor?）
+* `iostat`: **<mark>per-disk I/O</mark>** 统计， reported from the block device interface
 * `netstat`: 网卡统计，TCP/IP 协议栈统计，某些 per-connection statistics
-* `sar`: 各种杂七杂八的统计；can also archive them for historical reporting
+* `sar`: **<mark>各种杂七杂八的统计</mark>**；can also archive them for historical reporting
 
 这些工具有一个**使用惯例**：可以指定时间间隔（interval）和次数（count），例如
 
@@ -183,9 +168,9 @@ Average:     all    0.00    0.00    0.34    0.00    0.00    0.08    0.00    0.00
 
 * `ps`
 * `top`
-* **`pmap`**: 进程内存段（memory segments）信息及使用统计等等
+* **<mark><code>pmap</code></mark>**: 进程内存段（memory segments）信息及使用统计等等
 
-一般来说，这几个工具都是**从 `/proc/` 下面读数据的**。
+一般来说，这几个工具都是从 **<mark><code>/proc/</code></mark>** 下面读数据的。
 
 ### 4.1.2 跟踪（tracing）
 
@@ -214,7 +199,7 @@ Average:     all    0.00    0.00    0.34    0.00    0.00    0.08    0.00    0.00
 
 ### 4.1.4 监视（sar）
 
-`sar`: **System Activity Reporter**（系统活动汇报器）, 源自 AT&T UNIX。
+`sar`: **<mark>System Activity Reporter</mark>**（系统活动汇报器）, 源自 AT&T UNIX。
 
 `sar(1)` 是一个多功能计数器，利用定期 `cron` 来记录系统计数器的状态：
 
@@ -248,14 +233,15 @@ Average:        all      0.00      0.00      0.25      0.00      0.00     99.75
 
 ### 4.2.1 `/proc`
 
-`/proc` 是**内存文件系统**，不依赖磁盘：
+`/proc` 是**<mark>内存文件系统</mark>**，不依赖磁盘：
 
 * 目录树结构
 * 通过文件系统相关的系统调用（`open/read/close`），将内核统计信息暴露给用户空间
 * 大部分数据都是只读的
 
-`top` 会**收集所有活跃进程（active processes）的 `/proc` 信息**，因此开销比较大，
-这就是为什么有时候执行 `top` 命令，会看到排在第一位进程的就是它自己的原因。
+`top` 会收集**<mark>所有活跃进程（active processes）</mark>**的 `/proc` 信息，
+因此**<mark>开销比较大</mark>**，
+这就是为什么有时执行 `top` 命令，会看到排在第一位进程的就是它自己。
 
 `/proc` 中每个进程的信息：
 
@@ -282,7 +268,7 @@ coredump_filter  limits   ns/         root@          statm
 * `status`: stat and statm information, 人类可读格式
 * `task`: directory of per-task statistics
 
-Linux 对 `/proc` 进行了扩展，将一些操作系统级别的统计放到了顶层：
+Linux 对 `/proc` 进行了扩展，将一些**<mark>操作系统级别的统计放到了顶层</mark>**：
 
 ```shell
 $ cd /proc; ls -Fd [a-z]*
@@ -318,10 +304,10 @@ diskstats  kallsyms     meminfo      schedstat     timer_list
 
 Linux 提供的 sysfs 文件系统，挂载在 `/sys`，提供内核统计信息。
 
-与 `/proc` 的不同：
+**<mark>与 <code>/proc</code> 的不同</mark>**：
 
 * `/proc` 源自 Unix，有非常长的演进历史，已经在顶层（`/proc/xxx`）添加了各种系统统计指标
-* `/sys` 最初设计用于提供设备驱动信息，但后来进行了扩展，添加了很多其他类型的统计
+* `/sys` **<mark>最初设计用于提供设备驱动信息</mark>**，但后来进行了扩展，添加了很多其他类型的统计
 
 例如，下面是 `CPU 0` 相关的 `/sys` 文件：
 
@@ -512,6 +498,7 @@ Linux 的调度算法：
 * `CFS`：完全公平调度器（completely fair scheduling），`2.6.23` 默认
     * 用红黑树替换原来的 run queue
     * 查找更快
+    * [<mark>Linux CFS 调度器：原理、设计与内核实现（2023）</mark>]({% link _posts/2023-02-05-linux-cfs-design-and-implementation-zh.md %})
 
 用户进程能够通过调用 `sched_setscheduler()` 来设置调度器策略（scheduler policy）。
 
@@ -557,7 +544,7 @@ Linux 的调度算法：
 
 `nice()` 系统调用。
 
-* **nice 值越大，优先级越低**
+* **<mark>nice 值越大，优先级越低</mark>**
 * root 用户可以设置负值，表示高优先级
 
 ## 6.6. Analysis
@@ -573,7 +560,7 @@ $ uptime
 
 最后三个数字分别是过去 1、5 和 15 分钟的 load average：
 
-* 如果 load average 大于 CPU 数量，说明负载过高，某些线性处于 waiting 状态
+* 如果 **<mark>load average 大于 CPU 数量</mark>**，说明负载过高，**<mark>某些线性处于 waiting 状态</mark>**
 
 举个例子：一个现代 64 核 CPU，其 load average 为 128。这表示平均来说，每个 CPU 上：
 
@@ -583,7 +570,7 @@ $ uptime
 **Linux load average 的计算**：
 
 * 包括了磁盘 I/O 信息（处于不可中断状态的磁盘 I/O 任务的数量）
-* load average 不再与 CPU 数量划等号
+* load average **<mark>不再与 CPU 数量划等号</mark>**
 
 ### 6.6.2. vmstat
 
@@ -597,19 +584,19 @@ procs -----------memory---------- ---swap-- -----io---- -system-- ------cpu-----
  8  0      0 12886696   6196 93628976    0    0     0  1108 19115 37964  6  4 90  0  0
 ```
 
-* `r`: run-queue length（可运行的线程总数）
+* `r`: **<mark>run-queue length（可运行的线程总数）</mark>**
 * `us`: user-time
 * `sy`: system-time (kernel)
 * `id`: idle
 * `wa`: wait I/O, which measures CPU idle when threads are blocked on disk I/O
 * `st`: stolen (not shown in the output), which for virtualized environments shows CPU time spent servicing other tenants
 
-`r` 表示的是所有 CPU 上可运行线程的总数，除了 `r` 之外，上面其他所有列都是所有
+`r` 表示的是**<mark>所有 CPU 上可运行线程的总数</mark>**，除了 `r` 之外，上面其他所有列都是所有
 CPU 的一个平均值。
 
 ### 6.6.3. mpstat
 
-多处理器统计工具（multiprocessor statistics tool），打印 per CPU 统计信息。
+**<mark>多处理器统计工具</mark>**（multiprocessor statistics tool），打印 per CPU 统计信息。
 
 ```
 $ mpstat -P ALL 1
@@ -683,9 +670,9 @@ root           6       2  0 Apr26 ?        00:00:00 [kworker/0:0H-kblockd]
 
 `TIME` 和 `%CPU` 两列和 CPU 相关：
 
-* `TIME`：进程**自启动以来消耗的所有 CPU 时间**（user + system），格式 `hours:minutes:seconds`。
-* `%CPU`：进程在过去一秒内消耗的所有 CPU （usage）。单线程、CPU 密集型进程，这一
-  列会显示 `100%`；两个线程、CPU 密集型会显示 `200%`。
+* **<mark><code>TIME</code></mark>**：进程**自启动以来消耗的所有 CPU 时间**（user + system），格式 `hours:minutes:seconds`。
+* **<mark><code>%CPU</code></mark>**：进程在**<mark>过去一秒内消耗的所有 CPU</mark>**（usage）。
+  单线程、CPU 密集型进程，这一列会显示 `100%`；两个线程、CPU 密集型会显示 **<mark><code>200%</code></mark>**。
 
 ### 6.6.6. top
 
@@ -693,13 +680,12 @@ root           6       2  0 Apr26 ?        00:00:00 [kworker/0:0H-kblockd]
 为它要遍历 `/proc` 下面的文件，通过 `open/read/close` 等系统调用来获取它需要的数
 据。
 
-**由于 `top` 是对 `/proc` 进行快照（snapshot），因此它无法捕捉到生命周期非常短的进
-程（shot-lived processes）**，例如 CI/CD 里面的某些 job。**`atop` 是 `top` 的增强
-版**，利用了进程审计（process accounting），能捕捉生命周期非常短的进程。
+由于 `top` 是对 `/proc` 进行快照（snapshot），因此它**<mark>无法捕捉到生命周期非常短的进程</mark>**（shot-lived processes），
+例如 CI/CD 里面的某些 job。**`atop` 是 `top` 的增强版**，利用了进程审计（process accounting），能捕捉生命周期非常短的进程。
 
 ### 6.6.8. pidstat
 
-`pidstat(1)` 打印进程或线程的 CPU 使用率，默认只显示活跃进程：
+`pidstat(1)` 打印**<mark>进程或线程的 CPU 使用率</mark>**，默认只显示活跃进程：
 
 ```
 $ pidstat 1
@@ -844,7 +830,7 @@ cpu-migrations OR migrations [Software event]
 ...
 ```
 
-下面的例子跟踪**应用程序离开 CPU 的事件**（`-e context-switches`），并记录其调用栈信息（`-g`）：
+下面的例子跟踪**<mark>应用程序离开 CPU（上下文切换）的事件</mark>**（`-e context-switches`），并记录其调用栈信息（`-g`）：
 
 ```
 $ perf record -g -a -e context-switches sleep 10
@@ -995,7 +981,7 @@ $ echo 1159 > tasks      # 绑定进程号（PID）
 
 根据以上状态，定义两个术语：
 
-* **Resident set size** (RSS，常驻内存)：`C` 状态的内存大小
+* Resident set size **<mark>(RSS，常驻内存)</mark>**：`C` 状态的内存大小
 * **Virtual memory size**：所有已分配区域之和（`B+C+D`）
 
 ### 7.2.5. Swapping（换出）
@@ -1092,9 +1078,9 @@ allocator）来完成的。这些分配器的实现方式包括：
 * **页面缓存（Page cache）**: 这是文件系统缓存。配置参数 `swappiness`，在某个阈
   值倾向于释放页面缓存，而不是 swap 出去。
 * **Swapping**：由 page-out daemon `kswapd` 完成。
-* **OOM killer**：寻找可被牺牲的进程（`select_bad_process()`），然后干掉它（
-  `oom_kill_process()`）。可能会在系统日志（`/var/log/messages`）中打印 `“Out of
-  memory: Kill process”`。
+* **OOM killer**：寻找可被牺牲的进程（**<mark><code>select_bad_process()</code></mark>**），
+  然后干掉它（**<mark><code>oom_kill_process()</code></mark>**）。
+  可能会在系统日志（`/var/log/messages`）中打印 `"Out of memory: Kill process"`。
 
 `swappiness` 范围 `0-100`，默认值 `60`：
 
@@ -2304,7 +2290,7 @@ perf list | egrep "skb:|net:"
   skb:skb_copy_datagram_iovec                        [Tracepoint event]
 ```
 
-例子：动态跟踪内核函数 `tcp_sendmsg()`，打印调用栈 (stack traces)：
+例子：动态跟踪内核函数 **<mark><code>tcp_sendmsg()</code></mark>**，**<mark>打印调用栈</mark>**：
 
 ```
 $ perf probe --add='tcp_sendmsg'

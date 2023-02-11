@@ -140,11 +140,11 @@ considered, just naming some of them below:
 1. How to **<mark>manage policies</mark>**, and what's **<mark>interface to end users</mark>**
   (developers, security teams, etc)?
 
-    * The "laziest" way to manage policies may be creating a **<mark>git repository</mark>** and
-      putting all the **<mark>raw policy yamls</mark>** there, but -
-    * Application developers in most cases do not have access to Kubernetes
-      infrastructures as we (infra team) do, so we can't rely on them to
-      manipulate raw yaml files like we do.
+    The "laziest" way to manage policies may be creating a **<mark>git repository</mark>** and
+    putting all the **<mark>raw policy yamls</mark>** there, but -
+    application developers in most cases do not have access to Kubernetes
+    infrastructures as we (infra team) do, so we can't rely on them to
+    manipulate raw yaml files like we do.
 
 2. How to perform **<mark>authentication and authorization</mark>** when manipulating a policy?
 
@@ -186,7 +186,7 @@ considered, just naming some of them below:
 
 5. **<mark>Performance considerations</mark>**
 
-    Performance should be one of the topic considerations for any tech solution.
+    Performance should be one of the top considerations for any tech solution.
     In terms of a security solution, we should care about at least:
 
     * Forwarding performance: will the solution cause severe performance decrease?
@@ -217,8 +217,8 @@ meets the following requirements:
 
 1. Access control over hybrid infrastructures
 
-    * Support Kubernetes (main case), OpenStack, Baremetal, etc
-    * Support on-premises infrastructures as well as infrastructures on public cloud
+    * Support Kubernetes (major case), OpenStack, Baremetal, etc
+    * Support on-premises infrastructures as well as infrastructures in public cloud
     * Support cross-cluster direct traffic
 
 2. Evolvable architecture
@@ -274,7 +274,7 @@ directly (without any gateways).
 Cilium ships with a built-in multi-cluster solution called ClusterMesh.
 Basically, it configures each cilium-agent to **<mark>also listen to the
 KVStores of the other clusters</mark>**. In this way, each agent
-**<mark>gains the security identity information of pods in the remote clusters</mark>**.
+**<mark>fetches the security identity information of pods in the remote clusters</mark>**.
 Below is the two-cluster-as-a-mesh case:
 
 <p align="center"><img src="/assets/img/cilium-clustermesh/clustermesh.png" width="80%" height="80%"></p>

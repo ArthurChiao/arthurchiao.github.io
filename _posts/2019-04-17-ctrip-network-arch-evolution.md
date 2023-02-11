@@ -645,7 +645,7 @@ VxLAN HW offload will partly alleviate the burden.
 
 BGP is another choice. In this case, you need to run a BGP agent in each host,
 the BGP agent will do peering with outside network. This needs data center
-network support. On public cloud, you could also try the BGP API.
+network support. ~~On public cloud, you could also try the BGP API~~.
 BGP solution has better performance compared with VxLAN overlay, and more
 importantly, it makes the container IP routable.
 

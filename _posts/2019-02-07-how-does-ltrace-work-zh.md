@@ -2,27 +2,28 @@
 layout: post
 title:  "[译] ltrace 是如何工作的（2016）"
 date:   2019-02-07
+lastupdate: 2023-02-11
 categories: ltrace system-call
 ---
 
 ### 译者序
 
-本文翻译自 2016 年的一篇英文博客 [How Does ltrace Work
-](https://blog.packagecloud.io/eng/2016/03/14/how-does-ltrace-work/)
-。**如果能看懂英文，我建议你阅读原文，或者和本文对照看。**
+本文翻译自 2016 年的一篇英文博客 [How Does ltrace Work](https://blog.packagecloud.io/eng/2016/03/14/how-does-ltrace-work/)。
 
 阅读本文之前，强烈建议先阅读下面几篇之前的文章：
 
 1. [(译) Linux 系统调用权威指南]({% link _posts/2019-01-30-system-call-definitive-guide-zh.md %})
-1. [(译) strace 是如何工作的]({% link _posts/2019-02-02-how-does-strace-work-zh.md %})
+1. [(译) strace/ptrace 是如何工作的]({% link _posts/2019-02-02-how-does-strace-work-zh.md %})
 
 其中包含了本文所需的部分预备知识。
+
+**由于译者水平有限，本文不免存在遗漏或错误之处。如有疑问，请查阅原文。**
 
 以下是译文。
 
 ----
 
-### 太长不读（TL;DR）
+## 太长不读（TL;DR）
 
 本文介绍 `ltrace` 内部是如何工作的，和我们的前一篇文章 [strace 是如何工作的
 ]({% link _posts/2019-02-02-how-does-strace-work-zh.md %}) 是兄弟篇。
@@ -30,27 +31,37 @@ categories: ltrace system-call
 文章首先会对比 `ltrace` 和 `strace` 的异同；然后介绍 `ltrace` 是如何基于
 `ptrace` 系统调用获取被跟踪进程的**库函数调用**信息的。
 
-## 1 `ltrace` 和 `strace`
+----
 
-`strace` 是一个系统调用，也是一个信号跟踪器（signal tracer），主要用于跟踪系统
-调用，打印系统调用的参数、返回值、时间戳等很多信息。它也可以跟踪和打印进程收到的
-信号。
+* TOC
+{:toc}
 
-我们在前一篇文章[strace 是如何工作的]({% link _posts/2019-02-02-how-does-strace-work-zh.md %})
-中介绍过， `strace` 内部是基于 `ptrace` 系统调用的。
+----
 
-`ltrace` 是一个**（函数）库调用跟踪器**（libraray call tracer），顾名思义，主要用
-于跟踪程序的函数库调用信息。另外，它也可以像 `strace` 一样跟踪系统调用和信号。它
-的命令行参数和 `strace` 很相似。
+# 1 `ltrace`、`strace` 和 `ptrace`
 
-`ltrace` 也是基于 `ptrace`，但跟踪库函数和跟踪系统调用还是有很大差别的，这就是为
-什么会有 `ltrace` 的原因。
+`strace` **<mark>是一个系统调用</mark>**，也是一个信号跟踪器（signal tracer），
+
+* 主要用于**<mark>跟踪系统调用</mark>**，打印系统调用的参数、返回值、时间戳等很多信息。
+* 也可以跟踪和打印进程收到的信号。
+* 在前一篇文章[strace 是如何工作的]({% link _posts/2019-02-02-how-does-strace-work-zh.md %})
+  中介绍过， `strace` **<mark>内部基于 ptrace</mark>** 系统调用。
+
+`ltrace` 是一个**<mark>函数库调用跟踪器</mark>**（library call tracer），
+
+* 顾名思义，主要用于**<mark>跟踪程序的函数库调用</mark>**信息。
+* 它也可以像 `strace` 一样跟踪系统调用和信号。
+* 它的命令行参数和 `strace` 很相似。
+* `ltrace` **<mark>也是基于 ptrace</mark>**。
+
+虽然 `strace` 和 `ltrace` **<mark>底层都是基于 ptrace 系统调用</mark>**，
+但跟踪库函数和跟踪系统调用还是有很大差别的，这就是为什么会有 `ltrace` 的原因。
+
+# 2 重要概念
 
 在介绍细节之前，我们需要先了解几个概念。
 
-## 2 重要概念
-
-### 2.1 程序调用函数库的流程
+## 2.1 程序调用函数库的流程
 
 共享库可以被加载到任意地址。这意味着，共享库内的函数地址只有在运行时加载以后才能确定。
 即使重复执行同一程序，加载同一动态库，库内的函数地址也是不同的。
@@ -65,27 +76,25 @@ categories: ltrace system-call
 Linux 程序使用 [ELF binary format](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format)，它提供了
 许多特性。出于本文目的，我们这里只介绍两个：
 
-* 过程链接表（Procedire Linkage Table，PLT）
-* 全局偏移表（Global Offset Table，GOT）
+* 过程链接表（Procedure Linkage Table，**<mark><code>PLT</code></mark>**）
+* 全局偏移表（Global Offset Table，**<mark><code>GOT</code></mark>**）
 
-库函数在 PLT 里都有一组对应的汇编指令，通常称作 trampoline，在函数被调用的时候执行。 
+库函数在 PLT 里都有一组对应的汇编指令，通常称作 **<mark><code>trampoline</code></mark>**，在函数被调用的时候执行。 
+
+### PLT trampoline 代码
 
 PLT trampoline 都遵循类似的格式，下面是一个例子：
 
-```c
+```asm
 PLT1: jmp *name1@GOTPCREL(%rip)
       pushq $index1
       jmp .PLT0
 ```
 
 
-第一行代码跳转到一个地址，这个地址的值存储在 GOT 中。 
-
-GOT 存储了绝对地址。这些地址在程序启动时初始化，指向 PLT `pushq` 指令所在的地址
-（第二行代码）。
-
-第三行 `pushq $index1` 为动态连接器准备一些数据，然后通过 `jmp .PLT0` 跳转到另一
-段代码，后者会进而调用动态链接器。
+* 第一行代码跳转到一个地址，这个地址的值存储在 GOT 中。 
+* GOT 存储了绝对地址。这些地址在程序启动时初始化，指向 PLT `pushq` 指令所在的地址（第二行代码）。
+* 第三行 `pushq $index1` 为动态连接器准备一些数据，然后通过 `jmp .PLT0` 跳转到另一段代码，后者会进而调用动态链接器。
 
 动态链接器通过 `$index1` 和其他一些数据来判断程序想调用的是哪个库函数，然后定位
 到函数地址，并将其写入 GOT，覆盖之前初始化时的默认值。
@@ -95,6 +104,8 @@ GOT 存储了绝对地址。这些地址在程序启动时初始化，指向 PLT
 
 想更详细地了解这个过程，可以查看 [System V AMD64
 ABI](http://www.x86-64.org/documentation/abi.pdf)，从 75 页开始。
+
+### 流程总结
 
 总结起来：
 
@@ -106,10 +117,10 @@ ABI](http://www.x86-64.org/documentation/abi.pdf)，从 75 页开始。
 1. 将地址写入 GOT 表，然后执行转到该函数
 1. 后面再次调用到这个函数时，不再经过动态链接器，因为 GOT 里已经存储了函数地址，PLT 可以直接调用
 
-为了能够 hook 库函数调用，`ltrace` 必须将它自己插入以上的流程。它的实现方式：
-**在函数的 PLT 表项里设置一个软件断点**。
+**<mark>为了能够 hook 库函数调用，ltrace 必须将自己插入以上流程中</mark>**。
+它的实现方式：**在函数的 PLT 表项里设置一个软件断点**。
 
-### 2.2 断点的工作原理
+## 2.2 断点的工作原理
 
 断点（breakpoint）是使函数在特定的地方停止执行，然后让另一个程序（例如调试器，跟踪器）介入的方式。
 
@@ -141,7 +152,7 @@ Linux 内核有对应的中断处理函数，在执行的时候会向被调试�
 
 那么，跟踪器或调试器是**如何将这个 `int $3` 指令插入程序的呢**？
 
-### 2.3 在程序中插入断点的实现
+## 2.3 在程序中插入断点的实现
 
 `ptrace` + `PTRACE_POKETEXT`：修改运行程序的内存。
 
@@ -151,7 +162,7 @@ Linux 内核有对应的中断处理函数，在执行的时候会向被调试�
 调试器和跟踪器可以使用 `PTRACE_POKETEXT` 将 `int $3` 指令在程序运行的时候写到程
 序的特定内存。**这就是断点如何设置的。**
 
-## 3 `ltrace`
+# 3 `ltrace`
 
 将以上讲到的所有内容结合起来就得到了 `ltrace`： **`ltrace` = `ptrace` +
 `PTRACE_POKETEXT` + `int $3`**
@@ -179,7 +190,7 @@ Linux 内核有对应的中断处理函数，在执行的时候会向被调试�
 
 这就是 `ltrace` 如何跟踪库函数调用的。
 
-## 4 结束语
+# 4 结束语
 
 `ptrace` 系统调用非常强大，可以跟踪系统调用、重写运行中程序的内存、读取运行中程
 序的寄存器等等。
@@ -193,7 +204,7 @@ Linux 内核有对应的中断处理函数，在执行的时候会向被调试�
 想了解更多 `PTRACE_SYSCALL` 的内部细节，可以阅读我们前一篇介绍 `strace` 的[博客
 ](https://blog.packagecloud.io/eng/2016/03/14/how-does-ltrace-work/)。
 
-## 5 我们的相关文章
+# 5 我们的相关文章
 
 如果对本文感兴趣，那么你可能对我们的以下文章也感兴趣：
 

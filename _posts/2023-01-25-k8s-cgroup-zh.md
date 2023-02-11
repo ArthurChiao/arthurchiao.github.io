@@ -2,7 +2,7 @@
 layout    : post
 title     : "k8s 基于 cgroup 的资源限额（capacity enforcement）：模型设计与代码实现（2023）"
 date      : 2023-01-25
-lastupdate: 2023-02-05
+lastupdate: 2023-02-11
 categories: k8s cgroup
 ---
 
@@ -423,6 +423,8 @@ Spec 里的 CPU requests/limits 一般都是以 `500m` 这样的格式表示的�
   表示这个 cgroup **<mark>最少可以使用的 CPU</mark>**；
 * limits 经过转换之后会写入 **<mark><code>cpu.cfs_quota_us</code></mark>**，
   表示这个 cgroup **<mark>最多可以使用的 CPU</mark>**；
+
+更多信息：[<mark>Linux CFS 调度器：原理、设计与内核实现（2023）</mark>]({% link _posts/2023-02-05-linux-cfs-design-and-implementation-zh.md %})。
 
 ### 4.1.2 Memory
 
