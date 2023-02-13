@@ -22,7 +22,8 @@ categories: network kernel
 
 CPU 通过时分复用来处理很多任务，这其中包括一些硬件任务，例如磁盘读写、键盘输入，也包括一些软件任务，例如网络包处理。
 在任意时刻，一个 CPU 只能处理一个任务。
-当某个硬件或软件任务此刻没有被执行，但它希望 CPU 来立即处理时，就会给 CPU 发送一个中断请求 —— 希望 CPU 停下手头的工作，优先服务“我”。
+当某个硬件或软件任务此刻没有执行，但它希望 CPU 来立即处理时，就会**<mark>给 CPU 发送一个中断请求</mark>** ——
+**<mark>希望 CPU 停下手头的工作，优先服务“我”</mark>**。
 中断是以事件的方式通知 CPU 的，因此我们常看到 “XX 条件下会触发 XX 中断事件” 的表述。
 
 两种类型：
@@ -31,7 +32,7 @@ CPU 通过时分复用来处理很多任务，这其中包括一些硬件任务�
 
 2. 软件产生的中断，异常事件产生的中断，例如**<mark>除以零</mark>** 。
 
-管理中断的设备：Advanced Programmable Interrupt Controller（APIC）。
+管理中断的设备：Advanced Programmable Interrupt Controller（APIC，高级可编程中断控制器）。
 
 # 2 硬中断
 
@@ -53,9 +54,9 @@ CPU 通过时分复用来处理很多任务，这其中包括一些硬件任务�
 在内核中，发生异常（exception）之后一般是给被中断的进程发送一个 Unix 信号，以此来唤醒它，这也是为什么内核能如此迅速地处理异常的原因。
 
 但对于外部硬件中断（external hardware interrupts）这种方式是不行的，
-外部中断处理取决于中断的类型（type）：
+**<mark>外部中断处理取决于中断的类型</mark>**（type）：
 
-1. I/O interrupts;
+1. I/O interrupts（**<mark>IO 中断</mark>**）;
 
     例如 PCI 总线架构，多个设备共享相同的 IRQ line。必须处理非常快。内核典型处理过程：
 
@@ -64,8 +65,8 @@ CPU 通过时分复用来处理很多任务，这其中包括一些硬件任务�
     1. 执行与这个设备相关的中断服务例程（ISR）；
     1. 恢复寄存器状态，从中断中返回。
 
-1. Timer interrupts;
-1. Interprocessor interrupts（IPI）
+1. Timer interrupts（**<mark>定时器中断</mark>**）;
+1. Interprocessor interrupts（IPI，**<mark>进程间中断</mark>**）
 
 ### 系统支持的最大硬中断数量
 
@@ -92,7 +93,7 @@ RAM, in fact, the display on the Local APIC）记录消息（message）。
 
 内核函数 **<mark><code>request_irq()</code></mark>** 注册一个中断处理函数，并启用给定的中断线（enables a given interrupt line）。
 
-## 2.3 Maskable and non-maskable
+## 2.3 Maskable and non-maskable（可关闭和不可关闭中断）
 
 Maskable interrupts 在 x64_64 上可以用 **<mark><code>sti/cli</code></mark>**
 两个指令来屏蔽（关闭）和恢复：
@@ -110,9 +111,9 @@ static inline void native_irq_enable(void) {
 ```
 
 在屏蔽期间，这种类型的中断不会再触发新的中断事件。
-大部分 IRQ 都属于这种类型。例子：网卡的收发包硬件中断。
+**<mark>大部分 IRQ 都属于这种类型。例子：网卡的收发包硬件中断</mark>**。
 
-Non-maskable interrupts 不可屏蔽，所以在效果上属于更紧急的类型。
+**<mark>Non-maskable interrupts</mark>** 不可屏蔽，所以在效果上属于**<mark>更紧急的类型</mark>**。
 
 ## 2.4 问题：执行足够快 vs 逻辑比较复杂
 
@@ -137,7 +138,7 @@ IRQ handler 的两个特点：
 * 第一部分：只进行最重要、**<mark>必须得在硬中断上下文中执行</mark>**的部分；剩下的处理作为第二部分，放入一个待处理队列；
 * 第二部分：一般是调度器根据轻重缓急来调度执行，**<mark>不在硬中断上下文中执行</mark>**。
 
-Linux 中的三种推迟中断（deferred interrupts）：
+Linux 中的**<mark>三种推迟中断</mark>**（deferred interrupts）：
 
 * softirq
 * tasklet
@@ -163,7 +164,7 @@ Linux 中的三种推迟中断（deferred interrupts）：
     ...
     ```
 
-2. 软中断事件的 handler 提前注册到 softirq 子系统， 注册方式 `open_softirq(softirq_id, handler)` 
+2. 软中断事件的 handler 提前注册到 softirq 子系统， 注册方式 **<mark><code>open_softirq(softirq_id, handler)</code></mark>**。
 
     例如，注册网卡收发包（RX/TX）软中断处理函数：
 
@@ -174,7 +175,7 @@ Linux 中的三种推迟中断（deferred interrupts）：
     open_softirq(NET_RX_SOFTIRQ, net_rx_action);
     ```
 
-3. 软中断占 CPU 的总开销：可以用 `top` 查看，里面 `si` 字段就是系统的软中断开销（第三行倒数第二个指标）：
+3. **<mark>软中断占 CPU 的总开销</mark>**：可以用 `top` 查看，里面 `si` 字段就是系统的软中断开销（第三行倒数第二个指标）：
 
     ```shell
     $ top -n1 | head -n3
@@ -185,8 +186,9 @@ Linux 中的三种推迟中断（deferred interrupts）：
 
 ## 3.2 主处理
 
-smpboot.c 类似于一个事件驱动的循环，里面会调度到 `ksoftirqd` 线程，执行 pending 的软中断。
-`ksoftirqd` 里面会进一步调用到 `__do_softirq`，
+[kernel/smpboot.c](https://github.com/torvalds/linux/blob/v5.10/kernel/smpboot.c)
+类似于一个**<mark>事件驱动的循环</mark>**，里面会调度到 `ksoftirqd`
+线程，执行 pending 的软中断。`ksoftirqd` 里面会进一步调用到 `__do_softirq`，
 
 1. 判断哪些 softirq 需要处理，
 2. 执行 softirq handler
@@ -219,10 +221,10 @@ smpboot.c 类似于一个事件驱动的循环，里面会调度到 `ksoftirqd` 
 ## 3.4 硬中断 -> 软中断 调用栈
 
 前面提到，softirq 是一种推迟中断处理机制，将 IRQ 的大部分处理逻辑推迟到了这里执行。
-两条路径都会执行到 softirq 主处理逻辑 `__do_softirq()`，
+**<mark>两条路径</mark>**都会执行到 **<mark>softirq 主处理逻辑</mark>** `__do_softirq()`，
 
 1. CPU 调度到 `ksoftirqd` 线程时，会执行到 `__do_softirq()`；
-2. 每次 IRQ handler 退出时： `do_IRQ() -> ...`。
+2. 每次硬中断（IRQ）handler 退出时： `do_IRQ() -> ...`。
 
     `do_IRQ()` 是内核中最主要的 IRQ 处理方式。它执行结束时，会调用 `exiting_irq()`，这会展开成 
     `irq_exit()`。后者会检查是否有 pending 的 softirq，有的话就唤醒：
@@ -236,21 +238,26 @@ smpboot.c 类似于一个事件驱动的循环，里面会调度到 `ksoftirqd` 
 
     进而会使 CPU 执行到 `__do_softirq()`。
 
-## 软中断触发执行的步骤
+## 3.5 软中断触发执行的步骤
 
-To summarize, each softirq goes through the following stages:
 每个软中断会经过下面几个阶段：
 
 1. 通过 `open_softirq()` 注册软中断处理函数；
-2. 通过 `raise_softirq()` 将一个软中断标记为 deferred interrupt，这会唤醒改软中断（但还没有开始处理）；
-3. 内核调度器调度到 `ksoftirqd` 内核线程时，会将所有等待处理的 deferred interrupt（也就是 softirq）拿出来，执行对应的处理方法（softirq handler）；
+2. 通过 **<mark><code>raise_softirq()</code></mark>** 将一个软中断
+  **<mark>标记为 deferred interrupt</mark>**，这会**<mark>唤醒该软中断（但还没有开始处理）</mark>**；
+3. 内核调度器**<mark>调度到 <code>ksoftirqd</code> 内核线程</mark>**时，会将所有等待处理的 deferred interrupt
+  （也就是 softirq）拿出来，执行对应的处理方法（softirq handler）；
 
 以收包软中断为例，
-IRQ handler 并不执行 NAPI，只是触发它，在里面会执行到 raise NET_RX_SOFTIRQ；真正的执行在 softirq，里面会调用网卡的 poll() 方法收包。
-IRQ handler 中会调用 napi_schedule()，然后启动 NAPI poll()，
 
-这里需要注意，虽然 IRQ handler 做的事情非常少，但是接下来处理这个包的 softirq 和 IRQ 在同一个 CPU 运行。
-这就是说，如果大量的包都放到了同一个 RX queue，那虽然 IRQ 的开销可能并不多，但这个 CPU 仍然会非常繁忙，都花在 softirq 上了。
+* **<mark>IRQ handler 并不执行 NAPI，只是触发它</mark>**，在里面会执行到 `raise NET_RX_SOFTIRQ`；
+* 真正的执行在 softirq，里面会调用网卡的 poll() 方法收包；
+* IRQ handler 中会调用 napi_schedule()，然后启动 NAPI poll()。
+
+这里需要注意，虽然 IRQ handler 做的事情非常少，但是接下来
+**<mark>处理这个包的 softirq 和 IRQ 在同一个 CPU 运行</mark>**。
+这就是说，如果大量的包都放到了同一个 RX queue，那虽然 IRQ 的开销可能并不多，
+但这个 CPU 仍然会非常繁忙，都花在 softirq 上了。
 解决方式：RPS。它并不会降低延迟，只是将包重新分发： RXQ -> CPU。
 
 # 4 三种推迟执行方式（softirq/tasklet/workqueue）
@@ -266,11 +273,11 @@ IRQ handler 中会调用 napi_schedule()，然后启动 NAPI poll()，
 1. softirq 和 tasklet 依赖软中断子系统，**<mark>运行在软中断上下文中</mark>**；
 2. workqueue 不依赖软中断子系统，**<mark>运行在进程上下文中</mark>**。
 
-## 4.1 `softirq`
+## 4.1 `softirq`：静态机制，内核编译时确定
 
 前面已经看到， Linux 在每个 CPU 上会创建一个 ksoftirqd 内核线程。
 
-softirqs 是在 Linux 内核编译时就确定好的，例外网络收包对应的 `NET_RX_SOFTIRQ` 软中断。
+**<mark>softirqs 是在 Linux 内核编译时就确定好的</mark>**，例如网络收包对应的 `NET_RX_SOFTIRQ` 软中断。
 因此是一种**<mark>静态机制</mark>**。如果想加一种新 softirq 类型，就需要修改并重新编译内核。
 
 ### 内部组织
@@ -309,7 +316,7 @@ enum {
 };
 ```
 
-也就是在 `cat /proc/softirqs` 看到的哪些。
+也就是在 **<mark><code>cat /proc/softirqs</code></mark>** 看到的那些，
 
 ```shell
 $ cat /proc/softirqs
@@ -352,7 +359,7 @@ static void wakeup_softirqd(void) {
 IRQ handler 并不执行 NAPI，只是触发它，在里面会执行到 raise NET_RX_SOFTIRQ；真正的执行在 softirq，里面会调用网卡的 poll() 方法收包。
 IRQ handler 中会调用 napi_schedule()，然后启动 NAPI poll()。
 
-## 4.2 `tasklet`
+## 4.2 `tasklet`：动态机制，基于 `softirq`
 
 如果对内核源码有一定了解就会发现，**<mark>softirq 用到的地方非常少</mark>**，原因之一就是上面提到的，它是静态编译的，
 靠内置的 ksoftirqd 线程来调度内置的那 9 种 softirq。如果想新加一种，就得修改并重新编译内核，
@@ -380,7 +387,7 @@ void __init softirq_init(void) {
 
 内核软中断子系统初始化了两个 per-cpu 变量：
 
-* tasklet_vec：普通 tasklet，回调 tasklet_action()
+* tasklet_vec：**<mark>普通 tasklet</mark>**，回调 tasklet_action()
 * tasklet_hi_vec：**<mark>高优先级 tasklet</mark>**，回调 tasklet_hi_action()
 
 ```c
@@ -417,7 +424,7 @@ static void tasklet_action(struct softirq_action *a)
 tasklet 在内核中的使用非常广泛。
 不过，后面又出现了第三种方式：workqueue。
 
-## 4.3 `workqueue`
+## 4.3 `workqueue`：动态机制，运行在进程上下文
 
 这也是一种推迟执行机制，与 tasklet 有点类似，但也有很大不同。
 
@@ -482,7 +489,7 @@ struct work_struct {
 ```
 
 **<mark>kworker 线程调度 workqueues，原理与 ksoftirqd 线程调度 softirqs 一样</mark>**。
-但是我们可以为 workqueue 创建新的线程，而 softirq 则不行。
+但可以为 workqueue 创建新的线程，而 softirq 则不行。
 
 # 5 idle process 与中断
 
@@ -493,28 +500,31 @@ idle process 用于 process accouting，以及降低能耗。
 在设计上，调度器没有进程可调度时（例如所有进程都在等待输入），需要停下来，什么都不做，等待下一个中断把它唤醒。
 中断可能来自外设（例如网络包、磁盘读操作完成），也可能来自某个进程的定时器。
 
-Linux 调度器中，实现这种“什么都不做”的方式就是引入了 idle 进程。只有当没有任何其他进程
-需要调度时，才会调度到 idle 进程（因此它的优先级是最低的）。在实现上，这个 idle 进程
-其实就是内核自身的一部分。当执行到 idle 进程时，它的行为就是“等待中断事件”。
+**<mark>Linux 调度器中，实现这种“什么都不做”的方式就是引入了 idle 进程</mark>**。
 
-Linux 会为每个 CPU 创建一个 idle task，并固定在这个 CPU 上执行。当这个 CPU 上没有其他
-进程可执行时，就会调度到 idle 进程。它的开销就是 `top` 里面的 `id` 统计。
+* 只有当**<mark>没有任何其他进程需要调度时，才会调度到 idle 进程</mark>**（因此它的优先级是最低的）。
+* 在实现上，这个 idle 进程其实就是内核自身的一部分。
+* 当执行到 idle 进程时，它的行为就是**<mark>“等待中断事件”</mark>**。
+
+Linux 会为**<mark>每个 CPU 创建一个 idle task</mark>**（因为每个 CPU 上一个调度器），并固定在这个 CPU 上执行。
+当这个 CPU 上没有其他进程可执行时，就会调度到 idle 进程。它的开销就是 `top` 里面的
+**<mark><code>id</code></mark>** 统计。
 
 注意，这个 idle process 和 process 的 idle 状态是两个完全不相关的东西，后者指的是 process 在等待
 某个事件（例如 I/O 事件）。
 
 ## 5.2 idle process 实现
 
-idle 如何实现视具体处理器和操作系统而定，但目的都是一样的：减少能耗。
+idle 如何实现视具体处理器和操作系统而定，但**<mark>目的都是一样的：减少能耗</mark>**。
 
-最基本的实现方式：[HLT](https://en.wikipedia.org/wiki/HLT_%28x86_instruction%29) 指令
-会让处理器停止执行（并进入节能模式），直到下一个中断触发它继续执行。
+最基本的实现方式：[HLT](https://en.wikipedia.org/wiki/HLT_%28x86_instruction%29)
+指令会让处理器停止执行（并进入节能模式），直到下一个中断触发它继续执行。
 不过有个模块肯定是要保持启用的：中断控制器（interrupt controller）。
 当外设触发中断时，中断控制器会通过特定针脚给 CPU 发送信号，唤醒处理器的执行。
 实际上现代处理器的行为要比这个复杂的多，但主要还是在节能和快速响应之间做出折中。
 有的 CPU 还会在 idle 期间降低处理器频率，以实现节能目标。
 
-Linux 中 x86 的[实现](https://github.com/torvalds/linux/blob/v5.10/arch/x86/kernel/process.c#L678)
+Linux 中 x86 的[实现](https://github.com/torvalds/linux/blob/v5.10/arch/x86/kernel/process.c#L678)。
 
 # 参考资料
 

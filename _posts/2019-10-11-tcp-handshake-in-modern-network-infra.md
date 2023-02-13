@@ -6,6 +6,9 @@ lastupdate: 2019-10-11
 categories: tcp handshake service-mesh istio
 ---
 
+* TOC
+{:toc}
+
 ## TCP 3-way Handshake
 
 In its simplest form, TCP 3-way handshake is easy to understand, and there are

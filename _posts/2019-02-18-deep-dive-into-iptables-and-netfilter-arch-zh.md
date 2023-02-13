@@ -12,8 +12,8 @@ categories: iptables netfilter
 Architecture](https://www.digitalocean.com/community/tutorials/a-deep-dive-into-iptables-and-netfilter-architecture)
 。
 
-这篇对 iptables 和 netfilter 的设计和原理介绍比较全面，美中不足的是没有那张
-内核协议栈各 hook 点位置和 iptables 规则优先级的经典配图，这里补充如下（来自
+这篇对 iptables 和 netfilter 的设计和原理介绍比较全面，不足的是没有那张内核协议栈各
+hook 点位置和 iptables 规则优先级的经典配图，这里补充如下（来自
 [Wikipedia](https://upload.wikimedia.org/wikipedia/commons/3/37/Netfilter-packet-flow.svg)
 ）：
 
@@ -48,7 +48,7 @@ Architecture](https://www.digitalocean.com/community/tutorials/a-deep-dive-into-
 更全面的认识。我们会讨论 iptables 是如何与 netfilter 交互的，几个组件是如何组织
 成**一个全面的过滤和矫正系统**（a comprehensive filtering and mangling system）的。
 
-# 1 IPTables 和 Netfilter 是什么？
+# 1 ipTables 和 netfilter 是什么？
 
 Linux 上最常用的防火墙工具是 iptables。iptables 与协议栈内有包过滤功能的 hook 交
 互来完成工作。这些内核 hook 构成了 netfilter 框架。
@@ -61,7 +61,7 @@ Linux 上最常用的防火墙工具是 iptables。iptables 与协议栈内有�
 # 2. Netfilter Hooks
 
 netfilter 提供了 5 个 hook 点。包经过协议栈时会触发**内核模块注册在这里的处理函数**
-。触发哪个 hook 取决于包的方向（是发送还是接收）、包的目的地址、以及包在上一个
+。触发哪个 hook 取决于包的方向（ingress/egress）、包的目的地址、包在上一个
 hook 点是被丢弃还是拒绝等等。
 
 下面几个 hook 是内核协议栈中已经定义好的：
@@ -74,12 +74,12 @@ hook 点是被丢弃还是拒绝等等。
 * `NF_IP_POST_ROUTING`: 本机产生的准备发送的包或者转发的包，在经过路由判断之后，
   将触发此 hook
 
-**注册处理函数时必须提供优先级**，以便 hook 触发时能按照
+**<mark>注册处理函数时必须提供优先级</mark>**，以便 hook 触发时能按照
 优先级高低调用处理函数。这使得**多个模块（或者同一内核模块的多个实例）可以在同一
 hook 点注册，并且有确定的处理顺序**。内核模块会依次被调用，每次返回一个结果给
 netfilter 框架，提示该对这个包做什么操作。
 
-# 3 IPTables 表和链（Tables and Chains）
+# 3 iptables 表和链（Tables and Chains）
 
 iptables 使用 table 来组织规则，根据**用来做什么类型的判断**（the type of
 decisions they are used to make）标准，将规则分为不同 table。例如，如果规则是处理
@@ -111,23 +111,23 @@ path）应用策略。因为每个 table 有多个 chain，因此一个 table �
 
 先来看看 iptables 提供的 table 类型。这些 table 是按规则类型区分的。
 
-## 4.1 Filter Table
+## 4.1 `filter` table：过滤（放行/拒绝）
 
 `filter` table 是最常用的 table 之一，用于**判断是否允许一个包通过**。
 
 在防火墙领域，这通常称作“过滤”包（"filtering" packets）。这个 table 提供了防火墙
 的一些常见功能。
 
-## 4.2 NAT Table
+## 4.2 `nat` table：网络地址转换
 
 `nat` table 用于实现网络地址转换规则。
 
 当包进入协议栈的时候，这些规则决定是否以及如何修改包的源/目的地址，以改变包被
 路由时的行为。`nat` table 通常用于将包路由到无法直接访问的网络。
 
-## 4.3 Mangle Table
+## 4.3 `mangle` table：修改 IP 头
 
-`mangle` （修正）table 用于**修改包的 IP 头**。
+`mangle`（修正）table 用于**<mark>修改包的 IP 头</mark>**。
 
 例如，可以修改包的 TTL，增加或减少包可以经过的跳数。
 
@@ -135,17 +135,17 @@ path）应用策略。因为每个 table 有多个 chain，因此一个 table �
 续的 table 或工具处理的时候可以用到这些标记。标记不会修改包本身，只是在包的内核
 表示上做标记。
 
-## 4.4 Raw Table
+## 4.4 `raw` table：conntrack 相关
 
 **iptables 防火墙是有状态的**：对每个包进行判断的时候是**依赖已经判断过的包**。
 
 建立在 netfilter 之上的连接跟踪（connection tracking）特性**使得 iptables 将包
-看作已有的连接或会话的一部分**，而不是一个由独立、不相关的包组成的流。连接跟踪逻
-辑在包到达网络接口之后很快就应用了。
+看作已有的连接或会话的一部分**，而不是一个由独立、不相关的包组成的流。
+数据包到达网络接口之后很快就会有连接跟踪逻辑判断。
 
 `raw` table 定义的功能非常有限，其**唯一目的就是提供一个让包绕过连接跟踪的框架**。
 
-## 4.5 Security Table
+## 4.5 `security` table：打 SELinux 标记
 
 `security` table 的作用是给包打上 SELinux 标记，以此影响 SELinux 或其他可以解读
 SELinux 安全上下文的系统处理包的行为。这些标记可以基于单个包，也可以基于连接。
@@ -177,8 +177,8 @@ table 的）chain 被调用的顺序。
 | **security**  |            |   Y   |    Y    |   Y    |             |
 | **nat (SNAT)**|            |   Y   |         |   Y    |      Y      |
 
-**当一个包触发 netfilter hook 时，处理过程将沿着列从上向下执行。** 触发哪个 hook
-（列）和包的方向（ingress/egress）、路由判断、过滤条件等相关。
+**<mark>当一个包触发 netfilter hook 时，处理过程将沿着列从上向下执行</mark>**。
+触发哪个 hook（列）和包的方向（ingress/egress）、路由判断、过滤条件等相关。
 
 特定事件会导致 table 的 chain 被跳过。例如，只有每个连接的第一个包会去匹配 NAT
 规则，对这个包的动作会应用于此连接后面的所有包。到这个连接的应答包会被自动应用反
@@ -198,7 +198,7 @@ table 的）chain 被调用的顺序。
 过 `INPUT` chain 的 `mangle`、`filter`、`security`、`nat` table，然后才会到达本机
 的某个 socket。
 
-# 6 IPTables 规则
+# 6 iptables 规则
 
 规则放置在特定 table 的特定 chain 里面。当 chain 被调用的时候，包会依次匹配 chain
 里面的规则。每条规则都有一个匹配部分和一个动作部分。
@@ -234,27 +234,26 @@ target 可用或不可用。规则里激活的 extensions 和匹配条件也影�
 netfilter hook 紧密联系在一起。然而，iptables 也支持管理员创建他们自己的用于管理
 目的的 chain。
 
-向用户自定义 chain 添加规则和向内置的 chain 添加规则的方式是相同的。**不同的地方
-在于，用户定义的 chain 只能通过从另一个规则跳转（jump）到它，因为它们没有注册到
-netfilter hook**。
+向用户自定义 chain 添加规则和向内置的 chain 添加规则的方式是相同的。不同的地方在于，
+**<mark>用户定义的 chain 只能通过从另一个规则跳转（jump）到它，因为它们没有注册到 netfilter hook</mark>**。
 
 用户定义的 chain 可以看作是对调用它的 chain 的扩展。例如，用户定义的 chain 在结
 束的时候，可以返回 netfilter hook，也可以继续跳转到其他自定义 chain。
 
 这种设计使框架具有强大的分支功能，使得管理员可以组织更大更复杂的网络规则。
 
-# 8 IPTables 和连接跟踪
+# 8 iptables 和 conntrack
 
-在讨论 `raw` table 和 匹配连接状态的时候，我们介绍了构建在 netfilter 之上的连
-接跟踪系统。连接跟踪系统使得 iptables 基于连接上下文而不是单个包来做出规则判
-断，给 iptables 提供了有状态操作的功能。
+在讨论 `raw` table 和 匹配连接状态的时候，我们介绍了构建在 netfilter 之上的
+连接跟踪（conntrack）系统。连接跟踪系统使得 iptables 基于连接上下文而不是单个包来做出规则判断，
+给 iptables 提供了有状态操作的功能。
 
 连接跟踪在包进入协议栈之后很快（very soon）就开始工作了。在给包分配连接之前所做
 的工作非常少，只有检查 `raw` table 和一些基本的完整性检查。
 
-跟踪系统将包和已有的连接进行比较，如果包所属的连接已经存在就更新连接状态，否则就
-创建一个新连接。如果 `raw` table 的某个 chain 对包标记为目标是 `NOTRACK`，那这
-个包会跳过连接跟踪系统。
+跟踪系统将包和已有的连接进行比较，如果包所属的连接已经存在就更新连接状态，
+否则就创建一个新连接。如果 `raw` table 的某个 chain 对包标记为目标是 **<mark><code>NOTRACK</code></mark>**，
+那这个包会跳过连接跟踪系统。
 
 ## 连接的状态
 

@@ -47,7 +47,7 @@ categories: network kernel
 2. 网卡：收到包；
 3. 网卡：通过 DMA 将包复制到内核内存中的 **<mark>ring buffer</mark>**；
 4. 网卡：如果此时 NAPI 没有在执行，就产生硬件中断（IRQ），通知系统收到了一个包（否则不用额外 IRQ 就会把包收走）；触发软中断；
-5. 内核：调度到软中断处理线程 `ksoftirqd`：
+5. 内核：调度到软中断处理线程 `ksoftirqd`；
 6. 内核：软中断处理，调用 NAPI 的 `poll()` 从 ring buffer 收包，并以 `skb` 的形式送至更上层处理；
 7. 协议栈：L2 处理；
 8. 协议栈：L3 处理；
@@ -88,13 +88,13 @@ Infiniband 在高性能计算、RDMA 网络中应用广泛，但毕竟市场还�
 
 * WR：work request, work items that HW should perform
 * WC: work completion, information about a completed WR
-* WQ: queue contains WRs, scheduled by HW, aka ring buffer
+* WQ: work queue contains WRs, scheduled by HW, aka **<mark>ring buffer</mark>**
 * SQ: sending queue
 * SR: sending request
 * RQ: receive queue
 * RR: receive request
 * QP: queue pair
-* EQ: event queue, e.g. HW events
+* EQ: event queue, e.g. **<mark>HW events</mark>**
 
 接下来看下一个具体 Mellanox 网卡的**<mark>硬件相关信息</mark>**：
 
@@ -134,7 +134,6 @@ d8:00.0 Ethernet controller: Mellanox Technologies MT27710 Family [ConnectX-4 Lx
 // https://github.com/torvalds/linux/blob/v5.10/drivers/net/ethernet/mellanox/mlx5/core/main.c
 
 static int __init init(void) {
-    mlx5_fpga_ipsec_build_fs_cmds();
     mlx5_register_debugfs();                // /sys/kernel/debug
 
     pci_register_driver(&mlx5_core_driver); // 初始化 PCI 相关的东西
@@ -659,9 +658,8 @@ const struct net_device_ops mlx5e_netdev_ops = {
 
 今天的大部分网卡都使用 DMA 将数据直接写到内存，接下来操作系统可以直接从里
 面读取。实现这一目的所使用的数据结构就是 **<mark>ring buffer</mark>**（环形缓冲区）。
-要实现这一功能，设备驱动必须和操作系统合作，**预留（reserve）出一段内存来给网卡
-使用**。预留成功后，网卡知道了这块内存的地址，接下来收到的包就会放到这里，进而被
-操作系统取走。
+要实现这一功能，设备驱动必须和操作系统合作，**<mark>预留（reserve）出一段内存来给网卡使用</mark>**。
+预留成功后，网卡知道了这块内存的地址，接下来收到的包就会放到这里，进而被操作系统取走。
 
 ```c
 static int mlx5e_init_nic_rx(struct mlx5e_priv *priv) {
@@ -697,7 +695,7 @@ const struct mlx5e_rx_handlers mlx5e_rx_handlers_nic = {
 };
 ```
 
-查看一台真实机器的 queue 的数量：
+查看一台机器的 queue 数量：
 
 ```shell
 $ ethtool -l eth0             # 能用 ethtool 看到这些信息，就是因为前面注册了 ethtool 的相应方法
@@ -816,11 +814,11 @@ mlx5e_open(netdev);
 
 如果对其原理感兴趣，可以查看内核文档 [DMA API HOWTO: Dynamic DMA mapping Guide](https://www.kernel.org/doc/Documentation/DMA-API-HOWTO.txt)。
 
-#### 第一次数据复制
+#### <mark>第一次数据复制</mark>
 
 在包从网卡到达应用层的过程中，会经历几次数据复制，这个对性能影响非常大，所以我们记录一下：
 
-* 第一次是将包**<mark>从网卡通过 DMA 复制到 ring buffer</mark>**；
+* 第一次是将包**<mark>从网卡通过 DMA 复制到 ring buffer</mark>**（下图左侧部分）；
 
 <p align="center"><img src="/assets/img/linux-net-stack/dma-ringbuffer.png" width="75%" height="75%"></p>
 <p align="center">Fig. DMA, ring buffer and the data copy steps</p>
@@ -855,8 +853,8 @@ mlx5e_open(netdev);
     它的优点是在普通场景下，CPU 能够得到合理利用，不会浪费在空跑（一直执行 poll 方法），缺点是在吞吐很高的场景
     下，IRQ 所占的开销很高，这也是为什么在高吞吐场景下引入了 DPDK。
 
-    中断方式针对高吞吐场景的改进是 NAPI 方式，简单来说它结合了轮询和中断两种方式。
-    绝大部分网卡都是这种模式，本文所用的 `mlx5_core` 就属于这一类。
+中断方式针对高吞吐场景的**<mark>改进</mark>**是 **<mark>NAPI 方式，简单来说它结合了轮询和中断两种方式</mark>**。
+绝大部分网卡都是这种模式，本文所用的 `mlx5_core` 就属于这一类。
 
 ### 3.2.2 中断方式改进：NAPI 机制（轮询+中断）
 
@@ -1233,7 +1231,7 @@ smpboot_thread_fn
 
 ### 5.2.2 软中断线程初始化：注册 `run_ksoftirqd()`
 
-软中断对分担硬中断的工作量至关重要，因此软中断线程在**<mark>内核启动的很早阶段就 spawn 出来了</mark>**：
+软中断线程在**<mark>内核启动的很早阶段就 spawn 出来了</mark>**：
 
 ```c
 // https://github.com/torvalds/linux/blob/v5.10/kernel/softirq.c#L730
@@ -1445,7 +1443,7 @@ Ring buffer 是内核内存，其中存放的包是网卡通过 DMA 直接送过
 
 static __latent_entropy void
 net_rx_action(struct softirq_action *h) {
-    struct softnet_data *sd  = this_cpu_ptr(&softnet_data);       // 改 CPU 的 softnet_data 统计
+    struct softnet_data *sd  = this_cpu_ptr(&softnet_data);       // 该 CPU 的 softnet_data 统计
     time_limit = jiffies + usecs_to_jiffies(netdev_budget_usecs); // 该 CPU 的所有 NAPI 变量的总 time limit
     budget     = netdev_budget;                                   // 该 CPU 的所有 NAPI 变量的总预算
 
@@ -1838,7 +1836,7 @@ struct sk_buff *mlx5e_build_linear_skb(struct mlx5e_rq *rq, void *va, u32 frag_s
 }
 ```
 
-#### 第二次数据复制
+#### <mark>第二次数据复制</mark>
 
 这里就是第二次数据复制的地方。
 

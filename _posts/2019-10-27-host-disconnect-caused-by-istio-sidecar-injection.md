@@ -6,14 +6,17 @@ lastupdate: 2019-10-27
 categories: ovs istio
 ---
 
+* TOD
+{:toc}
+
 # 1 Problem
 
 ## 1.1 Phenomemon
 
-We met a network interrupt problem in our istio environment: **as long as istio
-sidecar injection is enabled, the host will suffer a disconnection (e.g. SSH
-connections to this host was dropped) whenever a new pod is launching on this
-host**. The disconnection lasts about 30 seconds, then automatically restores.
+We met a network interrupt problem in our istio environment: **<mark>as long as istio
+sidecar injection is enabled, the host will suffer a disconnection</mark>** (e.g. SSH
+connections to this host was dropped) **<mark>when a new pod is launching on this
+host</mark>**. The disconnection lasts about 30 seconds, then automatically restores.
 
 This post summarizes the trouble shooting steps we went through, the direct
 causes we've found, and the fixups we've made.
@@ -161,11 +164,12 @@ We noticed this:
    sent with `src_mac=MGNT_MAC,src_ip=HOST_IP`, and all ingress traffic to host
    IP that received had `dst_mac=MGNT_MAC,dst_ip=HOST_IP`, this was **correct**!
 1. at the time the injection happened, the host sent out an ARP request, with
-   `src_ip=HOST_IP` but `src_mac=10:51:72:27:4b:4f`, then in the next 30s, all
+   `src_ip=HOST_IP` but **<mark><code>src_mac=10:51:72:27:4b:4f</code></mark>**,
+   then in the subsequent 30s, all
    egress traffic of this host still used `src_mac=MGNT_MAC,src_ip=HOST_IP`
    (**correct**), but all responded traffic (yes, they were responded) had
-   `dst_mac=10:51:72:27:4b:4f,dst_ip=HOST_IP`, due to the **MAC mismatch**, **all
-   those ingress traffic not arrived `mgnt` device** (which was why our SSH
+   `dst_mac=10:51:72:27:4b:4f,dst_ip=HOST_IP`, due to the **<mark>MAC mismatch</mark>**,
+   **all those ingress traffic not arrived `mgnt` device** (which was why our SSH
    connections get disconnected)
 1. 30s later, the host sent out another ARP request with correct MAC and IP:
     `src_mac=MGNT_MAC,src_ip=HOST_IP`, subsequently, the ingress traffic after
@@ -264,10 +268,10 @@ hosts, indeeded there were no such rules, just the last one there.
 
 So now it should be clear:
 
-1. when sidecar injection happened, some still unknown behavior triggers the
-   host sent ARP requests to `169.254`
-1. OVS bond left two stale route entries targeted to `169.254`, which has higher
-   priority than the correct rule (the one via `mgnt`)
+1. when sidecar injection happened, **<mark>some still unknown behavior triggers the
+   host sent ARP requests to</mark>** `169.254`
+1. OVS bond left **<mark>two stale route entries</mark>** targeted to `169.254`,
+   which has **<mark>higher priority than the correct rule</mark>** (the one via `mgnt`)
 1. 1 & 2 resulted the ARP packet took an incorrect MAC, which polluted the
    switches in the physical network
 1. this further resulted to all subsequent ingress packets to host itself (with
