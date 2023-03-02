@@ -947,3 +947,13 @@ The secret lies in the **files on local node**:
    reserve them in IPAM.
 
 In this way, IPAM restores its states.
+
+## `kube-apiserver identity changed`
+
+Where this log comes from (v1.11.10):
+
+```
+  |-NodeUpdated
+     |-ipcache.IPIdentityCache.TriggerLabelInjection
+         |-DoFunc: InjectLabels
+```

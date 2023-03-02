@@ -1,91 +1,47 @@
 ---
 layout: post
-title:  "[笔记] BGP in the Data Center (O'Reilly 2017)"
+title:  "[笔记]《BGP in the Data Center》 (O'Reilly 2017)"
 date:   2019-04-01
 categories: bgp datacenter
 ---
 
-### 关于本文
-
-本文是我在读 [BGP in the Data
+本文是读 [BGP in the Data
 Center](https://www.oreilly.com/library/view/bgp-in-the/9781491983416/) （
-O'Reilly, 2017）时的读书笔记。原书很短，只有 90 页不到，但理论和实践兼备，是现代
-数据中心和 BGP 入门的很好参考。
+O'Reilly, 2017）时所做的笔记。原书很短，只有 90 页不到，但理论和实践兼备，
+是现代数据中心和 BGP 入门的很好参考。
 
 作者 Dinesh G. Dutt 是一家网络公司的首席科学家，在网络行业有 20 多年工作经验，曾
 是 Cisco Fellow，是 TRILL、VxLAN 等协议的合作者（co-author）之一。
 
 BGP 原本是用于服务供应商（service provider）网络的，并不适用于数据中心，因此进入
-到数据中心的 BGP 是经过改造的。本文介绍的就是**数据中心中的** BGP（BGP in the
-data center），这与传统 BGP 还是有很大不同的。
+到数据中心的 BGP 是经过改造的。本文介绍的就是**<mark>数据中心中的</mark>** BGP
+（BGP in the data center），这**<mark>与传统 BGP 还是有很大不同</mark>**。
 
 以下是笔记内容。
 
 ----
 
-1. [数据中心网络绪论](#chap_1)
-    * 1.1 [数据中心网络的需求](#chap_1.1)
-    * 1.2 [Clos 网络拓扑](#chap_1.2)
-    * 1.3 [Clos 网络架构](#chap_1.3)
-    * 1.4 [服务器接入模型](#chap_1.4)
-    * 1.5 [连接到外部网络](#chap_1.5)
-    * 1.6 [多租户（或 Cloud）支持](#chap_1.6)
-    * 1.7 [现代数据中心设计的运维考虑](#chap_1.7)
-    * 1.8 [选择路由协议](#chap_1.8)
-1. [BGP 是如何适配到数据中心的](#chap_2)
-    * 2.1 [几种路由协议](#chap_2.1)
-    * 2.2 [iBGP 和 eBGP](#chap_2.2)
-    * 2.3 [ASN](#chap_2.3)
-    * 2.4 [最优路径算法](#chap_2.4)
-    * 2.5 [多路径选择](#chap_2.5)
-    * 2.6 [默认定时器导致的慢收敛](#chap_2.6)
-    * 2.7 [数据中心默认 BGP 配置](#chap_2.7)
-    * 2.8 [总结](#chap_2.8)
-1. [自动化 BGP 配置](#chap_3)
-    * 3.1 [自动化配置基础](#chap_3.1)
-    * 3.2 [示例数据中心网络](#chap_3.2)
-    * 3.3 [自动化传统 BGP 的困难](#chap_3.3)
-    * 3.4 [路由再分发](#chap_3.4)
-    * 3.5 [路由策略](#chap_3.5)
-    * 3.6 [使用接口名作为邻居](#chap_3.6)
-    * 3.7 [总结](#chap_3.7)
-1. [其他 BGP 配置](#chap_4)
-    * 4.1 [接口 IP 和 `remote-as`](#chap_4.1)
-    * 4.2 [Numbered Interfaces 数量](#chap_4.2)
-    * 4.3 [Unnumbered Interfaces](#chap_4.3)
-    * 4.4 [BGP Unnumbered](#chap_4.4)
-    * 4.5 [`remote-as` 指定 BGP session 类型](#chap_4.5)
-    * 4.6 [总结](#chap_4.6)
-1. [BGP 生命周期管理](#chap_5)
-    * 5.1 [查看配置](#chap_5.1)
-    * 5.2 [连接到外部网络](#chap_5.2)
-    * 5.3 [计划节点维护](#chap_5.3)
-    * 5.4 [Debug BGP](#chap_5.4)
-    * 5.5 [总结](#chap_5.6)
-1. [服务器上运行 BGP](#chap_6)
-    * 6.1 [虚拟服务器的兴起](#chap_6.1)
-    * 6.2 [和服务器做 Peering 时的 BGP 配置](#chap_6.2)
-    * 6.3 [在服务器 BGP 软件](#chap_6.3)
-    * 6.4 [总结](#chap_6.4)
+* TOC
+{:toc}
 
-### 前言
+# 前言
 
-**数据中心中的** BGP 就像一头怪兽（a rather strange beast）。BGP 进入数据中心是
-相当意外的（rather unexpected），但现在已经是数据中心路由协议（routing protocol
-）的首选。
+**数据中心中的** BGP 就像一头怪兽（a rather strange beast）。
+**<mark>BGP 进入数据中心是相当意外的</mark>**（rather unexpected），
+但**<mark>现在已经是数据中心路由协议的首选</mark>**。
 
 **本书定位**：网络运维人员和工程师，有基本的网络和 BGP 知识，想知道 BGP 在数据中
 心是如何应用的。
 理解本书内容无需任何 BGP 高级知识，或任何特定路由平台的经验。
 
-**本书主要目的**：用一本书囊括数据中心部署 BGP 所需的**理论和实践**（theory and
-pratice）。
+**本书主要目的**：用一本书囊括数据中心部署 BGP 所需的**<mark>理论和实践</mark>**
+（theory and pratice）。
 
 本书使用的 BGP 软件：[FRRouting](https://frrouting.org)。
 
 <a name="chap_1"></a>
 
-## 1 数据中心网络绪论
+# 1 数据中心网络绪论
 
 本章介绍在给定应用需求和预期规模的前提下，如何为现代数据中心设计网络（network
 design of a modern data center network）。
@@ -97,27 +53,26 @@ BGP（Border Gateway Protocol）：**边界网关协议**。
 
 过去的几十年里，连接到互联网（公网）的系统通过 BGP 发现彼此（find one another）
 。但是，它也可以用在数据中心内部。现代数据中心中使用最广泛的路由协议就是 BGP。
-BGP 是标准协议，有很多免费和开源（free and open source，这里 “free” 作者应该是指“免
-费”，而不是“自由软件”的“自由”）的软件实现。
+**<mark>BGP 是标准协议，有很多免费和开源的软件实现</mark>**。
 
 
 本章试图回答以下问题：
 
-1. 现代数据中心网络设计的目标是什么？
-1. 这些目标与其他网络（例如企业网和园区网，enterprise and campus）的设计目标有什么不同？
-1. 数据中心为什么选择 BGP 作为路由协议？
+1. 现代数据中心网络设计的**<mark>目标</mark>**是什么？
+1. 这些目标与其他网络（例如企业网和园区网，enterprise and campus）的设计目标有什么**<mark>不同</mark>**？
+1. 数据中心**<mark>为什么选择 BGP</mark>** 作为路由协议？
 
 <a name="chap_1.1"></a>
 
-### 1.1 数据中心网络的需求
+## 1.1 数据中心网络的需求
 
-**现代数据中心的演进都是由大型互联网公司的需求驱动的**，例如 Google 和 Amazon。
+**<mark>现代数据中心的演进</mark>**都是由**<mark>大型互联网公司的需求驱动</mark>**的，例如 Google 和 Amazon。
 
 核心需求：
 
 1. 服务器到服务器通信越来越多（Increased server-to-server communication）
 
-    单体应用到微服务化的转变，导致南北向流量减少，东西向流量增加。
+    单体应用到**<mark>微服务化</mark>**的转变，导致南北向流量减少，东西向流量增加。
 
 1. 规模（Scale）
 
@@ -126,9 +81,8 @@ BGP 是标准协议，有很多免费和开源（free and open source，这里 �
 
 1. 弹性（Resilience）
 
-    老式数据中心的设计都是**假设网络是可靠的**，而现代数据中心应用都是**假设网络
-    是不可靠的** —— 总会由于各种原因导致网络或机器故障。弹性就是要保证发生故障时
-    ，**受影响的范围可控，尽量做到不影响用户体验**。
+    老式数据中心的设计都是**假设网络是可靠的**，而现代数据中心应用都是**假设网络是不可靠的** ——
+    总会由于各种原因导致网络或机器故障。弹性就是要保证发生故障时，**受影响的范围可控，尽量做到不影响用户体验**。
 
 现代数据中心网络必须满足以上三方面基本需求。
 
@@ -139,38 +93,35 @@ teardown)。
 缺点：
 
 1. 高性能设备特别贵
-1. 这些设备大部分都是两方冗余（two-way redundancy），存在同时挂掉的风险，可用性
-   不是足够高
+1. 这些设备大部分都是部署两份实现冗余（two-way redundancy），但仍然存在同时挂掉的风险，可用性不是足够高
 1. 发生故障时，故障范围特别大（尤其是核心设备）
 
 <a name="chap_1.2"></a>
 
-### 1.2 Clos 网络拓扑
+## 1.2 Clos 网络拓扑
 
 大型互联网公司最后采用了一种称为 Clos 的架构。Clos 架构最初是贝尔实验室的
-Charles Clos 在 1950s 为电话交换网设计的。
-
-可以实现**无阻塞架构**（non-blocking architecture）：上下行带宽都充分利用。
+Charles Clos 在 **<mark>1950s 为电话交换网设计</mark>**的。
+CLOS 可以实现**<mark>无阻塞架构</mark>**（non-blocking architecture）：**<mark>上下行带宽都充分利用</mark>**。
 
 <p align="center"><img src="/assets/img/bgp-in-data-center/1-1.PNG" width="60%" height="60%"></p>
 <p align="center">图 1-1 简单的两级（two-tier） Clos 网络</p>
 
 特点：
 
-1. **连接的一致性**（uniformity of connectivity）：任意两个服务器之间都是 3 跳
+1. **<mark>连接的一致性</mark>**（uniformity of connectivity）：任意两个服务器之间都是 3 跳
+1. **<mark>节点同构</mark>**（homogeneous）：服务器都是对等的，交换机/路由器也是
+1. **<mark>全连接</mark>**（full-mesh）：故障时影响面小；总带宽高，而且方便扩展，总带宽只受限于 Spine 的接口数量
 
-1. **节点都是同构的**（homogeneous）：服务器都是对等的，交换机/路由器也是
-
-1. **全连接**（full-mesh）：故障时影响面小（gracefully with failures）；总带宽高
-   ，而且方便扩展，总带宽只受限于 Spine 的接口数量
-
-注意，在以上模型中，**Spine 仅仅用于连接 Leaf，因此在这种模型中，所有的功能（
-functionality）都集中在 Leaf 上**。
+注意，在以上模型中，**<mark>Spine 仅用于连接 Leaf</mark>**，因此在这种模型中，
+**<mark>所有的功能（functionality）都集中在 Leaf 上</mark>**。
 
 扩展方式：**scale-out**（水平扩展）。
 
-**最大服务器数量**（无阻塞架构下）：`n * m / 2`，其中 `n` 是一个 Leaf 节点的端口
-数量，`m` 是一个 Spine 节点的端口数量。
+**<mark>最大服务器数量</mark>**（无阻塞架构下）：**<mark><code>n * m / 2</code></mark>**，其中
+
+* `n` 是一个 Leaf 节点的端口数量，
+* `m` 是一个 Spine 节点的端口数量。
 
 典型带宽，分为接入（leaf-server）和互连（leaf-spine）：
 
@@ -179,7 +130,7 @@ functionality）都集中在 Leaf 上**。
 
 受电源限制，单个机柜最大不超过 40 台服务器。
 
-#### 三级 Clos 网络
+### 三级 Clos 网络
 
 <p align="center"><img src="/assets/img/bgp-in-data-center/1-2.PNG" width="60%" height="60%"></p>
 <p align="center">图 1-2 三级（three-tier） Clos 网络</p>
@@ -193,7 +144,7 @@ Clos 架构的魅力：无论从哪一级看，每个组成部分都是类似的
 
 为了解决规模瓶颈，大型互联网公司甚至会考虑 4 级甚至 6 级 Clos 架构。
 
-#### Clos 网络的副作用
+### Clos 网络的副作用
 
 由于 Spine 和 Leaf 之间是 full-mesh，网线会特别多，排线会复杂一些。
 
@@ -203,7 +154,7 @@ Clos 架构的魅力：无论从哪一级看，每个组成部分都是类似的
 
 <a name="chap_1.3"></a>
 
-### 1.3 Clos Network 网络架构
+## 1.3 Clos Network 网络架构
 
 传统网络架构中，接入层和汇聚层走二层交换，因此需要运行 STP 协议消除二层环路。
 如果在 Clos 网络中交换机也走二层，那可用（active）链路就会大大减少，如图 1-3 所
@@ -251,7 +202,7 @@ nonuniform connectivity）。
 
 <a name="chap_1.4"></a>
 
-### 1.4 服务器接入模型（Server Attach Model）
+## 1.4 服务器接入模型（Server Attach Model）
 
 * **单接入**（single-attach）
 * **双接入**（dual-attach）
@@ -279,7 +230,7 @@ nonuniform connectivity）。
 
 <a name="chap_1.5"></a>
 
-### 1.5 连接到外部网络（Connectivity to the External World）
+## 1.5 连接到外部网络（Connectivity to the External World）
 
 对于**中型或大型网络**，**通过 border leaf** 连接到外网。
 
@@ -298,7 +249,7 @@ nonuniform connectivity）。
 
 <a name="chap_1.6"></a>
 
-### 1.6 多租户（或 Cloud）支持
+## 1.6 多租户（或 Cloud）支持
 
 Clos 拓扑也适用于云计算网络，不管是公有云还是私有云。
 
@@ -310,7 +261,7 @@ Clos 拓扑也适用于云计算网络，不管是公有云还是私有云。
 
 <a name="chap_1.7"></a>
 
-### 1.7 现代数据中心设计的运维考虑
+## 1.7 现代数据中心设计的运维考虑
 
 数据中心的设计会影响到数据中心的运维。
 
@@ -320,7 +271,7 @@ repeatable）。
 
 <a name="chap_1.8"></a>
 
-### 1.8 选择路由协议（Choice of Routing Protocol）
+## 1.8 选择路由协议（Choice of Routing Protocol）
 
 对企业网（enterprise network），两种协议比较合适：
 
@@ -351,7 +302,7 @@ BGP 的特点：
 
 <a name="chap_2"></a>
 
-## 2 BGP 是如何适配到数据中心的
+# 2 BGP 是如何适配到数据中心的
 
 在 BGP 用于数据中心之前，它主要用于**服务提供商网络**（service provider network）。
 这导致的一个问题就是，数据中心不能运行 BGP，不然会和底层供应商的网络有冲突。如
@@ -381,7 +332,7 @@ BGP 的特点：
 
 <a name="chap_2.1"></a>
 
-### 2.1 有几路由协议
+## 2.1 有几路由协议
 
 传统 BGP 从 OSPF、IS-IS、EIGRP（Enhanced Interior Gateway Routing Protocol） 等
 协议接收路由通告，这些称为**内部路由协议**（internal routing protocols），用于控制
@@ -391,7 +342,7 @@ BGP 的特点：
 
 <a name="chap_2.2"></a>
 
-### 2.2 iBGP 和 eBGP
+## 2.2 iBGP 和 eBGP
 
 数据中心内部是该使用内部网关协议（iBGP）还是外部网关协议（eBGP）？**很多人觉得应
 该是 iBGP，因为在数据中心内部，但其实不是**。
@@ -406,7 +357,7 @@ BGP 的特点：
 
 <a name="chap_2.3"></a>
 
-### 2.3 ASN 编号
+## 2.3 ASN 编号
 
 每个 BGP 节点都有一个 ASN（Autonomous System Number）。ASN 用于**识别路由环境、
 判断最优路径、关联路由策略**等等。
@@ -418,7 +369,7 @@ ASN 有两个版本：老版用 2 个字节表示，新版用 4 个字节表示�
 **公网的 BGP 使用 well-known ASN，但数据中心中使用的一般都是私有 ASN，因为一般不需
 要和公网做 peer**。
 
-#### 私有 ASN
+### 私有 ASN
 
 私有 ASN 和 私有网段类似。
 
@@ -432,7 +383,7 @@ ASN 有两个版本：老版用 2 个字节表示，新版用 4 个字节表示�
 1. 老版本（2 字节）：大概 1023 个（64512~65534)
 1. 新版本（4 字节）：大概 95 million（4200000000~4294967294）
 
-#### Path Hunting 问题
+### Path Hunting 问题
 
 有多种分配 ASN 的方式。
 
@@ -446,7 +397,7 @@ ASN 有两个版本：老版用 2 个字节表示，新版用 4 个字节表示�
 <p align="center"><img src="/assets/img/bgp-in-data-center/2-1.PNG" width="60%" height="60%"></p>
 <p align="center">图 2-1 一个简单拓扑，解释 path hunting</p>
 
-#### ASN Numbering Model
+### ASN Numbering Model
 
 为了避免 path hunting 问题，**Clos 网络内的 ASN 编号模型**如下：
 
@@ -472,7 +423,7 @@ ASN 有两个版本：老版用 2 个字节表示，新版用 4 个字节表示�
 
 <a name="chap_2.4"></a>
 
-### 2.4 最优路径算法
+## 2.4 最优路径算法
 
 给定一个节点的 prefix，BGP 通过算法判断到这个 node 的最佳路径。
 
@@ -491,7 +442,7 @@ UPDATE 消息会触发最优路径计算过程。可以对 UPDATE 消息做缓�
 
 <a name="chap_2.5"></a>
 
-### 2.5 多路径选择
+## 2.5 多路径选择
 
 对于 Clos 这种密集连接型网络，**路由多路径**（route multi-pahting）是构建健壮、
 可扩展网络的基本要求。
@@ -519,7 +470,7 @@ unequal path 处理。
 
 <a name="chap_2.6"></a>
 
-### 2.6 默认定时器导致的慢收敛
+## 2.6 默认定时器导致的慢收敛
 
 简单来说，BGP 中的几个定时器控制 peer 之间通信的速度。对于 BGP，这些参数的默认值
 都是针对**服务提供商环境**优化的，其中**稳定性的优先级高于快速收敛**。而数据中心
@@ -532,7 +483,7 @@ unequal path 处理。
 * Keepalive and Hold Timers
 * Connect Timer
 
-#### Advertisement Interval
+### Advertisement Interval
 
 发布路由通告的间隔。在这个间隔内的事件会被缓存，然后时间到了一起发送。
 
@@ -541,7 +492,7 @@ unequal path 处理。
 对于密集连接型的数据中心来说，30s 显然太长了，**0s 比较合适**。这会使得 eBGP 的收敛
 速度达到 OSFP 这种 IGP 的水平。
 
-#### Keepalive and Hold Timers
+### Keepalive and Hold Timers
 
 每个节点会向它的 peer 发送心跳消息。如果一段时间内（称为 hold time）没收到 peer
 的心跳，就会清除所有从这个 peer 收到的消息。
@@ -559,7 +510,7 @@ minutes is a lifetime）。典型配置：
 * Keepalive: 3s
 * Hold timer: 9s
 
-#### Connect Timer
+### Connect Timer
 
 节点和 peer 建立连接失败后，再次尝试建立连接之前需要等待的时长。
 
@@ -567,7 +518,7 @@ minutes is a lifetime）。典型配置：
 
 <a name="chap_2.7"></a>
 
-### 2.7 数据中心默认 BGP 配置
+## 2.7 数据中心默认 BGP 配置
 
 很多 BGP 实现的默认配置都是针对服务提供商网络调优的，而不是针对数据中心。
 
@@ -583,7 +534,7 @@ minutes is a lifetime）。典型配置：
 
 <a name="chap_2.8"></a>
 
-### 2.8 总结
+## 2.8 总结
 
 * 数据中心网络默认部署模型：eBGP
 * ASN 编号模型
@@ -592,20 +543,20 @@ minutes is a lifetime）。典型配置：
 
 <a name="chap_3"></a>
 
-## 3 自动化 BGP 配置
+# 3 自动化 BGP 配置
 
 运维口头禅：**无自动化，即等死**（automate or die）。
 
 <a name="chap_3.1"></a>
 
-### 3.1 自动化配置基础
+## 3.1 自动化配置基础
 
 只要存在模式（pattern），就有可能实现自动化（Automation is possible when there
 are patterns）。
 
 <a name="chap_3.2"></a>
 
-### 3.2 示例数据中心网络
+## 3.2 示例数据中心网络
 
 本书剩余部分将使用图 3-1 所示的拓扑，它代表了当前大部分数据中心网络的拓扑。
 
@@ -625,7 +576,7 @@ are patterns）。
 
 <a name="chap_3.3"></a>
 
-### 3.3 自动化传统 BGP 的困难
+## 3.3 自动化传统 BGP 的困难
 
 配置 3-1 网络：
 
@@ -667,7 +618,7 @@ are patterns）。
 
 > 允许使用多路径。
 
-#### Leaf 节点核心配置
+### Leaf 节点核心配置
 
 ```shell
 // leaf01’s BGP configuration
@@ -715,7 +666,7 @@ router bgp 65001
 exit-address-family
 ```
 
-#### Spine 节点核心配置
+### Spine 节点核心配置
 
 ```shell
 // spine01’s BGP configuration
@@ -780,7 +731,7 @@ exit-address-family
 
 <a name="chap_3.4"></a>
 
-### 3.4 路由再分发（Redistributes Routes）
+## 3.4 路由再分发（Redistributes Routes）
 
 将一种协议收到的路由以另一种协议再发送出去，称为**路由再分发**（redistributing routes）
 。格式：
@@ -831,7 +782,7 @@ exit-address-family
 
 <a name="chap_3.5"></a>
 
-### 3.5 路由策略
+## 3.5 路由策略
 
 用最简单的话来说，路由策略就是规定哪些路由通告可以接受，哪些需要拒绝。
 
@@ -857,7 +808,7 @@ ACCEPT_DC_LOCAL(prefix)
 > 注意：建议所有变量使用大写，因为我见过的几乎所有网络配置都是这样的，不要使用
 > camelCase 等其他格式。
 
-#### Route-Maps
+### Route-Maps
 
 `route-maps` 是实现路由策略的常见方式。Cisco IOS、NXOS，以及开源的 FRRouting、
 Arista 等等都支持 `route-maps`。[BIRD]()软件走的更远，支持一种简单的领域特定语言
@@ -898,7 +849,7 @@ EXCEPT_ISL_ETH0(interface)
 }
 ```
 
-##### `route-maps` 对 BGP 处理的影响 
+#### `route-maps` 对 BGP 处理的影响 
 
 BGP 是路径矢量协议，因此它在**运行完最优路径算法之后，才会通告路由更新**。
 
@@ -912,7 +863,7 @@ BGP 是路径矢量协议，因此它在**运行完最优路径算法之后，�
 
 <a name="chap_3.6"></a>
 
-### 3.6 使用接口名作为邻居
+## 3.6 使用接口名作为邻居
 
 FRRouting 的一个特性，可以自动推断出接口的 IP 地址，因此策略中可以指定端口而不是
 IP。
@@ -1009,7 +960,7 @@ router bgp 65500
 
 <a name="chap_3.7"></a>
 
-### 3.7 总结
+## 3.7 总结
 
 将配置模板化，避免具体 IP：
 
@@ -1021,7 +972,7 @@ router bgp 65500
 
 <a name="chap_4"></a>
 
-## 4 其他 BGP 配置
+# 4 其他 BGP 配置
 
 本章将展示如何通过 `remote-as` 彻底去掉配置中的接口的 IP 地址，这将使得 BGP 的配
 置非常：
@@ -1040,7 +991,7 @@ router bgp 65500
 
 <a name="chap_4.1"></a>
 
-### 4.1 接口 IP 和 `remote-as`
+## 4.1 接口 IP 和 `remote-as`
 
 BGP 基于 TCP/IP 协议，因此需要一个 IP 地址才能建立连接。
 
@@ -1054,7 +1005,7 @@ session 是被 iBGP 还是 eBGP 规则管理**。
 
 <a name="chap_4.2"></a>
 
-### 4.2 Numbered Interfaces 数量
+## 4.2 Numbered Interfaces 数量
 
 是否真需要给每个接口配置一个 IP 地址？
 
@@ -1089,7 +1040,7 @@ session 是被 iBGP 还是 eBGP 规则管理**。
 
 <a name="chap_4.3"></a>
 
-### 4.3 Unnumbered Interfaces
+## 4.3 Unnumbered Interfaces
 
 **Unnumbered Interface**：没有配置 IP 地址的接口。
 
@@ -1112,7 +1063,7 @@ FRRouting 支持。Unnumbered OSPF 已经在很多生产环境部署。IS-IS，�
 
 <a name="chap_4.4"></a>
 
-### 4.4 BGP Unnumbered
+## 4.4 BGP Unnumbered
 
 BGP 到底是如何在接口没有 IP 的情况下正常工作的呢？
 
@@ -1137,7 +1088,7 @@ BGP 到底是如何在接口没有 IP 的情况下正常工作的呢？
 * IPv6：开启 LLA 和 RA（无需部署 IPv6 网络就可以用）
 * RFC 5549：描述了下一跳为 IPv6 地址的 IPv4 路由
 
-#### IPv6 Router Advertisement
+### IPv6 Router Advertisement
 
 IPv6 的架构设计是：无需显式配置，网络就可以尽量正常地工作。因此，IPv6 网络中的每个 link
 都会自动分配一个 IP 地址，并且是（在链路层）是唯一的，一般是根据 MAC 地址算出来
@@ -1153,7 +1104,7 @@ IPv6 的架构设计是：无需显式配置，网络就可以尽量正常地工
 另外需要注意的是，**使用 IPv6 LLA 并不需要部署 IPv6 网络；这种方案也并不涉及任何隧
 道协议。IPv6 LLA 只是用于 BGP 创建连接。只需要开启 LLA 和 RA 功能即可**。
 
-#### RFC 5594
+### RFC 5594
 
 LLA 和 RA 解决了 peer IP 的自动发现和 BGP 连接的建立，但是没有说明节点如何才能到
 达 RA 里的路由。
@@ -1176,7 +1127,7 @@ with an IPv6 nexthop）。
 取对端的 MAC 地址（IPv4 ARP，IPV6 ND）。因此只要有同一接口上的任意一个地址（不管
 是 IPv4 还是 IPv6），就可以获取到对端 MAC，然后就可以将包发送到下一跳。
 
-#### 基于 RFC 5549 实现转发
+### 基于 RFC 5549 实现转发
 
 BGP 网络自动初始化过程：
 
@@ -1215,13 +1166,13 @@ IPv4 地址）。**
 1. BGP 将下一跳是 IPv6 LLA 的 IPv4 路由交给 RIB
 1. RIB 将 nexthop 改为 169.254.0.1，然后添加到路由表
 
-#### BGP Capability to Negotiate RFC 5549 Use
+### BGP Capability to Negotiate RFC 5549 Use
 
 以 IPv6 作为下一跳的 IPv4 路由毕竟还是和通常的不太一样，因此 RFC 5549 定义了一个
 新的能力，叫 **extended nexthop**，然后通过 peering session 进行协商，以判断两边
 的 BGP 能力。
 
-##### 互操作性
+#### 互操作性
 
 每个 eBGP peer 在发送路由通告之前，都会将 NEXTHOP 设为自己的 IP 地址。
 
@@ -1241,7 +1192,7 @@ B 和 A 之间的接口以及 B 和 C 之间的接口，都需要配置 IPv4 IP 
 
 <a name="chap_4.5"></a>
 
-### 4.5 `remote-as` 指定 BGP session 类型
+## 4.5 `remote-as` 指定 BGP session 类型
 
 以上配置消除了显示配置 IP 地址。接下来看如何通过 `remote-as` 配置 ASN。
 
@@ -1258,7 +1209,7 @@ ASN 的主要目的就是判断 iBGP 还是 eBGP 控制着 session。
 
 <a name="chap_4.6"></a>
 
-### 4.6 总结
+## 4.6 总结
 
 通过避免接口的 IP 地址，以及通过 `remote-as` 指定 ASN 的类型（iBGP or eBGP），配
 置可以简化成下面这样。可以看到，除了 `router bgp <id>` 和 `bgp router-id <ip>`
@@ -1318,15 +1269,15 @@ router bgp 65534
 
 <a name="chap_5"></a>
 
-## 5 BGP 生命周期管理
+# 5 BGP 生命周期管理
 
 如何 BGP 配置之后，行为和预期的不一致，怎么排查？本章回答这些问题。
 
 <a name="chap_5.1"></a>
 
-### 5.1 查看配置
+## 5.1 查看配置
 
-#### 查看 BGP session 信息
+### 查看 BGP session 信息
 
 * `show ip bgp summary`
 * `show ip bgp ipv4 unicast summary`
@@ -1336,7 +1287,7 @@ router bgp 65534
 <p align="center"><img src="/assets/img/bgp-in-data-center/5-1.PNG" width="60%" height="60%"></p>
 <p align="center">图 5-1 查看 BGP 网络信息</p>
 
-#### 查看当前路由
+### 查看当前路由
 
 * `show ip gbp`
 * `show bgp ipv4 unicast`
@@ -1350,7 +1301,7 @@ router bgp 65534
 
 <a name="chap_5.2"></a>
 
-### 5.2 连接到外部网络
+## 5.2 连接到外部网络
 
 <p align="center"><img src="/assets/img/bgp-in-data-center/5-4.PNG" width="60%" height="60%"></p>
 <p align="center">图 5-4 查看 BGP neighbor 详细信息</p>
@@ -1368,7 +1319,7 @@ router bgp 65534
 
 <a name="chap_5.3"></a>
 
-### 5.3 计划节点维护
+## 5.3 计划节点维护
 
 例如，如果计划对 spine01 进行升级，那要通知其他 peer 在计算最优路径时，要绕开
 spine01。
@@ -1403,17 +1354,17 @@ neighbor ISL route-map SCHED_MAINT out
 
 <a name="chap_5.4"></a>
 
-### 5.4 Debug BGP
+## 5.4 Debug BGP
 
 打开 debug 开关，查看日志等。因实现而异。
 
 <a name="chap_5.5"></a>
 
-### 5.5 总结
+## 5.5 总结
 
 <a name="chap_5"></a>
 
-## 6 服务器上运行 BGP
+# 6 服务器上运行 BGP
 
 现代数据中心颠覆了我们以往对计算和网络的所有认知。不管是 NoSQL 数据库、新
 应用架构或微服务的出现，还是 Clos 网络用路由代替桥接做底层通信的方式，都为
@@ -1428,7 +1379,7 @@ neighbor ISL route-map SCHED_MAINT out
 
 <a name="chap_6.1"></a>
 
-### 6.1 虚拟服务器的兴起
+## 6.1 虚拟服务器的兴起
 
 传统数据中心中，**桥接和路由的边界**，以及 **L2-L3 网关**，都是部署防火
 墙和负载均衡器的地方。这些物理边界和传统的客户端/服务器模型边界也是比较匹配的。
@@ -1438,7 +1389,7 @@ Clos 网络打破了这些自然边界，使得以上部署模型都失效了。
 新的数据中心中，服务都是跑在物理服务器内的虚拟机内，或者是没有虚拟化的物理
 服务器。这些虚拟机都能够快速的创建和删除，随着应用流量而扩缩容。
 
-#### Anycast 地址
+### Anycast 地址
 
 虚拟机会出现在数据中心的任意服务器内，因此 IP 不再会固定到单个机柜或路由器，多个
 机柜可能会通告同一个 IP。通过路由的 ECMP 转发功能，包会被转发到最近的一个节点。
@@ -1451,7 +1402,7 @@ ToR 如何发现或通告（discover or advertise）anycast IP？
 
 <a name="chap_6.2"></a>
 
-### 6.2 交换机和服务器做 BGP Peering 的模型
+## 6.2 交换机和服务器做 BGP Peering 的模型
 
 置顶交换机和服务器做 BGP Peering 有两种模型：
 
@@ -1465,7 +1416,7 @@ ToR 如何发现或通告（discover or advertise）anycast IP？
 * ASN 分配
 * 路由交换模型
 
-#### ASN 分配
+### ASN 分配
 
 最常见的部署方式：所有服务器共用一个 ASN。
 
@@ -1500,7 +1451,7 @@ ToR 如何发现或通告（discover or advertise）anycast IP？
 1. ASN 数量和服务器数量一样多，考虑到服务器的数量成千上万，ASN 管理和维护会是一个潜在问题
 1. 由于 ASN 数量非常多，必须得使用四字节 ASN 版本，可能和其他两字节 BGP 存在兼容性问题
 
-#### 路由交换模型
+### 路由交换模型
 
 现在在网络层面，服务器也是一个路由器，和 leaf、spine 并没有区别，因此必须做好安全
 控制。
@@ -1541,14 +1492,14 @@ neighbor server default-originate
 
 <a name="chap_6.3"></a>
 
-### 6.3 边界服务器 BGP Peering 方案
+## 6.3 边界服务器 BGP Peering 方案
 
 部署**防火墙和负载均衡器**的 BGP 模型。有两种：
 
 * 动态邻居（dynamic neighbors）
 * BGP unnumbered
 
-#### 动态邻居
+### 动态邻居
 
 BGP 默认监听所有 IP 过来的 TCP 连接请求。动态邻居是 BGP 的一个特性，可以指定**只监听特
 定网段过来的连接请求**。
@@ -1582,7 +1533,7 @@ Environment）启动的。如图 6-1。
 <p align="center"><img src="/assets/img/bgp-in-data-center/6-1.PNG" width="60%" height="60%"></p>
 <p align="center">图 6-1 BGP 动态邻居模型</p>
 
-#### BGP Unnumbered
+### BGP Unnumbered
 
 路由器和服务器之间也支持 BGP unnumbered，和第四章介绍的路由器之间的 unnumbered
 类似。这种方式的拓扑如图 6-2：
@@ -1622,7 +1573,7 @@ neighbor eth0 remote-as external
 
 有办法解决这个问题，但这超出了本身讨论的范围。
 
-#### 服务器上可用的路由软件
+### 服务器上可用的路由软件
 
 至此，网络设计领域的老兵会意识到：**服务器上跑的 BGP 其实只是一个 GBP speaker，
 不需要最优路径计算、将路由添加到路由表等全套 BGP 功能**。大型互联网公司也意识到
@@ -1635,6 +1586,6 @@ neighbor eth0 remote-as external
 
 <a name="chap_6.4"></a>
 
-### 6.4 总结
+## 6.4 总结
 
 本章展示了如何将 BGP 扩展到服务器内部。

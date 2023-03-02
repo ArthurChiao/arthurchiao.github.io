@@ -43,18 +43,17 @@ TX of destination netdev.  Introduce bpf_redirect() helper that does that withou
 ### Description
 
 `long bpf_redirect(ifindex, flags)` can be used to **<mark>redirect the given packet to the given net device</mark>**
-identified with index `ifindex`.  This helper is somewhat similar to
-`bpf_clone_redirect()`, except that the packet is not cloned, which provides
-increased performance (25% pps increase compares with `clone_redirect()` according to the commit message).
+identified with `ifindex`.  This helper is somewhat similar to `bpf_clone_redirect()`,
+except that the packet is not cloned, which provides increased performance
+(25% pps increase compares with `clone_redirect()` according to the commit message).
 
 Return value: **<mark>TC/XDP verdict</mark>**.
-
 
 ### Comparison with `bpf_clone_redirect()`
 
 |        | `bpf_clone_redirect()` | **<mark><code>bpf_redirect()</code></mark>** |
 |:-------|:-----------------------|:-----------------|
-| Effeciency                       | Low (involve skb clone)    | High             |
+| Effeciency                       | Low (skb clone involved)    | High             |
 | Where the redirection happens    | Inside function call        | **<mark>After function call</mark>** (this func only returns a verdict, the real redirection happens in **<mark><code>skb_do_redirect()</code></mark>**) |
 | Can be used out of eBPF program  | Yes | No |
 | May change underlying skb buffer | Yes (need more re-validations) | No |
@@ -88,8 +87,9 @@ diff --git a/include/uapi/linux/pkt_cls.h b/include/uapi/linux/pkt_cls.h
 +}
 ```
 
-We can see that this helper only sets `ifindex` and `flags` and then returns a
-`TC_ACT_REDIRECT` to the caller, that's why we say that **<mark>the real redirection happens after bpf_redirect() finishes</mark>**.
+As see above, this helper only sets `ifindex` and `flags` and then returns a
+**<mark><code>TC_ACT_REDIRECT</code></mark>** to the caller, that's why we say
+**<mark>the real redirection happens after bpf_redirect() finishes</mark>**.
 
 ### 3. Process redirect logic in TC BPF
 
@@ -158,7 +158,7 @@ We can see from the last few lines that
 # 2 Egress optimization: `bpf_redirect_neighbor()`, 2020
 
 Five years after `bpf_redirect()` emerged in the Linux kernel, an
-egress side optimization was introduced for it, in
+**<mark>egress side optimization</mark>** was proposed, in
 [patch](https://github.com/torvalds/linux/commit/b4ab31414970a):
 
 ```
@@ -424,7 +424,7 @@ and we have double confirmed the benchmark with Cilium 1.10.7 + 5.10 kernel in o
 ### Kubernetes: incorrect Pod ingress statistics
 
 `kubelet` collects each pod's network stats (e.g. rx_packets, rx_bytes) via
-cadvisor/netlink, and exposes these metrics via 10250 metrics port.
+cadvisor/netlink, and exposes these metrics via **<mark><code>:10250</code></mark>** metrics port.
 
 > See [kubelet doc](https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet/) for more information.
 

@@ -109,7 +109,7 @@ cBPF 有 8 种的指令类型：
 cBPF 程序的语义是由使用它的子系统定义的。由于其通用、最小化和快速执行的特点，如
 今 cBPF 已经在 PF_PACKET socket **<mark>之外的一些场景找到了用武之地</mark>**：
 
-* `seccomp` BPF [15] 于 2012 年添加到内核，目的是提供一种**安全和快速的系统调用过滤**方式。
+* `seccomp` BPF [15] 于 2012 年添加到内核，目的是提供一种**安全和快速的过滤系统调**的方式。
 * 网络领域，cBPF 已经能
 
     * 用作大部分协议（TCP、UDP、netlink 等）的 socket filter；
@@ -120,7 +120,7 @@ cBPF 程序的语义是由使用它的子系统定义的。由于其通用、最
 
 * 其他一些场景
 
-eBPF 作为对 cBPF 的扩展，**第一个 commit 于 2014 年合并到内核**。从那之后，
+eBPF 作为对 cBPF 的扩展，**<mark>第一个 commit 于 2014 年合并到内核</mark>**。从那之后，
 BPF 的可编程特性已经发生了巨大变化。
 
 # 2 eBPF 架构
@@ -306,7 +306,7 @@ Map 后端是由<mark>核心内核（the core kernel）提供</mark>的，可能
 
 ### 创建和访问 map
 
-1. <mark>创建 map：只能从用户空间操作</mark>，通过 `bpf(2)` 系统调用完成。
+1. <mark>创建 map：只能从用户空间操作</mark>，通过 **<mark><code>bpf(2)</code></mark>** 系统调用完成。
 1. 从 **eBPF 程序中**访问 map：<mark>通过辅助函数</mark>。
 1. 从**用户空间**访问 map：通过 `bpf(2)` 系统调用。
 
@@ -512,7 +512,7 @@ eBPF 引入 `BPF_PROG_TYPE_SCHED_CLS` [8] 和 `BPF_PROG_TYPE_SCHED_ACT` [7] 之�
 **支持了 `cls_bpf` 和 `act_bpf`**。
 
 * 这两种类型的 fast path 都在 RCU 内运行（run under RCU）
-* 二者做的主要事情也就是**<mark>调用 BPF_PROG_RUN()</mark>**，后者会解析到
+* 二者做的主要事情也就是调用 **<mark><code>BPF_PROG_RUN()</code></mark>**，后者会解析到
   `(*filter->bpf_func)(ctx, filter->insnsi)`，其中 `ctx` 参数包含了 skb 信息
 * `bpf_func()` 里对 skb 进行处理，<mark>接下来可能会执行</mark>：
 
@@ -812,7 +812,7 @@ iproute2 源码中 `examples/bpf/` 目录下包含很多入门示例，是用 re
 ### 有限栈空间和全局变量
 
 eBPF 程序的栈空间非常有限，只有 512KB，因此用 C 实现 eBPF 程序时需要特别注意这一点。
-常规 C 程序中常见的<mark>全局变量在这里不支持的</mark>。
+常规 C 程序中常见的<mark>全局变量在这里不支持的</mark>（译注：较新的内核已经支持了）。
 
 eBPF maps（在 tc 中对应的是 `struct bpf_elf_map`）定义在各自的 ELF sections
 中，但可以在程序 sections 中访问到。

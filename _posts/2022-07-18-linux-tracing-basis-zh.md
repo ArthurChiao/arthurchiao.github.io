@@ -2,7 +2,7 @@
 layout    : post
 title     : "Linux tracing/profiling 基础：符号表、调用栈、perf/bpftrace 示例等（2022）"
 date      : 2022-07-18
-lastupdate: 2023-02-11
+lastupdate: 2023-02-21
 categories: bpf perf
 ---
 
@@ -212,7 +212,7 @@ Symbol table '.symtab' contains 66 entries: # 局部（local）符号表
     65: 0000000000400400     0 FUNC    GLOBAL DEFAULT   11 _init
 ```
 
-## 2.4 用 bpftrace 跟踪 hello-world 程序执行
+## 2.4 `bpftrace` 跟踪 hello-world 程序执行
 
 执行 hello-world 程序，
 用 bpftrace 来跟踪这个方法，注意这是用户空间函数，因此用 uprobe，
@@ -226,7 +226,7 @@ hello world!
         __libc_start_main+245
 ```
 
-## 2.5 用 bpftrace 跟踪容器方式部署的应用（container process）
+## 2.5 `bpftrace` 跟踪容器方式部署的应用（container process）
 
 如果应用程序跑在容器内，在宿主机用 bpftrace 跟踪时，需要一些额外信息 [2]。
 
@@ -303,7 +303,65 @@ $ sudo docker inspect -f '{{.State.Pid}}' cilium-agent
 (node) $ bpftrace -p 109997 -e 'uprobe:/usr/bin/cilium-agent:"github.com/cilium/cilium/pkg/endpoint.(*Endpoint).regenerate" {printf("%s\n", ustack); }'
 ```
 
-## 2.6 小结
+## 2.6 `bpftrace` 跟踪内核函数调用栈
+
+这一节跟 hello-world 无关，只是介绍到 bpftrace 顺便记录一下。
+
+假设我们想看下到连接跟踪函数 `nf_conntrack_in()` 的调用栈：
+
+```shell
+# 确认有这个函数
+$ bpftrace -l | grep nf_conntrack_in
+kprobe:__nf_conntrack_insert_prepare
+kprobe:nf_conntrack_in
+...
+
+# 打印内核调用栈 kstack
+$ bpftrace -e 'kprobe:nf_conntrack_in {printf("%s\n", kstack); }'
+        nf_conntrack_in+1
+        nf_hook_slow+64
+        nf_hook_slow_list+145
+        ip_sublist_rcv+513
+        ip_list_rcv+311
+        __netif_receive_skb_list_core+689
+        netif_receive_skb_list_internal+460
+        gro_normal_list.part.0+25
+        napi_complete_done+104
+        ixgbe_poll+279
+        __napi_poll+42
+        net_rx_action+597
+        ...
+        secondary_startup_64_no_verify+194
+```
+
+类似地，跟踪 `bpf_redirect` 相关调用栈：
+
+```shell
+$ bpftrace -l | grep bpf_redirect
+kprobe:bpf_redirect
+kprobe:bpf_redirect_peer
+kprobe:bpf_redirect_neigh
+...
+
+$ bpftrace -e 'kprobe:bpf_redirect_peer {printf("%s\n", kstack); }'
+        bpf_redirect_peer+1
+        bpf_prog_fc3cde0e960699b4_handle_policy+6934
+        cls_bpf_classify+264
+        tcf_classify+90
+        __netif_receive_skb_core+1116
+        __netif_receive_skb_list_core+319
+        netif_receive_skb_list_internal+460
+        gro_normal_list.part.0+25
+        napi_complete_done+104
+        ixgbe_poll+279
+        __napi_poll+42
+        net_rx_action+597
+        ...
+        secondary_startup_64_no_verify+194
+```
+
+
+## 2.7 小结
 
 以上 hello-world 例子可以看出，**<mark>function tracing 只需要 symbols</mark>**，不需要 debug symbols（`gcc -g`）。
 那 debug info 有什么用呢？在回答这个问题之前，我们先更深入了解下常规 symbols。

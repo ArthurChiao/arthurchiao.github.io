@@ -2,7 +2,7 @@
 layout    : post
 title     : "Cilium: Handle Conntrack (CT) related BPF Maps on Agent Restart"
 date      : 2021-06-06
-lastupdate: 2021-06-06
+lastupdate: 2023-02-20
 categories: cilium bpf conntrack
 ---
 
@@ -236,7 +236,11 @@ runDaemon                                                                    // 
      |     for m in ctmap.LocalMaps:           // "cilium_ct4_<ep_id>", "cilium_ct_any4_<ep_id>"
      |       m.Create()
      |
-     |-for m in ctmap.GlobalMaps:              // "cilium_ct4_global", "cilium_ct_any4_global"
+     |-ctmaps = ctmap.GlobalMaps:                                             // pkg/maps/ctmap/ctmap.go
+     |                 |-maps(nil, ipv4, ipv6)
+     |                    |-newMap
+     |                       |-&Map(MapTypeLRUHash)
+     |-for m in ctmaps: // "cilium_ct4_global", "cilium_ct_any4_global"
      |   m.Create                                                             // -> pkg/bpf/map_linux.go
      |     |-OpenOrCreate
      |       |-openOrCreate
@@ -320,7 +324,11 @@ d.initMaps() // Open or create BPF maps.    // daemon/cmd/datapath.go
   |     for m in ctmap.LocalMaps:           // "cilium_ct4_<ep_id>", "cilium_ct_any4_<ep_id>"
   |       m.Create()
   |
-  |-for m in ctmap.GlobalMaps:              // "cilium_ct4_global", "cilium_ct_any4_global"
+  |-ctmaps = ctmap.GlobalMaps:
+  |                 |-maps(nil, ipv4, ipv6)
+  |                    |-newMap
+  |                       |-&Map(MapTypeLRUHash)
+  |-for m in ctmaps: // "cilium_ct4_global", "cilium_ct_any4_global"
   |   m.Create                              // -> pkg/bpf/map_linux.go
   |     |-OpenOrCreate
   |       |-openOrCreate

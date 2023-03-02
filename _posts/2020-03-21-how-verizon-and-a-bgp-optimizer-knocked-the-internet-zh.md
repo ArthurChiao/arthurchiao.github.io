@@ -13,19 +13,18 @@ categories: bgp
 Today](https://blog.cloudflare.com/how-verizon-and-a-bgp-optimizer-knocked-large-parts-of-the-internet-offline-today/)。
 
 互联网是一个真正的全球分布式网络，来自不同网络提供商（ISP）的自治域（AS）基于
-BGP 交换路由，最终整张网络收敛到一致状态。ISP 负责向用户提供稳定的网络服务，但这
-需要所有 ISP 的密切配合，仅仅做好自家的工作是不够的，因为这个世界永远有猪队友。
+BGP 交换路由，最终整张网络收敛到一致状态。ISP 负责向用户提供稳定的网络服务，
+但这需要所有 ISP 的密切配合，仅仅做好自家的工作是不够的，因为这个世界永远有猪队友。
 
 此次故障的根源是一家小公司的 BGP Optimizer 错误地对外发布了的内部子路由，
 Cloudflare 等公司是受害者；按照 Cloudflare 这篇博客的说法，如果各中间节点（ISP）
 配置得当，此类故障完全能够避免。
 
 但作为重要的中间节点，**Verizon 的不作为和装死**（故障后 Cloudflare 立即联系了包
-括 Verizon 在内的几家 ISP 并较快地解决了问题，但 8 小时后 Verizon 仍然没有任何回
-复）**激怒了 Cloudflare**，因此他们写了这篇博客。除了技术复盘，他们还在文中毫不客
-气地说（ma）Verizon 的网工“马虎”、“懒惰”，这还不够解气，因此他们把 Verizon 的大
-名写在了文章的标题开头，让大家看看 Verizon 是什么样的一家公司（以及有一支怎样的网
-络团队）。
+括 Verizon 在内的几家 ISP 并较快地解决了问题，但 8 小时后 Verizon 仍然没有任何回复）
+**激怒了 Cloudflare**，因此他们写了这篇博客。除了技术复盘，他们还在文中毫不客气地说（ma）
+Verizon 的网工“马虎”、“懒惰”，这还不够解气，因此他们把 Verizon 的大名写在了文章的标题开头，
+让大家看看 Verizon 是什么样的一家公司（以及有一支怎样的网络团队）。
 
 **由于译者水平有限，本文不免存在遗漏或错误之处。如有疑问，请查阅原文。**
 
@@ -142,9 +141,9 @@ steer traffic within a network）的方式 —— 但是，**这些分割后的�
 
 ## 2.1 配置 BGP session 接收路由上限
 
-BGP session 可以**配置接收的路由上限**（prefix limit）。如果收到的路由**超过了这
-个上限，路由器将关闭这个 session**。如果 Verizon 配置了这个选项，就不会出现这次
-故障了。
+BGP session 可以配置**接收的最大前缀长度**（prefix limit）。如果收到的路由前缀
+**超过了这个上限，路由器将关闭这个 session**。如果 Verizon 配置了这个选项，
+就不会出现这次故障了。
 
 配置这个参数属于最佳实践之一，并且不会给 Verizon 这样的网络提供商代来任何
 坏处。**我们找不出他们不这样做的其他理由：只有粗心或者懒惰**。
@@ -172,8 +171,8 @@ faulty more-specifics）。
 origin network）和前缀长度（prefix size）上施加过滤**。我们规定，Cloudflare 通告
 的前缀不会超过 20，因此任何长度超过 20 的前缀（可能是 more-specific 路由）都我们
 都拒绝接受，不管这些路由的路径（path）是什么。这个机制需要打开 BGP Origin
-Validation 开关才能生效。许多提供商，例如 [AT&T 已经在它们的网络中成功地配置这个
-参数](https://twitter.com/jobsnijders/status/1094976832267522048)。
+Validation 开关才能生效。许多提供商，例如
+[AT&T 已经在它们的网络中配置了这个参数](https://twitter.com/jobsnijders/status/1094976832267522048)。
 
 如果 Verizon 使用了 RPKI，他们就会发现收到的这些路由是不合法的，因而**路由器就会
 自动将其丢弃**。

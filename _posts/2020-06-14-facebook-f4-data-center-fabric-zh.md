@@ -115,7 +115,7 @@ intra-application communications）都要发生在集群内部。但我们的应
 
 # 3 引入 fabric 设计
 
-在设计下一代数据中心网络时，我们步子迈地比较大，将**整个数据中心建筑**（data
+在设计下一代数据中心网络时，我们步子迈地比较大，将**整个数据中心大楼**（data
 center building）设计为**单个高性能网络**，而非众多集群组成的层级化超售系统（
 hierarchically oversubscribed system of clusters）。
 我们还希望每次扩展容量时，在不淘汰或对存量基础设施进行定制的前提下，能有一个清晰
@@ -186,34 +186,33 @@ scalability）路径。
 我们采取了“自顶向下”（top down）的方式：首先考虑整体网络架构，然后将各步骤落实到
 具体的拓扑元素和设备（topology elements and devices）。
 
-我们**使用 BGP4 作为 fabric 中唯一的路由协议**。
+我们使用 **<mark>BGP4 作为 fabric 中唯一的路由协议</mark>**。
 
 * 为保持简单，我们只使用必须得用的最少协议特性。这使得我们能够在分布式控制平面的
   性能和可扩展性之间取得平衡，利于控制平面的收敛，而同时还能提供不同粒度的路由传
   播管理（granular routing propagation management），并且保证了与范围广泛的现有
   系统和软件的兼容。
-* 同时，我们开发了一个**集中式的 BGP 控制器**，能完全基于软件判断（software
-  decisions）来重写（override）fabric 中的任何路由路径。
-* 我们称这种灵活的混合方式为**“分布式控制，集中式重写”**（distributed control,
-  centralized override）。
+* 同时，我们开发了一个**<mark>集中式的 BGP 控制器</mark>**，能完全基于软件判断
+ （software decisions）来重写（override）fabric 中的任何路由路径。
+* 我们称这种灵活的混合方式为**<mark>“分布式控制，集中式重写”</mark>**
+ （distributed control, centralized override）。
 
-从 TOR 上行链路到边界，**整个网络都是 3 层的（layer3）**。
+从 **<mark>TOR 上行链路到边界都是 3 层（layer3）网络</mark>**，
 
 * 与我们所有的网络一样，fabric 是双栈的，原生支持 IPv4 和 IPv6。
 * 路由方案的设计力求**最小化 RIB 和 FIB 资源的使用量**，使我们能利用商业芯
   片（merchant silicon），尽可能保持只对交换机有最基本的要求。
 
 对于大部分流量，fabric 都**大量使用**基于 flow 做哈希（flow-based hashing）的
-**ECMP**（equal-cost multi-path，等价多路径）路由。Facebook 的数据中心中存在数量
-非常多的各种类型的并发 flow，从统计来看，我们观察到 fabric 的**所有链路都做到了
-一样的、近乎完美的负载分布**。为防止偶尔的“大象流”（elephant flows）占用过多带宽
-影响端到端性能，我们将网络设计为多速率的（multi-speed）：
+**<mark><code>ECMP</code></mark>**（equal-cost multi-path，等价多路径）路由。
+Facebook 的数据中心中存在数量非常多的各种类型的并发 flow，从统计来看，我们观察到 fabric
+**所有链路都做到了一样的、近乎完美的负载分布**。为防止偶尔的“大象流”（elephant flows）
+占用过多带宽影响端到端性能，我们将网络设计为多速率的（multi-speed）：
 
 * 交换机之间 40G
 * 服务器和 TOR 之间 10G
 
-另外，我们在服务器端还有一些手段来隔离有问题的流，包括哈希方式（hash away）和路
-由方式（route around）。
+另外，我们在服务器端还有一些手段来隔离有问题的流，包括哈希方式（hash away）和路由方式（route around）。
 
 ## 4.2 渐进式扩展
 
@@ -352,9 +351,9 @@ fabric 相比集群方式有一个明显不同：它的实际部署速度要快�
 
 # 5 总结
 
-在应对世界上最大规模的一些网络时，Facebook 的网络工程团队学习到并拥抱了**“保持简
-单和直白”**（keep it simple, stupid）的原则。本质上来说，我们的系统是大型和复杂
-的，但我们努力保持其组件尽可能简单和健壮，并通过设计和自动化减少操作复杂度。
+在应对世界上最大规模的一些网络时，Facebook 的网络工程团队学习到并拥抱了
+**<mark>“保持简单和直白”</mark>**（keep it simple, stupid）的原则。本质上来说，
+我们的系统是大型和复杂的，但我们努力保持其组件尽可能简单和健壮，并通过设计和自动化减少操作复杂度。
 
 我们的 fabric 网络就是这种原则的一个例子。虽然规模非常大，拓扑看起来很复杂，但它
 实际是由众多重复的元素组成的非常模块化的系统。它非常容易自动化和部署，相比于同等
@@ -376,5 +375,4 @@ fabric 交换机、spine 交换机以及 edge 交换机 —— 这使得它们�
 经取得了 `10x` 的 building 内网络容量（intra-building network capacity），并且在
 端口速率不变的情况下，我们还能很轻松地获得 `50x` 的提升。
 
-最后，[这个 Youtube 视频](https://youtube.com/embed/mLEawo6OzFM)（需要翻墙）对我
-们的数据中心 fabric 进行了概要介绍。
+最后，[这个 Youtube 视频](https://youtube.com/embed/mLEawo6OzFM)对我们的数据中心 fabric 进行了概要介绍。

@@ -2,7 +2,7 @@
 layout    : post
 title     : "[译] Segment Routing Overview"
 date      : 2019-05-23
-lastupdate: 2019-05-23
+lastupdate: 2023-02-21
 categories: segment-routing
 ---
 
@@ -12,27 +12,28 @@ Segment Routing (SR) 是近年来网络领域的一项新技术，“segment” 
 指代网络隔离技术，例如 MPLS。如果快速回顾网络设计在过去几十年的
 发展，我们会发现 SR 也许是正在形成的第三代网络设计思想。
 
-第一代是以**互联网**为代表的**无中心式**设计，所有网络节点通过**分布式路由协议**
-同步路由信息，这些路由协议包括 IGP（RIP、OSPF、IS-IS）和 EGP（BGP）。
+第一代是以**<mark>互联网</mark>**为代表的**<mark>无中心式设计</mark>**，
+所有网络节点通过**<mark>分布式路由协议</mark>**同步路由信息，这些路由协议包括
+IGP（RIP、OSPF、IS-IS）和 EGP（BGP）。
 
-第二代是近些年以 **SDN** 为代表的**集中式**设计，**全局的控制器**
-了解整张网络的拓扑和状态，可以精确控制网络中每个节点的每条转发规则。比较有代表性
-的是 Google 基于 OpenFlow 实现 B4 Network [1]。
+第二代是近些年以 **SDN** 为代表的**<mark>集中式设计</mark>**，**全局的控制器**
+了解整张网络的拓扑和状态，可以精确控制网络中每个节点的每条转发规则。代表是
+Google 基于 OpenFlow 实现 B4 Network [1]。
 
 以上两代网络的设计思想截然相反，因此必然各有优缺点。SR 此时横空出世，某种程度上
-可以看作两者的折中（或优点结合）：给定一个源节点和目的节点，**集中式控制器（如果
-有）只负责选取若干中间节点，形成一条转发路径**；而这些**中间节点之间**还有很多其
+可以看作两者的折中（或优点结合）：给定一个源节点和目的节点，**集中式控制器（如果有）
+只负责选取若干中间节点，形成一条转发路径**；而这些**中间节点之间**还有很多其
 他结点，它们之间如何转发及同步路由，**都交给分布式算法**。这种设计同时兼顾了集中
-式控制（若干节点形成的转发路径）和分布式智能（路由同步、链路负载均衡等），网络的
-控制粒度从最粗（第一代）到最细（第二代），再到 SR 的粗细适中（第三代）。
+式控制（若干节点形成的转发路径）和分布式智能（路由同步、链路负载均衡等），
+网络的控制粒度从最粗（第一代）到最细（第二代），再到 SR 的粗细适中（第三代）。
 
-SR 实现以上目标的最重要技术之一是**源路由**（source routing），每个包在离开源节
-点时就已经确定了（核心）转发路径，并将路径信息编码到了每个包里。
+SR 实现以上目标的最重要技术之一是**<mark>源路由</mark>**（source routing），
+每个包在离开源节点时就已经确定了（核心）转发路径，并将路径信息编码到了每个包里。
 
 [***Segment Routing***](https://www.amazon.com/Segment-Routing-Part-Clarence-Filsfils-ebook/dp/B01I58LSUO)
 一书的作者举了一个形象的例子（这也是他设计 SR 的直接灵感来源）：从 Rome 开始到
-Brussel [2]，翻译成中文就是**从上海开车去杭州。你不会规划出整条路径上的每一个转弯**
-，那太细了。你真正做的是，选出途经的几个重要地方，例如虹桥-松江-嘉兴-余杭-
+Brussel [2]，翻译成中文就是**<mark>从上海开车去杭州：没有人会提前规划出路上的每一个转弯</mark>**，
+那太细了。你真正做的是，选出途经的几个重要地方，例如虹桥-松江-嘉兴-余杭-
 西湖，只要确保沿着这几个地方向开，就一定能到达。至于两个地方之间，比如虹桥到松江
 ，到底是走大路还是小路，要视当时的路况。假如一条路堵了，你可能会当即切换到另一条
 路，但松江这个目标不变。（“规划出每一个转弯”的比喻，听上去是在揶揄 OpenFlow SDN
@@ -40,8 +41,8 @@ Brussel [2]，翻译成中文就是**从上海开车去杭州。你不会规划�
 
 和术语 SDN 一样，“SR” 本身只是一个概念，并不是实现。目前 SR 的实现有两种：分别基
 于 MPLS 和 IPv6，其中 MPLS SR 与现有的 MPLS 网络兼容，但大大简化了控制平面；而基
-于 IPv6 的版本（称为 SRv6）看起来前景更广阔。另外，Linux 4.10 已经初步支持了 SRv6
-，但性能还比较差 [3]。
+于 IPv6 的版本（称为 **<mark><code>SRv6</code></mark>**）看起来前景更广阔。另外，
+Linux 4.10 已经初步支持了 SRv6，但性能还比较差 [3]。
 
 以上可视为对 SR 的入门导读。
 
@@ -56,32 +57,38 @@ Routers](https://www.cisco.com/c/en/us/td/docs/routers/asr920/configuration/guid
 
 ----
 
+* TOC
+{:toc}
+
+----
+
 Segment routing (SR) 是一种基于**源路由**（source routing）的网络设计。
 
-**包从源节点（source node）发出之前转发路径就已经确定了**，转发指令（forwarding
-instructions）以 segment list 的形式编码到每个包中。List 中的每一个 segment 在路
-由信息库（Router Information Base，RIB）中都有记录。每到达一跳（hop）后，list 最
-外层的 segment 用于确定下一跳。Segments 以栈的形式（stacked）存储在包头中。如果
-栈顶 segment 指向的是另一个节点，当前节点就通过 ECMP 将包发送到下一跳。如果栈顶
-segment 指向的是本节点，就 pop out segment，执行下一个 segment 规定的任务。
+* 包从源节点（source node）发出之前**<mark>转发路径就已经确定了</mark>**；
+* **<mark>转发指令</mark>**（forwarding instructions）以 segment list 的形式**<mark>编码到每个数据包中</mark>**；
+* Segment list 中的每一个 segment 在路由信息库（Router Information Base，**<mark>RIB</mark>**）**<mark>中都有记录</mark>**；
+* 每到达一跳（hop）后，list 最外层的 segment 用于确定下一跳。
+* Segments 以**<mark>栈的形式（stacked）存储在包头中</mark>**。
+    * 如果栈顶 segment 指向的是另一个节点，当前节点就通过 **<mark>ECMP</mark>** 将包发送到下一跳:
+    * 如果栈顶 segment 指向的是本节点，就 pop out segment，执行下一个 segment 规定的任务。
 
-SR 基于已有的一些内部网关协议（IGP），例如 IS-IS、OSFP 和 MPLS，来实现高效和灵活
-的转发。
+SR **<mark>基于已有的一些内部网关协议</mark>**（IGP，例如 IS-IS、OSFP 和 MPLS）
+来实现高效和灵活的转发。
 
-## SR 是如何工作的？
+# SR 是如何工作的？
 
 在 SR 网络中，路由器有能力选择任意的转发路径，不管是显式（explicit）指定的路
 径，还是 IGP 自动计算出的最短路径。
 
 **一个 segment 代表一段子路径（subpath）**，路由器将可以多段子路径结合起来，形成
 一条到达目的节点的最终路径。**每个segment 都有一个唯一的标识符（segment identifier
-，SID），通过 IGP 的扩展协议在网络中分发**。IGP 扩展协议对 IPv4 和 IPv6 都适用。
+，**<mark><code>SID</code></mark>**），通过 IGP 的扩展协议在网络中分发**。IGP 扩展协议对 IPv4 和 IPv6 都适用。
 和传统的 MPLS 网络不同，SR 网络中的路由器不需要 LDP 和 RSVP-TE 协议 来分配和同步
 SID，以及对转发信息进行编程。
 
 每个路由器（节点，node）和每个链路（邻接，adjacency）都有相应的 SID。
 
-**Node segment ID** 是全局唯一的，表示 **IGP 确定的到一个路由器的最短路径**。网
+**<mark><code>Node segment ID</code></mark>** 是全局唯一的，表示 **IGP 确定的到一个路由器的最短路径**。网
 络管理员从保留的一段范围内为每台路由器分配一个 node ID。
 
 **Adjacency segment ID** **只在局部有效**（locally significant），表示**到一个
@@ -98,7 +105,7 @@ ID 是由路由器自动生成的，范围不会和 node SID 重合。
 * **Adjacency SID**：一个 Adjacency SID 就是**两个路由器之间的一条链路**。Adjacency
   SID 是和它所属的路由器相关的，因此它只是局部唯一的
 
-## SR 举例
+# SR 举例
 
 图 1 是一张由 5 个路由器组成的 MPLS SR 网络，控制平面基于 IS-IS。Node ID 的范围
 是 100-199，Adjacency ID 的范围是 200 及以上。IS-IS 会将 segment ID（这里是 MPLS
@@ -139,13 +146,14 @@ TE）。根据需求的不同，一个 segment list 可以包含：
 <p align="center"><img src="/assets/img/segment-routing-overview/3.png" width="50%" height="50%"></p>
 <p align="center">图 3 组合 Node segments 和 Adjacency segment 到达 E 的路径</p>
 
-## SR 的好处
+# SR 的好处
 
-### Ready for SDN
+## Ready for SDN
 
-**SR 被认为是 SDN 的首选架构之一**，而且它还是**应用工程化路由**（Application
-Engineered Routing，AER）的基础。它在**基于网络的分布式智能**（例如链路和节点自
-动保护）和**基于控制器的集中式智能**（例如流量优化）之间取得了很好的平衡。
+SR 被认为是 **<mark>SDN 的首选架构之一</mark>**，而且它还是**应用工程化路由**（Application
+Engineered Routing，AER）的基础。它在**<mark>基于网络的分布式智能</mark>**
+（例如链路和节点自动保护）和**<mark>基于控制器的集中式智能</mark>**（例如流量优化）
+之间取得了很好的平衡。
 
 SR 能够提供严格的网络**性能保证**、网络**资源的高效利用**、基于应用的交易（
 application-based transactions）的高**可扩展性**。SR 使得网络**使用最少的状态信
@@ -162,28 +170,27 @@ SR 可以很容易地集成到基于控制器的 SDN 架构，下图是一个示
 返回 segment list（例如一个 MPLS label stack）。然后路由器将这个 segment
 list 编码到包头中，而控制器不需要对网络做任何额外的配置（signaling）。
 
-### 网络无需维护任何应用状态
+## 网络无需维护任何应用状态
 
 无需向网络添加任何应用状态（application state），segment list 就可以实现完全的网
-络虚拟化。状态信息以 segment list 的形式编码在每个包中。因为**网络只需维护
-segment 状态**（node/adjacency segment ID，数量非常少而且变更不频繁），因此**可
-以支持非常大 —— 而且非常高频—— 的 transaction-based 的应用请求**，而不会给网络造
-成任何负担。
+络虚拟化。状态信息以 segment list 的形式编码在每个包中。因为**<mark>网络只需维护 segment 状态</mark>**
+（node/adjacency segment ID，数量非常少而且变更不频繁），因此可以支持非常大 ——
+而且非常高频 —— 的 transaction-based 的应用请求，而不会给网络造成任何负担。
 
-### 简化/简单
+## 简化/简单
 
 * 当用于 MPLS 数据平面时，SR 可以通过隧道的方式将 MPLS 服务（VPN、VPLS、VPWS）
   从一个 ingress provider edge（供应商边缘路由器）送到一个 egress provider
   edge，只需要 IGP（IS-IS 或 OSPF），而不需要其他协议
 * 不需要额外的协议（例如 LDP 或 RSVP）来分发标签
-* 可以复用已有网络基础设施，支持 ECMP（使用 node segment ID）
+* 可以**<mark>复用已有网络基础设施</mark>**，支持 ECMP（使用 node segment ID）
 
-### 支持快速重路由（FRR）
+## 支持快速重路由（FRR）
 
 对任何拓扑都支持快速重路由（Fast ReRoute）。在链路或节点挂掉的情况下，MPLS 依靠
-FRR 实现收敛。有了 SR 之后，**收敛时间**可以做到 `50ms` 以下。
+FRR 实现收敛。有了 SR 之后，**收敛时间**可以做到 **<mark><code>50ms</code></mark>** 以下。
 
-### 适用于大规模数据中心
+## 适用于大规模数据中心
 
 * 用 BGP 分发 node SID，类似于 IGP 分发 node SID
 * Any node within the topology allocates the same BGP segment for the same
@@ -191,13 +198,13 @@ FRR 实现收敛。有了 SR 之后，**收敛时间**可以做到 `50ms` 以下
 * 支持 ECMP 和 FRR（BGP PIC：Prefix Independent Convergence）
 * 流量工程的基石之一，SRTE
 
-### 可扩展
+## 可扩展
 
 * 避免了 LDP database 中的成千上万的标签
 * 避免了网络中成千上万的 MPLS TE LSP
 * 避免了成千上万的隧道配置
 
-### 双平面网络（Dual-plane networks）
+## 双平面网络（Dual-plane networks）
 
 * 支持 Dual-plane（MPLS 和 SRv6？），支持跨 plane 的转发策略（disjointness
   enforcement）
@@ -205,7 +212,7 @@ FRR 实现收敛。有了 SR 之后，**收敛时间**可以做到 `50ms` 以下
   node Z 的 flow 1，必须经过 plane 1 到达”，“从 node A 注入的、目的是 node Z 的
   flow 2，必须经过 plane 2 转发”
 
-### 集中式流量工程
+## 集中式流量工程
 
 * 控制器和编排平台可以和 SR 流量工程联动，实现集中式优化，例如 WAN 优化
 * 网络变动，例如拥塞，可以触发应用重新计算 SR TE tunnel 的 placement 方式
@@ -213,7 +220,7 @@ FRR 实现收敛。有了 SR 之后，**收敛时间**可以做到 `50ms` 以下
 * 敏捷网络编程，不需要对中间结点和尾节点做任何配置，也不需要对每条 flow 做配置（
   signaling）
 
-### Egress Peering 流量工程（EPE）
+## Egress Peering 流量工程（EPE）
 
 * SR 支持集中式 EPE
 * 控制器指导流量从 ingress provider edge（边界路由器）和内容源（包从边界路由器开
@@ -222,17 +229,17 @@ FRR 实现收敛。有了 SR 之后，**收敛时间**可以做到 `50ms` 以下
 * 控制器通过 BGP Link Status（BGP-LS） EPE 路由学习 BGP peering SID 和 egress 边界路由器外部的拓扑
 * 控制器编程控制 ingress 点的期望路径
 
-### 即插即用（Plug-and-Play）部署
+## 即插即用（Plug-and-Play）部署
 
 和当前的 MPLS 网络兼容。
 
-## SR 的限制
+# SR 的限制
 
 1. Segment Routing must be globally enabled on the chassis before enabling it on the IGPs, like ISIS or OSPF.
 1. Segment routing must be configured on the ISIS instance before configuring a prefix SID value.
 1. The prefix SID value must be removed from all the interfaces under the same ISIS instance before disabling segment routing.
 
-## References
+# References
 
 1. Jain, Sushant, et al. ["B4: Experience with a globally-deployed software
    defined WAN."](https://dl.acm.org/citation.cfm?id=2486019) ACM SIGCOMM

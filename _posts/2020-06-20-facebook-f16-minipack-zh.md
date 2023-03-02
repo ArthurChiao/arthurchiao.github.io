@@ -19,12 +19,12 @@ network](https://engineering.fb.com/data-center-engineering/f16-minipack/)。
 
 **由于译者水平有限，本文不免存在遗漏或错误之处。如有疑问，请查阅原文。**
 
+以下是译文。
+
 ----
 
 * TOC
 {:toc}
-
-以下是译文。
 
 ----
 
@@ -45,20 +45,20 @@ network](https://engineering.fb.com/data-center-engineering/f16-minipack/)。
 一方面是需求的不断增加，另一方面，我们又受限于**电源**物理特性的硬性限制（hard
 physical constraints of power）和**光模块**的供应和市场成熟度（optics supply
 availability）。
-不断增长的需求和物理上面临的限制，这双重压力使我们开始重新思考如何**对数据中心网
-络进行自顶向下的改造（transform）** —— 从拓扑（topologies）到基本组建模块（
-building blocks）。
+不断增长的需求和物理上面临的限制，这双重压力使我们开始重新思考如何
+**对数据中心网络进行自顶向下的改造（transform）** —— 从拓扑（topologies）到基本组建模块
+（building blocks）。
 
 本文将分享我们在过去两年的变化：
 
-* 网络方面，我们完成了**下一代数据中心 fabric 的设计**，名为 F16。
+* 网络方面，我们完成了**下一代数据中心 fabric 的设计**，名为 **<mark><code>F16</code></mark>**。
 
     * F16 相比 F4（前一代）有 **`4x` 的容量**。
     * F16 **更易扩展**，维护和演进也更简单，为未来几年所需的基础设施容量做好了准备。
     * F16 使用的是技术成熟、易于采购的 [**`100G` CWDM4-OCP 光模块**](https://engineering.fb.com/data-center-engineering/designing-100g-optical-connections/")
       ，能提供与 400G 链路一样的 `4x` 容量，但使用的是成熟的 100G 光模块。
 
-* 设计了一个全新的作为**基本组建模块**的交换机（building block switch），名为 **Minipack**。
+* 设计了一个全新的作为**基本组建模块**的交换机（building block switch），名为 **<mark><code>Minipack</code></mark>**。
 
     * Minipack 相比[前一代设计](https://engineering.fb.com/data-center-engineering/introducing-backpack-our-second-generation-modular-open-switch)，**节省了 50% 的耗电量和物理空间**。
     * Minipack 是**模块化**的，非常灵活，因此能在新的拓扑中**承担多种角色**，支撑网络在未来几年的持续演进。
@@ -186,9 +186,9 @@ Broadcom TH3 芯片（ASIC）的两种使用方式：
 * 我们现有的 Wedge 100S TORs。
 
 这种方式还使得对现有 4 平面（4-plane） fabrics 进行升级更简单，为我们将来朝着
-200G 和 400G 光模块升级铺平了道路。此外，这种设计能获得更高的电能使用效率（
-power-usage profile，PUE【译者注 3】），比等待适用于大规模场景的 800G 和 1.6T 链
-路更加现实，能快速地帮我们获得接下来所需的 2x 和 4x 性能提升。
+200G 和 400G 光模块升级铺平了道路。此外，这种设计能获得更高的**<mark>电能使用效率</mark>**
+（power-usage profile，**<mark><code>PUE</code></mark>**【译者注 3】），比等待适用于大规模场景的
+800G 和 1.6T 链路更加现实，能快速地帮我们获得接下来所需的 2x 和 4x 性能提升。
 
 > 【译者注 3】
 > PUE = 数据中心总能耗（Total Facility Power）/ IT 设备总能耗（IT Equipment Power）。
@@ -618,31 +618,31 @@ FBOSS](https://research.fb.com/wp-content/uploads/2018/07/FBOSS-Building-Switch-
 
 Facebook 所有软件作为一个整体有这样一套**哲学**：
 
-1. **尽早接入生产环境**（getting into production as quickly as possible）
-1. **在生产环境站稳**（staying in production）
-1. **持续迭代**（continuously iterating）
+1. **<mark>尽早接入生产环境</mark>**（getting into production as quickly as possible）
+1. **<mark>在生产环境站稳</mark>**（staying in production）
+1. **<mark>持续迭代</mark>**（continuously iterating）
 
 对于网络来说，这种哲学有助于我们在两方面发现问题：
 
 * 交换机软件栈（on-switch software）
 * 大规模部署所需的网络层配套工具和监控（network-level tooling and monitoring）
 
-最后，我们正在开发不仅仅是一个硬件/软件平台，而是**一个完备的、可立即部署的交换
-系统**（a complete, ready-to-deploy switching system）。
+最后，我们正在开发不仅仅是一个硬件/软件平台，而是**一个完备的、可立即部署的交换系统**
+（a complete, ready-to-deploy switching system）。
 
 # 5 总结
 
 F16 和 HGRID 是网络拓扑，Minipack 和 Arista 7368X4 是硬件平台，也是我们新数据中
 心网络的核心。在整体网络设计中，它们在功耗、空间效率和降低复杂度方面都带来了显
-著提升，并且构建在易于采购、技术成熟的 **`100G` 光模块**基础上。这种新的网络架构
-解决了我们不断增长的应用和服务需求。
+著提升，并且构建在易于采购、技术成熟的 **`100G` 光模块**基础上。
+这种新的网络架构解决了我们不断增长的应用和服务需求。
 
-我们愿意与 OCP 社区和网络生态系统一起合作，因此通过本文分享了我们的网络整体设计
-，并将 Minipack 的完整设计包贡献给了[OCP](https://www.opencompute.org)。Arista
+我们愿意与 OCP 社区和网络生态系统一起合作，因此通过本文分享了我们的网络整体设计，
+并将 Minipack 的完整设计包贡献给了[OCP](https://www.opencompute.org)。Arista
 也把与我们联合开发过程中形成的技术规范共享给了 OCP 社区。
 
 展望未来，相信在接下来的几年中，一旦速度更快的 ASIC 和光模块成熟，F16 拓扑的
-灵活性和模块化交换机设计（modular switch design）将使我们更快地用上它们。在设计
-未来的网络平台时，我们将继续沿用这种模块化交换机设计。
+灵活性和模块化交换机设计（modular switch design）将使我们更快地用上它们。
+在设计未来的网络平台时，我们将继续沿用这种模块化交换机设计。
 
 最后，感谢使这种新拓扑和新平台成为可能的各团队和行业合作伙伴。

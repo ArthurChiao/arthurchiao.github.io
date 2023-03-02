@@ -17,6 +17,11 @@ categories: bgp
 
 ----
 
+* TOC
+{:toc}
+
+----
+
 <p align="center"><img src="/assets/img/bgp-leak-and-crypto-currencies/header.jpg" width="60%" height="60%"></p>
 <p align="center">CC BY 2.0 image by elhombredenegro</p>
 
@@ -62,8 +67,8 @@ BGP 泄露（BGP leak）的广义定义为：
 ，这样的行为是合法的。这些中转供应商也会**用 RIR 信息来验证只有 Cloudflare 能向它
 们通告这条路由**。
 
-但路由通告的合法性验证可能会**比较耗时**，尤其是考虑到**互联网目前的路由条目（
-records）规模有 `700K+`**。
+但路由通告的合法性验证可能会**比较耗时**，尤其是考虑到**<mark>互联网目前的路由条目</mark>**
+（records）规模有 **<mark><code>700K+</code></mark>**。
 
 本质上来说，路由泄露是局部性的（route leaks are localized）。你的连接越局部（
 more locally connected），接受泄露的路由的风险就越低。

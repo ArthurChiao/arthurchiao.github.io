@@ -1,7 +1,8 @@
 ---
 layout: post
 title:  "[译] 数据中心网络：Spine-Leaf 架构设计综述（2016）"
-date:   2019-03-06
+date      : 2019-03-06
+lastupdate: 2023-02-20
 categories: spine-leaf network architecture
 ---
 
@@ -21,7 +22,6 @@ Overview***](https://www.cisco.com/c/en/us/products/collateral/switches/nexus-70
 。
 
 **由于译者水平有限，本文不免存在遗漏或错误之处。如有疑问，请查阅原文。** 
-优秀的英文技术文档用词都比较简单直接，推荐有需要的读者阅读原文。
 
 以下是译文。
 
@@ -35,19 +35,19 @@ Overview***](https://www.cisco.com/c/en/us/products/collateral/switches/nexus-70
 # 1 数据中心演进
 
 数据中心是现代软件技术的基石，在扩展企业能力的过程中扮演着关键角色。传统的数据中
-心使用三层架构（three-tier architecture），根据物理位置将服务器划分为不同 pod，
+心使用三级架构（three-tier architecture），根据物理位置将服务器划分为不同 POD，
 如图 1 所示。
 
 <p align="center"><img src="/assets/img/spine-leaf-design/1-3-tier-arch.PNG" width="60%" height="60%"></p>
-<p align="center">图 1 传统三层（Three-Tier）数据中心设计</p>
+<p align="center">图 1 传统三级（Three-Tier）数据中心设计</p>
 
-这种架构由**核心路由器**、**聚合路由器**（有时叫分发路由器，distribution routers
-）和**接入交换机**组成。在接入交换机和聚合路由器之间运行生成树协议（Spanning
-Tree Protocol，STP），以保证网络的二层部分（L2）没有环路。STP 有许多好处：简单，
-即插即用（plug-and-play），只需很少配置。**每个 pod 内的机器都属于同一个 VLAN，
-因此服务器无需修改 IP 地址和网关就可以在 pod 内部任意迁移位置**。但是，STP 无法
-使用并行转发路径（parallel forwarding path），它永远会禁用 VLAN 内的冗余路径。
+* 这种架构由**核心路由器**、**聚合路由器**（有时叫分发路由器，distribution routers）和**接入交换机**组成。
+* 在**<mark>接入交换机和聚合路由器之间运行生成树协议</mark>**
+  （Spanning Tree Protocol，STP），以保证网络的二层部分（L2）没有环路。
+  STP 有许多好处：简单，即插即用（plug-and-play），只需很少配置。
+* **<mark>每个 POD 内的机器都属于同一个 VLAN，因此服务器无需修改 IP 地址和网关就可以在 POD 内部任意迁移位置</mark>**。
 
+STP 无法使用并行转发路径（parallel forwarding path），它永远会禁用 VLAN 内的冗余路径。
 2010 年，Cisco 提出了 virtual-port-channel (vPC) 技术来解决 STP 的限制。
 vPC 解放了被 STP 禁用的端口，提供接入交换机到汇聚路由器之间的 active-active 上行链路，
 充分利用可用的带宽，如图 2 所示。使用 vPC 技术时，STP 会作为备用机制（
@@ -56,52 +56,50 @@ fail-safe mechanism）。
 <p align="center"><img src="/assets/img/spine-leaf-design/2-using-vPC.PNG" width="60%" height="60%"></p>
 <p align="center">图 2 使用 vPC 技术的数据中心设计</p>
 
-从 2003 年开始，随着虚拟化技术的引入，原来三层（three-tier）数据中心中，**在二层（
-L2）以 pod 形式做了隔离**的计算、网络和存储资源，现在都可以被池化（pooled）。这
-种革命性的技术产生了**从接入层到核心层的大二层域**（larger L2 domain）的需求，如
-图 3 所示
-。
+从 2003 年开始，随着虚拟化技术的引入，原来三级（three-tier）数据中心中，
+**<mark>在二层（L2）以 POD 形式做了隔离</mark>**的计算、网络和存储资源，现在都可以被池化（pooled）。
+这种革命性的技术产生了**<mark>从接入层到核心层的大二层域</mark>**（larger L2 domain）需求，如图 3 所示。
 
 <p align="center"><img src="/assets/img/spine-leaf-design/3-extended-L3-domain.PNG" width="60%" height="60%"></p>
 <p align="center">图 3 扩展的 L3 域的数据中心设计</p>
 
-随着 L2 segment（二层网络段，例如 VLAN 划分的二层网络，译者注）被扩展到所有 pod
+随着 L2 segment（二层网络段，例如 VLAN 划分的二层网络，译者注）被扩展到所有 POD
 ，数据中心的管理员可以创建一个集中式的、更加灵活的、能够按需分配的资源池。物理服
-务器被虚拟化为许多虚拟服务器（VM），无需修改运维参数就可以在物理服务器之间自由漂
-移。
+务器被虚拟化为许多**<mark>虚拟服务器（VM），无需修改参数就可以在物理服务器之间自由迁移</mark>**。
 
-**虚拟机的引入，使得应用的部署方式越来越分布式，导致东西向流量（
-east-west-traffic）越来越大**。这些流量需要被高效地处理，并且还要保证低的、可预测的延迟。
-然而，vPC 只能提供两个并行上行链路，因此三层数据中心架构中的**带宽成为了瓶颈**。
-三层架构的另一个问题是**服务器到服务器延迟（server-to-server latency）随着流量路
-径的不同而不同**。
+* 虚拟机的引入，使得应用的部署方式越来越分布式，导致**<mark>东西向流量（east-west-traffic）越来越大</mark>**。
+  这些流量需要被高效地处理，并且还要保证低的、可预测的延迟。
+  然而，vPC 只能提供两个并行上行链路，因此三级数据中心架构中的**<mark>带宽成为了瓶颈</mark>**。
+* 三级架构的另一个问题是**<mark>服务器到服务器延迟</mark>**（server-to-server latency）随着流量路径的不同而不同。
 
-针对以上问题，提出了一种新的数据中心设计，称作**基于 Clos 网络的 Spine-and-Leaf 架
-构**（Clos network-based Spine-and-Leaf architecture）。事实已经证明，这种架构可
-以提供高带宽、低延迟、非阻塞的服务器到服务器连接。
+针对以上问题，提出了一种新的数据中心设计，称作**<mark>基于 CLOS 网络的 Spine-Leaf 架构</mark>**
+（Clos network-based Spine-Leaf architecture）。事实已经证明，这种架构可以提供
+**<mark>高带宽、低延迟、非阻塞</mark>**的服务器到服务器连接。
 
 # 2 Spine-Leaf 架构
 
-图 4 是一个典型的两级 Spine-and-Leaf 拓扑。
+图 4 是一个典型的两级 Spine-Leaf 拓扑。
 
 <p align="center"><img src="/assets/img/spine-leaf-design/4-spine-leaf.PNG" width="60%" height="60%"></p>
-<p align="center">图 4 典型的 Spine-and-Leaf 拓扑</p>
+<p align="center">图 4 典型的 Spine-Leaf 拓扑</p>
 
-在以上两级 Clos 架构中，**每个低层级的交换机（leaf）都会连接到每个高层级的交换机
-（spine），形成一个 full-mesh 拓扑**。leaf 层由接入交换机组成，用于连接服务器等
-设备。spine 层是网络的骨干（backbone），负责将所有的 leaf 连接起来。
-fabric 中的每个 leaf 都会连接到每个 spine，如果一个 spine 挂了，数据中心的吞吐性
-能只会有轻微的下降（slightly degrade）。
+在以上两级 Clos 架构中，
+
+* **每个低层级的交换机（leaf）都会连接到每个高层级的交换机（spine），形成一个 full-mesh 拓扑**。
+* leaf 层由接入交换机组成，用于连接服务器等设备。
+* spine 层是网络的骨干（backbone），负责将所有的 leaf 连接起来。
+
+fabric 中的每个 leaf 都会连接到每个 spine，如果一个 spine 挂了，数据中心的吞吐性能只会略微下降。
 
 如果某个链路被打满了，扩容过程也很直接：添加一个 spine 交换机就可以扩展每个 leaf
 的上行链路，增大了 leaf 和 spine 之间的带宽，缓解了链路被打爆的问题。如果接入层
 的端口数量成为了瓶颈，那就直接添加一个新的 leaf，然后将其连接到每个 spine 并做相
 应的配置即可。这种易于扩展（ease of expansion）的特性优化了 IT 部门扩展网络的过
-程。**leaf 层的接入端口和上行链路都没有瓶颈时，这个架构就实现了无阻塞**（nonblocking）。
+程。**<mark>leaf 层的接入和上行链路都没有瓶颈时，这个架构就实现了无阻塞</mark>**（nonblocking）。
 
-**在 Spine-and-Leaf 架构中，任意一个服务器到另一个服务器的连接，都会经过相同数量
-的设备（除非这两个服务器在同一 leaf 下面），这保证了延迟是可预测的**，因为一个包
-只需要经过一个 spine 和另一个 leaf 就可以到达目的端。
+在 Spine-Leaf 架构中，**<mark>任意一个服务器到另一个服务器</mark>**的连接，
+**<mark>都会经过相同数量的设备</mark>**（除非这两个服务器在同一 leaf 下面），
+这**<mark>保证了延迟是可预测的</mark>**，因为一个包只需要经过一个 spine 和另一个 leaf 就可以到达目的端。
 
 # 3 Overlay 网络
 
@@ -142,12 +140,13 @@ overlay 虚拟化带来的好处包括：
   underlay 地址空间的管理分开。
 
 本文档将介绍 Cisco 过去几年和当前提供的、以及不远的将来应该会提供的几种
-Spine-and-Leaf 架构设计，这些设计都是为了解决现代虚拟化数据中心中 fabric 面临的
+Spine-Leaf 架构设计，这些设计都是为了解决现代虚拟化数据中心中 fabric 面临的
 需求：
 
 * Cisco® FabricPath spine-and-leaf network
-* Cisco VXLAN flood-and-learn spine-and-leaf network
-* Cisco VXLAN Multiprotocol Border Gateway Protocol (MP-BGP) Ethernet Virtual Private Network (EVPN) spine-and-leaf network
+* Cisco VXLAN **<mark>flood-and-learn</mark>** spine-and-leaf network
+* Cisco VXLAN Multiprotocol Border Gateway Protocol (**<mark>MP-BGP</mark>**)
+  Ethernet Virtual Private Network (**<mark>EVPN</mark>**) spine-and-leaf network
 * Cisco Massively Scalable Data Center (MSDC) Layer 3 spine-and-leaf network
 
 下面的几章将围绕写作本文时的一些最重要技术组件、通用设计和设计考虑（例如 L3 网关）进行讨论。
@@ -155,18 +154,18 @@ Spine-and-Leaf 架构设计，这些设计都是为了解决现代虚拟化数�
 最重要的技术组件包括：
 
 1. 封装
-1. end-host 检查和分发（end-host detection and distribution）
+1. end-host 检测和分发（end-host detection and distribution）
 1. 广播
 1. 未知单播（unknown unicast）
 1. 组播流量转发
 1. underlay 和 overlay 控制平面
 1. 多租户支持
 
-# 4 Cicso FabricPath Spine-and-Leaf 网络
+# 4 Cicso FabricPath Spine-Leaf 网络
 
 Cisco 在 2010 年推出了 FabricPath 技术。FabricPath 提供的新特性和设计选项使得网
 络管理员可以创建**以太网 fabrics**，后者可以提高带宽可用性、提供设计灵活性，以及
-简化和降低网络和应用的部署及运维成本。典型的 FabricPath 都是使用 Spine-and-Leaf 架构。
+简化和降低网络和应用的部署及运维成本。典型的 FabricPath 都是使用 Spine-Leaf 架构。
 
 FabricPath 继承了很多传统 L2 和 L3 技术中的优良特性，它保留了 L2 环境易于配置和
 即插即用的部署模型，并引入了一个称为 **FabricPath IS-IS**（Intermediate System
@@ -288,7 +287,7 @@ VXLAN 流量。
 典型的 VXLAN flood-and-learn spine-and-leaf 网络设计中，leaf ToR (top-of-rack)
 交换机会作为 VTEP 设备，在机柜（rack）之间扩展 L2 segment。
 
-VXLAN 和 VLAN 之间的 二层流量转发时，VTEP 作为 L2 VXLAN 网关；三层流量路
+VXLAN 和 VLAN 之间的 二层流量转发时，VTEP 作为 L2 VXLAN 网关；三级流量路
 由时，还需要开启某些 VTEP 的 L3 VXLAN 网关功能。常见的设计有：内部和外部路由在
 spine 层，或内部和外部路由在 leaf 层。这两种设计都是集中式路由（centralized
 routing），即：三层的内部和外部路由功能都集中在特定的交换机上做。
@@ -339,8 +338,8 @@ leaf）到达 border leaf，然后才能被路由到外部网络。
 
 RFC 7348 定义的 VXLAN flood-and-learn 模型中，**end-host（终端主机）学习**和
 **VTEP 发现**都是基于数据平面，并没有控制平面来在 VTEP 之间分发 end-host 可达性
-信息。为了克服这种方案的一些限制，**Cisco VXLAN MP-BGP EVPN Spine-and-Leaf 架构**使
-用了 **MP-BGP EVPN 作为 VXLAN 的控制平面**。
+信息。为了克服这种方案的一些限制，Cisco VXLAN MP-BGP EVPN Spine-Leaf 架构使用了
+**<mark>MP-BGP EVPN 作为 VXLAN 的控制平面</mark>**。
 
 这种设计使得**控制平面和数据平面分离**，并且为 overlay 网络的 L2/L3 转发提供了统
 一的控制平面。本节介绍这种方案中 Cisco 硬件交换机（例如 Cisco Nexus 5600
@@ -378,10 +377,10 @@ distribution tree）。
 MP-BGP EVPN 控制平面提供内置的路由和转发（功能），它会对 VXLAN overlay 网络内的
 end-host 的 L2/L3 可达性信息进行分发（distribution）。
 
-**每个 VTEP 从与它相连的主机中自动学习 MAC 地址（通过传统的 MAC 地址学习）和 IP
-地址信息（基于 ARP snooping），然后通过控制平面进行分发**，因此远端主机的信息是
-控制平面同步过来的。这种方式避免了通过网络泛洪学习远端主机信息的问题，为
-end-host 可达性信息的分发提供了更好的控制。
+**<mark>每个 VTEP 从与它相连的主机中自动学习 MAC 地址</mark>**（通过传统的 MAC 地址学习）
+**<mark>和 IP 地址信息</mark>**（基于 ARP snooping），然后**<mark>通过控制平面进行分发</mark>**，
+因此远端主机的信息是控制平面同步过来的。这种方式**<mark>避免了通过网络泛洪</mark>**
+学习远端主机信息的问题，为 end-host 可达性信息的分发提供了更好的控制。
 
 ## 6.4 组播流量
 
@@ -394,7 +393,7 @@ end-host 可达性信息的分发提供了更好的控制。
 
 L3 路由需要解决两个问题：
 
-1. **VXLAN 网络内部**的路由：使用**分布式任播网关**（distributed anycast gateways）解决
+1. **<mark>VXLAN 网络内部</mark>**的路由：使用**<mark>分布式任播网关</mark>**（distributed anycast gateways）解决
 1. **VXLAN 网络和外部网络**（包括园区网、WAN 和互联网）的路由：在几个特定交换机上实现
 
 ### 6.5.1 分布式任播网关：解决 VXLAN 网络内部路由
@@ -455,7 +454,7 @@ spine）就可以到达外部网络。然而，这种情况下 spine 需要运�
 在 VXLAN overlay 网络中拥有独立的 VPN，入图 19 所示。
 
 <p align="center"><img src="/assets/img/spine-leaf-design/19-mp-bgp-evpn-multi-tenancy.PNG" width="70%" height="70%"></p>
-<p align="center">图 19 Cisco VXLAN MP-BGP EVPN Spine-and-Leaf 网络的多租户</p>
+<p align="center">图 19 Cisco VXLAN MP-BGP EVPN Spine-Leaf 网络的多租户</p>
 
 在 VXLAN MP-BGP EVPN spine-and-leaf 网络中，**VNI 定义了二层域**，不允许 L2 流量跨越
 VNI 边界。类似地，**VXLAN 租户的三层 segment 是通过 VRF 技术隔离的**，通过将不同 VNI

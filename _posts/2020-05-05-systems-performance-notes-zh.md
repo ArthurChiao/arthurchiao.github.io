@@ -1,6 +1,6 @@
 ---
 layout    : post
-title     : "[笔记] Systems Performance: Enterprise and the Cloud (Prentice Hall, 2013)"
+title     : "[笔记] 《Systems Performance: Enterprise and the Cloud》(Prentice Hall, 2013)"
 date      : 2020-05-05
 lastupdate: 2020-05-05
 categories: sre

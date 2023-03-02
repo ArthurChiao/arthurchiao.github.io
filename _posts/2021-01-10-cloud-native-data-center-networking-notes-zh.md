@@ -1,6 +1,6 @@
 ---
 layout    : post
-title     : "[笔记] Cloud Native Data Center Networking（云原生数据中心网络设计）(O'Reilly 2019)"
+title     : "[笔记]《Cloud Native Data Center Networking》（云原生数据中心网络设计）(O'Reilly 2019)"
 date      : 2021-01-10
 lastupdate: 2021-01-10
 categories: bgp datacenter cloud-native
@@ -9,11 +9,11 @@ categories: bgp datacenter cloud-native
 ### 关于本文
 
 本文是读 [Cloud Native Data Center Networking](https://www.oreilly.com/library/view/cloud-native-data/9781492045595/) （
-O'Reilly, 2019）时的所做的一些笔记。这本书理论和实践兼备，是现代数据中心网络、云
-原生数据中心网络设计和 BGP 的很好入门参考。
+O'Reilly, 2019）时的所做的一些笔记。这本书理论和实践兼备，是现代数据中心网络、
+云原生数据中心网络设计和 BGP 的很好入门参考。
 
-作者 Dinesh G. Dutt 是一家网络公司的首席科学家，在网络行业有 20 多年工作经验，曾
-是 Cisco Fellow，是 TRILL、VxLAN 等协议的合作者（co-author）之一。
+作者 Dinesh G. Dutt 是一家网络公司的首席科学家，在网络行业有 20 多年工作经验，
+曾是 Cisco Fellow，是 TRILL、VxLAN 等协议的合作者（co-author）之一。
 
 ----
 
@@ -63,7 +63,7 @@ O'Reilly, 2019）时的所做的一些笔记。这本书理论和实践兼备，
 
 4. 微服务（分布式应用）
 
-    * 大规模的数据处理（例如 MapReduce），使数据中心网络的带宽瓶颈**从南北向变成东西向**，这是一个历史性的转变。
+    * 大规模的数据处理（例如 MapReduce），数据中心网络的带宽瓶颈**从南北向变成东西向**，这是一个历史性的转变。
     * **容器时代**。
 
 ## 1.2 21 世纪以来的网络设计
@@ -81,8 +81,8 @@ O'Reilly, 2019）时的所做的一些笔记。这本书理论和实践兼备，
 这种网络架构**重度依赖交换**（或称桥接，bridging），而在同时期，互联网（the
 internet）真正快速发展成型。
 
-<mark>既然支撑互联网的是 IP 路由（IP routing）技术，为什么数据中心网络没有选择路
-由（routing），而是选择的交换（bridging）呢？</mark>三方面原因：
+<mark>既然支撑互联网的是 IP 路由（IP routing）技术，为什么数据中心网络没有选择路由
+（routing），而是选择的交换（bridging）呢？</mark>三方面原因：
 
 1. **交换芯片**的出现（silicon switched packet forwarding）
 
@@ -124,16 +124,17 @@ internet）真正快速发展成型。
 
 3. 网关高可用
 
-    * **网关**配置在**汇聚交换机**。
-    * 为保证高可用，一组汇聚配置同一个网关；一台挂掉后自动切换到另一台。需要协议
-      支持，这种协议称为**第一跳路由协议**（First Hop Routing Protocol, **FHRP**）。
+    * **<mark>网关配置在汇聚交换机</mark>**。
+    * 为保证高可用，一组汇聚配置同一个网关；一台挂掉后自动切换到另一台。
+      需要协议支持，这种协议称为**<mark>第一跳路由协议</mark>**（First Hop Routing Protocol,
+      **<mark><code>FHRP</code></mark>**）。
 
     **FHRP 原理**：几台路由器之间互相检测状态，确保永远有且只有一台在应答对网关的 ARP 请求。
 
     FHRP 协议举例：
 
     * HSRP（Hot Standby Routing Protocol）：思科的私有协议。
-    * **VRRP**（Virtual Router Rundundency Protocol）：目前用的最多的协议。
+    * **<mark>VRRP</mark>**（Virtual Router Rundundency Protocol）：目前用的最多的协议。
 
 ## 1.3 接入-汇聚-核心网络架构存在的问题
 
@@ -161,8 +162,9 @@ internet）真正快速发展成型。
 
 * 交换机水平扩展性和 STP 限制
 
-    理论上，增加汇聚交换机数量似乎就能增加东西向带宽。但是，**STP 不支持两个以上
-    的交换机**场景，否则后果无法预测。因此汇聚交换机就固定在了两个，无法扩展。
+    理论上，增加汇聚交换机数量似乎就能增加东西向带宽。但是，
+    **<mark>STP 不支持两个以上的交换机</mark>**场景，否则后果无法预测。
+    因此汇聚交换机就固定在了两个，无法扩展。
 
 ### 复杂性（Complexity）
 
@@ -175,7 +177,7 @@ internet）真正快速发展成型。
 
 显著增加了网络的复杂性。
 
-STP 使得网络只能用到一半的链路带宽。
+**<mark>STP 使得网络只能用到一半的链路带宽</mark>**。
 
 ### 故障域（Failure Domain）
 
@@ -211,7 +213,8 @@ VLAN 需要整条链路端到端的配置和感知，而且配置会引起控制
 
 ## 1.5 小结
 
-本章我们看到了**应用架构**（application architecture）是如何驱动**网络架构**演进的。
+本章我们看到了**<mark>应用架构</mark>**（application architecture）是如何驱动
+**<mark>网络架构</mark>**演进的。
 
 # 2 CLOS：新一代网络架构
 
@@ -232,8 +235,8 @@ CLOS 拓扑就像红杉树，用一种类似**分形**的模型（fractal model�
 <p align="center"><img src="/assets/img/cloud-native-dc-networking/2-1.png" width="60%" height="60%"></p>
 <p align="center">Fig 2-1. Illustration of a common Clos topology</p>
 
-**Spine 和 Leaf 可以是同一种交换机**，这虽然不是强制要求，但**同构设备**的使用会
-给这种架构带来明显收益。
+**<mark>Spine 和 Leaf 可以是同一种交换机</mark>**，这虽然不是强制要求，
+但**<mark>同构设备</mark>**的使用会给这种架构带来明显收益。
 
 Spine-Leaf 架构的容量（capacity）很高，因为
 
@@ -269,8 +272,8 @@ packet-switched networks using simple fixed-form-factor switches）。
 ### 使用路由作为基本互连模型
 
 接入-汇聚-核心三级网络架构的一个固有限制是：<mark>只能支持两台汇聚交换机</mark>。
-那 CLOS 架构是如何支持多台 Spine 的呢？答案是：CLOS 中不再使用 STP，交换机之间的
-互连不再走桥接（bridging），而是走路由（routing）。
+那 CLOS 架构是如何支持多台 Spine 的呢？答案是：**<mark>CLOS 中不再使用 STP</mark>**，
+**<mark>交换机之间</mark>**的互连不再走桥接（bridging），而是**<mark>走路由</mark>**（routing）。
 
 但并不是说 CLOS 中不再有桥接，只不过转发已经限制到了边缘节点，即
 Leaf 交换机和服务器之间。
@@ -379,7 +382,7 @@ ISL: inter-switch link。
 * 设备类型更单一，故障类型更明确。
 * 从少数大型设备变成数量较多的小型设备：出故障时直接拉出和替换（swap-out failing
   switches），而不是现场排障（troubleshooting a failure in a live network）。
-* 以前更看重设备的新功能提供能量，现在更看重遇到故障时网络的弹性（resilience）。
+* 以前更看重设备的新功能提供能量，现在更看重遇到故障时网络的容错性（resilience）。
 
 ### 布线
 

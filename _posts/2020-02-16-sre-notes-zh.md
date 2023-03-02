@@ -1,6 +1,6 @@
 ---
 layout    : post
-title     : "[笔记] Site Reliability Engineering（OReilly, 2016）"
+title     : "[笔记]《Site Reliability Engineering》（OReilly, 2016）"
 date      : 2020-02-16
 lastupdate: 2020-02-16
 categories: sre

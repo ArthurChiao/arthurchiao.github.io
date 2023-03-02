@@ -181,7 +181,7 @@ the **<mark>maximum pods in your cluster</mark>**: a group of labels map to
 one identity in Cilium, so in it's design, all pods with the same labels share the same identity.
 But, if your `--labels=<labels>` is too fine grained (which is unfortunately the default
 case), it may result in each pod has a distinct identity in the worse case, then your cluster scale is
-upper bound by **<mark><code>64K</code></mark>** pods, as identity is represented
+upper bounded by **<mark><code>64K</code></mark>** pods, as identity is represented
 with a `16bit` integer. Refer to [8] for more information.
 
 Besides, there are parameters that needs to be decided or tuned according to
@@ -209,7 +209,7 @@ support.
 * `--bpf-lb-sock-hostns-only`
 * ...
 
-Besides, **<mark>disable some debug level options</mark>** are also necessary:
+Besides, **<mark>disable some debug level options</mark>** is also necessary:
 
 * `--disable-cnp-status-updates`
 * ...
@@ -286,7 +286,7 @@ is newly introduced, and maintained internally currently;
 we’ll devote more efforts to upstream it in the next, too.
 
 Besides, we’ve also developed a simple solution to let Cilium
-be-aware of our legacy workloads like virtual machines in OpenStack,
+be aware of our legacy workloads like virtual machines in OpenStack,
 the-solultion is called CiliumExeternalResource. Please see our previous
 blog [8] if you’re interested in.
 
@@ -423,7 +423,7 @@ $ bpftool map dump pinned cilium_policy_00794 # REAL & ULTIMATE policies in the 
 
 But to use this tool you need to first **<mark>get yourself familiar with some Cilium data structures</mark>**.
 Such as, how an IP address corresponds to an identity, and how to combine
-Identity, port, protol, traffic direction to form a key in BPF policy map.
+Identity, port, protocol, traffic direction to form a key in BPF policy map.
 
 ```shell
 # Get the corresponding identity of an (client) IP address
@@ -531,7 +531,7 @@ environments, unless you know what you are doing.
 We’ve been using Cilium since 1.4 and have upgraded all the way to ~~1.10~~ `1.11` (2022.11 updated) now,
 it's supporting our business and infrastructure critical services.
 With 4 years experiences, we believe it’s not only production ready for large scale,
-but also one of the best candidates in terms of performance, feature, community and so on.
+but also one of the best candidates in terms of performance, feature, community, etc.
 
 In the end, I’d like to say special thanks to Andre, Denial, Joe, Martynas, Paul, Quentin, Thomas
 and all the Cilium guys. The community is very nice and has helped us a lot in the past.

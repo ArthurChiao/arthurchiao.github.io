@@ -1,22 +1,20 @@
 ---
 layout    : post
-title     : "[笔记] Internet Routing Architecture (Cisco Press, 2000)"
+title     : "[笔记] 《Internet Routing Architecture》(Cisco Press, 2000)"
 date      : 2019-04-08
-lastupdate: 2020-05-21
+lastupdate: 2023-02-21
 categories: bgp datacenter
 ---
 
-## 关于本文
-
-本文是我在阅读 [Internet Routing Architecture, 2nd Edition](https://www.amazon.com/Internet-Routing-Architectures-2nd-Halabi/dp/157870233X) （
+本文是阅读 [Internet Routing Architecture, 2nd Edition](https://www.amazon.com/Internet-Routing-Architectures-2nd-Halabi/dp/157870233X) （
 Cisco Press, 2000）（直译为**“互联网路由架构”**）时所做的笔记。
 
 注意这本书是 2000 年写的，因此有些内容可能已经过时，比如说到“当前大型网络都是使
 用 xxx 协议”的时候，说的是距今 20 年前的情况，现在则并不一定。
 
 本书致力于**解决实际问题**，书中包含大量的架构图、拓扑图和真实场景示例，内容全面
-而且易于上手，是不可多得的良心之作。本书目的是使读者成为**将自有网络集成到全球互
-联网**（integrating your network into the global Internet）领域的专家。
+且易于上手，是不可多得的良心之作。本书目的是使读者成为**将自有网络集成到全球互联网**
+（integrating your network into the global Internet）领域的专家。
 
 以下是笔记内容。
 
@@ -31,7 +29,7 @@ Cisco Press, 2000）（直译为**“互联网路由架构”**）时所做的�
 
 互联网（Internet）起源于 20 世纪 60 年代（`1960s`）的一个学术实验。
 
-**一些人惊讶于网络会发生故障，另外一些人则惊讶于网络竟然会长时间良好地运行**。
+**<mark>一些人惊讶于网络会发生故障，另外一些人则惊讶于网络竟然会长时间良好地运行</mark>**。
 
 ## 目标
 
@@ -58,8 +56,7 @@ into the global Internet）领域的专家。
 
 # 1 互联网的演进
 
-介绍互联网的发展历史，主要组件，理解互联网现在面临的挑战，以及如何构建可扩展互连
-网络（internetworks）。
+介绍互联网的发展历史，主要组件，理解互联网现在面临的挑战，以及如何构建可扩展互连网络（internetworks）。
 
 <a name="chap_1.1"></a>
 
@@ -77,10 +74,10 @@ into the global Internet）领域的专家。
 <p align="center"><img src="/assets/img/internet-routing-arch/1-2.PNG" width="60%" height="60%"></p>
 <p align="center">图 1-2 ARPANET Architecture, 1976-07 </p>
 
-**这就是互联网（Internet）的前身。**
+**<mark>这就是互联网（Internet）的前身</mark>**。
 
-Internet 禁止用于商业目的，不过大量的接入还是导致了扩展性和链路拥塞问题，因此
-NSF 开始研究 NSFNET。
+ARPANET **<mark>禁止用于商业目的</mark>**，不过大量的接入还是导致了扩展性和链路拥塞问题，
+因此 NSF 开始研究 NSFNET。
 
 ### NSFNET
 
@@ -94,21 +91,20 @@ NSFNET 是为了解决 ARPANET 的拥塞问题。设计：
 <p align="center"><img src="/assets/img/internet-routing-arch/1-3.PNG" width="60%" height="60%"></p>
 <p align="center">图 1-3 The NSFNET-Based Internet Environment </p>
 
-1990 年左右，NSFNET 仍然是用于科研和学术目的。之后，开始出现 ISP 产业。
-
-1990 年之后，这张网络开始连接到欧洲和亚洲。
-
-1995 年，这张网络完成了自己的历史使命。
+* 1990 年左右，NSFNET 仍然是用于科研和学术目的。之后，开始出现 ISP 产业。
+* 1990 年之后，这张网络开始连接到欧洲和亚洲。
+* **<mark>1995 年，这张网络完成了自己的历史使命</mark>**。
 
 ### The Internet Today
 
-今天的互联网是从一个**核心网络**（core network，也就是 NSFNET）转变成的由商业提
-供商运营的**分布式网络**，这些供应商网络通过主要的网络交换节点或直连而连接到一起。
+今天的互联网是从一个**<mark>核心网络</mark>**（core network，也就是 NSFNET）
+转变成的由**<mark>商业提供商</mark>**运营的分布式网络，这些供应商网络通过主要的
+网络交换节点或直连而连接到一起。
 
 <p align="center"><img src="/assets/img/internet-routing-arch/1-4.PNG" width="60%" height="60%"></p>
 <p align="center">图 1-4 The General Structure of Today's Internet</p>
 
-ISP 在多个 region 都提供连接接入点，称为 POP（Points of Presence）。
+ISP 在多个 region 都提供连接接入点，称为 **<mark>POP</mark>**（Points of Presence）。
 
 <a name="chap_2"></a>
 
@@ -136,13 +132,13 @@ CIDR: Classless Inter-domain Routing
 
 路由条目越多，所需的处理能力和内存空间就越多。
 
-**路由表规模在 1991~1995 年期间每 10 个月就翻一番**：
+**<mark>路由表规模在 1991~1995 年期间每 10 个月就翻一番</mark>**：
 
 <p align="center"><img src="/assets/img/internet-routing-arch/3-9.PNG" width="60%" height="60%"></p>
 <p align="center">图 3-9 The Growth of Internet Routing Tables </p>
 
-CIDR 相比于之前的有类别 IP 地址（classful IP addresses），是革命性的一步。通过
-prefix 做路由聚合，大大减小路由表的规模。
+**<mark>CIDR</mark>** 相比于之前的有类别 IP 地址（classful IP addresses），是革命性的一步。
+通过 prefix 做路由聚合，**<mark>大大减小路由表的规模</mark>**。
 
 <p align="center"><img src="/assets/img/internet-routing-arch/3-11.PNG" width="60%" height="60%"></p>
 <p align="center">图 3-11 Classful Addressing Versus CIDR-Based Addressing</p>
@@ -180,23 +176,24 @@ ISP1 时，会匹配到默认路由，流量会绕回 ISP2，形成环路。
 
 # II: 路由协议基础（Routing Protocol Basics）
 
-本书主要介绍**外部网关协议**（exterior gateway protocols），即**不同自治系统（AS
-）之间的路由**。但先了解一下内部网关协议（internal gateway protocols）会非常有帮
-助。
+本书主要介绍**<mark>外部网关协议</mark>**（exterior gateway protocols），即
+**<mark>不同自治系统（AS）之间的路由</mark>**。但先了解一下内部网关协议（internal gateway protocols）
+会非常有帮助。
 
 <a name="chap_4"></a>
 
 # 4 域间路由基础
 
-互联网是由自治系统（AS）组成的，这些 AS 由不同组织管理，拥有不同的路由策略。
+**<mark>互联网是由自治系统（AS）组成的</mark>**，这些 AS 由**<mark>不同组织</mark>**
+（organization）管理，拥有不同的**<mark>路由策略</mark>**。
 
 <a name="chap_4.1"></a>
 
 ## 4.1 路由器和路由（Routers and Routing）
 
-内部网关协议（IGP）是为**企业网**（enterprise）设计的，**不适用于大型网络**，
-例如上千个节点、有上万条路由的网络。因此引入了外部网关协议（EGP），例如**边界
-网关协议**（BGP）。
+内部网关协议（IGP）是为**<mark>企业网</mark>**（enterprise）设计的，
+**<mark>不适用于大型网络</mark>**，例如上千个节点、有上万条路由的网络。
+因此引入了外部网关协议（EGP），例如**边界网关协议**（BGP）。
 
 本章介绍 IGP 基础。
 
@@ -205,32 +202,27 @@ ISP1 时，会匹配到默认路由，流量会绕回 ISP2，形成环路。
 大部分路由协议都可以归为两类分布式路由算法：
 
 1. 链路-状态（link-state）
-1. 距离矢量（distance vector）
+1. 距离矢量（distance vector）：**<mark>跳数</mark>**
 
 ### 距离矢量算法
 
-为每条路由维护一个**距离矢量**（vector of distances），其中“距离”用跳数（hops）或类
-似指标衡量。
+为每条路由维护一个**距离矢量**（vector of distances），其中“距离”用跳数（hops）或类似指标衡量。
 
 每个节点独立计算最短路径，因此是分布式算法。
 
-每个节点向邻居通告自己已知的最短路径，邻居根据收到的消息判断是否有更短路径，如果
-有就更新自己的路由信息，然后再次对外通告最短路径。如此反复，直到整个网络收敛到一
-致状态。
+每个节点向邻居通告自己已知的最短路径，邻居根据收到的消息判断是否有更短路径，
+如果有就更新自己的路由信息，然后再次对外通告最短路径。如此反复，直到整个网络收敛到一致状态。
 
-**早期 IGP 代表**：RIP（Routing Information Protocol）
+**<mark>早期 IGP 代表</mark>**：RIP（Routing Information Protocol）
 
 早期 IGP 缺点：
 
-1. 早期协议（RIP-1）只计算跳数（相当于每跳权重一样），没有优先级和权重，而跳数最
-   少的路径不一定最优
-1. 早期协议（RIP-1）**规定了最大跳数**（一般是 15），**因此限制了网络的规模**（
-   但解决了 count to infinity 问题）
-1. 早期协议（RIP-1）靠**定时器触发路由通告**（没有事件触发机制），因此路由发生变
-   动时，**收敛比较慢**
-1. 第一代协议不支持 CIDR
+1. 早期协议（RIP-1）**<mark>只计算跳数</mark>**（相当于每跳权重一样），没有优先级和权重，而**<mark>跳数最少的路径不一定最优</mark>**
+1. 早期协议（RIP-1）**<mark>规定了最大跳数</mark>**（一般是 15），因此**<mark>限制了网络的规模</mark>**（但解决了 count to infinity 问题）
+1. 早期协议（RIP-1）**<mark>靠定时器触发路由通告</mark>**（没有事件触发机制），因此路由发生变动时，**<mark>收敛比较慢</mark>**
+1. 第一代协议**<mark>不支持 CIDR</mark>**
 
-新 IGP 解决了以上问题，协议代表：
+**<mark>新 IGP 解决了以上问题</mark>**，协议代表：
 
 1. RIP-2
 1. EIGRP
@@ -240,53 +232,52 @@ ISP1 时，会匹配到默认路由，流量会绕回 ISP2，形成环路。
 1. 简单
 1. 成熟
 
-BGP 也是距离矢量协议，但它是通过引入路径矢量（path vector）解决 count to
-infinity 问题。path vector 包含了路径上的 ASN，相同 ASN 的路径只会接受一条，因此
-消除了路由环路。BGP 还支持基于域的策略（domain-based policies）。后面会详细介绍
-BGP。
+**<mark>BGP 也是距离矢量协议</mark>**，但它是通过引入路径矢量（path vector）解决 count to
+infinity 问题。path vector 包含了路径上的 ASN，相同 ASN 的路径只会接受一条，
+因此消除了路由环路。BGP 还支持基于域的策略（domain-based policies）。后面会详细介绍 BGP。
 
 ### 链路状态算法
 
 * 距离矢量算法：交换路由表信息
-* 链路状态算法：交换邻居的链路状态信息，比距离矢量算法复杂
+* 链路状态算法：**<mark>交换邻居的链路状态信息</mark>**，比距离矢量算法**<mark>复杂</mark>**
 
 分布式数据库（replicated distributed database），存储链路状态（link state）。
 
 代表：
 
-1. OSFP
-1. IS-IS
+1. **<mark>OSFP</mark>**
+1. **<mark>IS-IS</mark>**
 
-**路由可扩展性和收敛速度都有改善，可以支持更大的网络，但仍然只适用于域内路由**（
-interior routing）。
+**<mark>路由可扩展性和收敛速度都有改善，可以支持更大的网络</mark>**，但仍然
+**<mark>只适用于域内路由</mark>**（interior routing）。
 
 大部分大型服务供应商在域内（intra-domain）都使用 link-state 协议，主要是看中它的
-**快速收敛**特性。
+**<mark>快速收敛</mark>**特性。
 
 ## 4.3 将互联网分割为自治系统（AS）
 
-**外部路由协议（Exterior routing protocol）的提出是为了解决两个问题**：
+**<mark>外部路由协议</mark>**（Exterior routing protocol）的提出是为了**<mark>解决两个问题</mark>**：
 
-1. **控制路由表的膨胀**
+1. **<mark>控制路由表的膨胀</mark>**
 1. 提供结构化的互联网视图
 
-将路由域划分为独立的管理单元，称为自治系统（autonomous systems，AS）。
-每个 AS 有自己**独立的路由策略**和 **IGP**。
+将路由域划分为独立的管理单元，称为**<mark>自治系统</mark>**（autonomous systems，AS）。
+每个 AS 有自己**<mark>独立的路由策略和 IGP</mark>**。
 
-当前域间路由的事实标准：BGP-4。
+当前域间路由的事实标准：**<mark>BGP-4</mark>**。
 
 > intra-domain 和 inter-domain routing 的主要区别
 >
-> * intra-domain 主要解决技术需求
-> * inter-domain 主要反映网络和公司的政治与商业关系
+> * intra-domain 主要解决**<mark>技术需求</mark>**
+> * inter-domain 主要**<mark>反映网络和公司的政治与商业关系</mark>**
 
 #### Autonomous Systems
 
 一个 **AS 是拥有如下特点的一组路由器**：
 
-1. 共享相同的**路由策略**
+1. 共享**<mark>相同的路由策略</mark>**
 1. 被作为一个整体进行**管理**
-1. 通常路由器之间运行同**一种 IGP 协议**
+1. 通常路由器之间运行**<mark>同一种 IGP 协议</mark>**
 
 每个 AS 有一个编号，称为 ASN。AS 之间通过 BGP 交换路由。
 
@@ -308,22 +299,23 @@ interior routing）。
 <p align="center"><img src="/assets/img/internet-routing-arch/4-6.PNG" width="60%" height="60%"></p>
 <p align="center">图 4-6 Multihomed Transit AS Using BGP Internally and Externally</p>
 
-## 4.5 Frequently Asked Questions
+## 4.5 FAQ
 
 ### Domain 和 AS 有什么区别？
 
-两者都是指满足某些条件的一组路由器。
+两者都是指**<mark>满足某些条件的一组路由器</mark>**。
 
-* Domain 一般指**运行相同路由协议**的一组路由器，例如一个 RIP domain 或一个 OSFP domain。
-* AS 是**管理概念**，**作为整体统一管理的、有相同路由策略**的一组路由器是一个 AS。一个 AS 可能包含一个或多个 domain。
+* Domain 一般指**<mark>运行相同路由协议</mark>**的一组路由器，例如一个 RIP domain 或一个 OSFP domain。
+* AS 是**<mark>管理概念</mark>**，**作为整体统一管理的、有相同路由策略**的一组路由器是一个 AS。
+  **<mark>一个 AS 可能包含一个或多个 domain</mark>**。
 
 ### BGP 是用于 AS 之间的。那用于 AS 内的 BGP 又是什么？
 
 AS 内的 BGP 是 iBGP。
 
-如果 AS 是 transit AS，那 iBGP 可以保护这个 AS 内的 nontransit routers，不会被大
-量的 AS 外路由撑爆路由表。另外，即使不是 transit AS，iBGP 也可以提供更强的控制能
-力，例如本书后面会看到的选择 exit and entrance points。
+如果 AS 是 transit AS，那 iBGP 可以保护这个 AS 内的 nontransit routers，
+不会被大量的 AS 外路由撑爆路由表。另外，即使不是 transit AS，iBGP 也可以提供更强的控制能力，
+例如本书后面会看到的选择 exit and entrance points。
 
 <a name="chap_5"></a>
 
@@ -333,15 +325,15 @@ BGP-4 `1993` 年开始部署，是第一个支持路由聚合的 BGP 版本。
 
 ## 5.1 BGP 工作原理
 
-BGP 是一种**路径矢量协议（path vector protocol）**。
+BGP 是一种**<mark>路径矢量协议</mark>**（path vector protocol）。
 
-***Path vector*** 是一条路由（network prefix）经过的所有 AS 组成的路径。目的是防
-止出现**路由环路**。
+***Path vector*** 是一条路由（network prefix）经过的所有 AS 组成的路径。
+目的是防止出现**<mark>路由环路</mark>**。
 
-* BGP 使用 TCP 协议，运行在 179 端口。
-* peer 之间建立连接之后交换全部路由，之后只交换更新的路由（增量更新）
-* 交换路由是 UPDATE 消息
-* 维护**路由表**的**版本号**，每次路由表有更新，版本号都会递增
+* BGP 使用 **<mark><code>TCP</code></mark>** 协议，运行在 **<mark><code>179</code></mark>** 端口。
+* peer 之间建立连接之后交换全部路由，之后只交换更新的路由（**<mark>增量更新</mark>**）
+* 交换路由是 **<mark><code>UPDATE</code></mark>** 消息
+* 维护**<mark>路由表的版本号</mark>**，每次路由表有更新，版本号都会递增
 * 通过 UPDATE 消息通告和撤回路由
 
 ### BGP 消息头格式
@@ -367,7 +359,7 @@ BGP 是一种**路径矢量协议（path vector protocol）**。
 
 UPDATE 消息:
 
-* Network Layer Reachability Information (NLRI)
+* Network Layer Reachability Information (**<mark><code>NLRI</code></mark>**)
 * Path Attributes
 * Unfeasible Routes
 
@@ -377,9 +369,9 @@ UPDATE 消息:
 <p align="center"><img src="/assets/img/internet-routing-arch/5-11.PNG" width="60%" height="60%"></p>
 <p align="center">图 5-11 BGP Routing Update Example</p>
 
-## 5.3 多协议扩展（Multiprotocol Extensions for BGP）
+## 5.3 多协议扩展（Multiprotocol Extensions for BGP, MP-BGP）
 
-对 BGP-4 的兼容性扩展，支持除了 IPv4 之外的其他协议（所以叫多协议），例如 IPv6。
+对 BGP-4 的兼容性扩展，支持除了 IPv4 之外的**<mark>其他协议</mark>**（所以叫多协议），例如 IPv6。
 
 ## 5.4 TCP MD5 Signature Option
 
@@ -391,7 +383,7 @@ UPDATE 消息:
 
 ### BGP 是否像 RIP 一样定期发布路由更新消息？
 
-不是。只有路由有变动时，才会通告，而且只通告变动的路由。
+不是。只有**<mark>路由有变动时</mark>**，才会通告，而且只通告变动的路由。
 
 ### ASN 在 BGP 消息中的什么地方？
 
@@ -420,15 +412,15 @@ AS 内部的 BGP 称为 iBGP；AS 之间的 BGP 称为 eBGP。
 邻居之间建立连接，然后通过 OPEN 消息进行协商，在这个过程中，peer routers 之间会
 比较 ASN 来判断他们是否属于同一个 AS。
 
-iBGP 和 eBGP 的区别：
+**<mark>iBGP 和 eBGP 的区别</mark>**：
 
 1. 对收到的 UPDATE 消息的处理不同
 1. 消息携带的属性不同
 
 ### 物理和逻辑连接
 
-eBGP 要求邻居之间必须是物理直连的，但是有些情况下两个 AS 之间的 BGP peer 无法满
-足直连的要求，例如经过了一些非 GBP 路由器。这种情况下，需要对 BGP 做特殊配置。
+eBGP 要求邻居之间必须是物理直连的，但是有些情况下两个 AS 之间的 BGP peer 无法满足直连的要求，
+例如经过了一些非 BGP 路由器。这种情况下，需要对 BGP 做特殊配置。
 
 <p align="center"><img src="/assets/img/internet-routing-arch/6-2.PNG" width="60%" height="60%"></p>
 <p align="center">图 6-2 External BGP Multihop Environment</p>
@@ -535,17 +527,17 @@ Cisco 提供的 ***administrative distance*** 就是这个功能。
 
 简要查看完整的 BGP 路由处理过程。
 
-BGP 是一种相当简单的协议，这也是它灵活的原因。BGP peer 之间通过 UPDATE 消息交换
-路由。BGP 路由器收到 UPDATE 消息后，运行一些策略或者对消息进行过滤，然后将路由转
-发给其他 BGP peers。
+BGP 是一种相当简单的协议，这也是它为什么这么灵活的原因。BGP peer 之间通过 UPDATE
+消息交换路由。BGP 路由器收到 UPDATE 消息后，运行一些策略或者对消息进行过滤，
+然后将路由转发给其他 BGP peers。
 
-BGP 实现需要维护一张 BGP 路由表，这张表是和 IP 路由表独立的。如果到同一目的地有
-多条路由，BGP 并不会将所有这些路由都转发给 peer；而是选出最优路由，然后将最优路
-由转发给 peer。除了传递从 peer 来的 eBGP 路由，或从路由反射器客户端（RR client）
+BGP 实现需要**<mark>维护一张 BGP 路由表</mark>**，这张表独立于 IP 路由表的。
+如果到同一目的地有多条路由，BGP 并不会将所有这些路由都转发给 peer；而是选出最优路由，
+然后将最优路由转发给 peer。除了传递从 peer 来的 eBGP 路由，或从路由反射器客户端（RR client）
 来的 iBGP 路由之外，BGP 路由器还可以主动发起路由更新，通告它所在 AS 内的内部网络。
 
-来源是本 AS 的合法的本地路由，以及从 BGP peer 学习到的最优路由，会被添加到 IP 路
-由表。IP 路由表是最终的路由决策表，用于操控转发表。
+来源是本 AS 的合法的本地路由，以及从 BGP peer 学习到的最优路由，会被添加到 IP
+路由表。IP 路由表是最终的路由决策表，用于操控转发表。
 
 <p align="center"><img src="/assets/img/internet-routing-arch/6-8.PNG" width="60%" height="60%"></p>
 <p align="center">图 6-8 Routing Process Overview</p>
@@ -637,7 +629,8 @@ BGP 依靠这个字段实现路由无环路。里面存储了路径上的 ASN。
 
 ## 7.1 冗余
 
-冗余和对称这两个目标是有冲突的：**一个网络提供的冗余越多，它的对称性越难保证**。
+**<mark>冗余和对称</mark>**这两个目标是有冲突的：一个网络提供的**<mark>冗余越多</mark>**，
+**<mark>对称性越难保证</mark>**。
 
 **冗余最终会以路由的形式落到路由表**。为了避免路由表过于复杂，通常的冗余实现方式
 就是默认路由（default routing）。
@@ -651,8 +644,8 @@ BGP 依靠这个字段实现路由无环路。里面存储了路径上的 ASN。
 
 #### 动态学习默认路由
 
-0.0.0.0/0.0.0.0 是全网约定的默认路由，并且可以动态通告给其他路由器。通告此路由的
-系统表示它可以**作为其他系统最后尝试的网关**（represents itself as a gateway of
+**<mark><code>0.0.0.0/0.0.0.0</code></mark>** 是全网约定的默认路由，并且可以动态通告给其他路由器。
+通告此路由的系统表示它可以**作为其他系统最后尝试的网关**（represents itself as a gateway of
 last resort for other systems）。
 
 动态默认路由可以通过 BGP 或 IGP 学习。出于冗余目的，应该设置允许从多个源学习默认
