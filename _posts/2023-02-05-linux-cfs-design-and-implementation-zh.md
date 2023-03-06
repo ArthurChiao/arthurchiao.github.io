@@ -2,7 +2,7 @@
 layout    : post
 title     : "Linux CFS 调度器：原理、设计与内核实现（2023）"
 date      : 2023-02-05
-lastupdate: 2023-02-05
+lastupdate: 2023-03-06
 categories: kernel
 ---
 
@@ -1021,7 +1021,7 @@ func main() {
 		burn(time.Millisecond * 5)
 		e := time.Now().Sub(s)
 
-		log.Printf("[%d] burn took %dms, real time so far: %dms, cpu time so far: %dms", i, ms(e), ms(time.Since(b)), ms(usage()))
+		log.Printf("[%3d] burn took %3dms, real time so far: %3dms, cpu time so far: %3dms", i, ms(e), ms(time.Since(b)), ms(usage()))
 		time.Sleep(*sleep)
 	}
 }
@@ -1055,34 +1055,51 @@ func usage() time.Duration {
 
 用 docker container 来执行，避免污染本机配置。
 
-`period=100ms,quota=5m,sleep=10ms` 情况下，不会产生 throttle：
+**<mark>不限带宽</mark>**情况下，不会产生 throttle：
 
 ```shell
 $ dk run --rm -it -v $(pwd):$(pwd) -w $(pwd) golang:1.19.4 go run cfs.go -iterations 20 -sleep 10ms
-2023/02/05 09:50:35 [0] burn took 5ms, real time so far: 5ms, cpu time so far: 7ms
-2023/02/05 09:50:35 [1] burn took 5ms, real time so far: 20ms, cpu time so far: 12ms
-2023/02/05 09:50:35 [2] burn took 5ms, real time so far: 37ms, cpu time so far: 17ms
-...
-2023/02/05 09:50:35 [18] burn took 5ms, real time so far: 338ms, cpu time so far: 102ms
-2023/02/05 09:50:35 [19] burn took 5ms, real time so far: 355ms, cpu time so far: 108ms
+[ 0] burn took 5ms, real time so far:   5ms, cpu time so far: 7ms
+[ 1] burn took 5ms, real time so far:  20ms, cpu time so far: 12ms
+[ 2] burn took 5ms, real time so far:  37ms, cpu time so far: 17ms
+
+[18] burn took 5ms, real time so far: 338ms, cpu time so far: 102ms
+[19] burn took 5ms, real time so far: 355ms, cpu time so far: 108ms
 ```
 
-`period=100ms,quota=25m,sleep=10ms` 情况下，会产生 throttle：
+`period=100ms,quota=50m,sleep=10ms` 情况下，不会产生 throttle：
+
+```shell
+$ dk run --rm -it --cpu-quota 50000 --cpu-period 100000 -v $(pwd):$(pwd) -w $(pwd) golang:1.19.4 go run cfs.go -iterations 20 -sleep 10ms
+[  0] burn took   5 ms, real time so far:   5 ms, cpu time so far:   7 ms
+[  1] burn took   5 ms, real time so far:  22 ms, cpu time so far:  12 ms
+[  2] burn took   5 ms, real time so far:  38 ms, cpu time so far:  18 ms
+[  3] burn took   5 ms, real time so far:  54 ms, cpu time so far:  23 ms
+[  4] burn took   5 ms, real time so far:  71 ms, cpu time so far:  28 ms
+[  5] burn took   5 ms, real time so far:  86 ms, cpu time so far:  34 ms
+...
+[ 18] burn took   5 ms, real time so far: 315 ms, cpu time so far: 104 ms
+[ 19] burn took   5 ms, real time so far: 332 ms, cpu time so far: 109 ms
+```
+
+`period=100ms,quota=25m,sleep=10ms` 情况下，**<mark>会产生 throttle</mark>**：
 
 ```shell
 $ dk run --rm -it --cpu-quota 25000 --cpu-period 100000 -v $(pwd):$(pwd) -w $(pwd) golang:1.19.4 go run cfs.go -iterations 20 -sleep 10ms
-2023/02/05 09:48:38 [0] burn took 5ms, real time so far: 5ms, cpu time so far: 6ms
-2023/02/05 09:48:38 [1] burn took 11ms, real time so far: 35ms, cpu time so far: 19ms
-2023/02/05 09:48:38 [2] burn took 5ms, real time so far: 51ms, cpu time so far: 24ms
-2023/02/05 09:48:38 [3] burn took 20ms, real time so far: 83ms, cpu time so far: 28ms
-2023/02/05 09:48:38 [4] burn took 5ms, real time so far: 100ms, cpu time so far: 33ms
-2023/02/05 09:48:38 [5] burn took 5ms, real time so far: 115ms, cpu time so far: 38ms
-2023/02/05 09:48:38 [6] burn took 5ms, real time so far: 131ms, cpu time so far: 43ms
-2023/02/05 09:48:38 [7] burn took 5ms, real time so far: 147ms, cpu time so far: 49ms
-2023/02/05 09:48:38 [8] burn took 24ms, real time so far: 182ms, cpu time so far: 51ms
-2023/02/05 09:48:38 [9] burn took 5ms, real time so far: 197ms, cpu time so far: 56ms
+[0] burn took  5ms, real time so far:   5ms, cpu time so far:  6ms
+[1] burn took 11ms, real time so far:  35ms, cpu time so far: 19ms
+[2] burn took  5ms, real time so far:  51ms, cpu time so far: 24ms
+[3] burn took 20ms, real time so far:  83ms, cpu time so far: 28ms
+[4] burn took  5ms, real time so far: 100ms, cpu time so far: 33ms
+[5] burn took  5ms, real time so far: 115ms, cpu time so far: 38ms
+[6] burn took  5ms, real time so far: 131ms, cpu time so far: 43ms
+[7] burn took  5ms, real time so far: 147ms, cpu time so far: 49ms
+[8] burn took 24ms, real time so far: 182ms, cpu time so far: 51ms
+[9] burn took  5ms, real time so far: 197ms, cpu time so far: 56ms
 ...
 ```
+
+这个 throttle 时间怎么算出来的，见 [6] 的解释。
 
 ## 4.2 k8s
 
