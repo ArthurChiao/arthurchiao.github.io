@@ -2,7 +2,7 @@
 layout    : post
 title     : "Linux CFS 调度器：原理、设计与内核实现（2023）"
 date      : 2023-02-05
-lastupdate: 2023-03-06
+lastupdate: 2023-03-19
 categories: kernel
 ---
 
@@ -259,6 +259,9 @@ endif # CGROUPS
 
 
 # 2 CFS 相关设计
+
+<p align="center"><img src="/assets/img/linux-cfs-design-and-implementation/cfs-rq-sched-entity.png" width="70%" height="70%"></p>
+<p align="center">Image from [6]</p>
 
 ## 2.1 设计目标和基本原理
 
