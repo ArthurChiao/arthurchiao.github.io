@@ -38,7 +38,7 @@ defaults:
     values:
       comments: false
 
-google_analytics: "UA-89960542-1"
+google_analytics: "G-5SFP2TKSL7"
 
 # development configurations
 host: 0.0.0.0
