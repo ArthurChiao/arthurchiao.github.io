@@ -29,7 +29,7 @@ and has changed a lot since then.
     your website's statistics will go to my mine:
 
     ```shell
-    $ vim _config.yml # delete this line: google_analytics: "UA-89960542-1"
+    $ vim _config.yml # delete this line: google_analytics: "G-5SFP2TKSL7"
                       # or replace it with your own code
     ```
 
