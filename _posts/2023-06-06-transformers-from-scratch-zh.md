@@ -2,7 +2,7 @@
 layout    : post
 title     : "[译] Transformer 是如何工作的：600 行 Python 代码实现两个（文本分类+文本生成）Transformer（2019）"
 date      : 2023-06-06
-lastupdate: 2023-06-06
+lastupdate: 2023-06-11
 categories: gpt ai
 ---
 
@@ -824,7 +824,7 @@ class Transformer(nn.Module):
         return F.log_softmax(x, dim=1)
 ```
 
-在深度为 6 ，最大序列长度为 512 时，这个 transformer 取得了 85% 的准确度，与 RNN 模型的结果相当，但训练速度快得多。
+在深度为 6 ，最大序列长度为 512 时，这个 transformer 取得了 85% 的准确度，与 RNN（循环神经网络）模型的结果相当，但训练速度快得多。
 要看到这个 transformer 真正接近人类的性能，就需要在更多数据上训练更深的模型。后文将详细介绍怎么做。
 
 ## 4.4 文本生成（text generation）transformer
@@ -917,7 +917,7 @@ RNN <a href="https://colah.github.io/posts/2015-08-Understanding-LSTMs/">展开�
 这里最大的问题是级联（recurrent connection）：虽然这使得信息能沿着 sequence 一路传导，
 但同时也意味着在计算出 $$i - 1$$ 单元之前，我们无法计算出时间 $$i$$ 的单元格。
 
-与 RNN 此相比，**<mark>一维卷积</mark>**（1D convolution）如下：
+与 RNN 此对比，**<mark>一维卷积</mark>**（1D convolution）如下：
 
 <p align="center"><img src="/assets/img/transformers-from-scratch/convolutional-connection.png" width="65%" height="65%"></p>
 <p align="center">
