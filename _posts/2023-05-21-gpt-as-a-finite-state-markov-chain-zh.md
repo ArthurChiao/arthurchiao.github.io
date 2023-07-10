@@ -2,7 +2,7 @@
 layout    : post
 title     : "[译] GPT 是如何工作的：200 行 Python 代码实现一个极简 GPT（2023）"
 date      : 2023-05-21
-lastupdate: 2023-06-06
+lastupdate: 2023-07-10
 categories: gpt ai
 ---
 
@@ -670,11 +670,16 @@ GPT 则是一种另一种计算机体系结构，
 * 默认情况下是**<mark>随机</mark>**的，
 * 计算的是 token 而不是比特。 
 
-也就是说，即使在绝对零度采样，也不太可能将 GPT 变成一个 FSM。
+也就是说，即使在 temperature=0 采样，也不太可能将 GPT 变成一个 FSM。
 这意味着每次状态转移都是贪婪地挑概率最大的 token；但也可以通过
 [beam search](https://en.wikipedia.org/wiki/Beam_search) 算法来降低这种贪婪性。
 但是，在采样时完全丢弃这些熵也是有副作用的，采样 benchmark 以及样本的
 qualitative look and feel 都会下降（看起来很“安全”，无聊），因此实际上通常不会这么做。
+
+> Temperature 是 NLP 中的一个参数，用于控制生成文本的随机性和创造性。
+>
+> * 值越大，生成的结果越多样和不可预测；
+> * 值越小，生成的结果越保守和可预测。
 
 ## 4.3 模型参数大小（GPT 2/3/4）
 

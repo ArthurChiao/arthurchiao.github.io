@@ -2,7 +2,7 @@
 layout    : post
 title     : "GPU Prices Quick Reference"
 date      : 2023-06-17
-lastupdate: 2023-06-17
+lastupdate: 2023-07-10
 categories: gpu
 ---
 
@@ -344,6 +344,74 @@ Subscription prices (包月), **<mark><code>RMB/month</code></mark>**:
 | ecs.gn6i-c24g1.24xlarge | 96    | 372 GiB  | 4 * NVIDIA T4     | 4 * 16 GB |  19800.0  | 13860.0 | 11880.0 |  9900.0 |  7920.0 |  5940.0 |
 | ecs.ebmgn6i.24xlarge    | 96    | 384 GiB  | 4 * NVIDIA T4     | 4 * 16 GB |  19800.0  | 13860.0 | 11880.0 |  9900.0 |  7920.0 |  5940.0 |
 ```
+
+### 2.1.4 A10
+
+#### Flavors: **<mark><code>ecs.gn7i*</code></mark>**
+
+```
+| Instance Type (flavor)  | vCPUs | Memory   | GPU (Count*Model) | GPU Memory| Price (按量/pay-as-you-go) | Price (包月/subscription) |
+|:------------------------|:------|:---------|:------------------|:----------|:---------------------------|:--------------------------|
+| ecs.gn7i-c8g1.2xlarge   |   8   |  30 GiB  | 1 * NVIDIA A10    | 1 * 24 GB |  ￥9.53/Hour               |  ￥4575.66/Month |
+| ecs.gn7i-c16g1.4xlarge  |  16   |  60 GiB  | 1 * NVIDIA A10    | 1 * 24 GB | ￥10.09/Hour               |  ￥4844.81/Month |
+| ecs.gn7i-c32g1.8xlarge  |  32   | 188 GiB  | 1 * NVIDIA A10    | 1 * 24 GB | ￥13.30/Hour               |  ￥6387.98/Month |
+| ecs.gn7i-c48g1.12xlarge |  48   | 310 GiB  | 1 * NVIDIA A10    | 1 * 24 GB | ￥17.94/Hour               |  ￥8613.00/Month |
+| ecs.gn7i-c56g1.14xlarge |  56   | 346 GiB  | 1 * NVIDIA A10    | 1 * 24 GB | ￥21.53/Hour               | ￥10335.60/Month |
+| ecs.gn7i-c32g1.16xlarge |  64   | 376 GiB  | 2 * NVIDIA A10    | 2 * 24 GB | ￥26.61/Hour               | ￥12775.95/Month |
+| ecs.gn7i-c32g1.32xlarge | 128   | 752 GiB  | 4 * NVIDIA A10    | 4 * 24 GB | ￥53.23/Hour               | ￥25551.90/Month |
+```
+
+#### Reference prices & discount prices
+
+Pay-as-you-go prices (按量计费), **<mark><code>RMB/hour</code></mark>**:
+
+```
+| Instance Type (flavor)  | vCPUs | Memory   | GPU (Count*Model) | GPU Memory| Ref Price | 30% off | 40% off | 50% off | 60% off | 70% off |
+|:------------------------|:------|:---------|:------------------|:----------|:----------|:--------|:--------|:--------|:--------|:--------|
+| ecs.gn7i-c8g1.2xlarge   |   8   |  30 GiB  | 1 * NVIDIA A10    | 1 * 24 GB |  9.53     |   6.671 |   5.718 |   4.765 |   3.812 |   2.859 |
+| ecs.gn7i-c16g1.4xlarge  |  16   |  60 GiB  | 1 * NVIDIA A10    | 1 * 24 GB | 10.09     |   7.063 |   6.054 |   5.045 |   4.036 |   3.027 |
+| ecs.gn7i-c32g1.8xlarge  |  32   | 188 GiB  | 1 * NVIDIA A10    | 1 * 24 GB | 13.30     |   9.310 |   7.980 |   6.650 |   5.320 |   3.990 |
+| ecs.gn7i-c48g1.12xlarge |  48   | 310 GiB  | 1 * NVIDIA A10    | 1 * 24 GB | 17.94     |  12.558 |  10.764 |   8.970 |   7.176 |   5.382 |
+| ecs.gn7i-c56g1.14xlarge |  56   | 346 GiB  | 1 * NVIDIA A10    | 1 * 24 GB | 21.53     |  15.071 |  12.918 |  10.765 |   8.612 |   6.459 |
+| ecs.gn7i-c32g1.16xlarge |  64   | 376 GiB  | 2 * NVIDIA A10    | 2 * 24 GB | 26.61     |  18.627 |  15.966 |  13.305 |  10.644 |   7.983 |
+| ecs.gn7i-c32g1.32xlarge | 128   | 752 GiB  | 4 * NVIDIA A10    | 4 * 24 GB | 53.23     |  37.261 |  31.938 |  26.615 |  21.292 |  15.969 |
+```
+
+Subscription prices (包月), **<mark><code>RMB/month</code></mark>**:
+
+```
+| Instance Type (flavor)  | vCPUs | Memory   | GPU (Count*Model) | GPU Memory| Ref Price | 30% off | 40% off | 50% off | 60% off | 70% off |
+|:------------------------|:------|:---------|:------------------|:----------|:----------|:--------|:--------|:--------|:--------|:--------|
+| ecs.gn7i-c8g1.2xlarge   |   8   |  30 GiB  | 1 * NVIDIA A10    | 1 * 24 GB |   4575.66 |  3202.9 |  2745.3 |  2287.8 |  1830.2 | 1372.69 |
+| ecs.gn7i-c16g1.4xlarge  |  16   |  60 GiB  | 1 * NVIDIA A10    | 1 * 24 GB |   4844.81 |  3391.3 |  2906.8 |  2422.4 |  1937.9 | 1453.44 |
+| ecs.gn7i-c32g1.8xlarge  |  32   | 188 GiB  | 1 * NVIDIA A10    | 1 * 24 GB |   6387.98 |  4471.5 |  3832.7 |  3193.9 |  2555.1 | 1916.39 |
+| ecs.gn7i-c48g1.12xlarge |  48   | 310 GiB  | 1 * NVIDIA A10    | 1 * 24 GB |   8613.00 |  6029.1 |  5167.8 |  4306.5 |  3445.2 | 2583.90 |
+| ecs.gn7i-c56g1.14xlarge |  56   | 346 GiB  | 1 * NVIDIA A10    | 1 * 24 GB |  10335.60 |  7234.9 |  6201.3 |  5167.8 |  4134.2 | 3100.68 |
+| ecs.gn7i-c32g1.16xlarge |  64   | 376 GiB  | 2 * NVIDIA A10    | 2 * 24 GB |  12775.95 |  8943.1 |  7665.5 |  6387.9 |  5110.3 | 3832.78 |
+| ecs.gn7i-c32g1.32xlarge | 128   | 752 GiB  | 4 * NVIDIA A10    | 4 * 24 GB |  25551.90 | 17886.3 | 15331.1 | 12775.9 | 10220.7 | 7665.57 |
+```
+
+# Appendix
+
+## A. Quick comparison of T4/A10/A10G/V100-PCIe/V100-SXM2
+
+|           | T4      | A10      | A10G   | V100 PCIe/SMX2 |
+|:----------|:--------|:---------|:-------|:--------|
+| Designed for | **<mark>Data center</mark>** workloads (AI/ML/...) | (Desktop) **<mark>Graphics-intensive</mark>** workloads | Desktop | Data center |
+| Year         | 2018             | 2020               |            | 2017 |
+| Manufacturing| 12nm             | 12nm               | 12nm       | |
+| Architecture | Turing           | Ampere             | Ampere     | Volta |
+| Max Power    | 70 watts         | 150 watts          |            | 250/300watts |
+| GPU Mem      | 16GB GDDR6       | 24GB GDDR6         | 48GB GDDR6 | 16/32GB HBM2 |
+| GPU Mem BW   | 400 GB/s         | 600 GB/s           |            | 900 GB/s|
+| Interconnect | PCIe Gen3 32GB/s | PCIe Gen4: 66 GB/s |            | PCIe Gen3 32GB/s, SXM2 300GB/s|
+| FP32         | 8.1 TFLOPS       | 31.2 TFLOPS        |            | 14/15.7 TFLOPS |
+
+Datasheets:
+
+1. [T4](https://www.nvidia.com/en-us/data-center/tesla-t4/)
+1. [A10](https://www.nvidia.com/en-us/data-center/products/a10-gpu/)
+1. [V100-PCIe/V100-SXM2/V100S-PCIe](https://www.nvidia.com/en-us/data-center/v100/)
 
 # References
 
