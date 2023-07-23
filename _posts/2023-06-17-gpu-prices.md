@@ -2,7 +2,7 @@
 layout    : post
 title     : "GPU Prices Quick Reference"
 date      : 2023-06-17
-lastupdate: 2023-07-10
+lastupdate: 2023-07-21
 categories: gpu
 ---
 
@@ -393,7 +393,16 @@ Subscription prices (包月), **<mark><code>RMB/month</code></mark>**:
 
 # Appendix
 
-## A. Quick comparison of T4/A10/A10G/V100-PCIe/V100-SXM2
+The first letter in GPU model names denote their GPU architectures, with:
+
+1. **<mark><code>T</code></mark>** for Turing;
+1. **<mark><code>A</code></mark>** for Ampere;
+1. **<mark><code>V</code></mark>** for Volta;
+1. **<mark><code>H</code></mark>** for Hopper;
+
+    Introduced in 2022, support hardware implementation of Transformer architecture in AI training;
+
+## A. Quick comparison of T4/A10/A10G/V100
 
 |           | T4      | A10      | A10G   | V100 PCIe/SMX2 |
 |:----------|:--------|:---------|:-------|:--------|
@@ -402,16 +411,44 @@ Subscription prices (包月), **<mark><code>RMB/month</code></mark>**:
 | Manufacturing| 12nm             | 12nm               | 12nm       | |
 | Architecture | Turing           | Ampere             | Ampere     | Volta |
 | Max Power    | 70 watts         | 150 watts          |            | 250/300watts |
-| GPU Mem      | 16GB GDDR6       | 24GB GDDR6         | 48GB GDDR6 | 16/32GB HBM2 |
-| GPU Mem BW   | 400 GB/s         | 600 GB/s           |            | 900 GB/s|
-| Interconnect | PCIe Gen3 32GB/s | PCIe Gen4: 66 GB/s |            | PCIe Gen3 32GB/s, SXM2 300GB/s|
+| GPU Mem      | 16GB GDDR6       | 24GB GDDR6         | 48GB GDDR6 | 16/32GB <mark>HBM2</mark> |
+| GPU Mem BW   | 400 GB/s         | 600 GB/s           |            | **<mark><code>900 GB/s</code></mark>** |
+| Interconnect | PCIe Gen3 32GB/s | PCIe Gen4 66 GB/s  |            | PCIe Gen3 32GB/s, NVLINK **<mark><code>300GB/s</code></mark>** |
 | FP32         | 8.1 TFLOPS       | 31.2 TFLOPS        |            | 14/15.7 TFLOPS |
+| BFLOAT16 TensorCore|            | 125 TFLOPS         |            |  |
+| FP16 TensorCore   |             | 125 TFLOPS         |            |  |
+| INT8 TensorCore   |             | 250 TFLOPS         |            |  |
 
 Datasheets:
 
 1. [T4](https://www.nvidia.com/en-us/data-center/tesla-t4/)
 1. [A10](https://www.nvidia.com/en-us/data-center/products/a10-gpu/)
 1. [V100-PCIe/V100-SXM2/V100S-PCIe](https://www.nvidia.com/en-us/data-center/v100/)
+
+## B. Quick comparison of A100/A800/H100/H800
+
+|                    | A800 (PCIe/SXM)  | A100 (PCIe/SXM)    | H800  (PCIe/SXM) | H100 (PCIe/SXM) |
+|:-------------------|:-----------------|:-------------------|:-----------------|:--------|
+| Year               | 2022             | 2020               | 2022             | 2022 |
+| Manufacturing      | 7nm              | 7nm                | 4nm              | 4nm |
+| Architecture       | Ampere           | Ampere             | Hopper           | Hopper |
+| Max Power          | 300/400 watt     | 300/400 watt       |                  | 350/700 watt |
+| GPU Mem            | 80G HBM2e        | 80G HBM2e          | 80G HBM3         | 80G HBM3 |
+| GPU Mem BW         |                  | 1935/2039 GB/s     |                  | 2/3.35 TB/s|
+| Interconnect       | NVLINK 400GB/s   | PCIe Gen4 64GB/s, NVLINK 600GB/s |  | PCIe Gen5 128GB/s, NVLINK **<mark><code>900GB/s</code></mark>** |
+| FP32               |                  | 19.5 TFLOPS        |                  | 51/67 TFLOPS |
+| TF32 (TensorFloat) |                  | 156/312 TFLOPS     |                  | 756/989 TFLOPS |
+| BFLOAT16 TensorCore|                  | 156/312 TFLOPS     |                  |  |
+| FP16 TensorCore    |                  | 312/624 TFLOPS     |                  | 1513/1979 TFLOPS |
+| FP8 TensorCore     | NO support       | NO support         |                  | 3026/3958 TFLOPS |
+| INT8 TensorCore    |                  | 624/1248 TFLOPS    |                  | 3026/3958 TFLOPS |
+
+H100 vs. A100 in one word: **<mark> 3x performance, 2x price</mark>**.
+
+Datasheets:
+
+1. [A100](https://www.nvidia.com/en-us/data-center/a100/)
+1. [H100](https://www.nvidia.com/en-us/data-center/h100/)
 
 # References
 

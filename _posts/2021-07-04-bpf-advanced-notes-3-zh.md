@@ -2,7 +2,7 @@
 layout    : post
 title     : "BPF 进阶笔记（三）：BPF Map 内核实现"
 date      : 2021-07-13
-lastupdate: 2022-05-01
+lastupdate: 2023-07-23
 categories: bpf xdp
 ---
 
@@ -511,7 +511,7 @@ static int htab_map_update_elem(struct bpf_map *map, void *key, void *value, u64
     struct bucket *b = __select_bucket(htab, hash);
     head = &b->head;
 
-    if (unlikely(map_flags & BPF_F_LOCK)) {
+    if (unlikely(map_flags & BPF_F_LOCK)) { // BPF_F_LOCK: spin_lock-ed map_lookup/map_update, defined in include/uapi/linux/bpf.h
         /* find an element without taking the bucket lock */
         l_old = lookup_nulls_elem_raw(head, hash, key, key_size, htab->n_buckets);
         ret = check_flags(htab, l_old, map_flags);
