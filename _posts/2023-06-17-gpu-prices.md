@@ -2,7 +2,7 @@
 layout    : post
 title     : "GPU Prices Quick Reference"
 date      : 2023-06-17
-lastupdate: 2023-07-21
+lastupdate: 2023-08-06
 categories: gpu
 ---
 
@@ -404,25 +404,27 @@ The first letter in GPU model names denote their GPU architectures, with:
 
 ## A. Quick comparison of T4/A10/A10G/V100
 
-|           | T4      | A10      | A10G   | V100 PCIe/SMX2 |
-|:----------|:--------|:---------|:-------|:--------|
-| Designed for | **<mark>Data center</mark>** workloads (AI/ML/...) | (Desktop) **<mark>Graphics-intensive</mark>** workloads | Desktop | Data center |
-| Year         | 2018             | 2020               |            | 2017 |
-| Manufacturing| 12nm             | 12nm               | 12nm       | |
-| Architecture | Turing           | Ampere             | Ampere     | Volta |
-| Max Power    | 70 watts         | 150 watts          |            | 250/300watts |
-| GPU Mem      | 16GB GDDR6       | 24GB GDDR6         | 48GB GDDR6 | 16/32GB <mark>HBM2</mark> |
-| GPU Mem BW   | 400 GB/s         | 600 GB/s           |            | **<mark><code>900 GB/s</code></mark>** |
-| Interconnect | PCIe Gen3 32GB/s | PCIe Gen4 66 GB/s  |            | PCIe Gen3 32GB/s, NVLINK **<mark><code>300GB/s</code></mark>** |
-| FP32         | 8.1 TFLOPS       | 31.2 TFLOPS        |            | 14/15.7 TFLOPS |
-| BFLOAT16 TensorCore|            | 125 TFLOPS         |            |  |
-| FP16 TensorCore   |             | 125 TFLOPS         |            |  |
-| INT8 TensorCore   |             | 250 TFLOPS         |            |  |
+|              | T4               | A10                | A10G       | A30        | V100 PCIe/SMX2 |
+|:-------------|:-----------------|:-------------------|:-----------|:-----------|:--------|
+| Designed for | **<mark>Data center</mark>** workloads| (Desktop) **<mark>Graphics-intensive</mark>** workloads | Desktop | Desktop | Data center |
+| Year         | 2018             | 2020               |            |            | 2017         |
+| Manufacturing| 12nm             | 12nm               | 12nm       |            |              |
+| Architecture | Turing           | Ampere             | Ampere     | Ampere     | Volta        |
+| Max Power    | 70 watts         | 150 watts          |            | 165 watts  | 250/300watts |
+| GPU Mem      | 16GB GDDR6       | 24GB GDDR6         | 48GB GDDR6 | 24GB HBM2  | 16/32GB <mark>HBM2</mark> |
+| GPU Mem BW   | 400 GB/s         | 600 GB/s           |            | **<mark><code>933GB/s</code></mark>**  | **<mark><code>900 GB/s</code></mark>** |
+| Interconnect | PCIe Gen3 32GB/s | PCIe Gen4 66 GB/s  |            | PCIe Gen4 64GB/s, NVLINK 200GB/s | PCIe Gen3 32GB/s, NVLINK **<mark><code>300GB/s</code></mark>** |
+| FP32         | 8.1 TFLOPS       | 31.2 TFLOPS        |            | 10.3TFLOPS | 14/15.7 TFLOPS |
+| BFLOAT16 TensorCore|            | 125 TFLOPS         |            | 165 TFLOPS |  |
+| FP16 TensorCore   |             | 125 TFLOPS         |            | 165 TFLOPS |  |
+| INT8 TensorCore   |             | 250 TFLOPS         |            | 330 TOPS   |  |
+| INT4 TensorCore   |             |                    |            | 661 TOPS   |  |
 
 Datasheets:
 
 1. [T4](https://www.nvidia.com/en-us/data-center/tesla-t4/)
 1. [A10](https://www.nvidia.com/en-us/data-center/products/a10-gpu/)
+1. [A30](https://www.nvidia.com/en-us/data-center/products/a30-gpu/)
 1. [V100-PCIe/V100-SXM2/V100S-PCIe](https://www.nvidia.com/en-us/data-center/v100/)
 
 ## B. Quick comparison of A100/A800/H100/H800

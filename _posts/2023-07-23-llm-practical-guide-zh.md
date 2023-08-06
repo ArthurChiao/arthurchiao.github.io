@@ -1,6 +1,6 @@
 ---
 layout    : post
-title     : "[译][论文] 大语言模型（LLM）综述与实用指南（2023）"
+title     : "[译][论文] 大语言模型（LLM）综述与实用指南（Amazon，2023）"
 date      : 2023-07-23
 lastupdate: 2023-07-23
 categories: ai gpt llama
