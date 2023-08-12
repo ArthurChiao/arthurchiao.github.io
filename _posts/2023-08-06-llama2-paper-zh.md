@@ -2,7 +2,7 @@
 layout    : post
 title     : "[译][论文] LLaMA 2：开放基础和微调聊天模型（Meta/Facebook，2023）"
 date      : 2023-08-06
-lastupdate: 2023-08-06
+lastupdate: 2023-08-12
 categories: llama ai gpt
 ---
 
@@ -191,7 +191,7 @@ LLM 通过聊天窗口与人类进行交互，简单方便，因此一经推出�
 * 这一过程需要大量的**<mark>计算和人工标注成本</mark>**，并且通常不透明，也难以轻松照搬，
   因此限制了社区在 advance AI alignment research 方面的进展。
 
-## 1.2 开源 LLaMA2/LLaMA2-Chat，填补社区/市场空白
+## 1.2 开源 LLaMA2/LLaMA2-Chat，填补空白
 
 本文介绍我们开源的 LLaMA2，这是一组预训练和微调的 LLM，包括 LLaMA2 和 LLaMA2-Chat。
 与其他开源 chat models 进行比较，
@@ -436,7 +436,7 @@ LLaMA2-Chat 经过了几个月的对齐（alignment）迭代，
 这些标注数据是从我们的供应商获取的，我们发现**<mark>只需少量高质量 SFT 标注数据就能显著提升结果质量</mark>**，
 
 1. 这与 Zhou 等人（2023）的发现类似，后者也发现只需要一小组干净的 instruction-tuning data 就足以获得高质量；
-2. 根据我们的实际经验，**<mark>数万个 SFT 标注</mark>**就足以实现高质量的结果；
+2. 根据我们的实际经验，**<mark>几万个 SFT 标注</mark>**就足以实现高质量的结果；
   因此，我们总共收集了 27,540 个 SFT annotation，没有再收集更多；请注意，我们 SFT annotations 没使用任何 Meta 用户数据；
 3. 我们还观察到，不同标注平台和供应商（annotation platforms and vendors）
   可能导致明显不同的下游模型性能，这凸显了在使用供应商获取标注时数据检查的重要性。
@@ -914,8 +914,7 @@ on human evaluations, it is important to note that human evaluations have severa
 
 在项目开始时，我们中的许多人都倾向于使用**<mark>有监督标注</mark>**（supervised annotation），
 attracted by its denser signal。
-
-与此同时，**<mark>强化学习</mark>**（reinforcement learning）的不稳定性已经众所周知，
+同时，**<mark>强化学习</mark>**（reinforcement learning）的不稳定性已经众所周知，
 因此自然语言处理领域对其还是抱有一种怀疑态度。
 但事实证明强化学习非常有效，尤其是考虑到其**<mark>成本和时间效率</mark>**。
 我们的研究结果认为，
@@ -1011,7 +1010,7 @@ Toolformer（Schick 等，2023）设计的方法包括对数百万条轨迹进�
 * 如何有效地教模型使用工具？
 * 这个过程是否需要大量的数据集？
 
-我们的实验表明，在对齐过程中，大模型会**<mark>自发地出现零样本方式
+我们的实验表明，在对齐过程中，大模型会自发地出现零样本方式。
 图 23 展示了一个例子，尽管我们从未明确标注过工具使用，但模型展示了在零样本环境中利用一系列工具的能力，
 
 <p align="center"><img src="/assets/img/llama2-paper/fig-23.png" width="80%" height="80%"></p>
@@ -1035,7 +1034,7 @@ LLaMA2-Chat 与其他 LLM 类似，都有一些 well-recognized 的限制，
 包括
 
 * 预训练后**<mark>知识停止更新</mark>**；
-* 可能生成**<mark>非真实内容</mark>**（non-factual generation），如不合格的建议；
+* 可能生成**<mark>非事实内容</mark>**（non-factual generation），如不合格的建议；
 * 易于产生幻觉的倾向（propensity towards hallucinations）。
 
 此外，最初的 LLaMA2-Chat 版本主要集中在英语数据上。
@@ -1060,7 +1059,7 @@ LLaMA2-Chat 的用户可能会观察到**<mark>过于谨慎的处理方式</mark
 
 ## 5.3 负责任的发布策略（Responsible Release Strategy）
 
-### 发布细节
+### 5.3.1 发布细节
 
 LLaMA2 允许用于[研究和商业用途](https://ai.meta.com/resources/models-and-libraries/llama/)。
 使用 LLaMA2 的人必须遵守其许可证和我们的 Acceptable Use Policy，禁止任何违反政策、法律、规则和法规的用途。
@@ -1071,7 +1070,7 @@ LLaMA2 允许用于[研究和商业用途](https://ai.meta.com/resources/models-
 最后，我们提供了一份“负责任使用指南”（Responsible Use Guide），
 里面有关于安全开发和部署（safe development and deployment）的指导原则。
 
-### 负责任的发布
+### 5.3.2 负责任的发布
 
 许多公司选择关起门来自己造 AI，但我们决定公开发布 LLaMA2，以鼓励负责任的人工智能创新。
 根据我们的经验，开放的方式能借助 AI 社区的集体智慧、多样性和创造力，对这项技术的普更有意义。

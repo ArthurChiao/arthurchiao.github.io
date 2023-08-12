@@ -11,6 +11,7 @@ title: About ArthurChiao
 ## Focus & Interests
 
 * Networking, BPF
+* AI infra
 * Cloud, container, virtualization
 * Distributed storage
 * Low level techniques

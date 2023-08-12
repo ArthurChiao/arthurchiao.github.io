@@ -2,7 +2,7 @@
 layout    : post
 title     : "[译][论文] LLaMA：开放和高效的基础语言模型集（Meta/Facebook，2022）"
 date      : 2023-07-10
-lastupdate: 2023-07-10
+lastupdate: 2023-08-12
 categories: llama ai gpt
 ---
 
@@ -189,8 +189,9 @@ Guillaume Lample。
 
 ## 1.1 大模型训练：更多参数 vs 更大的数据集
 
-Hoffmann 等（2022）的提出了 scaling laws，目标是针对给定的**<mark>训练</mark>**（training）
-计算预算（compute budget），如何最佳地扩展（scale）数据集和模型大小。但是，
+Hoffmann 等（2022）提出 scaling laws，目标是针对给定的**<mark>训练</mark>**（training）
+计算预算（compute budget），如何最佳地扩展（scale）**<mark>数据集和模型大小</mark>**。
+但是，
 
 * 这个模型没有考虑**<mark>推理</mark>**（inference）预算，在提供大规模推理时，这一点尤其重要：
   在这种情况下，给定一个性能目标，我们更想要的是一个**<mark>推理速度最快</mark>**而非训练速度最快的模型。
@@ -202,14 +203,15 @@ Hoffmann 等（2022）的提出了 scaling laws，目标是针对给定的**<mar
 ## 1.2 LLaMA：减少参数，增大数据集
 
 本文的重点是：对于给定的不同推理预算（inference budgets），
-通过**<mark>使用更多 token 进行训练</mark>**的方式（超过业内常用的 token 规模），
+通过**<mark>使用更多 token 进行训练</mark>**的方式（超过业内常用的 token 规模）
 来获得最佳的性能（the best possible performance）。
 由此得到的模型我们称为 **<mark><code>LLaMA</code></mark>**。
-LLaMA 的参数范围在 **<mark><code>7B ~ 65B</code></mark>**，性能则与目前业界最佳的一些大语言模型（LLM）相当。
+LLaMA 的参数范围在 **<mark><code>7B ~ 65B</code></mark>**，性能则与目前业界最佳的一些大语言模型相当。
 例如，
 
 * **<mark>LLaMA-13B</mark>** 在大多数基准测试中**<mark>优于 GPT-3</mark>**，
-  尽管参数连后者的 **<mark><code>10%</code></mark>** 都不到。**<mark>LLaMA 可以在单个 GPU 上运行</mark>**，
+  尽管参数连后者的 **<mark><code>10%</code></mark>** 都不到；
+* **<mark>LLaMA 可以在单个 GPU 上运行</mark>**，
   因此使大模型的获取和研究更容易，而不再只是少数几个大厂的专利；
 * 在高端系列上，LLaMA-65B 也与最佳的大语言模型（如 Chinchilla 或 PaLM-540B）性能相当。
 
@@ -239,7 +241,7 @@ LLaMA 的参数范围在 **<mark><code>7B ~ 65B</code></mark>**，性能则与�
 
 ### 2.1.1 数据集
 
-我们的训练数据集有几种不同来源，涵盖了多个领域，如表 1 所示。
+训练数据集有几种不同来源，涵盖了多个领域，如表 1 所示。
 
 |:----|:----|:----|:----|
 | 数据集 | 占比 | 迭代次数（Epochs） | 数据集大小（Disk size） |
@@ -340,23 +342,23 @@ digits，再 fallback 到 bytes。
 ## 2.2 架构（Architecture）
 
 与最近大语言模型的研究趋势一致，我们的网络也**<mark>基于 Transformer 架构</mark>**（Vaswani 等，2017）。
-但我们做了很多改进，也借鉴了其他模型（例如 PaLM）中的一些技巧。
+但做了很多改进，也借鉴了其他模型（例如 PaLM）中的一些技巧。
 
 ### 2.2.1 改进
 
 以下是与原始架构的主要差异，
 
-#### 预归一化（Pre-normalization）：灵感来自 GPT3
+#### 预归一化（Pre-normalization）：受 GPT3 启发
 
 为了提高**<mark>训练稳定性</mark>**，我们对每个 Transformer sub-layer 的**<mark>输入</mark>**进行归一化，而不是对**<mark>输出</mark>**进行归一化。
 这里使用由 Zhang 和 Sennrich（2019）提出的 RMSNorm 归一化函数。
 
-#### SwiGLU 激活函数：灵感来自 PaLM
+#### SwiGLU 激活函数：受 PaLM 启发
 
 用 SwiGLU 激活函数替换 ReLU 非线性，该函数由 Shazeer（2020）提出，目的是**<mark>提升性能</mark>**。
 但我们使用的维度是 `2/3 * 4d`，而不是 PaLM 中的 `4d`。
 
-#### 旋转嵌入（Rotary Embeddings）：灵感来自 GPTNeo
+#### 旋转嵌入（Rotary Embeddings）：受 GPTNeo 启发
 
 去掉了绝对位置嵌入（absolute positional embeddings），并在每个网络层中添加旋转位置嵌入（rotary positional embeddings，RoPE）。
 RoPE 由 Su 等（2021）提出。
@@ -471,10 +473,10 @@ Model sizes, architectures, and optimization hyper-parameters.
 ## 3.3 阅读理解（Reading Comprehension）
  
 阅读理解能力测试基于 “RACE 阅读理解基准测试”（Lai 等，2017）。
-这个数据集是从**<mark>为中国初中生和高中生设计的英文阅读理解考试</mark>**中收集的。
+这个数据集是从**<mark>为中国初中和高中生设计的英文阅读理解考试</mark>**中收集的。
 一些设置遵循 Brown 等（2020），测试结果见表 6，
 
-<p align="center"><img src="/assets/img/llama-paper/table-6.png" width="45%" height="45%"></p>
+<p align="center"><img src="/assets/img/llama-paper/table-6.png" width="40%" height="40%"></p>
 <p align="center">表 6：阅读理解能力测试。Zero-shot accuracy.</p>
 
 在这些基准测试中，LLaMA-65B 与 PaLM-540B 相当，而 LLaMA-13B 比 GPT-3 好几个百分点。

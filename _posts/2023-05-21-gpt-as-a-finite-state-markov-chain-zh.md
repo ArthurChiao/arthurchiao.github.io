@@ -2,7 +2,7 @@
 layout    : post
 title     : "[译] GPT 是如何工作的：200 行 Python 代码实现一个极简 GPT（2023）"
 date      : 2023-05-21
-lastupdate: 2023-07-10
+lastupdate: 2023-08-12
 categories: gpt ai
 ---
 
@@ -236,12 +236,12 @@ class Block(nn.Module):
 
 @dataclass
 class GPTConfig:
-    # these are default GPT-2 hyperparameters
+    # 以下是 GPT-2 的 hyperparameters，后面我们的 BabyGPT 初始化时，会用更小的值覆盖掉默认值
     block_size: int = 1024
-    vocab_size: int = 50304
-    n_layer: int = 12
-    n_head: int = 12
-    n_embd: int = 768
+    vocab_size: int = 50304 # 字典：5 万多个唯一的 token，包括单词（3000 多个常用单词）、词根、标点等等
+    n_layer: int = 12       # 12 层神经网络
+    n_head: int = 12        # 12 个 attention head
+    n_embd: int = 768       # 嵌入向量（特征向量）的维度：每个 token 都用一个 768x1 数组表示
     bias: bool = False
 
 class GPT(nn.Module):
@@ -305,7 +305,7 @@ class GPT(nn.Module):
 
 ```python
 # hyperparameters for our GPT
-vocab_size = 2     # 词汇表 size 为 2，因此只有两个可能的 token：0 和 1
+vocab_size = 2     # 词汇表 size 为 2，因为我们只有两个可能的 token：0 和 1
 context_length = 3 # 上下文长度位 3，即只用 3 个 bit 来预测下一个 token 出现的概率
 
 config = GPTConfig(
@@ -363,6 +363,8 @@ def plot_model():
     for xi in possible_states(gpt.config.vocab_size, gpt.config.block_size):
         # forward the GPT and get probabilities for next token
         x = torch.tensor(xi, dtype=torch.long)[None, ...] # turn the list into a torch tensor and add a batch dimension
+                                                          # tensor 是一个多维矩阵数据结构
+
         logits = gpt(x) # forward the gpt neural net
         probs = nn.functional.softmax(logits, dim=-1) # get the probabilities
         y = probs[0].tolist() # remove the batch dimension and unpack the tensor into simple list
@@ -649,8 +651,8 @@ states-1.png  states-2.png
 
 本文讨论的是基于 3 个 token 的二进制 GPT。实际应用场景中，
 
-* `vocab_size` 会远远大于 2，例如 **<mark>50 万</mark>**；
-* `context_length` 的典型范围 **<mark><code>2048 ~ 32000</code></mark>**。
+* `vocab_size` 会远远大于 2，例如 **<mark><code>50k</code></mark>**（**<mark><code>GPT-2</code></mark>** 的配置）；
+* `context_length` 的典型范围 **<mark><code>2k~32k</code></mark>**（GPT 2/3/4 的上下文长度分别为 **<mark><code>2k/4k/32k</code></mark>**）。
 
 ## 4.2 模型对比：计算机 vs. GPT
 
@@ -670,8 +672,8 @@ GPT 则是一种另一种计算机体系结构，
 * 默认情况下是**<mark>随机</mark>**的，
 * 计算的是 token 而不是比特。 
 
-也就是说，即使在 temperature=0 采样，也不太可能将 GPT 变成一个 FSM。
-这意味着每次状态转移都是贪婪地挑概率最大的 token；但也可以通过
+也就是说，即使在 **<mark><code>temperature=0</code></mark>** 采样，
+也不太可能将 GPT 变成一个 FSM。这意味着每次状态转移都是贪婪地挑概率最大的 token；但也可以通过
 [beam search](https://en.wikipedia.org/wiki/Beam_search) 算法来降低这种贪婪性。
 但是，在采样时完全丢弃这些熵也是有副作用的，采样 benchmark 以及样本的
 qualitative look and feel 都会下降（看起来很“安全”，无聊），因此实际上通常不会这么做。
@@ -679,7 +681,7 @@ qualitative look and feel 都会下降（看起来很“安全”，无聊），
 > Temperature 是 NLP 中的一个参数，用于控制生成文本的随机性和创造性。
 >
 > * 值越大，生成的结果越多样和不可预测；
-> * 值越小，生成的结果越保守和可预测。
+> * **<mark>值越小</mark>**，生成的结果越保守和**<mark>可预测</mark>**。
 
 ## 4.3 模型参数大小（GPT 2/3/4）
 

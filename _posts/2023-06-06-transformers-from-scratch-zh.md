@@ -2,7 +2,7 @@
 layout    : post
 title     : "[译] Transformer 是如何工作的：600 行 Python 代码实现两个（文本分类+文本生成）Transformer（2019）"
 date      : 2023-06-06
-lastupdate: 2023-06-11
+lastupdate: 2023-08-12
 categories: gpt ai
 ---
 
@@ -161,7 +161,20 @@ Transformer 是一类非常令人着迷的**<mark>机器学习架构</mark>**（
 # 1 self-attention（自注意力）模型
 
 self-attention 运算是**<mark>所有 transformer 架构的基本运算</mark>**。
-我们先讲它的原理，后面再介绍这个名字是怎么来的 —— 这属于历史包袱。
+
+## 1.0 Attention（注意力）：名字由来
+
+从最简形式上来说，神经网络是一系列**<mark>对输入进行加权计算，得到一个输出</mark>**的过程。
+
+具体来说，比如给定一个向量 [1,2,3,4,5] 作为输入，权重矩阵可能是 **<mark><code>[0, 0, 0, 0.5, 0.5]</code></mark>**，
+也就是说最终的 output 实际上只与 input 中的最后两个元素有关系 —— 换句话说，
+这一层神经网络只**<mark>关注</mark>**最后两个元素（**<mark>注意力</mark>**在最后两个元素上），
+其他元素是什么值对结果没有影响 —— 这就是 **<mark><code>attention</code></mark>** 这一名字的由来。
+
+> 注意力模型大大降低了神经网络的计算量：经典神经网络是全连接的，而上面的例子中，
+> 这一层神经网络不需要全连接了，每个输出连接到最后两个输入就行了，也就是从 1x5 维降低到了 1x2 维。
+>
+> 图像处理中的卷积神经网络（CNN）也是类似原理：只用一小块图像计算下一层的输出，而不是用整帧图像。
 
 ## 1.1 输入输出：vector-to-vector 运算
 
@@ -282,7 +295,7 @@ $$\v_\bc{t}$$（我们后面将学习到这个值）。
 
 $$\bc{\text{the}}, \bc{\text{cat}}, \bc{\text{walks}}, \bc{\text{on}}, \bc{\text{the}}, \bc{\text{street}}$$
 
-转换为 **<mark>embedding vector</mark>**：
+转换为 **<mark>embedding vector</mark>**（注意：每个单词的维度从 1x1 变成了 1xN）：
 
 $$
 \v_\bc{\text{the}}, \v_\bc{\text{cat}}, \v_\bc{\text{walks}}, \v_\bc{\text{on}}, \v_\bc{\text{the}}, \v_\bc{\text{street}}
@@ -319,7 +332,7 @@ $$
     虽然下文中，我们还是会为 self-attention 添加几个参数）。
 
     换句话说，基本的 self-attention 实际上做什么完全取决于**<mark>生成输入序列的上游机制</mark>**。
-    例如嵌入层这种机制会驱动着 self-attention 学习基于点积的表示（representations with particular dot products）。
+    例如嵌入层这种机制会驱动着 self-attention 学习基于点积的表示。
 
 2.  self-attention **<mark>将输入当做一个集合（set）而不是序列（sequence）</mark>**。
 
@@ -336,7 +349,7 @@ $$
 
 接下来我们基于 pytorch 实现前面介绍的最基础 self-attention 模型。
 
-## 3.1 输入的表示：tensor
+## 3.1 输入的表示：tensor（多维矩阵）
 
 我们面临的第一个问题是**<mark>如何用矩阵乘法表示 self-attention</mark>**：
 按照定义，直接遍历所有 input vectors 来计算 weight 和 output 就行，
@@ -348,9 +361,9 @@ $$
 > [pytorch.org/docs/stable/tensors.html](https://pytorch.org/docs/stable/tensors.html)
 
 * 输入 $$\X$$ 由 $$t$$ 个 k-维 vector 组成的序列，
-* 引入一个 minibatch dimension $$b$$，
+* 引入一个 **<mark><code>mini-batch</code></mark>** dimension $$b$$，
 
-就得到了一个三维矩阵 $$(b, t, k)$$，这就是一个 tensor。
+就得到了一个**<mark>三维矩阵</mark>** $$(b, t, k)$$，这就是一个 tensor。
 
 ## 3.2 计算权重矩阵：输入矩阵 * 转置矩阵
 
@@ -393,7 +406,7 @@ y = torch.bmm(weights, x)
 
 ### 3.4.1 引入控制参数（for queries, keys and values）
 
-对于位置 $$i$$ 处的 input vector $$\x_\rc{i}$$，它在 self-attention 中会被使用三次，
+对于位置 $$i$$ 处的 input vector $$\x_\rc{i}$$，它在 **<mark>self-attention 中会被使用三次</mark>**，
 根据角色的不同分别称为 queries、keys、values（查询、键和值，后面再解释这些名称的来源），
 
 1. **<mark><code>query</code></mark>**：与其他所有 input vector 联合计算 $$i$$ 位置的 output vector $$\y_\rc{i}$$ 所需的权重；
@@ -612,10 +625,10 @@ def forward(self, x):
 <p align="center"></p>
 
 接下来计算点积。每个 head 的点积运算都是一样的，因为我们将 heads fold 到 batch dimention。
-这样我们就可以使用 `torch.bmm()`，而
+这样我们就可以使用 `torch.bmm()`（batch matrix multiplification），而
 keys, queries and values 可以看做是 batch，只是 batch size 稍大了一点。
 
-由于 head 和 batch dimension 没有挨着，因此我们在 reshape 之前需要转置。
+由于 head 和 batch dimension 没有相邻，因此我们在 **<mark>reshape 之前需要转置</mark>**。
 这个操作开销很大，但似乎无法避免：
 
 ```python
@@ -669,7 +682,7 @@ transformer 不仅仅是一个 self-attention layer，还是一种**<mark>架构
 > 任何设计用来**<mark>处理一组连接的单元</mark>**（例如序列中的 token 或图像中的像素），
 > 如果**<mark>单元之间的唯一交互方式是 self-attention</mark>**，那这样的架构就称为 transformer。
 
-与其他机制（如卷积）一样，可以基于 self-attention 层构建成更大的网络。但在此之前，
+与**<mark>其他机制（如卷积）</mark>**一样，可以基于 self-attention 层构建成更大的网络。但在此之前，
 我们需要将 self-attention 重构为一个可以复用的 block。
 
 ## 4.2 Transformer block
@@ -815,7 +828,8 @@ class Transformer(nn.Module):
         positions = torch.arange(t)
         positions = self.pos_emb(positions)[None, :, :].expand(b, t, k)
 
-        x = tokens + positions
+        x = tokens + positions # 为什么文本嵌入和位置嵌入相加，没有理论，可能就是实验下来效果不错。
+                               # https://writings.stephenwolfram.com/2023/02/what-is-chatgpt-doing-and-why-does-it-work/
         x = self.tblocks(x)
 
         # Average-pool over the t dimension and project to class
@@ -829,8 +843,8 @@ class Transformer(nn.Module):
 
 ## 4.4 文本生成（text generation）transformer
 
-接下来尝试一下自回归模型（*autoregressive* model）：
-我们将训练一个字符级别（*character* level）的 transformer 来预测序列中的下一个字符。
+接下来尝试一下**<mark>自回归模型</mark>**（*autoregressive* model）：
+训练一个字符级别（*character* level）的 transformer 来预测序列中的下一个字符。
 
 ### 4.4.1 自回归模型和掩码
 
@@ -841,9 +855,10 @@ class Transformer(nn.Module):
 <p align="center"><img src="/assets/img/transformers-from-scratch/generator.png" width="65%" height="65%"></p>
 <p align="center"> </p>
 
-* 如果是 RNN 模型，那这就是我们所需做的所有事情，因为它们无法 look forward into the input sequence:
-  output $$i$$ 只依赖 inputs $$0$$ to $$i$$。
-* 而对于 transformer，output 取决于整个 input sequence，因此预测下一个单词就简单很多了，只需要从 input 中挑选。
+* 如果是 **<mark><code>RNN</code></mark>** 模型，那这就是我们所需做的所有事情，
+  因为它**<mark>不能往前看</mark>**，output $$i$$ 只依赖 inputs $$0$$ ~ $$i$$。
+* 而对于 **<mark><code>transformer</code></mark>**，output 取决于**<mark>整个 input sequence</mark>**，
+  因此预测下一个单词就简单多了，只需从 input 中挑选。
 
 要将 self-attention 用作自回归模型，需要确保它**<mark>不能 look forward input 序列</mark>**。
 在 softmax 之前对点积矩阵应用一个**<mark>掩码</mark>**，禁用矩阵对角线之上的所有元素，
@@ -868,12 +883,12 @@ dot = F.softmax(dot, dim=2)
 
 ### 4.4.2 训练：基于维基百科数据集 `enwik8`
 
-我们在标准 **<mark><code>enwik8</code></mark>** 数据集（取自 Hutter <a href="http://prize.hutter1.net/">Hutter prize</a>）
-上进行训练，该数据集包含 108 个维基百科文本（包括标记）中的字符。在训练期间，我们通过从数据中随机抽取子序列来生成批次。
+我们在标准 **<mark><code>enwik8</code></mark>** 数据集（取自 <a href="http://prize.hutter1.net/">Hutter prize</a>）
+上进行训练，该数据集包含 108 个维基百科文本中的字符。在训练期间，通过从数据中随机抽取子序列来生成批次。
 
 我们使用由 12 个 transformer block 和 256 个嵌入维度组成的 transformer，对长度为 256 的序列进行训练。
-在 RTX 2080Ti（大约 170K 个大小为 32 的批次）上训练了大约 24 小时后，
-我们让模型从 256 个字符的种子开始生成：对于每个字符，输入它前面的 256 个字符，
+在 **<mark><code>RTX 2080Ti</code></mark>**（大约 170K 个大小为 32 的批次）上训练了大约 24 小时后，
+让模型从 256 个字符的种子开始生成：对于每个字符，输入它前面的 256 个字符，
 然后预测下一个字符。 我们从<a href="https://towardsdatascience.com/how-to-sample-from-language-models-682bceb97277">temperature</a>
 为 0.5 的那个开始采样，然后移动到下一个字符。
 
@@ -904,18 +919,19 @@ dot = F.softmax(dot, dim=2)
 另外，该模型在验证集上实现了 **<mark><code>1.343bit/byte</code></mark>** 的压缩，
 这与 GPT-2 模型（下文会展开介绍）实现的每字节 0.93 位的相差不远。
 
-## 4.5 设计考虑：Transformers 与 RNN/卷积 对比
+## 4.5 设计考虑：Transformer 与 RNN/卷积 对比
 
-transformer 的主要目的是解决在此之前最先进的架构 RNN（通常是 LSTM 或 GRU）的问题。
+在 **<mark>transformer 之前，最先进的架构是 RNN</mark>**（通常是 LSTM 或 GRU），但它们存在一些问题。
 
-RNN <a href="https://colah.github.io/posts/2015-08-Understanding-LSTMs/">展开（unrolled）</a>后，看起来像这样：
+RNN <a href="https://colah.github.io/posts/2015-08-Understanding-LSTMs/">展开（unrolled）</a>后长这样：
 
 <p align="center"><img src="/assets/img/transformers-from-scratch/recurrent-connection.png" width="65%" height="65%"></p>
 <p align="center">
 </p>
 
-这里最大的问题是级联（recurrent connection）：虽然这使得信息能沿着 sequence 一路传导，
-但同时也意味着在计算出 $$i - 1$$ 单元之前，我们无法计算出时间 $$i$$ 的单元格。
+RNN 最大的问题是**<mark><code>级联</code></mark>**（recurrent connection）：
+虽然它使得信息能沿着 input sequence 一路传导，
+但也意味着在计算出 $$i-1$$ 单元之前，无法计算出 $$i$$ 单元的输出。
 
 与 RNN 此对比，**<mark>一维卷积</mark>**（1D convolution）如下：
 
@@ -923,18 +939,22 @@ RNN <a href="https://colah.github.io/posts/2015-08-Understanding-LSTMs/">展开�
 <p align="center">
 </p>
 
-在这个模型中，所有输出向量都可以并行计算，因此速度非常快。但卷积的缺点是它们
+在这个模型中，所有输出向量都可以并行计算，因此速度非常快。但缺点是它们
 在 long range dependencies 建模方面非常弱。在一个卷积层中，只有距离比 kernel size
 小的单词之间才能彼此交互。对于更长的依赖，就需要堆叠许多卷积。
 
-Transformer 试图兼顾二者的优点：
+**<mark>Transformer 试图兼顾二者的优点</mark>**：
 
 * 可以像对彼此相邻的单词一样，轻松地对输入序列的整个范围内的依赖关系进行建模（事实上，如果没有位置向量，二者就没有区别）；
 * 同时，避免 recurrent connections，因此整个模型可以用非常高效的 feed forward 方式计算。
 
 Transformer 的其余设计主要基于一个考虑因素 —— **<mark>深度</mark>** ——
-大多数选择都是训练大量 transformer block 层，例如，transformer 中只有两个非线性的地方：
-self-attention 中的 softmax 和前馈层中的 ReLU。模型的其余部分完全由线性变换组成，完美地保留了梯度。
+大多数选择都是训练大量 transformer block 层，例如，transformer 中**<mark>只有两个非线性的地方</mark>**：
+
+1. self-attention 中的 softmax；
+2. 前馈层中的 ReLU。
+
+模型的其余部分完全由线性变换组成，**<mark>完美地保留了梯度</mark>**。
 
 > I suppose the layer normalization is also nonlinear, but that is one
 > nonlinearity that actually helps to keep the gradient stable as it propagates
@@ -997,7 +1017,7 @@ Teacher forcing 指的是**<mark>允许 decoder 访问 input</mark>** 的技术 
 
 理想情况下，使用相同的 latent representations 进行两次 decoding 会得到两个具有相同含义的不同句子。
 
-在后来的 transformer 中，如 BERT 和 GPT-2， **<mark>encoder/decoder 被完全去掉了</mark>**。
+**<mark>在后来的 transformer 中</mark>**，如 BERT 和 GPT-2， **<mark>encoder/decoder 被完全去掉了</mark>**。
 简单的 transformer block 做堆叠（stack）就足以在许多基于序列的任务中实现最先进的效果。
 这种模型有时被称为 **<mark>decoder-only transformer</mark>**（对于自回归模型）
 或 **<mark>encoder-only transformer</mark>**（对于没有 masking 的模型）。
@@ -1014,8 +1034,8 @@ Teacher forcing 指的是**<mark>允许 decoder 访问 input</mark>** 的技术 
 **<mark>达到人类水平</mark>**的模型之一。
 
 BERT 由一些与本文描述的类似的简单 transformer block 堆叠而成，然后在一个大型通用领域语料库上进行**<mark>预训练</mark>**，
-该语料库由包含 8 亿个（800M）单词的英文书籍（现代作品，from unpublished authors）
-和包含 25 亿（2.5B）个单词英文维基百科文章（去掉了 markup）组成。
+该语料库由包含 **<mark>8 亿个（800M）单词</mark>**的英文书籍（现代作品，from unpublished authors）
+和包含 25 亿（**<mark><code>2.5B</code></mark>**）个**<mark>单词英文</mark>**维基百科文章（去掉了 markup）组成。
 
 预训练由两个任务组成：
 
@@ -1090,11 +1110,11 @@ Beyond the simple benefit of training transformers with very large sequence leng
 
 训练 transformer 的一大瓶颈是 self attention 中的点积矩阵，
 
-* 对于序列长度 $$t$$，这是一个包含 $$t^2$$ 个元素的密实矩阵。
-* 在标准的 32 位精度下，当 $$t=1000$$ 时，16 矩阵作为一个 batch，这个 batch 占用大约 250Mb 的内存。
+* 对于序列长度 $$t$$，这是一个包含 $$t^2$$ 个元素的稠密矩阵。
+* 在标准的 32 位精度下，当 $$t=1000$$ 时，16 矩阵作为一个 batch，这个 batch 占用大约 250Mb 的显存。
 * 由于我们每个 self-attention 操作至少需要四个层（在 softmax 之前和之后，加上它们的梯度），这限制了在标准 12Gb GPU 中最多只能使用 12 层。
 
-实际上我们能用到的层数更少，因为输入和输出也占用了大量内存（尽管点积占主导地位）。
+实际上我们能用到的层数更少，因为输入和输出也占用了大量显存（尽管点积占主导地位）。
 
 > 网上有些报道的模型包含[超过 12000 的序列长度，有 48 层](https://openai.com/blog/sparse-transformer/)，
 > 使用密实的点积矩阵。这些模型是在集群上训练的，但是单个前向/后向 propagation 仍然只能由单个 GPU 来完成。
@@ -1117,7 +1137,7 @@ Beyond the simple benefit of training transformers with very large sequence leng
 幸运的是，我们可以对更大 batch size 中的每个实例执行单个前向/后向，并对我们找到的梯度简单地求和
 （这是多元链式法则<a href="https://youtu.be/7mTcWrnexkk?t=195">multivariate chain rule</a>的结果）。
 当我们到达 batch 的末尾时，执行单步梯度下降，并将梯度归零（zero out）。
-在 Pytorch 中这非常容易，`optimizer.zero_grad()` 就行了。
+在 Pytorch 中这非常容易，**<mark><code>optimizer.zero_grad()</code></mark>** 就行了。
 
 ## 7.3 梯度 checkpoint（gradient checkpointing）
 
@@ -1131,7 +1151,7 @@ Pytorch [相关的函数](https://pytorch.org/docs/stable/checkpoint.html)直接
 
 # 8 结束语
 
-Transformer 很可能是未来几十年来在该领域占主导地位的最简单机器学习架构。作为从业者，有充分的理由关注它们。
+Transformer 很可能是未来几十年占主导地位的最简单机器学习架构。作为从业者，有充分的理由关注它们。
 
 首先，**<mark>目前的性能瓶颈纯粹在硬件上</mark>**。与卷积或 LSTM 不同，
 transformer 目前的限制完全取决于我们能把多大的模型放到 GPU 内存中，

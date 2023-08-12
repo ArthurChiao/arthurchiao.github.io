@@ -2,7 +2,7 @@
 layout    : post
 title     : "[译][论文] 大语言模型（LLM）综述与实用指南（Amazon，2023）"
 date      : 2023-07-23
-lastupdate: 2023-07-23
+lastupdate: 2023-08-12
 categories: ai gpt llama
 ---
 
@@ -199,7 +199,8 @@ number of models from various companies and institutions.</p>
 尽管语言模型通常在架构上是任务不可知的（**<mark>task-agnostic</mark>**），
 但都需要在特定下游任务的数据集上进行微调。
 
-研究人员发现，增大（**<mark>scaling up</mark>**）语言模型能显著提高少样本（few-shot）甚至零样本（zero-shot）性能[16]。
+研究人员发现，扩展语言模型的参数规模（**<mark>scaling up</mark>**）
+能显著提高少样本（few-shot）甚至零样本（zero-shot）性能[16]。
 少样本和零样本最成功的模型是**<mark>自回归语言模型</mark>**（Autoregressive Language Models，ALM），
 
 * 这些模型的训练方式：**<mark>给出前面的单词，生成这句话的下一个单词</mark>**。
@@ -257,7 +258,7 @@ number of models from various companies and institutions.</p>
 ## 3.2 微调数据（Finetuning data）
 
 如果已经有了通用大模型，接下来想部署到线上环境提供服务，那根据手头
-**<mark>打标数据（annotated data）的多少</mark>**，
+**<mark>标注数据（annotated data）的多少</mark>**，
 
 * 零（zero）
 * 少（few）
