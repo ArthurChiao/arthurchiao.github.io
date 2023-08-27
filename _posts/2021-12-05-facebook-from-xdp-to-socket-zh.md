@@ -51,7 +51,7 @@ categories: bpf
 
 <p align="center"><img src="/assets/img/facebook-from-xdp-to-socket/facebook-ipvs-vs-katran.jpg" width="65%" height="65%"></p>
 <p align="center">Facebook 两代软件 L4LB 对比。<br/>
-<mark>左：第一代，基于 IPVS</mark>，L4LB 需独占节点；<mark>右：第二代，基于 XDP</mark>，不需独占节点，与业务后端混布。
+<mark>左：第一代，基于 IPVS</mark>，L4LB 需独占节点；<mark>右：第二代，基于 XDP</mark>，不需独占节点，与业务后端混部。
 </p>
 
 ## 1.2 Facebook 流量基础设施
