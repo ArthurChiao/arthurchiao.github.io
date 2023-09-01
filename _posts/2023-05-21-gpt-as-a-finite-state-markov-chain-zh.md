@@ -21,6 +21,7 @@ Andrej Karpathy 博士 2015 毕业于斯坦福，之后先在 OpenAI 待了两�
 想进一步了解可移步：
 
 * [Transformer 是如何工作的：600 行 Python 代码实现两个（文本分类+文本生成）Transformer（2019）]({% link _posts/2023-06-06-transformers-from-scratch-zh.md %})
+* [如何训练一个企业级 GPT 助手（OpenAI，2023）]({% link _posts/2023-09-01-how-to-train-a-gpt-assistant-zh.md %})
 
 本文所用的完整代码见[这里](https://github.com/ArthurChiao/arthurchiao.github.io/tree/master/assets/code/gpt-as-a-finite-state-markov-chain)。
 
