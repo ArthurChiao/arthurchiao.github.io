@@ -1,6 +1,6 @@
 ---
 layout    : post
-title     : "Understanding NVIDIA GPU Performance: Utilization vs. Saturation"
+title     : "Understanding NVIDIA GPU Performance: Utilization vs. Saturation (2023)"
 date      : 2023-08-27
 lastupdate: 2023-08-27
 categories: gpu

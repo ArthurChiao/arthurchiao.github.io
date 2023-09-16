@@ -1,6 +1,6 @@
 ---
 layout    : post
-title     : "GPU Prices Quick Reference"
+title     : "GPU Prices Quick Reference (2023)"
 date      : 2023-06-17
 lastupdate: 2023-08-06
 categories: gpu
