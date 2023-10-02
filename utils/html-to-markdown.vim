@@ -34,8 +34,8 @@
 %s/<\/b>/**/g
 
 " convert code
-%s/<code.\{-\}>/`/g
-%s/<\/code>/`/g
+" %s/<code.\{-\}>/`/g
+" %s/<\/code>/`/g
 
 " convert em (emphasize, usually Italic fonts)
 %s/<em.\{-\}>/*/g

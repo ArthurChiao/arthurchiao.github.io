@@ -2,7 +2,7 @@ Repo for my [blog](https://arthurchiao.github.io).
 
 # 1. Theme
 
-The theme originates from [Long Haul](http://github.com/brianmaierjr/long-haul),
+Originated from [Long Haul](http://github.com/brianmaierjr/long-haul),
 and has changed a lot since then.
 
 # 2. Use this theme/template

@@ -2,9 +2,8 @@
 layout    : post
 title     : "Linux 网络栈接收数据（RX）：原理及内核实现（2022）"
 date      : 2022-07-02
-lastupdate: 2022-08-28
-author: ArthurChiao
-categories: network kernel
+lastupdate: 2023-10-03
+categories: linux network kernel
 ---
 
 <p align="center"><img src="/assets/img/linux-net-stack/rx-overview.png" width="70%" height="70%"></p>
@@ -125,7 +124,9 @@ d8:00.0 Ethernet controller: Mellanox Technologies MT27710 Family [ConnectX-4 Lx
 可以看到现在用的驱动叫 `mlx5_core`，接下来就来看它的实现，代码位于
 **<mark><code>drivers/net/ethernet/mellanox/mlx5/core</code></mark>**。
 
-## 1.2 驱动模块注册：`module_init() -> init() -> pci/mlx5e init`
+## 1.2 驱动模块注册
+
+### 1.2.1 `module_init() -> init() -> pci/mlx5e init`
 
 首先看内核启动时，驱动的注册和初始化过程。非常简单直接，
 **<mark><code>module_init()</code></mark>** 注册一个初始化函数，内核加载驱动执行：
@@ -144,6 +145,17 @@ module_init(init);
 ```
 
 初始化的大部分工作在 `pci_register_driver()` 和 `mlx5e_init()` 里面完成。
+
+### 1.2.2 CPU、网卡与 PCIe 硬件拓扑
+
+网卡通过 PCIe 连接到 CPU，简单的场景就是 NIC 直连 CPU 上自带的 PCIe，
+复杂的场景（比如 8 卡 GPU 主机）还会引入额外的 PCIe Switch 芯片，因为机器上设备太多，
+PCIe 接口不够用了。更多信息可参考：
+
+* [GPU 进阶笔记（一）：高性能 GPU 服务器硬件拓扑与集群组网（2023）]({% link _posts/2023-09-16-gpu-advanced-notes-1-zh.md %})
+
+<p align="center"><img src="/assets/img/gpu-notes/8x-a100-node-hw-topo.png" width="100%" height="100%"></p>
+<p align="center">典型 8 卡 A100 主机硬件拓扑</p>
 
 ## 1.3 PCI 相关初始化
 

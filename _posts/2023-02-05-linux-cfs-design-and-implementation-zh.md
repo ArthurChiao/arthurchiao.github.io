@@ -2,8 +2,8 @@
 layout    : post
 title     : "Linux CFS 调度器：原理、设计与内核实现（2023）"
 date      : 2023-02-05
-lastupdate: 2023-03-19
-categories: kernel
+lastupdate: 2023-10-03
+categories: linux kernel
 ---
 
 整理一些 Linux 默认调度器 CFS 相关的东西。CFS、cgroup 等内核技术合力实现了进程的
@@ -1104,11 +1104,58 @@ $ dk run --rm -it --cpu-quota 25000 --cpu-period 100000 -v $(pwd):$(pwd) -w $(pw
 
 这个 throttle 时间怎么算出来的，见 [6] 的解释。
 
-## 4.2 k8s
+## 4.2 k8s 相关问题
 
 研究这些东西是为了更好理解一些容器问题。
+先罗列一下，后面有空再更新。
 
-TODO。
+### Pod cpu throttle
+
+一个容器虽然申请了 4 个核，但可能有 64个线程，在调度到这个容器时，64 个线程可能会占满所有物理 CPU，
+时间片用完之后，到下一次调度它还有很长时间。这段时间就是 throttle。
+
+本质原因：
+
+1. **<mark>容器 spec 声明的是 CPU 数量</mark>**；
+2. **<mark>内核调度用的 CPU 时间</mark>**；
+
+二者是不统一的。更深入分析见 twitter 专家的一篇文章
+[The container throttling problem](https://danluu.com/cgroup-throttling/)。
+
+### k8s pod 使用 cpuset 的条件
+
+根据 [k8s 官方文档](https://kubernetes.io/docs/tasks/administer-cluster/cpu-management-policies/)，
+以下三个条件必须同时具备：
+
+1. kubelet 启用 static 策略
+
+    ```shell
+    $ grep cpuManagerPolicy /etc/kubernetes/config # kubelet config
+    cpuManagerPolicy: static
+    ```
+
+2. pod request == limit: Guaranteed pod
+3. pod request == limit = integer
+
+### 生产例子
+
+业务报障，问为什么半夜 2 点容器会有 load 飙升，
+
+<p align="center"><img src="/assets/img/linux-cfs-design-and-implementation/load-spike.png" width="85%" height="85%"></p>
+
+同时间段网络也是飙升，但网络可能是结果，也可能是原因，
+
+<p align="center"><img src="/assets/img/linux-cfs-design-and-implementation/net-spike.png" width="85%" height="85%"></p>
+
+以上两个层面都判断不出问题。如果结合业务（java 应用）的 java 监控和 k8s 容器监控，问题就明显一些了：
+
+<p align="center"><img src="/assets/img/linux-cfs-design-and-implementation/java-spike.png" width="90%" height="90%"></p>
+
+* 左下图：`01:58` 开始，业务**<mark>线程</mark>**数量开始上升；
+* 左上图：`01:59` 开始，业务容器开始 **<mark><code>JIT</code></mark>**（猜测是新线程的代码首次运行之类的）；
+* 右上下图：`02:01` 开始，业务容器开始 **<mark><code>throtte</code></mark>**（总 CPU 时间不变，平均到每个线程的时间片少了，调度周期内的等待时间更长）。
+
+说明是先有业务活动，才有后面的一系列波动。最后业务查到是他们自己有定时任务。
 
 # 参考资料
 
