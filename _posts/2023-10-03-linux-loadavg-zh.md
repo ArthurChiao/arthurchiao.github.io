@@ -2,7 +2,7 @@
 layout    : post
 title     : "Linux Load Average：算法、实现与实用指南（2023）"
 date      : 2023-10-03
-lastupdate: 2023-10-03
+lastupdate: 2023-10-14
 categories: linux kernel
 ---
 
@@ -597,7 +597,39 @@ calc_load(unsigned long load, unsigned long exp, unsigned long active) {
 **<mark><code>Uninterruptible Sleep</code></mark>** (**<mark><code>D</code></mark>**) 状态通常是同步 disk IO 导致的 sleeping；
 
 * 这种状态的 task 不受中断信号影响，例如阻塞在 disk IO 和某些 lock 上的 task；
-* 将这种状态的线性引入 loadavg 计算的 [patch](http://oldlinux.org/Linux.old/mail-archive/)；
+* 将这种状态的线性引入 loadavg 计算的 [patch](http://oldlinux.org/Linux.old/mail-archive/alan-old-funet-lists/kernel.1993.gz)；
+
+    ```
+    From: Matthias Urlichs <urlichs@smurf.sub.org>
+    Subject: Load average broken ?
+    Date: Fri, 29 Oct 1993 11:37:23 +0200
+    
+    The kernel only counts "runnable" processes when computing the load average. 
+    I don't like that; the problem is that processes which are swapping or 
+    waiting on "fast", i.e. noninterruptible, I/O, also consume resources.
+    
+    It seems somewhat nonintuitive that the load average goes down when you 
+    replace your fast swap disk with a slow swap disk...
+    
+    Anyway, the following patch seems to make the load average much more 
+    consistent WRT the subjective speed of the system. And, most important, the 
+    load is still zero when nobody is doing anything. ;-)
+    
+    --- kernel/sched.c.orig	Fri Oct 29 10:31:11 1993
+    +++ kernel/sched.c	Fri Oct 29 10:32:51 1993
+    @@ -414,7 +414,9 @@
+     	unsigned long nr = 0;
+    
+     	for(p = &LAST_TASK; p > &FIRST_TASK; --p)
+    -		if (*p && (*p)->state == TASK_RUNNING)
+    +		if (*p && ((*p)->state == TASK_RUNNING) ||
+    +		           (*p)->state == TASK_UNINTERRUPTIBLE) ||
+    +		           (*p)->state == TASK_SWAPPING))
+     			nr += FIXED_1;
+     	return nr;
+     }
+    ```
+
 * 使得 Linux 系统 loadavg 表示的不再是 "CPU load averages"，而是 "system load averages"。
 
 ### 2.4.2 Linux vs. 其他 OS：loadavg 区别

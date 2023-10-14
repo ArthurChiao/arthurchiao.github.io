@@ -2,7 +2,7 @@
 layout    : post
 title     : "Cracking Kubernetes Authentication (AuthN) Model (2022)"
 date      : 2022-07-14
-lastupdate: 2022-10-10
+lastupdate: 2023-10-11
 categories: k8s security
 canonical_url: https://learnk8s.io/authentication-kubernetes
 ---
@@ -1319,7 +1319,7 @@ $ k get secrets my-sa-token-5dx8g -o jsonpath='{.data.token}' | base64 -d
 eyJhb...ZYT-VTp-v-rx8Rv1nopn0-Q
 ```
 
-Put this token into the **<mark><code>Authorization: Bearer <token></code></mark>** and send the request.
+Put this token into the <mark><code>Authorization: Bearer {token}</code></mark> and send the request.
 
 Or, you could also use a kubeconfig + token file, such as to configure Cilium:
 

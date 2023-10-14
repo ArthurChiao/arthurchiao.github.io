@@ -1,14 +1,14 @@
 ---
 layout    : post
-title     : "K8s 的核心是 API 而非容器：从理论到 CRD 实践（2022）"
+title     : "K8s 的核心是 API 而非容器（一）：从理论到 CRD 实践（2022）"
 date      : 2022-06-04
-lastupdate: 2022-06-04
+lastupdate: 2023-10-14
 categories: k8s crd
 ---
 
 <p align="center"><img src="/assets/img/k8s-is-about-apis/k8s-is-about-apis.jpeg" width="60%" height="60%"></p>
 
-本文串联了以下几篇文章的核心部分，
+本文最初串联了以下几篇文章的核心部分，
 
 1. [Kubernetes isn't about containers](https://blog.joshgav.com/2021/12/16/kubernetes-isnt-about-containers.html)，2021
 2. [Kubernetes is a Database](https://github.com/gotopple/k8s-for-users-intro/blob/master/database.md), 2019
@@ -19,6 +19,9 @@ categories: k8s crd
 通过测试和类比来对这一论述有一个更直观的理解。
 
 例子及测试基于 K8s `v1.21.0`，感谢原作者们的精彩文章。
+
+* [K8s 的核心是 API 而非容器（一）：从理论到 CRD 实践（2022）]({% link _posts/2022-06-04-k8s-is-about-apis-zh.md %})
+* [K8s 的核心是 API 而非容器（二）：从开源项目看 k8s 的几种 API 扩展机制（2023）]({% link _posts/2022-06-04-k8s-is-about-apis-2-zh.md %})
 
 ----
 
