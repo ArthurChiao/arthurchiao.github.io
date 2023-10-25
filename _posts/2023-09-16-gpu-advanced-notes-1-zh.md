@@ -2,7 +2,7 @@
 layout    : post
 title     : "GPU 进阶笔记（一）：高性能 GPU 服务器硬件拓扑与集群组网（2023）"
 date      : 2023-09-16
-lastupdate: 2023-09-16
+lastupdate: 2023-10-25
 categories: ai gpu
 ---
 
@@ -11,6 +11,9 @@ categories: ai gpu
 <p align="center"><img src="/assets/img/gpu-notes/8x-a100-node-hw-topo.png" width="100%" height="100%"></p>
 
 水平有限，文中不免有错误之处，请酌情参考。
+
+* [GPU 进阶笔记（一）：高性能 GPU 服务器硬件拓扑与集群组网（2023）]({% link _posts/2023-09-16-gpu-advanced-notes-1-zh.md %})
+* [GPU 进阶笔记（二）：华为 GPU 相关（2023）]({% link _posts/2023-09-16-gpu-advanced-notes-2-zh.md %})
 
 ----
 
@@ -281,7 +284,7 @@ L40S 是今年（2023）即将上市的新一代“性价比款”多功能 GPU�
 L40S 最大的特点之一是 **<mark>time-to-market 时间短</mark>**，也就是从订货到拿到货周期比 A100/A800/H800 快很多。
 这里面技术和非技术原因都有，比如：
 
-* 不存在被美国制裁的功能，比如 **<mark>FP64 和 NVLink 都干掉了</mark>**；
+* ~~不存在被美国禁售的功能~~（根据 2023.10 的新规定，已经禁售了），比如 **<mark>FP64 和 NVLink 都干掉了</mark>**；
 * 使用 **<mark><code>GDDR6</code></mark>** 显存，不依赖 HBM 产能（及先进封装）；
 
 价格便宜也有几方面原因，后面会详细介绍：

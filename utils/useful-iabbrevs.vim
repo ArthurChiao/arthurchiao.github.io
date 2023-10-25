@@ -9,3 +9,6 @@ iabbrev xcc </code>
 " highlight code block
 iabbrev xd **<mark><code>
 iabbrev xdc </code></mark>**
+
+" highlight code block
+iabbrev xlink []({% link _posts/ %})
