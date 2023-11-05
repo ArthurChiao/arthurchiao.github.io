@@ -3,7 +3,7 @@ layout    : post
 title     : "[译] [论文] 可虚拟化第三代（计算机）架构的规范化条件（ACM, 1974）"
 date      : 2021-11-19
 lastupdate: 2021-11-19
-categories: virtualization
+categories: virtualization vm
 ---
 
 ### 译者序

@@ -1,9 +1,12 @@
-Repo for my [blog](https://arthurchiao.github.io).
+Repo for my [blog](https://arthurchiao.github.io). Why blogging? Some hints:
+
+* [Writing Is Magic, 2022](https://brooker.co.za/blog/2022/11/08/writing.html),
+  中文版 [长文写作的魔力](https://arthurchiao.art/blog/writing-is-magic-zh)
 
 # 1. Theme
 
 Originated from [Long Haul](http://github.com/brianmaierjr/long-haul),
-and has changed a lot since then.
+and has evolved significantly since then.
 
 # 2. Use this theme/template
 
@@ -26,7 +29,7 @@ and has changed a lot since then.
     ```
 
     **Remove or replace the google analytics code in `_config.yml`**, otherwise,
-    your website's statistics will go to my mine:
+    your website's statistics will go to mine:
 
     ```shell
     $ vim _config.yml # delete this line: google_analytics: "G-5SFP2TKSL7"
@@ -36,7 +39,7 @@ and has changed a lot since then.
 3. Add your own posts
 
     ```
-    $ touch _posts/2019-11-09-your-first-post.md
+    $ touch _posts/2023-11-05-your-first-post.md
     ```
 
     add following content to the beginning of the post:
@@ -45,15 +48,15 @@ and has changed a lot since then.
     ---
     layout    : post
     title     : "Title of Your First Post"
-    date      : 2019-11-09
-    lastupdate: 2019-11-09
+    date      : 2023-11-05
+    lastupdate: 2023-11-05
     categories: tag1 tag2 tag3
     ---
     ```
 
-    after that, add the content of your post in markdown format.
+    then, add the content of your post in markdown format.
 
-4. Local development
+4. Local preview
 
     ```shell
     $ cd <your_github_id>.github.io
