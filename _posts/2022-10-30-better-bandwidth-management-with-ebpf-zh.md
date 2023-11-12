@@ -283,7 +283,7 @@ netperf 压测。
 ## 4.1 BBR 基础
 
 > 完整 BBR 设计可参考
-> [<mark>(论文) BBR：基于拥塞（而非丢包）的拥塞控制（ACM, 2017）</mark>]({ % link _posts/2022-01-02-bbr-paper-zh.md % })。
+> [<mark>(论文) BBR：基于拥塞（而非丢包）的拥塞控制（ACM, 2017）</mark>]({ % link _posts/2022-01-02-bbr-paper-zh.md %})。
 > 译注。
 
 ### 4.1.1 设计初衷
