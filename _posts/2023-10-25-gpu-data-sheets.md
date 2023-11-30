@@ -2,7 +2,7 @@
 layout    : post
 title     : "GPU Performance (Data Sheets) Quick Reference (2023)"
 date      : 2023-10-25
-lastupdate: 2023-10-25
+lastupdate: 2023-11-30
 categories: gpu
 ---
 
@@ -28,23 +28,24 @@ The first letter in GPU model names denote their GPU architectures, with:
 1. **<mark><code>H</code></mark>** for Hopper; 2022
 1. **<mark><code>L</code></mark>** for Ada Lovelace;
 
-# 2 Comparison of T4/A10/A10G/V100
+# 2 Comparison of `L2/T4/A10/A10G/V100`
 
-|              | T4               | A10                | A10G       | A30        | V100 PCIe/SMX2 |
-|:-------------|:-----------------|:-------------------|:-----------|:-----------|:--------|
-| Designed for | **<mark>Data center</mark>** workloads| (Desktop) **<mark>Graphics-intensive</mark>** workloads | Desktop | Desktop | Data center |
-| Year         | 2018             | 2020               |            |            | 2017         |
-| Manufacturing| 12nm             | 12nm               | 12nm       |            |              |
-| Architecture | Turing           | Ampere             | Ampere     | Ampere     | Volta        |
-| Max Power    | 70 watts         | 150 watts          |            | 165 watts  | 250/300watts |
-| GPU Mem      | 16GB GDDR6       | 24GB GDDR6         | 48GB GDDR6 | 24GB HBM2  | 16/32GB <mark>HBM2</mark> |
-| GPU Mem BW   | 400 GB/s         | 600 GB/s           |            | **<mark><code>933GB/s</code></mark>**  | **<mark><code>900 GB/s</code></mark>** |
-| Interconnect | PCIe Gen3 32GB/s | PCIe Gen4 66 GB/s  |            | PCIe Gen4 64GB/s, NVLINK 200GB/s | PCIe Gen3 32GB/s, NVLINK **<mark><code>300GB/s</code></mark>** |
-| FP32         | 8.1 TFLOPS       | 31.2 TFLOPS        |            | 10.3TFLOPS | 14/15.7 TFLOPS |
-| BFLOAT16 TensorCore|            | 125 TFLOPS         |            | 165 TFLOPS |  |
-| FP16 TensorCore   |             | 125 TFLOPS         |            | 165 TFLOPS |  |
-| INT8 TensorCore   |             | 250 TFLOPS         |            | 330 TOPS   |  |
-| INT4 TensorCore   |             |                    |            | 661 TOPS   |  |
+|                    | L2               | T4               | A10                | A10G       | A30        | V100 PCIe/SMX2 |
+|:-------------------|:-----------------|:-----------------|:-------------------|:-----------|:-----------|:--------|
+| Designed for       | Data center      |Data center       | (Desktop) **<mark>Graphics-intensive</mark>** workloads | Desktop | Desktop | Data center |
+| Year               | 2023             | 2018             | 2020               |            |            | 2017         |
+| Manufacturing      |                  | 12nm             | 12nm               | 12nm       |            |              |
+| Architecture       | Ada Lovelace     | Turing           | Ampere             | Ampere     | Ampere     | Volta        |
+| Max Power          |                  | 70 watts         | 150 watts          |            | 165 watts  | 250/300watts |
+| GPU Mem            | 24GB GDDR6       | 16GB GDDR6       | 24GB GDDR6         | 48GB GDDR6 | 24GB HBM2  | 16/32GB <mark>HBM2</mark> |
+| GPU Mem BW         | 300 GB/s         | 400 GB/s         | 600 GB/s           |            | **<mark><code>933GB/s</code></mark>**  | **<mark><code>900 GB/s</code></mark>** |
+| Interconnect       | PCIe Gen4 64GB/s | PCIe Gen3 32GB/s | PCIe Gen4 66 GB/s  |            | PCIe Gen4 64GB/s, NVLINK 200GB/s | PCIe Gen3 32GB/s, NVLINK **<mark><code>300GB/s</code></mark>** |
+| FP32               | 24.1 TFLOPS      | 8.1 TFLOPS       | 31.2 TFLOPS        |            | 10.3TFLOPS | 14/15.7 TFLOPS |
+| TF32               | 48.3 TFLOPS      |                  |                    |            |            |                |
+| BFLOAT16 TensorCore| 95.6 TFLOPS      |                  | 125 TFLOPS         |            | 165 TFLOPS |  |
+| FP16 TensorCore    |                  |                  | 125 TFLOPS         |            | 165 TFLOPS |  |
+| INT8 TensorCore    | 193/193 TFLOPS   |                  | 250 TFLOPS         |            | 330 TOPS   |  |
+| INT4 TensorCore    |                  |                  |                    |            | 661 TOPS   |  |
 
 Datasheets:
 
@@ -63,7 +64,7 @@ Datasheets:
 | Max Power          | 300/400 watt     | 300/400 watt                     | 400 watt         |                  | 350/700 watt |
 | GPU Mem            | 80G HBM2e        | 80G HBM2e                        | 64G HBM2e        | 80G HBM3         | 80G HBM3 |
 | GPU Mem BW         |                  | 1935/2039 GB/s                   |                  |                  | 2/3.35 TB/s|
-| Interconnect       | NVLINK 400GB/s   | PCIe Gen4 64GB/s, NVLINK 600GB/s | HCCS 392GB/s     | NVLINK 400GB/s   | PCIe Gen5 128GB/s, NVLINK **<mark><code>900GB/s</code></mark>** |
+| Interconnect       | NVLINK 400GB/s   | PCIe Gen4 64GB/s, NVLINK 600GB/s | HCCS **<mark><code>56GB/s</code></mark>** (`=392/7`) | NVLINK 400GB/s   | PCIe Gen5 128GB/s, NVLINK **<mark><code>900GB/s</code></mark>** |
 | FP32               |                  | 19.5 TFLOPS                      |                  |                  | 51/67 TFLOPS |
 | TF32 (TensorFloat) |                  | 156/312 TFLOPS                   |                  |                  | 756/989 TFLOPS |
 | BFLOAT16 TensorCore|                  | 156/312 TFLOPS                   |                  |                  |  |
@@ -77,4 +78,43 @@ Datasheets:
 
 1. [A100](https://www.nvidia.com/en-us/data-center/a100/)
 1. [H100](https://www.nvidia.com/en-us/data-center/h100/)
-1. [Huawei Ascend-910](https://www.hisilicon.com/en/products/Ascend/Ascend-910)
+1. [~~Huawei Ascend-910B~~](https://www.hisilicon.com/en/products/Ascend/Ascend-910) (404)
+1. `910A`: [Ascend: a Scalable and Unified Architecture for Ubiquitous Deep Neural Network Computing : Industry Track Paper](https://ieeexplore.ieee.org/abstract/document/9407221), HPCA, 2021
+
+## Note on inter-GPU bandwidth: `HCCS vs. NVLINK`
+
+To clarify the GPU interconnect bandwidth in 8-card modules:
+
+* NVIDIA NVLink: **<mark>full-mesh topology</mark>** as below, so (bi-directional)
+  **<mark><code>GPU-to-GPU bandwidth</code></mark>** is **<mark><code>400GB/s</code></mark>**;
+
+    <p align="center"><img src="/assets/img/gpu-notes/8x-a100-node-hw-topo.png" width="100%" height="100%"></p>
+
+* Huawei HCCS: **<mark>peer-to-peer topology</mark>** (no stuffs like NVSwitch silicon).
+
+    <p align="center"><img src="/assets/img/gpu-notes/ascend-910b-x8-topo.png" width="50%" height="50%"></p>
+
+  Many documents mention that 910B HCCS has a bandwidth of `392GB/s`, which
+  appears to be comparable to A800 NVLink. However, this bandwidth is actually the
+  **<mark>aggregated bandwidth</mark>** of "one GPU to all the other 7 GPUs on the module",
+  the actual bi-directional **<mark><code>GPU-to-GPU bandwidth</code></mark>**
+  is **<mark><code>392GB/s / (8-1) = 56GB/s</code></mark>**.
+
+# 4 Comparison of `H20`/`L20`/`Ascend 910B`
+
+|      | <mark>Huawei Ascend 910B</mark>| L20  (PCIe)      | H20  (PCIe/SXM)  | H100 (PCIe/SXM) |
+|:-------------------|:-----------------|:-----------------|:-----------------|:--------|
+| Year               | 2023             | 2023             | 2023             | 2022 |
+| Manufacturing      | 7+nm             | 4nm              | 4nm              | 4nm |
+| Architecture       | HUAWEI Da Vinci  | Ada Lovelace     | Hopper           | Hopper |
+| Max Power          | 400 watt         | 275W             | 400W             | 350/700 watt |
+| GPU Mem            | 64G HBM2e        | 48G GDDR6        | 80G HBM3         | 80G HBM3 |
+| GPU Mem BW         |                  | 864GB/s          | <mark>4.0TB/s</mark> | 2/3.35 TB/s|
+| L2 Cache           |                  | 96MB             | 60MB             |             |
+| Interconnect       | HCCS 392GB/s     | PCIe Gen4 64GB/s | PCIe Gen5 128GB/s, **<mark><code>NVLINK 900GB/s</code></mark>** | PCIe Gen5 128GB/s, NVLINK 900GB/s |
+| FP32               |                  | 59.8 TFLOPS      | 44 TFLOPS        | 51/67 TFLOPS |
+| TF32 (TensorFloat) |                  | 59.8 TFLOPS      | 74 TFLOPS        | 756/989 TFLOPS |
+| BFLOAT16 TensorCore|                  | 119/119 TFLOPS   | 148/148 TFLOPS   |  |
+| FP16 TensorCore    | 320 TFLOPS       |                  |                  | 1513/1979 TFLOPS |
+| FP8 TensorCore     |                  |                  |                  | 3026/3958 TFLOPS |
+| INT8 TensorCore    | 640 TFLOPS       | 239/239 TFLOPS   | 296/296 TFLOPS   | 3026/3958 TFLOPS |

@@ -2,7 +2,7 @@
 layout    : post
 title     : "GPU 进阶笔记（二）：华为 GPU 相关（2023）"
 date      : 2023-10-25
-lastupdate: 2023-10-25
+lastupdate: 2023-11-30
 categories: ai gpu
 ---
 
@@ -271,6 +271,13 @@ $ npu-smi info
 
 * GPU 型号 910B1
 * 64GB HBM 显存
+
+### GPU 卡间互连：HCCS
+
+角色类似于 NVIDIA NVLink。
+
+很多资料都说 910B 的卡间互连带宽是 `392GB/s`，看起来跟 A800 的 `400GB/s` 差不多了，
+但其实不能这么比，[1] 分析过了，这里不再赘述。
 
 # 参考资料
 
