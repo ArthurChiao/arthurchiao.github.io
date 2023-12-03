@@ -2,7 +2,7 @@
 layout    : post
 title     : "k8s 基于 cgroup 的资源限额（capacity enforcement）：模型设计与代码实现（2023）"
 date      : 2023-01-25
-lastupdate: 2023-02-11
+lastupdate: 2023-10-27
 categories: k8s cgroup
 ---
 
@@ -302,8 +302,7 @@ container runtime 提供的，k8s 只是通过接口把 requests/limits 传给�
 2. 每个 pod 也有自己的一些开销，例如 sandbox container；
 3. Pod 级别还有一些内存等额外开销；
 
-因此，为了防止一个 pod 的多个容器使用资源超标，k8s 引入了
-引入了 pod-level cgroup，每个 pod 都有自己的 cgroup。
+因此，为了防止一个 pod 的多个容器使用资源超标，k8s 引入了 pod-level cgroup，每个 pod 都有自己的 cgroup。
 后面会介绍如何根据 containers requests/limits 计算一个 pod 的 requests/limits。
 
 ### 3.1.3 QoS 级别 cgroup
@@ -538,7 +537,7 @@ kubelet 中所有 cgroup 操作都由内部的
 
 实现主要在 [pkg/kubelet/cm](https://github.com/kubernetes/kubernetes/blob/v1.26.0/pkg/kubelet/cm/)。
 
-启动时的调用栈：**<mark><code>cmd->kubelet->NewContainerManger</code></mark>**，
+启动时的调用栈：**<mark><code>cmd->kubelet->NewContainerManager</code></mark>**，
 
 ```
 containerManagerImpl.Start

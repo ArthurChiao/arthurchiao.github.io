@@ -881,3 +881,8 @@ creates a `VirtualMachine` in Kubernetes with `kubevirt`.
 
 1. [github.com/kubevirt](https://github.com/kubevirt/kubevirt)
 2. [Virtual Machines on Kubernetes: Requirements and Solutions (2023)]({% link _posts/2023-11-29-vm-on-k8s.md %})
+
+----
+
+<a href="https://notbyai.fyi"><img src="/assets/img/Written-By-Human-Not-By-AI-Badge-white.svg" alt="Written by Human, Not by AI"></a>
+<a href="https://notbyai.fyi"><img src="/assets/img/Written-By-Human-Not-By-AI-Badge-black.svg" alt="Written by Human, Not by AI"></a>
