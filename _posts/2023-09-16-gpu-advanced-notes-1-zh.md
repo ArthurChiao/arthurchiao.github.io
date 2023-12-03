@@ -2,7 +2,7 @@
 layout    : post
 title     : "GPU 进阶笔记（一）：高性能 GPU 服务器硬件拓扑与集群组网（2023）"
 date      : 2023-09-16
-lastupdate: 2023-10-25
+lastupdate: 2023-12-03
 categories: ai gpu
 ---
 
@@ -10,7 +10,7 @@ categories: ai gpu
 
 <p align="center"><img src="/assets/img/gpu-notes/8x-a100-node-hw-topo.png" width="100%" height="100%"></p>
 
-水平有限，文中不免有错误之处，请酌情参考。
+水平有限，文中不免有错误或过时之处，请酌情参考。
 
 * [GPU 进阶笔记（一）：高性能 GPU 服务器硬件拓扑与集群组网（2023）]({% link _posts/2023-09-16-gpu-advanced-notes-1-zh.md %})
 * [GPU 进阶笔记（二）：华为 GPU 相关（2023）]({% link _posts/2023-09-16-gpu-advanced-notes-2-zh.md %})
@@ -25,7 +25,7 @@ categories: ai gpu
 # 1 术语与基础
 
 大模型训练一般都是用单机 8 卡 GPU 主机组成集群，机型包括 `8*{A100,A800,H100,H800}`
-可能还会用最近即将上市的 `{4,8}*L40S` 等。
+~~可能还会用最近即将上市的 `{4,8}*L40S` 等~~。
 下面一台典型 8*A100 GPU 的主机内硬件拓扑：
 
 <p align="center"><img src="/assets/img/gpu-notes/8x-a100-node-hw-topo.png" width="100%" height="100%"></p>
@@ -68,8 +68,8 @@ Wikipedia 上 [NVLink](https://en.wikipedia.org/wiki/NVLink) 上的定义：
 
 例如，
 
-* A100 是 **<mark><code>12 lane * 50GB/s/lane = 600GB/s</code></mark>** 双向带宽（单向 300GB/s）
-* A800 被阉割了 4 条 lane，所以是 **<mark><code>8 lane * 50GB/s/lane = 400GB/s</code></mark>** 双向带宽（单向 200GB/s）
+* A100 是 **<mark><code>2 lanes/NVSwitch * 6 NVSwitch * 50GB/s/lane= 600GB/s</code></mark>** 双向带宽（单向 300GB/s）。注意：这是**<mark>一个 GPU 到所有 NVSwitch 的总带宽</mark>**；
+* A800 被阉割了 4 条 lane，所以是 **<mark><code>8 lane * 50GB/s/lane = 400GB/s</code></mark>** 双向带宽（单向 200GB/s）。
 
 ### 监控
 
@@ -122,15 +122,15 @@ From wikipedia [HBM](https://en.wikipedia.org/wiki/High_Bandwidth_Memory)，
 |:------|:--------------------|:-------|:-----|
 | HBM   | 128GB/s/package     |        |      |
 | HBM2  | 256GB/s/package     | 2016   | V100 |
-| HBM2e | ~450GB/s            | 2018   | A100, ~2TB/s, |
+| HBM2e | ~450GB/s            | 2018   | `A100, ~2TB/s`; 华为 `Ascend 910B` |
 | HBM3  | 600GB/s/site        | 2020   | H100, 3.35TB/s |
-| HBM3e | ~1TB/s              | 2023   | |
+| HBM3e | ~1TB/s              | 2023   | `H200`, [4.8TB/s](https://www.nvidia.com/en-us/data-center/h200/) |
 
 <p align="center"><img src="/assets/img/gpu-notes/nvidia-gpus-hbm.png" width="50%" height="50%"></p>
 <p align="center">使用了 HBM 的近几代高端 NVIDIA GPU <mark>显存带宽</mark>（双向），纵坐标是 TB/s。Image source: [3]</p>
 
 * AMD MI300X 采用 192GB HBM3 方案，带宽 **<mark><code>5.2TB/s</code></mark>**；
-* HBM3e 是 HBM3 的增强版，速度从 6.4GT/s 到 8GT/s。预计 2024 量产。
+* HBM3e 是 HBM3 的增强版，速度从 6.4GT/s 到 8GT/s。
 
 ## 1.6 带宽单位
 
@@ -277,7 +277,7 @@ GPU Board Form Factor 分为两种类型：
 
 L40S 是今年（2023）即将上市的新一代“性价比款”多功能 GPU，**<mark>对标 A100</mark>**。
 除了不适合训练基座大模型之外（后面会看到为什么），官方的宣传里它几乎什么都能干。
-价格的话，目前第三方服务器厂商给到的口头报价都是 **<mark>A100 的 8 折左右</mark>**。
+~~价格的话，目前第三方服务器厂商给到的口头报价都是 A100 的 8 折左右~~。
 
 ## 4.1 L40S vs A100 配置及特点对比
 

@@ -2,7 +2,7 @@
 layout    : post
 title     : "GPU Performance (Data Sheets) Quick Reference (2023)"
 date      : 2023-10-25
-lastupdate: 2023-11-30
+lastupdate: 2023-11-03
 categories: gpu
 ---
 
@@ -64,7 +64,8 @@ Datasheets:
 | Max Power          | 300/400 watt     | 300/400 watt                     | 400 watt         |                  | 350/700 watt |
 | GPU Mem            | 80G HBM2e        | 80G HBM2e                        | 64G HBM2e        | 80G HBM3         | 80G HBM3 |
 | GPU Mem BW         |                  | 1935/2039 GB/s                   |                  |                  | 2/3.35 TB/s|
-| Interconnect       | NVLINK 400GB/s   | PCIe Gen4 64GB/s, NVLINK 600GB/s | HCCS **<mark><code>56GB/s</code></mark>** (`=392/7`) | NVLINK 400GB/s   | PCIe Gen5 128GB/s, NVLINK **<mark><code>900GB/s</code></mark>** |
+| GPU Interconnect (**<mark>one-to-one max bandwidth</mark>**)| NVLINK 400GB/s   | PCIe Gen4 64GB/s, NVLINK 600GB/s | HCCS **<mark><code>56GB/s</code></mark>** | NVLINK 400GB/s   | PCIe Gen5 128GB/s, NVLINK **<mark><code>900GB/s</code></mark>** |
+| GPU Interconnect (**<mark>one-to-many total bw</mark>**)    | NVLINK 400GB/s   | PCIe Gen4 64GB/s, NVLINK 600GB/s | HCCS **<mark><code>392GB/s</code></mark>** | NVLINK 400GB/s   | PCIe Gen5 128GB/s, NVLINK **<mark><code>900GB/s</code></mark>** |
 | FP32               |                  | 19.5 TFLOPS                      |                  |                  | 51/67 TFLOPS |
 | TF32 (TensorFloat) |                  | 156/312 TFLOPS                   |                  |                  | 756/989 TFLOPS |
 | BFLOAT16 TensorCore|                  | 156/312 TFLOPS                   |                  |                  |  |
@@ -79,26 +80,24 @@ Datasheets:
 1. [A100](https://www.nvidia.com/en-us/data-center/a100/)
 1. [H100](https://www.nvidia.com/en-us/data-center/h100/)
 1. [~~Huawei Ascend-910B~~](https://www.hisilicon.com/en/products/Ascend/Ascend-910) (404)
-1. `910A`: [Ascend: a Scalable and Unified Architecture for Ubiquitous Deep Neural Network Computing : Industry Track Paper](https://ieeexplore.ieee.org/abstract/document/9407221), HPCA, 2021
+1. `910` paper: [Ascend: a Scalable and Unified Architecture for Ubiquitous Deep Neural Network Computing](https://ieeexplore.ieee.org/abstract/document/9407221), HPCA, 2021
 
 ## Note on inter-GPU bandwidth: `HCCS vs. NVLINK`
 
-To clarify the GPU interconnect bandwidth in 8-card modules:
+For 8-card A800 and 910B modules: 910B HCCS has a total bandwidth of `392GB/s`,
+which appears to be comparable to A800 NVLink (`400GB/s`). However, there are
+some differences. To clarify them,
 
 * NVIDIA NVLink: **<mark>full-mesh topology</mark>** as below, so (bi-directional)
-  **<mark><code>GPU-to-GPU bandwidth</code></mark>** is **<mark><code>400GB/s</code></mark>**;
+  **<mark><code>GPU-to-GPU max bandwidth</code></mark>** is **<mark><code>400GB/s</code></mark>**
+  (note that below is `8*A100` module, 600GB/s, `8*A800` shares a similar full-mesh topology);
 
     <p align="center"><img src="/assets/img/gpu-notes/8x-a100-node-hw-topo.png" width="100%" height="100%"></p>
 
-* Huawei HCCS: **<mark>peer-to-peer topology</mark>** (no stuffs like NVSwitch silicon).
+* Huawei HCCS: **<mark>peer-to-peer topology</mark>** (no stuffs like NVSwitch chip), so (bi-directional)
+  **<mark><code>GPU-to-GPU max bandwidth</code></mark>** is **<mark><code>56GB/s</code></mark>**;
 
     <p align="center"><img src="/assets/img/gpu-notes/ascend-910b-x8-topo.png" width="50%" height="50%"></p>
-
-  Many documents mention that 910B HCCS has a bandwidth of `392GB/s`, which
-  appears to be comparable to A800 NVLink. However, this bandwidth is actually the
-  **<mark>aggregated bandwidth</mark>** of "one GPU to all the other 7 GPUs on the module",
-  the actual bi-directional **<mark><code>GPU-to-GPU bandwidth</code></mark>**
-  is **<mark><code>392GB/s / (8-1) = 56GB/s</code></mark>**.
 
 # 4 Comparison of `H20`/`L20`/`Ascend 910B`
 
@@ -111,7 +110,8 @@ To clarify the GPU interconnect bandwidth in 8-card modules:
 | GPU Mem            | 64G HBM2e        | 48G GDDR6        | 80G HBM3         | 80G HBM3 |
 | GPU Mem BW         |                  | 864GB/s          | <mark>4.0TB/s</mark> | 2/3.35 TB/s|
 | L2 Cache           |                  | 96MB             | 60MB             |             |
-| Interconnect       | HCCS 392GB/s     | PCIe Gen4 64GB/s | PCIe Gen5 128GB/s, **<mark><code>NVLINK 900GB/s</code></mark>** | PCIe Gen5 128GB/s, NVLINK 900GB/s |
+| GPU Interconnect (**<mark>one-to-one max bandwidth</mark>**)| HCCS 56GB/s  | PCIe Gen4 64GB/s | PCIe Gen5 128GB/s, **<mark><code>NVLINK 900GB/s</code></mark>** | PCIe Gen5 128GB/s, NVLINK 900GB/s |
+| GPU Interconnect (**<mark>one-to-many total bw</mark>**)    | HCCS 392GB/s | PCIe Gen4 64GB/s | PCIe Gen5 128GB/s, **<mark><code>NVLINK 900GB/s</code></mark>** | PCIe Gen5 128GB/s, NVLINK 900GB/s |
 | FP32               |                  | 59.8 TFLOPS      | 44 TFLOPS        | 51/67 TFLOPS |
 | TF32 (TensorFloat) |                  | 59.8 TFLOPS      | 74 TFLOPS        | 756/989 TFLOPS |
 | BFLOAT16 TensorCore|                  | 119/119 TFLOPS   | 148/148 TFLOPS   |  |

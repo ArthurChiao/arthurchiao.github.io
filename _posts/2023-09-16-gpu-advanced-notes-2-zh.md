@@ -2,13 +2,13 @@
 layout    : post
 title     : "GPU 进阶笔记（二）：华为 GPU 相关（2023）"
 date      : 2023-10-25
-lastupdate: 2023-11-30
+lastupdate: 2023-12-03
 categories: ai gpu
 ---
 
 记录一些平时接触到的 GPU 知识。由于是笔记而非教程，因此内容不会追求连贯，有基础的同学可作查漏补缺之用。
 
-水平有限，文中不免有错误之处，请酌情参考。
+水平有限，文中不免有错误或过时之处，请酌情参考。
 
 * [GPU 进阶笔记（一）：高性能 GPU 服务器硬件拓扑与集群组网（2023）]({% link _posts/2023-09-16-gpu-advanced-notes-1-zh.md %})
 * [GPU 进阶笔记（二）：华为 GPU 相关（2023）]({% link _posts/2023-09-16-gpu-advanced-notes-2-zh.md %})
@@ -60,7 +60,7 @@ categories: ai gpu
 
 1. x86 底座
 
-    * 卖设备一般是这种，客户需要适配的工作量小一些；
+    * 客户需要适配的工作量小一些；
 
 2. arm 底座：鲲鹏系列
 
@@ -93,8 +93,10 @@ ANSI_COLOR="0;31"
 
 一些公开信息：
 
-1. 硬件指标基本对齐 **<mark><code>NVIDIA A800</code></mark>**，见[算力对比]({% link _posts/2023-10-25-gpu-data-sheets.md %})；
+1. [算力指标]({% link _posts/2023-10-25-gpu-data-sheets.md %})基本对齐 **<mark><code>NVIDIA A800</code></mark>**，卡间互联带宽还有差距；
 1. [科大讯飞称](https://www.ithome.com/0/726/672.htm)和华为联合优化之后，在他们的场景中已经达到 A100 的性能；
+
+`910B` 的官方公开信息比较少，但上一代 `910` 是发了 paper 的，想了解内部细节（例如 HCCS）的可参考 [2]。
 
 # 3 实探：鲲鹏底座 `8*910B GPU` 主机
 
@@ -277,8 +279,9 @@ $ npu-smi info
 角色类似于 NVIDIA NVLink。
 
 很多资料都说 910B 的卡间互连带宽是 `392GB/s`，看起来跟 A800 的 `400GB/s` 差不多了，
-但其实不能这么比，[1] 分析过了，这里不再赘述。
+但其实还是有区别的，主要是互连拓扑不同导致的，见 [1]。
 
 # 参考资料
 
 1. [GPU Performance (Data Sheets) Quick Reference (2023)]({% link _posts/2023-10-25-gpu-data-sheets.md %})
+2. [Ascend: a Scalable and Unified Architecture for Ubiquitous Deep Neural Network Computing](https://ieeexplore.ieee.org/abstract/document/9407221), HPCA, 2021
