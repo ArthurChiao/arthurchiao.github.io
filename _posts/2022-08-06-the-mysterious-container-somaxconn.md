@@ -539,6 +539,20 @@ address  config.json  init.pid  log.json  rootfs  shim.pid
       "HOSTNAME=smoke-pod-with-k8s"
     ],
     ...
+    "memory": {
+      "limit": 2147483648,
+      "swap": 2147483648,
+      "disableOOMKiller": false
+    },
+    "cpu": {
+      "shares": 1024,
+      "quota": 100000,
+      "period": 100000,
+      "cpus": "0-31"
+    },
+    "blockIO": {
+      "weight": 0
+    },
     "cgroupsPath": "/kubepods/besteffort/pod187acdb9/eedd6341c",
     "namespaces": [
       {

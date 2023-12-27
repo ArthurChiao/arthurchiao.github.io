@@ -2,7 +2,7 @@
 layout    : post
 title     : "k8s 基于 cgroup 的资源限额（capacity enforcement）：模型设计与代码实现（2023）"
 date      : 2023-01-25
-lastupdate: 2023-10-27
+lastupdate: 2023-12-27
 categories: k8s cgroup
 ---
 
@@ -380,7 +380,7 @@ cgroup v1 是按 resource controller 类型来组织目录的，
 
 前面已经介绍了每台 k8s node 的资源切分，
 其中 **<mark>Allocatable </mark>** 资源量就是写到 `kubepods` 对应 cgroup 文件中，
-例如 allocatable cpu 写到 **<mark><code>/sys/fs/cgroup/kubepods/cpu.share</code></mark>**。
+例如 allocatable cpu 写到 **<mark><code>/sys/fs/cgroup/kubepods/cpu.shares</code></mark>**。
 这一工作是在 kubelet containerManager [Start()](https://github.com/kubernetes/kubernetes/blob/v1.26.0/pkg/kubelet/cm/container_manager_linux.go#L564) 中完成的。
 
 ### 3.3.3 QoS 级别配置
@@ -409,36 +409,107 @@ Container 级别配置文件在 pod 的下一级：
 * Burstable container：默认 **<mark><code>/sys/fs/cgroup/{controller}/kubepods/burstable/{pod_id}/{container_id}/</code></mark>**；
 * BestEffort container：默认 **<mark><code>/sys/fs/cgroup/{controller}/kubepods/besteffort/{pod_id}/{container_id}/</code></mark>**。
 
-# 4. 问题讨论
+# 4 Pod `requests/limits` 对应到 cgroup 配置文件
 
-## 4.1 `requests/limits` 对应到具体 cgroup 配置文件
+## 4.1 CPU
 
-### 4.1.1 CPU
+### 4.1.1 对应关系：`request -> cpu.shares; limit -> cpu.cfs_quota_us`
 
 Spec 里的 CPU requests/limits 一般都是以 `500m` 这样的格式表示的，其中 `m` 是千分之一个 CPU，
 `kubelet` 会将它们转换成 cgroup 支持的单位，然后写入几个 `cpu.` 开头的配置文件。其中，
 
-* requests 经过转换之后会写入 **<mark><code>cpu.share</code></mark>**，
-  表示这个 cgroup **<mark>最少可以使用的 CPU</mark>**；
+* requests 经过转换之后会写入 **<mark><code>cpu.shares</code></mark>**，
+  表示这个 cgroup **<mark>最少可以使用的 CPU 份额</mark>**（这个配置只有相对意义，不是绝对 CPU 时间，下面会解释）；
 * limits 经过转换之后会写入 **<mark><code>cpu.cfs_quota_us</code></mark>**，
-  表示这个 cgroup **<mark>最多可以使用的 CPU</mark>**；
+  表示这个 cgroup **<mark>最多可以使用的 CPU 时间</mark>**，这个是绝对 CPU 时间；
+* 更多信息：[<mark>Linux CFS 调度器：原理、设计与内核实现（2023）</mark>]({% link _posts/2023-02-05-linux-cfs-design-and-implementation-zh.md %})。
 
-更多信息：[<mark>Linux CFS 调度器：原理、设计与内核实现（2023）</mark>]({% link _posts/2023-02-05-linux-cfs-design-and-implementation-zh.md %})。
+### 4.1.2 实地查看一台 k8s node
 
-### 4.1.2 Memory
+查看一台 k8s node 上的 cpu shares 分配：
+
+```shell
+root@node:/sys/fs/cgroup/cpu  # find . -mindepth 1 -maxdepth 1 -type d -exec sh -c 'echo -n "Child: {} "; cat {}/cpu.shares' \;
+Child: ./kubepods     30720
+Child: ./docker       1024
+Child: ./user.slice   1024
+Child: ./system.slice 1024
+```
+
+这表示把这台 node 的所有 CPU 按比例分配给以上**<mark>四个 cgroup</mark>**，比如 k8s pods 能使用的总 CPU 资源就是
+
+<p align="center"><mark><code>30720/(30720+1024+1024+1024) = 91%</code></mark></p>
+
+如果这台 node 有 48 个 CPU，那这台 node 上所有 pod 总共能用到的 CPU 数量就是 **<mark><code>48 * 91% = 43.7</code></mark>**。
+接下来再看看 `kubepods` 内部是怎么进一步分配这些 CPU 的：
+
+```shell
+root@node:/sys/fs/cgroup/cpu/kubepods  # find . -mindepth 1 -maxdepth 1 -type d -exec sh -c 'echo -n "Child: {} "; cat {}/cpu.shares' \;
+Child: ./podd16358c5 4096 # <-- 默认 slice 是 1024，因此 4096 对应 4 CPU，下面会确认
+Child: ./pod86bc00f3 1024
+Child: ./pod9acf6c1d 1024
+Child: ./podd25c49c2 204
+Child: ./podb478eb6f 512
+Child: ./podb7c056bb 102
+Child: ./poda046f9fb 2048
+...
+Child: ./burstable   11361
+Child: ./besteffort  2      # <-- K8s 中的最小值，后面会解释
+```
+
+这里分成了三类。
+
+第一类：**<mark><code>/sys/fs/cgroup/cpu/kubepods/pod{pod_id}</code></mark>**，
+这些都是 **<mark><code>cpu requests == cpu limits == integer</code></mark>** 的 pod，
+前面已经介绍过，符合这个条件的 pod 都是不超分的，kubelet 会给他们分配**<mark>独占的 CPU</mark>**。
+挑一个看：
+
+```shell
+$ dk ps | grep d16358c5 # 根据 podid 找到 container id
+a6caca34f84c   77754acfcf51    "/entrypoint.sh …"   Up 25 minutes  k8s_xxx-75757dc8f4-qjpr2_kube-system_d16358c5
+
+$ dk inspect a6caca34f84c | grep Pid # 找到 container PID
+            "Pid": 343823,
+
+$ cat /proc/343823/status | grep Cpus # 查看允许运行的 CPU 列表
+Cpus_allowed:   00300030
+Cpus_allowed_list:      4-5,20-21 # 固定在四个 CPU 上
+```
+
+去 k8s 里确认下：
+
+```shell
+$ k get pod xxx -o yaml
+...
+        resources:
+          limits:
+            cpu: "4"
+          requests:
+            cpu: "4"
+```
+
+确实是申请了 4 个 CPU。
+
+第二类 `/burstable` 是超分的 pod，不固定 CPU。
+
+第三类 `/besteffort` 也不固定 CPU。
+
+## 4.2 Memory
 
 内存的单位在 requests/limits 和在 cgroup 配置文件中都是一样的，所以直接写入 cgroup 内存配置文件。
 `limits` 写入的是 **<mark><code>memory.limit_in_bytes</code></mark>**。
 
-### 4.1.3 其他
+## 4.3 其他
 
 略。
 
-## 4.2 `requests/limits` 与调度的关系
+# 5. 问题讨论
+
+## 5.1 `requests/limits` 与调度的关系
 
 requests 和 limits 分别和 k8s 里的一个重要概念相关，下面分别讨论一下。
 
-### 4.2.1 根据 `requests` 调度
+### 5.1.1 根据 `requests` 调度
 
 **<mark>调度只看 requests</mark>**：
 如果一个 node 的 Allocatable 剩余资源大于 pod 的 requests ，就允许这个 pod 调度到这台 node 上。
@@ -447,11 +518,11 @@ requests 和 limits 分别和 k8s 里的一个重要概念相关，下面分别�
 * requests/limits 都是可选字段，设置与否，会导致这个 pod 进入不同的 QoS 类别；
 * 虽然资源是在 container 级别设置的，但 QoS 是 pod 级别的。
 
-### 4.2.2 根据 `limits` 限额（enforcement）
+### 5.1.2 根据 `limits` 限额（enforcement）
 
 资源的隔离目前是用 cgroup 来实现的，它有两个版本，目前 k8s 默认用的 v1，本文内容也以 v1 为主。
 
-## 4.3 kubelet 计算 pod `requets/limits` 的过程
+## 5.2 kubelet 计算 pod `requets/limits` 的过程
 
 前面已经介绍过，k8s spec 里的 requests/limits 是打在 container 上的，并没有打在 pod 上。
 因此 pod 的 requests/limits 需要由 kubelet 综合统计 pod 的所有 container 的 request/limits 计算得到。
@@ -472,7 +543,7 @@ pod<pod_id>/memory.limit_in_bytes = sum(pod.spec.containers.resources.limits[mem
 1. 如果其中**<mark>某个 container 的 cpu 字段只设置了 request 没设置 limit</mark>**，
   则 pod 将只设置 `cpu.shares`，不设置 `cpu.cfs_quota_us`。
 2. 如果**<mark>所有 container 都没有设置 cpu request/limit</mark>**（等效于 `requests==limits==0`），
-  则将 pod **<mark>cpu.share 将设置为 k8s 定义的最小值 2</mark>**。
+  则将 pod **<mark>cpu.shares 将设置为 k8s 定义的最小值 2</mark>**。
 
     ```shell
     pod<UID>/cpu.shares = MinShares # const value 2
@@ -482,7 +553,7 @@ pod<pod_id>/memory.limit_in_bytes = sum(pod.spec.containers.resources.limits[mem
 
 具体的计算过程：[`ResourceConfigForPod()`](https://github.com/kubernetes/kubernetes/blob/v1.26.0/pkg/kubelet/cm/helpers_linux.go#L119)。
 
-## 4.4 资源使用量超出 `limits` 的后果
+## 5.3 资源使用量超出 `limits` 的后果
 
 CPU：
 
@@ -496,7 +567,7 @@ Memory：
 * Container 的**<mark>内存使用量超过 limit</mark>** 时，可能会被干掉（OOMKilled）。如果可重启，kubelet 会重启它。
 
 
-## 4.5 Node 资源紧张时，按 QoS 分配资源比例
+## 5.4 Node 资源紧张时，按 QoS 分配资源比例
 
 Kubelet 寻求最大资源效率，因此默认没有设置资源限制，
 Burstable and BestEffort pods 可以使用足够的的空闲资源。
@@ -528,9 +599,9 @@ bestEffortLimit                  := burstableLimit — qosMemoryRequests[PodQOSB
 kubelet 会调用 [`UpdateCgroups()`](https://github.com/kubernetes/kubernetes/blob/v1.26.0/pkg/kubelet/cm/qos_container_manager_linux.go#L305)
 方法来定期更新这三个 cgroup 的 resource limit。
 
-# 5 k8s cgroup 相关代码实现
+# 6 k8s cgroup 相关代码实现
 
-## 5.1 调用栈和重要结构体
+## 6.1 调用栈和重要结构体
 
 kubelet 中所有 cgroup 操作都由内部的
 **<mark><code>containerManager</code></mark>** 模块完成。
@@ -594,7 +665,7 @@ type containerManagerImpl struct {
 
 但是**<mark>还没有实现对 IO 的支持</mark>**，所以我们还无法通过 k8s cgroup v1/v2 来做 IO 的隔离。
 
-### 5.1.1 `containerManagerImpl.Start()`
+### 6.1.1 `containerManagerImpl.Start()`
 
 ```go
 func (cm *containerManagerImpl) Start(node *v1.Node, activePods ActivePodsFunc,
@@ -675,7 +746,7 @@ func (cm *containerManagerImpl) setupNode(activePods ActivePodsFunc) error {
 }
 ```
 
-### 5.1.2 检查几种必须要支持的 cgroup 资源类型
+### 6.1.2 检查几种必须要支持的 cgroup 资源类型
 
 启动时会检查几种必须要支持的 cgroup 类型：
 
@@ -692,7 +763,7 @@ func validateSystemRequirements(mountUtil mount.Interface) (features, error) {
 }
 ```
 
-## 5.2 `kubelet` 启动配置
+## 6.2 `kubelet` 启动配置
 
 cgroup 相关的几个参数，可以通过命令行或者 kubelet config 文件配置：
 
@@ -707,7 +778,7 @@ cgroupsPerQOS: true
 cgroupDriver: cgroupfs
 ```
 
-## 5.3 通过 k8s metrics API 查看 `requests/limits` 信息
+## 6.3 通过 k8s metrics API 查看 `requests/limits` 信息
 
 ```shell
 $ kubectl get --raw "/apis/metrics.k8s.io/v1beta1/namespaces/default/pods/smoke-pod-01" | jq -C .
@@ -730,7 +801,7 @@ $ kubectl get --raw "/apis/metrics.k8s.io/v1beta1/namespaces/default/pods/smoke-
 }
 ```
 
-## 5.4 定期获取 pod CpuLoad 信息
+## 6.4 定期获取 pod CpuLoad 信息
 
 kubelet INFO 日志中会定期打印类似下面的信息：
 
@@ -757,7 +828,7 @@ func (r *NetlinkReader) GetCpuLoad(name string, path string) (info.LoadStats, er
 }
 ```
 
-## 5.5 通过 container `pid` 查看 cgroup 信息
+## 6.5 通过 container `pid` 查看 cgroup 信息
 
 ```shell
 $ cat /proc/1606/cgroup
