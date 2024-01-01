@@ -1233,3 +1233,8 @@ VM 的事情基本是内核一次性做的，更像一个黑盒，因此虚拟�
 2. [(译) Control Group v2 (cgroupv2)（KernelDoc, 2021）]({% link _posts/2021-09-10-cgroupv2-zh.md %})
 3. [The Mysterious Container <code>net.core.somaxconn</code> (2022)]({% link  _posts/2022-08-06-the-mysterious-container-somaxconn.md %})
 4. [What is the difference between procfs and sysfs](https://unix.stackexchange.com/questions/4884/what-is-the-difference-between-procfs-and-sysfs), unix.stackexchange.com
+
+----
+
+<a href="https://notbyai.fyi"><img src="/assets/img/Written-By-Human-Not-By-AI-Badge-white.svg" alt="Written by Human, Not by AI"></a>
+<a href="https://notbyai.fyi"><img src="/assets/img/Written-By-Human-Not-By-AI-Badge-black.svg" alt="Written by Human, Not by AI"></a>

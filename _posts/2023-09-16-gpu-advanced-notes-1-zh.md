@@ -13,7 +13,8 @@ categories: ai gpu
 水平有限，文中不免有错误或过时之处，请酌情参考。
 
 * [GPU 进阶笔记（一）：高性能 GPU 服务器硬件拓扑与集群组网（2023）]({% link _posts/2023-09-16-gpu-advanced-notes-1-zh.md %})
-* [GPU 进阶笔记（二）：华为 GPU 相关（2023）]({% link _posts/2023-09-16-gpu-advanced-notes-2-zh.md %})
+* [GPU 进阶笔记（二）：华为昇腾 910B GPU 相关（2023）]({% link _posts/2023-09-16-gpu-advanced-notes-2-zh.md %})
+* [GPU 进阶笔记（三）：华为 NPU (GPU) 演进（2024）]({% link _posts/2023-09-16-gpu-advanced-notes-3-zh.md %})
 
 ----
 
@@ -386,3 +387,8 @@ L40S 最大的特点之一是 **<mark>time-to-market 时间短</mark>**，也就
 3. [NVIDIA Hopper Architecture In-Depth](https://developer.nvidia.com/blog/nvidia-hopper-architecture-in-depth/), nvidia.com, 2022
 4. [DGX A100 review: Throughput and Hardware Summary](https://www.microway.com/hpc-tech-tips/dgx-a100-review-throughput-and-hardware-summary/), 2020
 5. [Understanding NVIDIA GPU Performance: Utilization vs. Saturation]({% link _posts/2023-08-27-understanding-gpu-performance.md %}), 2023
+
+----
+
+<a href="https://notbyai.fyi"><img src="/assets/img/Written-By-Human-Not-By-AI-Badge-white.svg" alt="Written by Human, Not by AI"></a>
+<a href="https://notbyai.fyi"><img src="/assets/img/Written-By-Human-Not-By-AI-Badge-black.svg" alt="Written by Human, Not by AI"></a>

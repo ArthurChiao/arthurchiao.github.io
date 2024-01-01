@@ -1,6 +1,6 @@
 ---
 layout    : post
-title     : "GPU 进阶笔记（二）：华为 GPU 相关（2023）"
+title     : "GPU 进阶笔记（二）：华为昇腾 910B GPU 相关（2023）"
 date      : 2023-10-25
 lastupdate: 2023-12-03
 categories: ai gpu
@@ -11,7 +11,8 @@ categories: ai gpu
 水平有限，文中不免有错误或过时之处，请酌情参考。
 
 * [GPU 进阶笔记（一）：高性能 GPU 服务器硬件拓扑与集群组网（2023）]({% link _posts/2023-09-16-gpu-advanced-notes-1-zh.md %})
-* [GPU 进阶笔记（二）：华为 GPU 相关（2023）]({% link _posts/2023-09-16-gpu-advanced-notes-2-zh.md %})
+* [GPU 进阶笔记（二）：华为昇腾 910B GPU 相关（2023）]({% link _posts/2023-09-16-gpu-advanced-notes-2-zh.md %})
+* [GPU 进阶笔记（三）：华为 NPU (GPU) 演进（2024）]({% link _posts/2023-09-16-gpu-advanced-notes-3-zh.md %})
 
 ----
 
@@ -285,3 +286,8 @@ $ npu-smi info
 
 1. [GPU Performance (Data Sheets) Quick Reference (2023)]({% link _posts/2023-10-25-gpu-data-sheets.md %})
 2. [Ascend: a Scalable and Unified Architecture for Ubiquitous Deep Neural Network Computing](https://ieeexplore.ieee.org/abstract/document/9407221), HPCA, 2021
+
+----
+
+<a href="https://notbyai.fyi"><img src="/assets/img/Written-By-Human-Not-By-AI-Badge-white.svg" alt="Written by Human, Not by AI"></a>
+<a href="https://notbyai.fyi"><img src="/assets/img/Written-By-Human-Not-By-AI-Badge-black.svg" alt="Written by Human, Not by AI"></a>
