@@ -2,7 +2,7 @@
 layout    : post
 title     : "k8s 基于 cgroup 的资源限额（capacity enforcement）：模型设计与代码实现（2023）"
 date      : 2023-01-25
-lastupdate: 2023-12-27
+lastupdate: 2024-01-02
 categories: k8s cgroup
 ---
 
@@ -413,18 +413,47 @@ Container 级别配置文件在 pod 的下一级：
 
 ## 4.1 CPU
 
-### 4.1.1 对应关系：`request -> cpu.shares; limit -> cpu.cfs_quota_us`
-
 Spec 里的 CPU requests/limits 一般都是以 `500m` 这样的格式表示的，其中 `m` 是千分之一个 CPU，
-`kubelet` 会将它们转换成 cgroup 支持的单位，然后写入几个 `cpu.` 开头的配置文件。其中，
+`kubelet` 会将它们转换成 cgroup 支持的单位，然后写入几个 `cpu.` 开头的配置文件。
 
-* requests 经过转换之后会写入 **<mark><code>cpu.shares</code></mark>**，
-  表示这个 cgroup **<mark>最少可以使用的 CPU 份额</mark>**（这个配置只有相对意义，不是绝对 CPU 时间，下面会解释）；
-* limits 经过转换之后会写入 **<mark><code>cpu.cfs_quota_us</code></mark>**，
-  表示这个 cgroup **<mark>最多可以使用的 CPU 时间</mark>**，这个是绝对 CPU 时间；
-* 更多信息：[<mark>Linux CFS 调度器：原理、设计与内核实现（2023）</mark>]({% link _posts/2023-02-05-linux-cfs-design-and-implementation-zh.md %})。
+### 4.1.1 `request -> /sys/fs/cgroup/cpu/kubepods/<pod-path>/cpu.shares`
 
-### 4.1.2 实地查看一台 k8s node
+根据是 request 与 limit 的关系，`<pod-path>` 可能是：
+
+* `burstable/<podid>`
+* `besteffort/<podid>`
+* `<podid>`
+
+requests 经过转换之后会写入 **<mark><code>cpu.shares</code></mark>**，
+表示这个 cgroup **<mark>最少可以使用的 CPU 份额</mark>**（这个配置只有相对意义，不是绝对 CPU 时间，下面会解释）。
+
+### 4.1.2 `limit -> /sys/fs/cgroup/cpu/kubepods/<pod-path>/cpu.cfs_quota_us`
+
+根据是 request 与 limit 的关系，`<pod-path>` 可能是：
+
+* `burstable/<podid>`
+* `besteffort/<podid>`
+* `<podid>`
+
+limits 经过转换之后会写入 **<mark><code>cpu.cfs_quota_us</code></mark>**，
+表示这个 cgroup **<mark>最多可以使用的 CPU 时间</mark>**，这个是绝对 CPU 时间。
+
+更多信息：[<mark>Linux CFS 调度器：原理、设计与内核实现（2023）</mark>]({% link _posts/2023-02-05-linux-cfs-design-and-implementation-zh.md %})。
+
+### 4.1.3 `/sys/fs/cgroup/cpuset/kubepods/<pod-path>/cpuset.cpus`
+
+根据是 request 与 limit 的关系，`<pod-path>` 可能是：
+
+* `burstable/<podid>`
+* `besteffort/<podid>`
+* `<podid>`
+
+如果 **<mark><code>request=limit=integer</code></mark>** 并且 kubelet 的 cpu management policy
+是 **<mark><code>static</code></mark>**（默认），那这种 pod 就是不超分的，会**<mark>独占 CPU</mark>**，
+`cpuset.cpus` 里面填的就是独占的 CPU ID 列表；除此之外的都是共享 CPU pod，它们的
+`cpuset.cpus` 里面填的就是 node 除了独占 CPU ID 以外还剩下的那些 CPU ID，后面会看个例子。
+
+### 4.1.4 实地查看一台 k8s node cgroup 里的 cpu 资源划分
 
 查看一台 k8s node 上的 cpu shares 分配：
 
@@ -493,6 +522,56 @@ $ k get pod xxx -o yaml
 第二类 `/burstable` 是超分的 pod，不固定 CPU。
 
 第三类 `/besteffort` 也不固定 CPU。
+
+### 4.1.5 独占 CPU 类型 pod 调度到一个 node 时，kubelet 对其他 pod 的 `cpuset.cpus` 的调整过程
+
+下面是一段真实 kubelet 日志，但做了一些删减和文字替换，以方便说明问题：
+
+```shell
+# moment 1
+21:25:05 cpu_manager.go         [cpumanager] reconcileState: updating container (pod: pod-1, container id: de500b1, cpuset: "0,7-32,39-63")
+...
+# moment 2
+21:25:07 config.go              Receiving a new pod "pod-2(760d39e6)"
+21:25:07 kubelet.go             SyncLoop (ADD, "api"): pod-2
+21:25:07 policy_static.go       [cpumanager] static policy: Allocate (pod: pod-2, container: app)
+21:25:07 kubelet.go             SyncLoop (RECONCILE, "api"): pod-2
+21:25:07 kuberuntime_manager.go Creating PodSandbox for pod pod-2
+21:25:08 kuberuntime_manager.go getSandboxIDByPodUID got sandbox IDs ["6f6da81a"] for pod pod-2
+21:25:08 kubelet.go             SyncLoop (UPDATE, "api"): pod-2
+21:25:08 manager.go             Added container: "/kubepods/pod760d39e6/6f6da81a" (aliases: [k8s_POD_pod-2_760d39e6_0 6f6da81a], namespace: "docker")
+21:25:09 kuberuntime_manager.go Created PodSandbox "6f6da81a" for pod pod-2
+21:25:09 kuberuntime_manager.go getSandboxIDByPodUID got sandbox IDs ["6f6da81a"] for pod pod-2
+21:25:09 kubelet.go             SyncLoop (PLEG): pod-2, event: &pleg.PodLifecycleEvent{ID:"760d39e6", Type:"ContainerStarted"}
+21:25:15 event.go               kind="Pod" reason="Created" message="Created container app"
+21:25:16 kuberuntime_manager.go getSandboxIDByPodUID got sandbox IDs ["6f6da81a"] for pod pod-2
+21:25:16 event.go               kind="Pod" reason="Started" message="Started container app"
+21:25:16 manager.go             Added container: "/kubepods/pod760d39e6/348ca2a" (aliases: [pod-2_760d39e6_0 348ca2a], namespace: "docker")
+21:25:17 kubelet.go             SyncLoop (PLEG): pod-2, event: &pleg.PodLifecycleEvent{ID:"760d39e6", Type:"ContainerStarted",}
+21:25:17 status_manager.go      Patch status for pod pod-2 with ...
+21:25:17 status_manager.go      Status for pod pod-2 updated successfully: ...
+21:25:17 kubelet.go             SyncLoop (RECONCILE, "api"): pod-2
+21:25:17 kubelet.go             SyncLoop (UPDATE, "api"): pod-2
+...
+# moment 3
+21:25:18 cpu_manager.go         [cpumanager] reconcileState: updating container (pod: pod-1, container id: de500b1, cpuset: "0,7,16-32,39,48-63")
+...
+# moment 4
+21:25:18 cpu_manager.go         [cpumanager] reconcileState: updating container (pod: pod-2, container id: 348ca2a, cpuset: "8-15,40-47")
+```
+
+四个时刻：
+
+* moment 1：node 上所有不超分的 pod，可以使用 **<mark><code>0,7-32,39-63</code></mark>** 这些 CPU，这里只列出了 pod-1 的日志；
+* moment 2：一个 **<mark><code>request=limit=16 CPU</code></mark>** 的 pod `pod-2` 调度到这台 node，然后 kubelet 开始创建这个 pod；
+* moment 3：kubelet 经过计算之后，决定将
+  **<mark><code>8-15,40-47</code></mark>** 这 16 个 CPU 分给 pod-2，因此，它需
+  要将这些 CPU **<mark>从所有不超分的 pod 的 cpuset.cpus 中排除掉</mark>**；
+  可以看到，调整完之后，pod-1 的 `cpuset.cpus` 变成了 **<mark><code>0,7,16-32,39,48-63</code></mark>**，跟 moment 1 相比，能用的 CPU ID 就少了 16 个；
+* moment 4：刷完所有超分的 pod 的 `cpuset.cpus` 之后，就可以将这 16 个 CPU 写入 pod-2 的 `cpuset.cpus` 里了，最终实现了 pod-2 独占这 16 个 CPU 的效果。
+
+需要说明的是，第三步会将所有超分 pod 的可用 CPU 缩到一个更小的范围，可能会导致这些 pod 互相竞争 CPU，
+导致**<mark>短时或偶发性能问题</mark>**。这个有机会再分析，load 相关可参考 [6]。
 
 ## 4.2 Memory
 
@@ -858,3 +937,4 @@ $ cat /sys/fs/cgroup/memory/kubepods/burstable/pod<pod_id>/memory.limit_in_bytes
 3. [Node Allocatable Resources](https://github.com/kubernetes/design-proposals-archive/blob/main/node/node-allocatable.md), k8s proposal, 2018
 4. [Control Group v2 (cgroupv2 权威指南)（KernelDoc, 2021）]({% link _posts/2021-09-10-cgroupv2-zh.md %})
 5. [源码解析：K8s 创建 pod 时，背后发生了什么（一）（2021）]({% link _posts/2021-06-01-what-happens-when-k8s-creates-pods-1-zh.md %})
+6. [Linux CFS 调度器：原理、设计与内核实现（2023）]({% link _posts/2023-02-05-linux-cfs-design-and-implementation-zh.md %})
