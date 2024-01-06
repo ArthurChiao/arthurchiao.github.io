@@ -2,7 +2,7 @@
 layout    : post
 title     : "GPU 进阶笔记（二）：华为昇腾 910B GPU 相关（2023）"
 date      : 2023-10-25
-lastupdate: 2023-12-03
+lastupdate: 2024-01-06
 categories: ai gpu
 ---
 
@@ -275,17 +275,112 @@ $ npu-smi info
 * GPU 型号 910B1
 * 64GB HBM 显存
 
-### GPU 卡间互连：HCCS
+```shell
+$ npu-smi info -h
+Usage: npu-smi info <watch|proc|-h|-m|-l|-t type> [Options...]
+
+Commands:
+       watch          Show all device's status in scrolling format
+       proc           Show device's matrix process status in scrolling format
+       -h, --help     Show this help text and exit
+       -m             Show all device's mapping information
+       -l             Show all device's topology information
+       -t type        Show information for type
+                      type: board, flash, memory, usages, sensors, temp, power, volt, mac-addr,
+                            common, health, product, ecc, ip, sys-time, i2c_check, work-mode,
+                            ecc-enable, p2p-enable, ssh-enable, license, customized-info,
+                            device-share, nve-level, aicpu-config, pcie-err, mcu-monitor,
+                            err-count, boot-area, vnpu-mode, info-vnpu, vnpu-svm, cpu-num-cfg,
+                            first-power-on-date, proc-mem, phyid-remap, vnpu-cfg-recover, key-manage,
+                            template-info, pkcs-enable, p2p-mem-cfg, pwm-mode, pwm-duty-ratio,
+                            boot-select, topo.
+
+Options:
+       -i %d          Card ID
+       -c %d          Chip ID
+       -p %d          Chip Physical ID
+```
+
+### 3.3.1 GPU 卡间互连：HCCS
 
 角色类似于 NVIDIA NVLink。
 
+```shell
+$ npu-smi info -t topo
+NPU0       NPU1       NPU2       NPU3       NPU4       NPU5       NPU6       NPU7       CPU Affinity
+NPU0       X          HCCS       HCCS       HCCS       HCCS       HCCS       HCCS       HCCS       144-167
+NPU1       HCCS       X          HCCS       HCCS       HCCS       HCCS       HCCS       HCCS       0-23
+NPU2       HCCS       HCCS       X          HCCS       HCCS       HCCS       HCCS       HCCS       144-167
+NPU3       HCCS       HCCS       HCCS       X          HCCS       HCCS       HCCS       HCCS       0-23
+NPU4       HCCS       HCCS       HCCS       HCCS       X          HCCS       HCCS       HCCS       96-119
+NPU5       HCCS       HCCS       HCCS       HCCS       HCCS       X          HCCS       HCCS       48-71
+NPU6       HCCS       HCCS       HCCS       HCCS       HCCS       HCCS       X          HCCS       96-119
+NPU7       HCCS       HCCS       HCCS       HCCS       HCCS       HCCS       HCCS       X          48-71
+
+Legend:
+  X    = Self
+  SYS  = Path traversing PCIe and NUMA nodes. Nodes are connected through SMP, such as QPI, UPI.
+  PHB  = Path traversing PCIe and the PCIe host bridge of a CPU.
+  PIX  = Path traversing a single PCIe switch
+  PXB  = Path traversing multipul PCIe switches
+  HCCS = Connection traversing HCCS.
+```
+
 很多资料都说 910B 的卡间互连带宽是 `392GB/s`，看起来跟 A800 的 `400GB/s` 差不多了，
-但其实还是有区别的，主要是互连拓扑不同导致的，见 [1]。
+但其实还是有区别的，主要是互连拓扑不同导致的，详见 [1]。
+
+<p align="center"><img src="/assets/img/gpu-notes/ascend-910b-x8-topo.png" width="50%" height="50%"></p>
+
+### 3.3.2 GPU/Memory 使用率
+
+第一个 chip 的利用率：
+
+```shell
+$ npu-smi info -t usages -i 0
+        NPU ID                         : 0
+        Chip Count                     : 1
+
+        DDR Capacity(MB)               : 0
+        DDR Usage Rate(%)              : 0
+        DDR Hugepages Total(page)      : 0
+        DDR Hugepages Usage Rate(%)    : 0
+        HBM Capacity(MB)               : 65536
+        HBM Usage Rate(%)              : 4
+        Aicore Usage Rate(%)           : 0
+        Aivector Usage Rate(%)         : 0
+        Aicpu Usage Rate(%)            : 0
+        Ctrlcpu Usage Rate(%)          : 0
+        DDR Bandwidth Usage Rate(%)    : 0
+        HBM Bandwidth Usage Rate(%)    : 0
+        Chip ID                        : 0
+```
+
+第二个 chip 的常规利用率信息：
+
+```shell
+$ npu-smi info -t common -i 1
+        NPU ID                         : 1
+        Chip Count                     : 1
+
+        Chip ID                        : 0
+        Memory Usage Rate(%)           : 0
+        HBM Usage Rate(%)              : 4
+        Aicore Usage Rate(%)           : 0
+        Aicore Freq(MHZ)               : 1800
+        Aicore curFreq(MHZ)            : 800
+        Aicore Count                   : 24
+        Temperature(C)                 : 46
+        NPU Real-time Power(W)         : 93.4
+
+        Chip Name                      : mcu
+        Temperature(C)                 : 38
+```
 
 # 参考资料
 
 1. [GPU Performance (Data Sheets) Quick Reference (2023)]({% link _posts/2023-10-25-gpu-data-sheets.md %})
 2. [Ascend: a Scalable and Unified Architecture for Ubiquitous Deep Neural Network Computing](https://ieeexplore.ieee.org/abstract/document/9407221), HPCA, 2021
+3. [Introduction to the npu-smi Command](https://support.huawei.com/enterprise/en/doc/EDOC1100079295/7a356c41/introduction-to-the-npu-smi-command-for-versions-100-1010), huawei.com, 2023
 
 ----
 

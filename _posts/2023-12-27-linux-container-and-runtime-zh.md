@@ -2,8 +2,8 @@
 layout    : post
 title     : "Linux 容器底层工作机制：从 500 行 C 代码到生产级容器运行时（2023）"
 date      : 2023-12-27
-lastupdate: 2023-12-27
-categories: linux container cgroup
+lastupdate: 2024-01-06
+categories: linux container cgroup gpu
 ---
 
 从几百行 C 代码创建一个 Linux 容器的过程，一窥内核底层技术机制及真实 container runtime 的工作原理。
@@ -1206,9 +1206,53 @@ $ tree /var/lib/lxcfs/ -L 2
 <p align="center"><img src="/assets/img/linux-container-and-runtime/nvidia-container-runtime.png" width="80%" height="80%"></p>
 <p align="center">Fig. A Kubernetes node with nvidia container runtime</p>
 
-注册了 `runc` 的 `PreStart` hook，在这一步去修改容器的 **<mark><code>config.json</code></mark>**
-（`runc` 创建容器用到的容器配置文件），例如插入 GPU 相关配置。
+注册了 `runc` 的 `PreStart` hook，在这一步去修改容器的配置，例如挂载 GPU 相关设备。
 更多信息见官方 [Architecture Overview](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/arch-overview.html)。
+
+[OCI  v1.1.0 PreStart Hook](https://github.com/opencontainers/runtime-spec/blob/v1.1.0/config.md#prestart):
+
+> The `prestart` hooks MUST be called as part of the
+> [`create`](https://github.com/opencontainers/runtime-spec/blob/v1.1.0/runtime.md#create)
+> operation after the runtime environment has been created (according to the
+> configuration in **<mark><code>config.json</code></mark>**) but before the **<mark><code>pivot_root</code></mark>** or any equivalent
+> operation has been executed. 在 Linux 系统中，先后顺序：
+> 1. **<mark>创建 container namespaces</mark>**
+> 2. **<mark>执行 prestart hook</mark>**：provide an opportunity to customize the container (e.g. the network namespace could be specified in this hook).
+> The `prestart` hooks MUST be called before the `createRuntime` hooks.
+>
+> The `prestart` hooks' path MUST resolve in the [runtime namespace](https://github.com/opencontainers/runtime-spec/blob/v1.1.0/glossary.md#runtime-namespace).
+> The `prestart` hooks MUST be executed in the [runtime namespace](https://github.com/opencontainers/runtime-spec/blob/v1.1.0/glossary.md#runtime-namespace).
+
+`prestart` hook 即将**<mark>废弃</mark>**，OCI 官方建议用 `createRuntime`, `createContainer`, `startContainer` hooks。
+
+## 6.2 华为 Ascend docker runtime
+
+[github.com/Ascend/ascend-docker-runtime](https://github.com/Ascend/ascend-docker-runtime)。
+
+功能与 NVIDIA container runtime，供容器环境使用昇腾 GPU。
+
+```shell
+$ cat /etc/docker/daemon.json
+{
+    "runtimes":     {
+        "ascend":       {
+            "path": "/usr/local/Ascend/Ascend-Docker-Runtime/ascend-docker-runtime",
+            "runtimeArgs":  []
+        }
+    },
+    "default-shm-size":     "8G",
+    "default-runtime":      "ascend"
+}
+```
+
+<p align="center"><img src="/assets/img/linux-container-and-runtime/huawei-ascend-runtime.png" width="70%" height="70%"></p>
+<p align="center">Fig. Huawei Ascend GPU: Container Engine Plugin. [5]</p>
+
+> **<mark><code>prestart</code></mark>** hook 做的事情 [5]:
+>
+> 1. **<mark>Mount NPU device</mark>** to the namespace of the container based on ASCEND_VISBLE_DEVICES.
+> 1. **<mark>Configure device cgroup</mark>** of the container on the host to ensure that the container can use only the specified NPU to ensure device isolation.
+> 1. **<mark>Mount CANN Runtime Library</mark>** on the host to the container namespace.
 
 # 7 结束语
 
@@ -1233,6 +1277,7 @@ VM 的事情基本是内核一次性做的，更像一个黑盒，因此虚拟�
 2. [(译) Control Group v2 (cgroupv2)（KernelDoc, 2021）]({% link _posts/2021-09-10-cgroupv2-zh.md %})
 3. [The Mysterious Container <code>net.core.somaxconn</code> (2022)]({% link  _posts/2022-08-06-the-mysterious-container-somaxconn.md %})
 4. [What is the difference between procfs and sysfs](https://unix.stackexchange.com/questions/4884/what-is-the-difference-between-procfs-and-sysfs), unix.stackexchange.com
+5. [Huawei Ascend GPU: Container Engine Plugin](https://support.huawei.com/enterprise/en/doc/EDOC1100192462/6ec6647f/container-engine-plugin)
 
 ----
 

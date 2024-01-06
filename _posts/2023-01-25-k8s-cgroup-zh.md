@@ -2,7 +2,7 @@
 layout    : post
 title     : "k8s 基于 cgroup 的资源限额（capacity enforcement）：模型设计与代码实现（2023）"
 date      : 2023-01-25
-lastupdate: 2024-01-02
+lastupdate: 2024-01-06
 categories: k8s cgroup
 ---
 
@@ -88,22 +88,22 @@ spec:
 $ k describe node <node>
 ...
 Capacity:
-  cpu:                          48
-  mem-hard-eviction-threshold:  500Mi
-  mem-soft-eviction-threshold:  1536Mi
-  memory:                       263192560Ki
-  pods:                         256
+  cpu:                          64
+  mem-hard-eviction-threshold:  8Gi
+  mem-soft-eviction-threshold:  24Gi
+  memory:                       329341008Ki
+  pods:                         64
 Allocatable:
-  cpu:                 46
-  memory:              258486256Ki
-  pods:                256
+  cpu:                          62
+  memory:                       316758096Ki
+  pods:                         64
+
 Allocated resources:
   (Total limits may be over 100 percent, i.e., overcommitted.)
-  Resource            Requests     Limits
-  --------            --------     ------
-  cpu                 800m (1%)    7200m (15%)
-  memory              1000Mi (0%)  7324Mi (2%)
-  hugepages-1Gi       0 (0%)       0 (0%)
+  Resource                     Requests                Limits
+  --------                     --------                ------
+  cpu                          49438m (79%)            211200m (340%) # <-- 如果看 limits，这台 node CPU 资源重度超分
+  memory                       259387964949600m (79%)  282008Mi (91%)
 ...
 ```
 
@@ -123,6 +123,24 @@ Allocated resources:
 
 这台 node 目前已经分配出去的资源量，注意其中的
 message 也说了，node **<mark>可能会超分</mark>**，所以加起来可能会超过 Allocatable，但不会超过 Capacity。
+
+以上面那台 node 为例，可以看到 CPU **<mark>limits 已经是可用物理 CPU 数量的 3 倍多了</mark>**，
+这是因为上面很多 pod 重度超分，比如下面这个：
+
+```shell
+$ k describe pod xxx
+```
+
+```yaml
+...
+    resources:
+      requests:
+        cpu: "1"
+        memory: 16Gi
+      limits:
+        cpu: "16"     # <-- CPU 超分 16 倍！
+        memory: 16Gi  # <-- Mem 没超分
+```
 
 Allocatable 不超过 Capacity，这个概念上也是很好理解的；
 但**<mark>具体是哪些资源被划出去</mark>**，导致 `Allocatable < Capacity` 呢？
