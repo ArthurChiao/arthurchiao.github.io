@@ -5,12 +5,21 @@ silent! :%s/	/    /g
 silent! :%s/, err :=/ :=/g
 silent! :%s/, err =/ =/g
 
+" replace following snippet
+" \s\+err = .* -->  \s\+.*
+silent! :%s/\(\s\+\)err = \(.*\)/\1\2/g
 
 " remove following snippet
 " if err != nil {
-"     return err
+"     return .*err
 " }
-silent! :%g/\s\+if err != nil {\n\s\+return err\n\s\+}/d3
+silent! :%g/\s\+if err != nil {\n\s\+return .*err\n\s\+}/d3
+
+" remove following snippet
+" if err != nil {
+"     return .*fmt.Error.*
+" }
+silent! :%g/\s\+if err != nil {\n\s\+return .*fmt.Error.*\n\s\+}/d3
 
 " simplify ctx argument
 silent! :%s/ctx context.Context/ctx /g

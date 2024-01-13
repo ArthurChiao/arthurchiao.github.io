@@ -123,7 +123,7 @@ some differences. To clarify them,
 | FP8 TensorCore     |                  |                  |                  | 3026/3958 TFLOPS |
 | INT8 TensorCore    | 640 TFLOPS       | 239/239 TFLOPS   | 296/296 TFLOPS   | 3026/3958 TFLOPS |
 
-# 5 Notes on US "Chip Export Controls" to China
+# 5 Notes on US "Chip Export Controls" targeting China
 
 ## 5.1 Export Controls `2022.10`
 
@@ -159,8 +159,8 @@ meet one of the following conditions are also **<mark>prohibited</mark>** from b
   AND performance density in **<mark><code>3.2~5.92</code></mark>**;
 
 These restrictions cover most high-performance GPUs, including the old model A800.
-However, it should be noted that there is also room for low-computation-power
-but high-transfer-rate models, such as the rumored "148TFLOPS + 900GB/s
+However, it should be noted that there is also room for low-computing-power
+but high-transfer-rate models, such as the rumored "148TFLOPS + 96GB HBM + 900GB/s
 NVLink" H20 GPU.
 
 ----
