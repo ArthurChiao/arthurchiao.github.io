@@ -9,10 +9,6 @@ layout: default
   {% endif %}
   <h1 class="postTitle">{{ page.title }}</h1>
   <p class="meta">Published at {{ page.date | date: '%Y-%m-%d' }} | Last Update {{ page.lastupdate | date: '%Y-%m-%d' }}</p>
-
-  {% if page.last_modified %}
-  <p class="meta">Last Modified: {{ page.last_modified | date: '%Y-%m-%d' }}</p>
-  {% endif %}
   
   {{ content }}
 

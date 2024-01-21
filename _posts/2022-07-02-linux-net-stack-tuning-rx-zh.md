@@ -2,7 +2,7 @@
 layout    : post
 title     : "Linux 网络栈接收数据（RX）：配置调优（2022）"
 date      : 2022-07-02
-lastupdate: 2024-01-13
+lastupdate: 2024-01-21
 categories: network kernel tuning
 ---
 
@@ -714,6 +714,9 @@ AMD_pstat=disable idle=poll nohz=off iommu=pt
 2. **<mark><code>idle=poll</code></mark>**（等价于 `cpupower idle-set -D 1`）：
   使 CPU **<mark>仅工作在 c0 （最高性能）模式</mark>**。
   本质上就是让 cpu 在 idle 时去执行一个空转函数，避免进入 c1/c2 等性能较低的工作模式；
+
+    **<mark>注意：设置成 c0 可能有副作用</mark>**，没有很特殊的需求，建议设置到 c1 就够了，见后面。
+
 3. **<mark><code>iommu=pt</code></mark>** (pass through)：这个是网络虚拟化 SR-IOV 用的，跟我们这次的 case 没有直接关系，
   但既然要改启动项，就一起加上了，否则下次要用 SR-IOV 的功能还得再改一次启动项。
 
