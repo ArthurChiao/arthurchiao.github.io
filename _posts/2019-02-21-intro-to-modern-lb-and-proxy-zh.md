@@ -63,7 +63,7 @@ Wikipedia 关于负载均衡的 [定义](https://en.wikipedia.org/wiki/Load_bala
 图 1 是网络负载均衡的高层架构图。若干客户端正在访问若干后端服务，它们中间是一个
 负载均衡器；从高层看，负载均衡器完成以下功能：
 
-* **服务发现**：系统中的哪些后端是可用的？它们的地址是多少（例如，负责均衡器如何
+* **服务发现**：系统中的哪些后端是可用的？它们的地址是多少（例如，负载均衡器如何
   和它们通信）？
 * **健康检查**：当前哪些后端是健康的，可以接收请求？
 * **负载均衡**：应该用什么算法将请求平衡地转发到健康的后端服务？
@@ -116,6 +116,9 @@ OSI 模型是一个很差的对负载均衡解决方案复杂度的近似，这�
 LB 不感知其转发字节所属应用的任何细节。这些字节可能是 HTTP、Redis、MongoDB，或者
 任何其他应用层协议。
 
+
+## 1.3 L7（应用层）负载均衡
+
 L4 负载均衡很简单，应用范围也很广。那 **<mark>L4LB 有哪些缺点</mark>**？设想如下 L4 特殊场景：
 
 * 两个 [gRPC/HTTP2](https://en.wikipedia.org/wiki/HTTP/2) 客户端想连接到后端，因此它们通过 L4LB 建立连接
@@ -131,8 +134,6 @@ Multiplexing 表示通过单个 L4 连接发送并发应用的请求，kept-aliv
 TLS 加密的时候），所有现代协议都在演进以支持 multiplexing 和 kept-alive，因此
 **<mark>L4LB 的阻抗不匹配问题</mark>**（impedance mismatch）随时间越来越彰显。
 L7LB 可以解决这个问题。
-
-## 1.3 L7（应用层）负载均衡
 
 
 <p align="center"><img src="/assets/img/intro-to-modern-lb/l7-termination-lb.png" width="70%" height="70%"></p>
@@ -284,7 +285,7 @@ point of failure），而且横向扩展有瓶颈**。
 <p align="center">图 6：客户端内嵌库实现负载均衡</p>
 
 为了解决中间代理拓扑固有的单点和扩展问题，出现了一些更复杂的方案，例如将负载均衡
-器已函数库的形式内嵌到客户端，如图 6 所示。这些库支持的特性差异非常大，最知名的
+器以函数库的形式内嵌到客户端，如图 6 所示。这些库支持的特性差异非常大，最知名的
 库包括 [Finagle](https://twitter.github.io/finagle/)、
 [Eureka/Ribbon/Hystrix](https://netflix.github.io/)、[gRPC](https://grpc.io/)（
 大致基于一个 Google 内部系统 Stubby）。
@@ -525,7 +526,7 @@ Balancer](http://docs.aws.amazon.com/elasticloadbalancing/latest/network/introdu
 容器调度器等技术的崛起，意味着通过静态文件配置静态 IP 的方式早就过时了。系统不
 仅使用网络更加频繁，而且使用的方式越来越动态，需要负载均衡器提供更多的功能。
 
-本节简要现代 L7 负载均衡器发展最快的几个领域。
+本节简要总结现代 L7 负载均衡器发展最快的几个领域。
 
 ## 5.1 协议支持
 
@@ -537,7 +538,7 @@ Envoy 显式支持如下 L7 协议的解析和路由：HTTP/1、HTTP/2、gRPC、
 ## 5.2 动态配置
 
 如前面描述的，分布式系统越来越动态的本质需要同时在两方面做投资：动态和响应式控制。
-[Istio](https://istio.io/) 即使这种系统的一个例子。更多信息请查看我之前的
+[Istio](https://istio.io/) 即是这种系统的一个例子。更多信息请查看我之前的
 [service mesh 数据平面 vs 控制平面的博客](https://medium.com/@mattklein123/service-mesh-data-plane-vs-control-plane-2774e720f7fc)。
 
 ## 5.3 高级负载均衡
