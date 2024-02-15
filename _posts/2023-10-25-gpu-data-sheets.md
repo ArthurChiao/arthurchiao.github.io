@@ -2,7 +2,7 @@
 layout    : post
 title     : "GPU Performance (Data Sheets) Quick Reference (2023)"
 date      : 2023-10-25
-lastupdate: 2024-01-06
+lastupdate: 2024-02-15
 categories: gpu
 ---
 
@@ -28,27 +28,32 @@ The first letter in GPU model names denote their GPU architectures, with:
 1. **<mark><code>H</code></mark>** for Hopper; 2022
 1. **<mark><code>L</code></mark>** for Ada Lovelace;
 
-# 2 Comparison of `L2/T4/A10/A10G/V100`
+# 2 Comparison of `L2/L4/T4/A10/V100`
 
-|                    | L2               | T4               | A10                | A10G       | A30        | V100 PCIe/SMX2 |
-|:-------------------|:-----------------|:-----------------|:-------------------|:-----------|:-----------|:--------|
-| Designed for       | Data center      |Data center       | (Desktop) **<mark>Graphics-intensive</mark>** workloads | Desktop | Desktop | Data center |
-| Year               | 2023             | 2018             | 2020               |            |            | 2017         |
-| Manufacturing      |                  | 12nm             | 12nm               | 12nm       |            |              |
-| Architecture       | Ada Lovelace     | Turing           | Ampere             | Ampere     | Ampere     | Volta        |
-| Max Power          |                  | 70 watts         | 150 watts          |            | 165 watts  | 250/300watts |
-| GPU Mem            | 24GB GDDR6       | 16GB GDDR6       | 24GB GDDR6         | 48GB GDDR6 | 24GB HBM2  | 16/32GB <mark>HBM2</mark> |
-| GPU Mem BW         | 300 GB/s         | 400 GB/s         | 600 GB/s           |            | **<mark><code>933GB/s</code></mark>**  | **<mark><code>900 GB/s</code></mark>** |
-| Interconnect       | PCIe Gen4 64GB/s | PCIe Gen3 32GB/s | PCIe Gen4 66 GB/s  |            | PCIe Gen4 64GB/s, NVLINK 200GB/s | PCIe Gen3 32GB/s, NVLINK **<mark><code>300GB/s</code></mark>** |
-| FP32               | 24.1 TFLOPS      | 8.1 TFLOPS       | 31.2 TFLOPS        |            | 10.3TFLOPS | 14/15.7 TFLOPS |
-| TF32               | 48.3 TFLOPS      |                  |                    |            |            |                |
-| BFLOAT16 TensorCore| 95.6 TFLOPS      |                  | 125 TFLOPS         |            | 165 TFLOPS |  |
-| FP16 TensorCore    |                  |                  | 125 TFLOPS         |            | 165 TFLOPS |  |
-| INT8 TensorCore    | 193/193 TFLOPS   |                  | 250 TFLOPS         |            | 330 TOPS   |  |
-| INT4 TensorCore    |                  |                  |                    |            | 661 TOPS   |  |
+|                    | L2               | L4               | T4               | A10                | A30        | V100 PCIe/SMX2 |
+|:-------------------|:-----------------|:-----------------|:-----------------|:-------------------|:-----------|:--------|
+| Designed for       | Data center      | Data center      |Data center       | (Desktop) **<mark>Graphics-intensive</mark>** workloads | Desktop | Data center |
+| Year               | 2023             | 2023             | 2018             | 2020               |            | 2017         |
+| Manufacturing      |                  |                  | 12nm             | 12nm               |            |              |
+| Architecture       | Ada Lovelace     | Ada Lovelace     | Turing           | Ampere             | Ampere     | Volta        |
+| Max Power          |                  | 72W              | 70 watts         | 150 watts          | 165 watts  | 250/300watts |
+| GPU Mem            | 24GB GDDR6       | 24GB             | 16GB GDDR6       | 24GB GDDR6         | 24GB HBM2  | 16/32GB <mark>HBM2</mark> |
+| GPU Mem BW         | 300 GB/s         | 300 GB/s         | 400 GB/s         | 600 GB/s           | **<mark><code>933GB/s</code></mark>**  | **<mark><code>900 GB/s</code></mark>** |
+| Interconnect       | PCIe Gen4 64GB/s | PCIe Gen4 64GB/s | PCIe Gen3 32GB/s | PCIe Gen4 66 GB/s  | PCIe Gen4 64GB/s, NVLINK 200GB/s | PCIe Gen3 32GB/s, NVLINK **<mark><code>300GB/s</code></mark>** |
+| FP32                `TFLOPS` | 24.1    | 30.3            | 8.1              | 31.2               | 10.3       | 14/15.7      |
+| TF32                `TFLOPS` | 48.3    | `120*`          |                  |                    |            |              |
+| BFLOAT16 TensorCore `TFLOPS` | 95.6    | `242*`          |                  | 125                | 165        |  |
+| FP16 TensorCore     `TFLOPS` |         | `242*`          |                  | 125                | 165        |  |
+| INT8 TensorCore     `TFLOPS` | 193/193 | `485*`          |                  | 250                | 330        |  |
+| INT4 TensorCore     `TFLOPS` |         | NO              |                  |                    | 661        |  |
+
+Notes:
+
+* `*`: **<mark>with sparsity</mark>**; Specifications 1/2 lower without sparsity.
 
 Datasheets:
 
+1. [L4](https://nvdam.widen.net/s/rvq98gbwsw/l4-datasheet-2595652)
 1. [T4](https://www.nvidia.com/en-us/data-center/tesla-t4/)
 1. [A10](https://www.nvidia.com/en-us/data-center/products/a10-gpu/)
 1. [A30](https://www.nvidia.com/en-us/data-center/products/a30-gpu/)
@@ -75,7 +80,7 @@ Datasheets:
 
 Notes:
 
-* `*`: **<mark>with sparsity</mark>**;
+* `*`: **<mark>with sparsity</mark>**; Specifications 1/2 lower without sparsity.
 
 H100 vs. A100 in one word: **<mark> 3x performance, 2x price</mark>**.
 

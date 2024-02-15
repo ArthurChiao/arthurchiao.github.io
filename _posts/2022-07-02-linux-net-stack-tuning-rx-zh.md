@@ -2,7 +2,7 @@
 layout    : post
 title     : "Linux 网络栈接收数据（RX）：配置调优（2022）"
 date      : 2022-07-02
-lastupdate: 2024-01-21
+lastupdate: 2024-02-15
 categories: network kernel tuning
 ---
 
@@ -677,7 +677,7 @@ net.ipv4.udp_rmem_min = 4096
 
 # 10 全局调优：一些影响网络性能的非网络配置
 
-## 10.1 CPU 动态跳频（节能模式）导致收发包不及时
+## 10.1 CPU 节能模式（cstates）导致收发包不及时
 
 业务现象：已经是独占 CPU（cpuset）类型的 pod，访问别人有偶发超时。
 
@@ -691,12 +691,7 @@ net.ipv4.udp_rmem_min = 4096
     <p align="center"><img src="/assets/img/linux-net-stack/amd-nodes-cpuhz.png" width="100%" height="100%"></p>
     <p align="center">Fig. CPU HZ of the AMD nodes</p>
 
-    这里的 HZ 是通过如下命令采集的：
-
-    ```shell
-    $ lscpu | grep "CPU MHz"
-    CPU MHz:                         2987.447
-    ```
+    运行 HZ 在 `cat /proc/cpuinfo` 里面可以拿到，是 per-cpu 的。
 
 根据以上信息，判断这些 AMD 机器的 CPU 处在节能模式，根据负载高低自动调整频率。
 
@@ -711,9 +706,9 @@ AMD_pstat=disable idle=poll nohz=off iommu=pt
 1. **<mark><code>nohz=off</code></mark>**：`"nohz=off" == "enable hz"`，
   也就是保留**<mark>系统每秒 HZ 次</mark>**（默认 1000）的 **<mark>tick 定时时钟中断，定期唤醒 CPU</mark>**，
   防止 CPU 在 IDLE 时进入较深的睡眠状态；
-2. **<mark><code>idle=poll</code></mark>**（等价于 `cpupower idle-set -D 1`）：
-  使 CPU **<mark>仅工作在 c0 （最高性能）模式</mark>**。
-  本质上就是让 cpu 在 idle 时去执行一个空转函数，避免进入 c1/c2 等性能较低的工作模式；
+2. **<mark><code>idle=poll</code></mark>**：
+  使 CPU **<mark>永远工作在 c0 模式（最高性能）</mark>**。
+  本质上就是让 cpu 在 idle 时去执行一个轻量级空转函数，避免进入 c1/c2 等性能较低的工作模式；
 
     **<mark>注意：设置成 c0 可能有副作用</mark>**，没有很特殊的需求，建议设置到 c1 就够了，见后面。
 
@@ -742,7 +737,9 @@ $ reboot now
     BOOT_IMAGE=/vmlinuz-5.10.56-xxx ... biosdevname=0 clocksource=tsc tsc=reliable AMD_pstat=disable idle=poll nohz=off iommu=pt
     ```
 
-2. 看监控，频率固定在 3.7GHz 了；而且即使负载比原来更高，也不会有 time_squeeze 了，
+2. 看监控，频率固定在 3.7GHz 了（这个频率是通过较老版本的 `lscpu` 输出收集的，
+  表示的应该是所有 CPU 中运行频率最高的那个；实际上 per-CPU 展示更合理，详见
+  本站后面的 Linux 服务器系列文章 [4]）；而且即使负载比原来更高，也不会有 time_squeeze 了，
 
     <p align="center"><img src="/assets/img/linux-net-stack/cpuhz-vs-time_squeeze.png" width="85%" height="85%"></p>
     <p align="center">Fig. Changing CPU mode from to performance</p>
@@ -790,5 +787,6 @@ $ reboot now
 # 参考资料
 
 1. [Linux 中断（IRQ/softirq）基础：原理及内核实现]({% link _posts/2022-07-02-linux-irq-softirq-zh.md %})
-1. [Linux 网络栈接收数据（RX）：原理及内核实现]({% link _posts/2022-07-02-linux-net-stack-implementation-rx-zh.md %})
-1. [Monitoring Linux Network Stack]({% link _posts/2022-07-02-monitoring-network-stack.md %})
+2. [Linux 网络栈接收数据（RX）：原理及内核实现]({% link _posts/2022-07-02-linux-net-stack-implementation-rx-zh.md %})
+3. [Monitoring Linux Network Stack]({% link _posts/2022-07-02-monitoring-network-stack.md %})
+4. [Linux 服务器功耗与性能管理（四）：监控、配置、调优（2024）]({% link _posts/2024-02-15-linux-cpu-4-zh.md %})

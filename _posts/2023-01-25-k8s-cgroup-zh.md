@@ -2,7 +2,7 @@
 layout    : post
 title     : "k8s 基于 cgroup 的资源限额（capacity enforcement）：模型设计与代码实现（2023）"
 date      : 2023-01-25
-lastupdate: 2024-01-06
+lastupdate: 2024-02-15
 categories: k8s cgroup
 ---
 
@@ -594,7 +594,45 @@ $ k get pod xxx -o yaml
 ## 4.2 Memory
 
 内存的单位在 requests/limits 和在 cgroup 配置文件中都是一样的，所以直接写入 cgroup 内存配置文件。
-`limits` 写入的是 **<mark><code>memory.limit_in_bytes</code></mark>**。
+对于 cgroup v1，
+
+* **<mark><code>memory.memsw.limit_in_bytes</code></mark>** (memory+swap limit)
+* **<mark><code>memory.kmem.limit_in_bytes</code></mark>** (kernel memory limit)
+* **<mark><code>memory.limit_in_bytes</code></mark>** (limit of memory)
+
+字段具体解释：
+
+* [Documentation/cgroup-v1/memory.txt](https://www.kernel.org/doc/Documentation/cgroup-v1/memory.txt)
+
+### 手动调整内存大小
+
+```shell
+(pod) $ free -h
+              total        used        free      shared  buff/cache   available
+Mem:           1.0G         39M        809M         52M        175M        809M
+Swap:            0B          0B          0B
+
+/sys/fs/cgroup/memory/kubepods/burstable/pod<podid> # cat memory.limit_in_bytes
+1073741824
+/sys/fs/cgroup/memory/kubepods/burstable/pod<podid> # cat memory.memsw.limit_in_bytes
+1073741824
+/sys/fs/cgroup/memory/kubepods/burstable/pod<podid> # cat memory.kmem.limit_in_bytes
+9223372036854771712
+```
+
+```shell
+/sys/fs/cgroup/memory/kubepods/burstable/pod<podid> # echo 2147483648 > memory.memsw.limit_in_bytes
+/sys/fs/cgroup/memory/kubepods/burstable/pod<podid> # echo 2147483648 > memory.limit_in_bytes
+/sys/fs/cgroup/memory/kubepods/burstable/pod<podid>/<ctn> # echo 2147483648 > memory.memsw.limit_in_bytes
+/sys/fs/cgroup/memory/kubepods/burstable/pod<podid>/<ctn> # echo 2147483648 > memory.limit_in_bytes
+
+(pod) $ free -h
+              total        used        free      shared  buff/cache   available
+Mem:           2.0G         39M        1.8G         51M        175M        1.8G
+Swap:            0B          0B          0B
+```
+
+注意，这里用到 lxcfs，所以 free 看到的大小是对的。如果没有用 lxcfs，这个大小是不变的。
 
 ## 4.3 其他
 
