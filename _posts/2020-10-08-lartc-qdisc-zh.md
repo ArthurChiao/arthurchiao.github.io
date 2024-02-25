@@ -2,7 +2,7 @@
 layout    : post
 title     : "[译] 《Linux 高级路由与流量控制手册（2012）》第九章：用 tc qdisc 管理 Linux 网络带宽"
 date      : 2020-10-08
-lastupdate: 2022-10-27
+lastupdate: 2024-02-25
 categories: tc qdisc
 ---
 
@@ -34,7 +34,7 @@ tc/qdisc 是 Cilium/eBPF 依赖的最重要的网络基础设施之一。
 初识 Linux 的这些功能时，我感到无比震惊。Linux 的**<mark>带宽管理能力</mark>**
 足以媲美许多高端、专用的带宽管理系统。
 
-# 9.1 队列（Queues）和排队规则（Queueing Disciplines）
+# 1 队列（Queues）和排队规则（Queueing Disciplines）
 
 通过对数据包进行**排队**（queuing），我们可以决定数据的**发送**方式。这里非常
 重要的一点是：我们**<mark>只能对发送数据（transmit）进行整形</mark>**（shape the data）。
@@ -59,7 +59,7 @@ tc/qdisc 是 Cilium/eBPF 依赖的最重要的网络基础设施之一。
 这里的“发送队列”也就是**整条链路上最慢的一段**（slowest link in the chain）。
 幸运的是，大多数情况下这个条件都是能满足的。
 
-# 9.2 Simple, classless qdisc（简单、不分类排队规则）
+# 2 Simple, classless qdisc（简单、不分类排队规则）
 
 如前所述，**排队规则（queueing disciplines）改变了数据的发送方式**。
 
@@ -82,7 +82,7 @@ classful qdisc。
 
 <a name="pfifo_fast"></a>
 
-### 9.2.1 pfifo_fast（先入先出队列）
+## 2.1 pfifo_fast（先入先出队列）
 
 如名字所示，这是一个先入先出队列（First In, First Out），因此对所有包都一视同仁。
 
@@ -99,7 +99,7 @@ classful qdisc。
 虽然二者行为类似，但 **`pfifo_fast` 是无类别的，这意味无法用 `tc` 命令向
 `pfifo_fast` 内添加另一个 qdisc**。
 
-#### 9.2.1.1 参数与用法
+### 2.1.1 参数与用法
 
 `pfifo_fast qdisc` 默认配置是写死的（the hardwired default），因此无法更改。
 
@@ -197,7 +197,7 @@ classful qdisc。
 
     `tc` 命令无法修改这个值。
 
-#### 9.2.1.2 举例（译注）
+### 2.1.2 举例（译注）
 
 下面是一台两个网卡的机器，`bond0 -> eth0/eth1` active-standby 模式：
 
@@ -286,7 +286,7 @@ $ tc filter show dev eth0
  pfifo_fast           ...                 pfifo_fast                       # qdisc (pfifo_fast)
 ```
 
-### 9.2.2 TBF（Token Bucket Filter，令牌桶过滤器）
+## 2.2 TBF（Token Bucket Filter，令牌桶过滤器）
 
 TBF 是一个简单 qdisc，对于**没有超过预设速率的流量直接透传**，但也能容忍**超过预
 设速率的短时抖动**（short bursts in excess of this rate）。
@@ -320,7 +320,7 @@ overload 会导致数据不断被 delay，然后被丢弃。
 
 > 注意：在实际的实现中，**token 是基于字节数，而不是包数**。
 
-#### 9.2.2.1 参数与用法
+### 2.2.1 参数与用法
 
 虽然通常情况下并不需要修改 TBF 配置参数，但我们还是可以看一下有哪些。
 
@@ -377,7 +377,7 @@ overload 会导致数据不断被 delay，然后被丢弃。
     计算最大可能的 peakrate 时，用 MTU 乘以 100（更准确地说，乘以 HZ 数，例如
     Intel 上是 100，Alpha 上是 1024）。
 
-#### 9.2.2.2 示例配置
+### 2.2.2 示例配置
 
 一个简单但**非常**有用的配置：
 
@@ -399,7 +399,7 @@ cable modem，而且用一个快速设备（例如以太网接口）连接到这
 这里的 `220kbit` 是**上行链路的真实带宽乘以一个系数**，如果你的 modem 足
 够快，可以将 `burst` 调大一些。
 
-### 9.2.3 SFQ（Stochastic Fairness Queueing，随机公平排队）
+## 2.3 SFQ（Stochastic Fairness Queueing，随机公平排队）
 
 随机公平排队（SFQ）是公平排队算法族的一个简单实现。相比其他算法，**SFQ 精准性要差
 一些，但它所需的计算量也更少**，而结果几乎是完全公平的（almost perfectly fair）。
@@ -427,7 +427,7 @@ qdisc 相结合来实现一般情况下的公平排队**。
 说的更明确一点：**没用配套的整流配置的话，单纯在（连接 modem 的）以太网接口上配
 置SFQ 是毫无意义的**。
 
-#### 9.2.3.1 参数与用法
+### 2.3.1 参数与用法
 
 SFQ 大部分情况下默认参数就够了，
 
@@ -445,7 +445,7 @@ SFQ 大部分情况下默认参数就够了，
 
     SFQ 能缓存的最大包数（超过这个阈值将导致丢包）。
 
-#### 9.2.3.2 示例配置
+### 2.3.2 示例配置
 
 如果你有一个带宽已经饱和的网络设备，例如一个电话调制解调器（phone modem），那下
 面的配置有助于提高公平性：
@@ -466,11 +466,11 @@ qdisc sfq 800c: dev ppp0 quantum 1514b limit 128p flows 128/1024 perturb 10sec
   数据待发送。
 * `perturb 10sec`：每隔 10s 换一次哈希算法。
 
-## 9.2.4 FQ（Fair Queue，公平排队，2013），译注
+## 2.4 FQ（Fair Queue，公平排队，2013），译注
 
 详细介绍见 [TODO](https://github.com/torvalds/linux/commit/afe4fd062416b)。
 
-# 9.3 使用建议：何时选择哪种队列？
+# 3 使用建议：何时选择哪种队列？
 
 总结起来，上面几种都是简单的 qdisc，通过重排序（reordering）、降速（slowing）或
 丢包（dropping）来实现流量管理。
@@ -494,7 +494,7 @@ qdisc sfq 800c: dev ppp0 quantum 1514b limit 128p flows 128/1024 perturb 10sec
   用技术解决的。用户会对技术限制充满敌意。和气地对别人说几句好话，也许你需要的
   带宽就解决了。
 
-# 9.4 术语
+# 4 术语
 
 为方便理解接下来更复杂的配置，我们需要先引入一些概念。由于这项技术本身比较复杂，
 发展也还处在较为早期的阶段，因此大家可能会用不同的术语描述同一样东西。
@@ -622,7 +622,7 @@ Egress Classifier 中会用到很多 qdisc。**默认情况下只有一个：`pf
 
 以上画的是单网卡的情况。**在多网卡的情况下，每个网卡都有自己的 ingress 和 egress hooks**。
 
-# 9.5 Classful qdisc（分类别排队规则）
+# 5 Classful qdisc（分类别排队规则）
 
 如果想**对不同类型的流量做不同处理**，那 classful qdisc 非常有用。其中一种是 CBQ（
 Class Based Queueing，基于类别的排队），由于这种类型的 qdisc 使用太广泛了，导致
@@ -638,7 +638,7 @@ CBQ），但实际并非如此。
 
 接下来介绍更多关于 CBQ 及其类似 qdisc 的信息。
 
-### 9.5.1 Classful qdisc & class 中的 flow
+## 5.1 Classful qdisc & class 中的 flow
 
 当流量进入一个 classful qdisc 时，该 qdisc 需要将其发送到内部的某个 class —— 即
 需要**对这个包进行“分类”**。而要这个判断过程，实际上是**查询所谓的“过滤器”**（
@@ -657,7 +657,7 @@ CBQ），但实际并非如此。
 器：**网卡的发送速度要远大于真实的链路速度。瓶颈不在主机中，就无法用“队列”（queue
 ）来调度这些流量**。
 
-### 9.5.2 qdisc 大家庭：roots, handles, siblings and parents
+## 5.2 qdisc 大家庭：roots, handles, siblings and parents
 
 * <mark>每个接口都有一个 egress "root qdisc"</mark>。默认情况下，这个 root qdisc 就是前面提到的 classless `pfifo_fast` qdisc。
 
@@ -707,7 +707,7 @@ CBQ），但实际并非如此。
 > 译者注。
 
 
-#### 9.5.2.1 如何用过滤器（filters ）对流量进行分类
+### 5.2.1 如何用过滤器（filters ）对流量进行分类
 
 综上，一个典型的 handle 层级如下：
 
@@ -748,7 +748,7 @@ node）上都 attach 了一个 filter，每个 filter 都会给出一个判断�
 
 在这种情况下，attach 到 root qdisc 的 filter 决定直接将包发给 `12:2`。
 
-#### 9.5.2.2 包是如何从 qdisc 出队（dequeue）然后交给硬件的
+### 5.2.2 包是如何从 qdisc 出队（dequeue）然后交给硬件的
 
 当内核决定从 qdisc dequeue packet 交给接口（interface）发送时，它会
 
@@ -772,7 +772,7 @@ node）上都 attach 了一个 filter，每个 filter 都会给出一个判断�
 > “nested classes rate（最低保障带宽）不受制于父类 class rate 和 ceil 的限制，但可借用带宽会受限”。
 > 感谢来信！
 
-### 9.5.3 `PRIO` qdisc（优先级排队规则）
+## 5.3 `PRIO` qdisc（优先级排队规则）
 
 `PRIO` qdisc 实际上**不会整形行**，只会根据设置的过滤器**对流量分类**。
 
@@ -803,7 +803,7 @@ node）上都 attach 了一个 filter，每个 filter 都会给出一个判断�
 
 用正式的术语来说，**`PRIO` qdisc 是一个 work-conserving 调度器**（随到随发）。
 
-#### 9.5.3.1 参数与用法
+### 5.3.1 参数与用法
 
 下面几个参数能被 `tc` 识别：
 
@@ -824,7 +824,7 @@ PRIO qdisc 里面的 band 都是 class，默认情况下名字分别为 `major:1
 **重复一遍：band 0 对应的 minor number 是 1！** band 1 对应的 minor number 是 2
 ，以此类推。
 
-#### 9.5.3.2 示例配置
+### 5.3.2 示例配置
 
 我们将创建一棵如下所示的树：
 
@@ -915,7 +915,7 @@ qdisc sfq 30: quantum 1514b
 正如预期 —— 所有额外流量都进入了 `10:`，这是我们优先级最高的 qdisc。handle `30:`
 的流量这次没有增长，而刚才它吸收了所有的 `scp` 流量。
 
-### 9.5.4 著名的 CBQ（Class Based Queueing）qdisc
+## 5.4 著名的 CBQ（Class Based Queueing）qdisc
 
 前面提到，**CBQ（Class Based Queueing，基于类的排队） 是最复杂、最花哨、最少被理
 解、也可能是最难用对的 qdisc**。这并非因为它的发明者都是魔鬼或者能力不够，而是
@@ -943,7 +943,7 @@ PPP over Ethernet 或 PPTP over TCP/IP，情况会更加糟糕。在这些场景
 但在某些场景下，CBQ 能很好地满足需求。基于本文的介绍，你应该能恰当地配置 CBQ，使
 其在大部分情况下都工作良好。
 
-#### 9.5.4.1 CBQ shaping 详解
+### 5.4.1 CBQ shaping 详解
 
 如前所述，CBQ 的工作原理是：在发送包之前等待足够长的时间，以将带宽控制到期望
 的阈值。为实现这个目标，它需要计算包之间的等待间隔。
@@ -1020,7 +1020,7 @@ exponential weighted moving average，EWMA）来计算，这个算法假设包�
 Overlimit 的 class 会通过降低其有效优先级（effective priority）的方式进行惩罚。
 所有这些都是很智能也很复杂的。
 
-#### 9.5.4.2 CBQ classful behaviour
+### 5.4.2 CBQ classful behaviour
 
 除了整形之外，基于前面提到的 idletime 近似，CBQ 也能完成类似 `PRIO` queue 的功能
 ，因为 class 可以有不同优先级，优先级高的总是限于优先级低的被 poll。
@@ -1055,7 +1055,7 @@ Overlimit 的 class 会通过降低其有效优先级（effective priority）的
 
 注意：CBQ 层级内的所有 class 要共享同一个 major number！
 
-#### 9.5.4.3 决定 link sharing & borrowing 的 CBQ 参数
+### 5.4.3 决定 link sharing & borrowing 的 CBQ 参数
 
 除了限制特定类型的流量，还能指定哪些 class 能从另外哪些 class 借容量（borrow
 capacity）或者说，借带宽（对前一种 class 来说是借入，对后一种 class 来说就是借出）。
@@ -1080,7 +1080,7 @@ capacity）或者说，借带宽（对前一种 class 来说是借入，对后�
 
 <a name="cbq_sample_config"></a>
 
-#### 9.5.4.4 示例配置
+### 5.4.4 示例配置
 
 ```
                1:           root qdisc
@@ -1158,7 +1158,7 @@ add`命令向 class 内添加 qdisc**。
 `5/8` 给 webserver，`3/8` 给邮件服务。也可以说，在这个配置下，**webserver 流量在
 任何时候至少能获得 `5/8 * 6Mbps = 3.75Mbps` 带宽**。
 
-### 9.5.4.5 CBQ 其他参数：split & defmap
+### 5.4.5 CBQ 其他参数：split & defmap
 
 如前所述，classful qdisc 需要调用过滤器（filters）来判断应该将包送到那个 class
 里面。
@@ -1260,7 +1260,7 @@ priority  send to
 
 > FIXME: did not test 'tc class change', only looked at the source.
 
-### 9.5.5 HTB（Hierarchical Token Bucket，层级令牌桶）
+## 5.5 HTB（Hierarchical Token Bucket，层级令牌桶）
 
 Martin Devera (devik) 意识到 CBQ 太复杂了，并且没有针对很多典型的场景进
 行优化。因此他设计了 HTB，这种层级化的方式对下面这些场景很适用：
@@ -1286,7 +1286,7 @@ HTB3（HTB 的不同版本参见其[官方文档](http://luxik.cdi.cz/~devik/qos
 
 如果使用的内核版本已经支持 HTB，那非常建议用用看。
 
-#### 9.5.5.1 示例配置
+### 5.5.1 示例配置
 
 功能几乎与 [前面的 CBQ 示例配置](#cbq_sample_config) 一样的 HTB 配置：
 
@@ -1326,7 +1326,7 @@ bandwidth），并且总带宽中还有很多剩余，它们还可以 `5:3` 的�
 够从剩余的可用带宽中借带宽来用。由于我们用了的 SFQ（随机公平调度），我们还获得了
 公平调度而没有增加额外成本！
 
-### 9.5.6 `fq_codel`（Fair Queuing Controlled Delay，延迟受控的公平排队），译注
+## 5.6 `fq_codel`（Fair Queuing Controlled Delay，延迟受控的公平排队），译注
 
 这种 qdisc 组合了 FQ 和 ColDel AQM，使用一个随机模型（a stochastic model）
 将入向包分为不同 flow，确保使用这个队列的所有 flow 公平分享总带宽。
@@ -1340,11 +1340,11 @@ $ tc qdisc show # 默认网卡 enp0s3
 qdisc fq_codel 0: dev enp0s3 root refcnt 2 limit 10240p flows 1024 quantum 1514 target 5.0ms interval 100.0ms memory_limit 32Mb ecn
 ```
 
-### 9.5.7 MQ （Multi Queue，2009），译注
+## 5.7 MQ （Multi Queue，2009），译注
 
 详细介绍见 [TODO](https://github.com/torvalds/linux/commit/6ec1c69a8f649)。
 
-# 9.6 用过滤器对流量进行分类
+# 6 用过滤器对流量进行分类
 
 每次要判断将包送到哪个 class 进行处理时，都会调用所谓的“classifier chain”（分类
 器链）。这个 chain 由 attach 到 classful qdisc 的所有 filter 构成。
@@ -1379,7 +1379,7 @@ qdisc fq_codel 0: dev enp0s3 root refcnt 2 limit 10240p flows 1024 quantum 1514 
 包只能向下 enqueue！当 dequeue 时，它们会重新上来，到达要发送它的网络接口。
 包并不是一路向下，最后从叶子节点到达网卡的！
 
-### 9.6.1 一些简单的流量过滤（filtering）示例
+## 6.1 一些简单的流量过滤（filtering）示例
 
 正如在 Classifier 章节中介绍的，匹配语法非常复杂，但功能强大，可以对几乎任
 何东西进行匹配。
@@ -1428,7 +1428,7 @@ $ tc filter add dev eth0 parent 10:0 protocol ip prio 1 u32 match ip src 4.3.2.1
   match ip sport 80 0xffff flowid 10:1
 ```
 
-### 9.6.2 常用 filtering 命令
+## 6.2 常用 filtering 命令
 
 大部分整形的命令都会以这样的命令开头：
 
@@ -1495,7 +1495,7 @@ $ tc filter add dev eth0 parent 1:0 protocol ip prio 1 u32 ..
 
 更多过滤相关的命令（filtering commands），见 Advanced Filters 章节。
 
-# 9.7 IMQ（Intermediate queueing device，中转排队设备）
+# 7 IMQ（Intermediate queueing device，中转排队设备）
 
 **IMQ 并不是一种 qdisc，但其使用是与 qdisc 紧密关联的**。
 
@@ -1517,7 +1517,7 @@ hook 点时会被捕获，送到 IMQ 设备上 attach 的 qdisc。
 你还可以做很多其他事情，例如将 http 流量放到一个 qdisc，将新连接请求放到另一个
 qdisc，等等。
 
-### 9.7.1 示例配置
+## 7.1 示例配置
 
 首先能想到的例子就是用入向整形（ingress shaping）给自己一个受保证的高带宽 ;)
 
@@ -1577,6 +1577,54 @@ enum nf_ip_hook_priorities {
 
 IMQ patch 及其更多信息见 [~~IMQ 网站~~](http://luxik.cdi.cz/~patrick/imq/)（原始
 链接已失效，可移步参考[这篇](https://github.com/imq/linuximq)，译者注）。
+
+# 8 `noqueue`（译注）
+
+容器有自己独立的 network namespace（netns），里面的 sysctl 网络参数都是独立于宿主机的。
+
+```shell
+# 创建 netns，对网络来说，和创建一个容器效果一样
+$ sudo ip netns add ctn-netns-1
+$ sudo ip netns exec ctn-netns-1 sysctl -a
+...
+```
+
+挑一个改改看：
+
+```shell
+# 查看拥塞控制算法：容器的配置继承自宿主机
+$ sysctl -a | grep tcp_con
+net.ipv4.tcp_congestion_control = cubic # 宿主机
+$ sudo ip netns exec ctn-netns-1 sysctl -a | grep tcp_con
+net.ipv4.tcp_congestion_control = cubic # 容器
+
+# 修改容器的拥塞控制算法
+$ sudo ip netns exec ctn-netns-1 sysctl -w net.ipv4.tcp_congestion_control=bbr
+net.ipv4.tcp_congestion_control = bbr   # 改为 BBR
+
+# 再次查看拥塞控制算法：容器和宿主机有独立配置
+$ sysctl -a | grep tcp_con
+net.ipv4.tcp_congestion_control = cubic # 宿主机
+$ sudo ip netns exec ctn-netns-1 sysctl -a | grep tcp_con
+net.ipv4.tcp_congestion_control = bbr   # 容器
+```
+
+但宿主机有的参数，在 netns 内不一定有，其中之一就是 **<mark><code>net.core.default_qdisc</code></mark>**：
+
+```shell
+$ sysctl -a | grep default_qdisc
+net.core.default_qdisc = fq_codel       # 宿主机
+$ sudo ip netns exec ctn-netns-1 sysctl -a | grep tcp_con
+                                        # 容器内：没有这个配置
+```
+
+原因：容器的网卡是虚拟网络设备（SR-IOV 等特殊情况除外），它们会忽略这个配置，永远用 `noqueue`，
+
+> Virtual devices (like e.g. `lo` or `veth`) ignore this setting and instead default to `noqueue`.
+>
+> [Documentation/admin-guide/sysctl/net.rst](https://github.com/torvalds/linux/blob/v5.10/Documentation/admin-guide/sysctl/net.rst#default_qdisc)。
+
+类似的还有 netdev_max_backlog。
 
 # 扩展阅读（译注）
 

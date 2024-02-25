@@ -832,3 +832,8 @@ timer interrupt。
 10. [Improvements in CPU frequency management](https://lwn.net/Articles/682391/), lwn.net, 2016
 11. [CPU idle power saving methods for real-time workloads](https://wiki.linuxfoundation.org/realtime/documentation/howto/applications/cpuidle), wiki.linuxfoundation.org
 12. [Linux CFS 调度器：原理、设计与内核实现（2023）]({% link _posts/2023-02-05-linux-cfs-design-and-implementation-zh.md %})
+
+----
+
+<a href="https://notbyai.fyi"><img src="/assets/img/Written-By-Human-Not-By-AI-Badge-white.svg" alt="Written by Human, Not by AI"></a>
+<a href="https://notbyai.fyi"><img src="/assets/img/Written-By-Human-Not-By-AI-Badge-black.svg" alt="Written by Human, Not by AI"></a>

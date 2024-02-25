@@ -378,3 +378,8 @@ TDP 表示的处理器运行在基频时的平均功耗（average power）。
 # 4 BIOS
 
 服务器启动过程中的硬件初始化，可以配置一些硬件特性。运行在内核启动之前。
+
+----
+
+<a href="https://notbyai.fyi"><img src="/assets/img/Written-By-Human-Not-By-AI-Badge-white.svg" alt="Written by Human, Not by AI"></a>
+<a href="https://notbyai.fyi"><img src="/assets/img/Written-By-Human-Not-By-AI-Badge-black.svg" alt="Written by Human, Not by AI"></a>

@@ -1042,3 +1042,8 @@ $ trace-cmd report
 
 1. [The cpuidle subsystem](https://lwn.net/Articles/384146/), lwn.net, 2013
 2. [Linux tracing/profiling 基础：符号表、调用栈、perf/bpftrace 示例等（2022）]({% link _posts/2022-07-18-linux-tracing-basis-zh.md %})
+
+----
+
+<a href="https://notbyai.fyi"><img src="/assets/img/Written-By-Human-Not-By-AI-Badge-white.svg" alt="Written by Human, Not by AI"></a>
+<a href="https://notbyai.fyi"><img src="/assets/img/Written-By-Human-Not-By-AI-Badge-black.svg" alt="Written by Human, Not by AI"></a>

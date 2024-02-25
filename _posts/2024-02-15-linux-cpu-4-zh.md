@@ -502,3 +502,8 @@ $ turbostat --quiet --hide sysfs,IRQ,SMI,CoreTmp,PkgTmp,GFX%rc6,GFXMHz,PkgWatt,C
 1. [Controlling Processor C-State Usage in Linux](https://wiki.bu.ost.ch/infoportal/_media/embedded_systems/ethercat/controlling_processor_c-state_usage_in_linux_v1.1_nov2013.pdf), A Dell technical white paper describing the use of C-states with Linux operating systems, 2013
 2. [Linux 网络栈接收数据（RX）：配置调优]({% link _posts/2022-07-02-linux-net-stack-tuning-rx-zh.md %})
 3. [C-state tuning guide](https://doc.opensuse.org/documentation/leap/archive/42.2/tuning/html/book.sle.tuning/cha.tuning.power.html) opensuse.org
+
+----
+
+<a href="https://notbyai.fyi"><img src="/assets/img/Written-By-Human-Not-By-AI-Badge-white.svg" alt="Written by Human, Not by AI"></a>
+<a href="https://notbyai.fyi"><img src="/assets/img/Written-By-Human-Not-By-AI-Badge-black.svg" alt="Written by Human, Not by AI"></a>

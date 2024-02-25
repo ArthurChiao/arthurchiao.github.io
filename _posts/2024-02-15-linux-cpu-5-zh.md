@@ -174,3 +174,8 @@ kernel: power_meter ACPI000D:00: Found ACPI power meter.
 
 1. [Controlling Processor C-State Usage in Linux](https://wiki.bu.ost.ch/infoportal/_media/embedded_systems/ethercat/controlling_processor_c-state_usage_in_linux_v1.1_nov2013.pdf), A Dell technical white paper describing the use of C-states with Linux operating systems, 2013
 2. [After PMM2 client installation kernel: ACPI Error: SMBus/IPMI/GenericSerialBus write requires Buffer of length 66](https://forums.percona.com/t/after-pmm2-client-installation-kernel-acpi-error-smbus-ipmi-genericserialbus-write-requires-buffer-of-length-66/20425/2), forums.percona.com, 2023
+
+----
+
+<a href="https://notbyai.fyi"><img src="/assets/img/Written-By-Human-Not-By-AI-Badge-white.svg" alt="Written by Human, Not by AI"></a>
+<a href="https://notbyai.fyi"><img src="/assets/img/Written-By-Human-Not-By-AI-Badge-black.svg" alt="Written by Human, Not by AI"></a>
