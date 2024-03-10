@@ -12,3 +12,6 @@ iabbrev xdc </code></mark>**
 
 " highlight code block
 iabbrev xlink []({% link _posts/ %})
+
+" image source
+iabbrev ximgsrc <p align="center"><img src="/assets/img/" width="90%"/></p><cr><p align="center"><a href="">Image Source</a></p>

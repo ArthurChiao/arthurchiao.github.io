@@ -2,7 +2,7 @@
 layout    : post
 title     : "GPU 进阶笔记（二）：华为昇腾 910B GPU 相关（2023）"
 date      : 2023-10-25
-lastupdate: 2024-01-06
+lastupdate: 2024-03-10
 categories: ai gpu
 ---
 
@@ -34,10 +34,9 @@ categories: ai gpu
 | InfiniBand | HCCN | RDMA 产品/工具 |
 | `nvidia-smi` | `npu-smi` | GPU 命令行工具 |
 | CUDA       | CANN | GPU 编程库 |
+| DCGM       | DCMI | GPU 底层编程库/接口，例如采集监控信息 |
 
-说明：
-
-1. 华为很多地方混用术语 NPU 和 GPU，为简单起见，本文统称为 GPU；
+说明：华为很多地方混用术语 NPU 和 GPU，为简单起见，本文统称为 GPU。
 
 ## 1.2 缩写
 
@@ -45,6 +44,12 @@ categories: ai gpu
 * HCCS: Huawei Cache Coherence System
 * HCCN: Huawei Cache Coherence Network
 * CANN: Huawei compute Architecture for Neural Networks
+* **<mark><code>DCMI</code></mark>**: DaVinci Card Management Interface
+
+    参考下 NVIDIA 一张图，看下 DCGM/DCMI 在软件栈中的位置：
+
+    <p align="center"><img src="/assets/img/gpu-notes/nvswitch-software-stack.png" width="60%" height="60%"></p>
+    <p align="center">NVIDIA nswitch software stack</p>
 
 # 2 产品与机器
 
@@ -376,11 +381,74 @@ $ npu-smi info -t common -i 1
         Temperature(C)                 : 38
 ```
 
+## 3.4 Linux 设备
+
+8 张 910B GPU 及一个管理设备：
+
+```shell
+$ ls /dev/davinci*
+/dev/davinci0  /dev/davinci1  /dev/davinci2  /dev/davinci3  /dev/davinci4  /dev/davinci5  /dev/davinci6  /dev/davinci7  /dev/davinci_manager
+```
+
+davinci 是华为 GPU/NPU 的架构名，更多信息见下一篇
+[GPU 进阶笔记（三）：华为 NPU (GPU) 演进（2024）]({% link _posts/2023-09-16-gpu-advanced-notes-3-zh.md %})。
+还有两个设备比较重要：
+
+```shell
+$ ll /dev/hisi_hdc # HDC-related management device
+crw-rw---- 1 HwHiAiUser HwHiAiUser 237, 0  /dev/hisi_hdc
+
+$ ll /dev/devmm_svm # Memory-related management device
+crw-rw---- 1 HwHiAiUser HwHiAiUser 238, 0  /dev/devmm_svm
+```
+
+# 4 容器相关
+
+docker 配置：
+
+```shell
+$ cat /etc/docker/daemon.json
+{
+  "runtimes":     {
+    "ascend":       {
+      "path": "/usr/local/Ascend/Ascend-Docker-Runtime/ascend-docker-runtime",
+      "runtimeArgs":  []
+    }
+  },
+  "default-shm-size":     "8G",
+  "default-runtime":      "ascend"
+}
+```
+
+然后 docker run 可以直接启动容器，挂载必要的设备、驱动等等：
+
+```shell
+$ sudo docker run -itd --cap-add=SYS_PTRACE --net=host --shm-size="32g" \
+  --device=/dev/davinci0 --device=/dev/davinci1 --device=/dev/davinci2 \
+  --device=/dev/davinci3 --device=/dev/davinci4 --device=/dev/davinci5 \
+  --device=/dev/davinci6 --device=/dev/davinci7 \
+  --device=/dev/davinci_manager \
+  --device=/dev/devmm_svm \
+  --device=/dev/hisi_hdc \
+  -v /usr/local/dcmi:/usr/local/dcmi \
+  -v /usr/local/Ascend/driver:/usr/local/Ascend/driver \
+  -v /usr/local/bin/npu-smi:/usr/local/bin/npu-smi  \
+  --name <name> <image> /bin/bash
+```
+
+```shell
+$ ls /usr/local/dcmi/
+dcmi_interface_api.h  libdcmi.so
+```
+
+用 k8s 部署 pod 目前问题会比较多。
+
 # 参考资料
 
 1. [GPU Performance (Data Sheets) Quick Reference (2023)]({% link _posts/2023-10-25-gpu-data-sheets.md %})
 2. [Ascend: a Scalable and Unified Architecture for Ubiquitous Deep Neural Network Computing](https://ieeexplore.ieee.org/abstract/document/9407221), HPCA, 2021
 3. [Introduction to the npu-smi Command](https://support.huawei.com/enterprise/en/doc/EDOC1100079295/7a356c41/introduction-to-the-npu-smi-command-for-versions-100-1010), huawei.com, 2023
+4. [Host Directories Mounted to a Container](https://support.huawei.com/enterprise/en/doc/EDOC1100288837/25832de7/host-directories-mounted-to-a-container), huawei.com, 2024
 
 ----
 

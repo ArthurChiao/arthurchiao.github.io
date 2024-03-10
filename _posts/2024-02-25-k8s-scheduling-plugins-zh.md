@@ -631,7 +631,7 @@ Scheduling plugins 是 long running 服务。
 
 ### 3.3.1 配置
 
-为我们是 StickyVM scheduler 创建一个配置：
+为我们的 StickyVM scheduler 创建一个配置：
 
 ```shell
 $ cat ksc.yaml

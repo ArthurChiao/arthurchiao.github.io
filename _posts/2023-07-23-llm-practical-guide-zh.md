@@ -2,8 +2,8 @@
 layout    : post
 title     : "[译][论文] 大语言模型（LLM）综述与实用指南（Amazon，2023）"
 date      : 2023-07-23
-lastupdate: 2023-08-12
-categories: ai gpt llama
+lastupdate: 2024-03-10
+categories: ai gpt llama llm
 ---
 
 ### 译者序
@@ -16,7 +16,7 @@ categories: ai gpt llama
 
 ```
 @article{yang2023harnessing,
-	title={Harnessing the Power of LLMs in Practice: A Survey on ChatGPT and Beyond}, 
+	title={Harnessing the Power of LLMs in Practice: A Survey on ChatGPT and Beyond},
 	author={Jingfeng Yang and Hongye Jin and Ruixiang Tang and Xiaotian Han and Qizhang Feng and Haoming Jiang and Bing Yin and Xia Hu},
 	year={2023},
 	eprint={2304.13712},
@@ -62,8 +62,8 @@ categories: ai gpt llama
 # 摘要
 
 本文是一份**<mark>大语言模型（LLMs）实用指南</mark>**，
-目的是帮助从业者和用户更好地完成他们的**<mark>自然语言处理（NLP）</mark>**相关任务 ——
-NLP 是 LLM 的典型使用场景（下游）。本文将从模型、数据和下游任务的角度讨论和分析 LLM 的选型和使用，
+目的是帮助从业者和用户更好地完成他们的下游**<mark>自然语言处理（NLP）</mark>**任务 ——
+NLP 是 LLM 的典型下游使用场景。本文将从模型、数据和下游任务的角度讨论和分析 LLM 的选型和使用，
 
 * 首先简要介绍 **<mark>GPT 风格和 BERT 风格</mark>**的大语言模型；
 * 然后讨论**<mark>预训练</mark>**数据、**<mark>训练</mark>**数据和**<mark>测试</mark>**数据对模型选型的影响；
@@ -167,11 +167,11 @@ number of models from various companies and institutions.</p>
 
 <p align="center">表 1：当前各种大语言模型（LLM）总结</p>
 
-|      |  Encoder-Decoder or Encoder-only (BERT-style) | Decoder-only (GPT-style) | 
-|:-----|:----------------------------------------------|:-------------------------| 
-| 训练       | **<mark>Masked</mark>** Language Models（遮掩式语言模型） | **<mark>Autoregressive</mark>** Language Models（自回归语言模型） |
+|      |  Encoder-Decoder or Encoder-only (**<mark><code>BERT-style</code></mark>**) | Decoder-only (**<mark><code>GPT-style</code></mark>**) |
+|:-----|:----------------------------------------------|:-------------------------|
+| 训练       | **<mark>Masked</mark>** Language Models（遮盖某些单词）| **<mark>Autoregressive</mark>** Language Models（自回归） |
 | 模型类型   | **<mark>判别式</mark>**（Discriminative）               | **<mark>生成式</mark>**（Generative） |
-| 预训练任务 | 预测**<mark>遮掩掉的</mark>**单词（Predict masked words）   | 预测**<mark>下一个</mark>**单词（Predict next word） |
+| 预训练任务 | 预测**<mark>遮掩掉的</mark>**单词（完形填空）   | 预测**<mark>下一个</mark>**单词 |
 | 大语言模型 | ELMo [80], **<mark>BERT</mark>** [28], RoBERTa [65], DistilBERT [90], BioBERT [57], XLM [54], Xlnet [119], ALBERT [55], ELECTRA [24], **<mark>T5</mark>** [84], **<mark>GLM</mark>** [123], XLM-E [20], ST-MoE [133], AlexaTM [95] | **<mark><code>GPT 3/4</code></mark>** [16,76], OPT [126]. PaLM [22], BLOOM [92], MT-NLG [93], GLaM [32],Gopher [83], chinchilla [41], LaMDA [102], GPT-J [107], **<mark><code>LLaMA</code></mark>** [103], BloombergGPT [117] |
 
 ## 2.1 BERT 风格语言模型：encoder-decoder 或 encoder-only
@@ -180,10 +180,16 @@ number of models from various companies and institutions.</p>
 这也促进了自然语言的**<mark>无监督学习</mark>**（unsupervised learning）。
 
 这其中，一种常见的方式是在**<mark>给定上下文的情况下，预测句子中掩掉（masked）的单词</mark>**。
-这种训练范式被称为遮掩语言模型（**<mark>Masked Language Model，MLM</mark>**），
+这种训练范式被称为 **<mark>Masked Language Model (MLM)</mark>**，
 
 * 模型能深入理解单词之间以及单词与上下文的关系，
 * 使用 **<mark>Transformer 架构</mark>**等技术在大量文本语料库上进行训练。
+
+### 2.1.1 BERT paper
+
+[<mark>BERT：预训练深度双向 Transformers 做语言理解</mark>（Google，2019）]({% link _posts/2024-03-10-bert-paper-zh.md %})
+
+### 2.1.2 典型模型
 
 典型模型包括
 
@@ -770,7 +776,7 @@ OpenAI 与 Microsoft 合作，在 Microsoft Azure 中托管了一个超级计算
     * 最大 token 固定为 32 时，InstructGPT 模型（davinci v2）的推理时间为 1.969s。
 
 2. 由于 LLM 通常太大而无法在用户的单台机器上运行，公司通过 API 提供 LLM 服务。
-**<mark>API 延迟</mark>**可能因用户位置而异， 
+**<mark>API 延迟</mark>**可能因用户位置而异，
 
     * OpenAI API 平均延迟时间从几百毫秒到几秒不等。
 
@@ -797,7 +803,7 @@ OpenAI 与 Microsoft 合作，在 Microsoft Azure 中托管了一个超级计算
 
 * 保持预训练模型的权重，将低秩矩阵（low-rank matrices）引入到了 Transformer 架构的每一层中，
   这种方式**<mark>大大减少了后续任务训练的参数数量</mark>**，从而提高了整体效率。
-* Alpaca-LoRA 将 LoRA 集成到 LLaMA-Alpaca 中，使其能够在单个 RTX 4090 上只用几小时就能运行起 LLaMA。
+* Alpaca-LoRA 将 LoRA 集成到 LLaMA-Alpaca 中，使其能够在单个 RTX 4090 上只用几小时就能微调 LLaMA。
 
 在将模型微调到特定任务，或微调 LLM 以满足人类对齐（human alignment）等特殊要求情况下，
 这些 PFT 方法都是有用的。
@@ -1049,3 +1055,8 @@ to become the first government to prohibit ChatGPT over privacy concerns [1].
 * [131] Ce Zhou, Qian Li, Chen Li, Jun Yu, Yixin Liu, Guangjing Wang, Kai Zhang, Cheng Ji, Qiben Yan, Lifang He, et al. A comprehensive survey on pretrained foundation models: A history from bert to chatgpt. arXiv preprint arXiv:2302.09419, 2023.
 * [132] Kaiyang Zhou, Ziwei Liu, Yu Qiao, Tao Xiang, and Chen Change Loy. Domain generalization: A survey. IEEE Transactions on Pattern Analysis and Machine Intelligence, 2022.
 * [133] Barret Zoph, Irwan Bello, Sameer Kumar, Nan Du, Yanping Huang, Jeff Dean, Noam Shazeer, and William Fedus. St-moe: Designing stable and transferable sparse expert models. URL https://arxiv. org/abs/2202.08906.
+
+----
+
+<a href="https://notbyai.fyi"><img src="/assets/img/Written-By-Human-Not-By-AI-Badge-white.svg" alt="Written by Human, Not by AI"></a>
+<a href="https://notbyai.fyi"><img src="/assets/img/Written-By-Human-Not-By-AI-Badge-black.svg" alt="Written by Human, Not by AI"></a>

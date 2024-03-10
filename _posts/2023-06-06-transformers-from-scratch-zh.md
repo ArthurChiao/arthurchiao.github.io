@@ -3,7 +3,7 @@ layout    : post
 title     : "[译] Transformer 是如何工作的：600 行 Python 代码实现两个（文本分类+文本生成）Transformer（2019）"
 date      : 2023-06-06
 lastupdate: 2023-08-12
-categories: gpt ai
+categories: gpt ai llm
 ---
 
 ### 译者序
@@ -301,7 +301,7 @@ $$
 \v_\bc{\text{the}}, \v_\bc{\text{cat}}, \v_\bc{\text{walks}}, \v_\bc{\text{on}}, \v_\bc{\text{the}}, \v_\bc{\text{street}}
 $$
 
-将这个 embedding vectors **<mark>输入 self-attention</mark>** 层，得到的就是 output vector：
+将这个 embedding vector **<mark>输入 self-attention</mark>** 层，得到的就是 output vector：
 
 $$
 \y_\bc{\text{the}}, \y_\bc{\text{cat}}, \y_\bc{\text{walks}}, \y_\bc{\text{on}}, \y_\bc{\text{the}}, \y_\bc{\text{street}}
@@ -1046,7 +1046,7 @@ BERT 由一些与本文描述的类似的简单 transformer block 堆叠而成�
 
 BERT uses WordPiece tokenization, which is somewhere in between word-level and character level sequences. It breaks words like <span class="bc">walking</span> up into the tokens <span class="bc">walk</span> and <span class="bc">##ing</span>. This allows the model to make some inferences based on word structure: two verbs ending in -ing have similar grammatical functions, and two verbs starting with walk- have similar semantic function.
 
-The input is prepended with a special <span class="bc"><cls></span> token. The output vector corresponding to this token is used as a sentence representation in sequence classification tasks like the next sentence classification (as opposed to the global average pooling over all vectors that we used in our classification model above).
+The input is prepended with a special `<cls>` token. The output vector corresponding to this token is used as a sentence representation in sequence classification tasks like the next sentence classification (as opposed to the global average pooling over all vectors that we used in our classification model above).
 
 After pretraining, a single task-specific layer is placed after the body of transformer blocks, which maps the general purpose representation to a task specific output. For classification tasks, this simply maps the first output token to softmax probabilities over the classes. For more complex tasks, a final sequence-to-sequence layer is designed specifically for the task.
 
