@@ -1,24 +1,24 @@
 ---
 layout    : post
-title     : "[译] Transformer 是如何工作的：600 行 Python 代码实现两个（文本分类+文本生成）Transformer（2019）"
+title     : "[译] Transformer 是如何工作的：600 行 Python 代码实现 self-attention 和两类 Transformer（2019）"
 date      : 2023-06-06
-lastupdate: 2023-08-12
+lastupdate: 2024-04-23
 categories: gpt ai llm
 ---
 
 ### 译者序
 
 本文整理和翻译自 2019 年（最后更新 2023 年）的一篇文章：
-[Transformers From Scratch](https://peterbloem.nl/blog/transformers)。
+[Transformers From Scratch](https://peterbloem.nl/blog/transformers)，
+由浅入深地解释了 transformer/self-attention 背后的工作原理。
 
 如果对 transformer 的使用场景和所处位置还不清楚，可以先看一下这篇：
 
 * [GPT 是如何工作的：200 行 Python 代码实现一个极简 GPT（2023）]({% link _posts/2023-05-21-gpt-as-a-finite-state-markov-chain-zh.md %})
 
-理解本文大部分内容只需要基本的高数知识（矩阵乘法）。
-原文代码见[这里](https://github.com/pbloem/former)，不过训练代码用到的一些库更新非常快，
-因此跑起来可能有点困难。有兴趣有时间的可以考虑基于较新版本的库重构一下
-self-attention/transformer 及训练代码。
+理解本文大部分内容只需要基本的高数知识（矩阵乘法）和一点耐心。
+原文代码见[这里](https://github.com/pbloem/former)，不过 AI 相关的库更新非常快，
+因此现在让跑起来可能有点困难。有兴趣有时间的可以考虑基于较新版本的库重构一下其代码。
 
 **译者水平有限，不免存在遗漏或错误之处。如有疑问，敬请查阅原文。**
 
@@ -32,110 +32,110 @@ self-attention/transformer 及训练代码。
 ----
 
 <script type="text/x-mathjax-config">
-  	MathJax.Hub.Config({
-    	extensions: ["tex2jax.js"],
-    	jax: ["input/TeX", "output/HTML-CSS"],
-    	tex2jax: {
-      		inlineMath: [ ['$','$'], ["\\(","\\)"] ],
-      		displayMath: [ ['$$','$$'], ["\\[","\\]"] ],
-    		processEscapes: true
-	    },
-		"HTML-CSS": {
-			availableFonts: [], preferredFont: null,
-			webFont: "Neo-Euler",
-			mtextFontInherit: true
-		},
-		TeX: {
-			extensions: ["color.js"],
-			Macros: {
-				lgc: ["{\\color{my-light-green} #1}", 1],
-				gc: ["{\\color{my-green} #1}", 1],
-				lrc: ["{\\color{my-light-red} #1}", 1],
-				rc: ["{\\color{my-red} #1}", 1],
-				lbc: ["{\\color{my-light-blue} #1}", 1],
-				bc: ["{\\color{my-blue} #1}", 1],
-				kc: ["{\\color{my-gray} #1}", 1],
-				loc: ["{\\color{my-light-orange} #1}", 1],
-				oc: ["{\\color{my-orange} #1}", 1],
+      MathJax.Hub.Config({
+        extensions: ["tex2jax.js"],
+        jax: ["input/TeX", "output/HTML-CSS"],
+        tex2jax: {
+              inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+              displayMath: [ ['$$','$$'], ["\\[","\\]"] ],
+            processEscapes: true
+        },
+        "HTML-CSS": {
+            availableFonts: [], preferredFont: null,
+            webFont: "Neo-Euler",
+            mtextFontInherit: true
+        },
+        TeX: {
+            extensions: ["color.js"],
+            Macros: {
+                lgc: ["{\\color{my-light-green} #1}", 1],
+                gc: ["{\\color{my-green} #1}", 1],
+                lrc: ["{\\color{my-light-red} #1}", 1],
+                rc: ["{\\color{my-red} #1}", 1],
+                lbc: ["{\\color{my-light-blue} #1}", 1],
+                bc: ["{\\color{my-blue} #1}", 1],
+                kc: ["{\\color{my-gray} #1}", 1],
+                loc: ["{\\color{my-light-orange} #1}", 1],
+                oc: ["{\\color{my-orange} #1}", 1],
 
-				a: ["\\mathbf a"],
-				A: ["\\mathbf A"],
-				b: ["\\mathbf b"],
-				B: ["\\mathbf B"],
-				c: ["\\mathbf c"],
-				C: ["\\mathbf C"],
-				d: ["\\mathbf d"],
-				D: ["\\mathbf D"],
-				E: ["\\mathbf E"],
-				I: ["\\mathbf I"],
-				L: ["\\mathbf L"],
-				m: ["\\mathbf m"],
-				M: ["\\mathbf M"],
-				r: ["\\mathbf r"],
-				s: ["\\mathbf s"],
-				t: ["\\mathbf t"],
-				S: ["\\mathbf S"],
-				x: ["\\mathbf x"],
-				z: ["\\mathbf z"],
-				v: ["\\mathbf v"],
-				y: ["\\mathbf y"],
-				k: ["\\mathbf k"],
-				bp: ["\\mathbf p"],
-				P: ["\\mathbf P"],
-				q: ["\\mathbf q"],
-				Q: ["\\mathbf Q"],
-				r: ["\\mathbf r"],
-				R: ["\\mathbf R"],
-				Sig: ["\\mathbf \\Sigma"],
-				t: ["\\mathbf t"],
-				T: ["\\mathbf T"],
-				e: ["\\mathbf e"],
-				X: ["\\mathbf X"],
-				u: ["\\mathbf u"],
-				U: ["\\mathbf U"],
-				v: ["\\mathbf v"],
-				V: ["\\mathbf V"],
-				w: ["\\mathbf w"],
-				W: ["\\mathbf W"],
-				Y: ["\\mathbf Y"],
-				z: ["\\mathbf z"],
-				Z: ["\\mathbf Z"],
-				p: ["\\,\\text{.}"],
-				tab: ["\\hspace{0.7cm}"],
+                a: ["\\mathbf a"],
+                A: ["\\mathbf A"],
+                b: ["\\mathbf b"],
+                B: ["\\mathbf B"],
+                c: ["\\mathbf c"],
+                C: ["\\mathbf C"],
+                d: ["\\mathbf d"],
+                D: ["\\mathbf D"],
+                E: ["\\mathbf E"],
+                I: ["\\mathbf I"],
+                L: ["\\mathbf L"],
+                m: ["\\mathbf m"],
+                M: ["\\mathbf M"],
+                r: ["\\mathbf r"],
+                s: ["\\mathbf s"],
+                t: ["\\mathbf t"],
+                S: ["\\mathbf S"],
+                x: ["\\mathbf x"],
+                z: ["\\mathbf z"],
+                v: ["\\mathbf v"],
+                y: ["\\mathbf y"],
+                k: ["\\mathbf k"],
+                bp: ["\\mathbf p"],
+                P: ["\\mathbf P"],
+                q: ["\\mathbf q"],
+                Q: ["\\mathbf Q"],
+                r: ["\\mathbf r"],
+                R: ["\\mathbf R"],
+                Sig: ["\\mathbf \\Sigma"],
+                t: ["\\mathbf t"],
+                T: ["\\mathbf T"],
+                e: ["\\mathbf e"],
+                X: ["\\mathbf X"],
+                u: ["\\mathbf u"],
+                U: ["\\mathbf U"],
+                v: ["\\mathbf v"],
+                V: ["\\mathbf V"],
+                w: ["\\mathbf w"],
+                W: ["\\mathbf W"],
+                Y: ["\\mathbf Y"],
+                z: ["\\mathbf z"],
+                Z: ["\\mathbf Z"],
+                p: ["\\,\\text{.}"],
+                tab: ["\\hspace{0.7cm}"],
 
-				sp: ["^{\\small\\prime}"],
-
-
-				mR: ["{\\mathbb R}"],
-				mC: ["{\\mathbb C}"],
-				mN: ["{\\mathbb N}"],
-				mZ: ["{\\mathbb Z}"],
-
-				deg: ["{^\\circ}"],
+                sp: ["^{\\small\\prime}"],
 
 
-				argmin: ["\\underset{#1}{\\text{argmin}}", 1],
-				argmax: ["\\underset{#1}{\\text{argmax}}", 1],
+                mR: ["{\\mathbb R}"],
+                mC: ["{\\mathbb C}"],
+                mN: ["{\\mathbb N}"],
+                mZ: ["{\\mathbb Z}"],
 
-				co: ["\\;\\text{cos}"],
-				si: ["\\;\\text{sin}"]
-			}
-		}
-  	});
-
-  	MathJax.Hub.Register.StartupHook("TeX color Ready", function() {
-     	MathJax.Extension["TeX/color"].colors["my-green"] = '#677d00';
-     	MathJax.Extension["TeX/color"].colors["my-light-green"] = '#acd373';
-     	MathJax.Extension["TeX/color"].colors["my-red"] = '#b13e26';
-     	MathJax.Extension["TeX/color"].colors["my-light-red"] = '#d38473';
-     	MathJax.Extension["TeX/color"].colors["my-blue"] = '#306693';
-       	MathJax.Extension["TeX/color"].colors["my-light-blue"] = '#73a7d3';
-       	MathJax.Extension["TeX/color"].colors["my-gray"] = '#999';
-       	MathJax.Extension["TeX/color"].colors["my-orange"] = '#E69500';
-       	MathJax.Extension["TeX/color"].colors["my-light-orange"] = '#FFC353';
+                deg: ["{^\\circ}"],
 
 
-	});
+                argmin: ["\\underset{#1}{\\text{argmin}}", 1],
+                argmax: ["\\underset{#1}{\\text{argmax}}", 1],
+
+                co: ["\\;\\text{cos}"],
+                si: ["\\;\\text{sin}"]
+            }
+        }
+      });
+
+      MathJax.Hub.Register.StartupHook("TeX color Ready", function() {
+         MathJax.Extension["TeX/color"].colors["my-green"] = '#677d00';
+         MathJax.Extension["TeX/color"].colors["my-light-green"] = '#acd373';
+         MathJax.Extension["TeX/color"].colors["my-red"] = '#b13e26';
+         MathJax.Extension["TeX/color"].colors["my-light-red"] = '#d38473';
+         MathJax.Extension["TeX/color"].colors["my-blue"] = '#306693';
+           MathJax.Extension["TeX/color"].colors["my-light-blue"] = '#73a7d3';
+           MathJax.Extension["TeX/color"].colors["my-gray"] = '#999';
+           MathJax.Extension["TeX/color"].colors["my-orange"] = '#E69500';
+           MathJax.Extension["TeX/color"].colors["my-light-orange"] = '#FFC353';
+
+
+    });
 </script>
 
 <script type="text/javascript"
@@ -156,7 +156,7 @@ Transformer 是一类非常令人着迷的**<mark>机器学习架构</mark>**（
 > * [这个讲座](https://mlvu.github.io/lecture07/) 介绍了神经网络如何应用于现代深度学习系统。
 >
 > 另外，理解本文程序需要[一点 Pytorch 基础](https://pytorch.org/tutorials/beginner/deep_learning_60min_blitz.html)，
-> 但没有关系也不大。
+> 但没有基础关系也不大。
 
 # 1 self-attention（自注意力）模型
 
@@ -263,7 +263,7 @@ $$
 
 接下来看基于 self-attention 的推荐系统是怎么设计的。
 
-### 2.2.1 电影特征和用户特征作为模型参数，匹配已知的用户偏好
+### 2.2.1 `电影特征`和`用户特征`作为模型参数，匹配`已知的用户偏好`
 
 也是两步：
 
@@ -274,6 +274,13 @@ $$
 这就是 self-attention 的基本原理。注意，
 尽管我们**<mark>没有告诉模型某个特征意味着什么</mark>**（表示什么），
 但实践证明，训练之后的特征确实反映了关于电影内容的合理语义。
+
+> 用素人术语来重新描述以上过程：我们告诉神经网络，
+>
+> 1. 我有一些关于电影和用户的信息，作为**<mark>输入</mark>**；有一些用户偏好信息，作为**<mark>输出</mark>**。
+> 2. 你把这两者串联起来，能够根据输入预测输出，**<mark>你自己怎么实现我不管</mark>**，把最终模型（参数）给我就行了。
+>
+> 译注。
 
 <p align="center"><img src="/assets/img/transformers-from-scratch/movie-features.png" width="55%" height="55%"></p>
 <p align="center">从一个基本的 matrix factorization 模型学习到的前两个特征。
@@ -400,22 +407,41 @@ y = torch.bmm(weights, x)
 这就是 **<mark>最基础的 self-attention 模型</mark>**的实现：
 **<mark>两次矩阵乘法和一次归一化</mark>**（softmax）。
 
-## 3.4 现代 transformer 对 self-attention 的扩展
+# 4 现代 transformer 对 self-attention 的扩展
 
 现代 transformer 中实际使用的 self-attention 依赖于三个额外技巧。
 
-### 3.4.1 引入控制参数（for queries, keys and values）
+## 4.1 引入控制参数（for queries, keys and values）
 
-对于位置 $$i$$ 处的 input vector $$\x_\rc{i}$$，它在 **<mark>self-attention 中会被使用三次</mark>**，
-根据角色的不同分别称为 queries、keys、values（查询、键和值，后面再解释这些名称的来源），
+### 4.1.1 每个 input vector 都被使用三次
 
-1. **<mark><code>query</code></mark>**：与其他所有 input vector 联合计算 $$i$$ 位置的 output vector $$\y_\rc{i}$$ 所需的权重；
+上一节已经看到，每个
+input vector $$\x_\rc{i}$$ 在 **<mark>self-attention 计算中会被使用三次</mark>**，
+根据角色的不同这三次分别称为 queries、keys、values（查询、键和值，后面再解释这些名称的来源），
+
+1. **<mark><code>query</code></mark>**：与其他所有 input vector 联合计算
+  **<mark><code>i</code></mark>** 位置的 output vector $$\y_\rc{i}$$ 所需的权重；
 2. **<mark><code>key</code></mark>**：与 query 类似，与其他所有 input vector 联合计算
-  $$j$$ 位置的 output vector $$\y_\gc{j}$$ 所需的权重，这里 $$j \neq i$$；
+  **<mark><code>j</code></mark>** 位置的 output vector $$\y_\gc{j}$$ 所需的权重，这里 $$j \neq i$$；
 3. **<mark><code>value</code></mark>**：在计算每个 output vector 时，作为输入值参与**<mark>加权求和</mark>**。
 
-在我们目前的基本 self-attention 中，**<mark>每个 input vector 必须承担所有三个角色</mark>**。
-换句话说，对原始 input vector 应用线性变换，我们就能够为每个角色衍生（derive）出一个新向量，这可以简化 self-attention。
+也就是说在我们目前的基本 self-attention 中，**<mark>每个 input vector 必须承担所有三个角色</mark>**。
+
+### 4.1.2 具体例子（译注）
+
+上面的描述比较抽象，这里参考下图更直观解释一下。这个图对应 i=2，因此
+$$\x_\rc{2}$$ 会用到三次（更准确地说是**<mark>三种用途</mark>**）：
+
+<p align="center"><img src="/assets/img/transformers-from-scratch/self-attention.png" width="50%" height="50%"></p>
+<p align="center">图：self-attention 基本运算</p>
+
+1. **<mark><code>query</code></mark>**：$$\x_\rc{2}$$ 与 $$\x_\rc{2}$$ 联合计算 $$\w_\rc{22}$$；
+2. **<mark><code>key</code></mark>**：$$\x_\rc{2}$$ 与 $$\x_\rc{j}$$ 联合计算 $$\w_\gc{2j}$$ 权重，这里 $$j \neq 2$$；
+3. **<mark><code>value</code></mark>**：$$\x_\rc{2}$$ 作为输入<mark>值</mark>参与**<mark>加权求和</mark>**。
+
+### 4.1.3 引入三个 $$k \times k$$ 权重矩阵
+
+对原始 input vector 应用线性变换，我们就能够为每个角色衍生（derive）出一个新向量，从而简化 self-attention。
 具体来说，引入三个 $$k \times k$$ 权重矩阵 $$\W_q$$, $$\W_k$$, $$\W_v$$（来自 **<mark>query/key/value 首字母</mark>**）
 对每个输入 $$x_\rc{i}$$ 计算三个线性变换，
 
@@ -445,7 +471,7 @@ $$\y_\rc{i} = \sum_\gc{j} w_{\rc{i}\gc{j}} \v_\gc{j}$$
 <p align="center"><img src="/assets/img/transformers-from-scratch/key-query-value.png" width="55%" height="55%"></p>
 <p align="center">self-attention key/query/value transformation 的直观解释</p>
 
-### 3.4.2 对点积做缩放处理（scaling the dot product）
+## 4.2 对点积做缩放处理（scaling the dot product）
 
 softmax 函数对非常大的输入值敏感。这些 input 会梯度消失，学习变慢甚至完全停止。
 由于点积的平均值随着嵌入维度 $$k$$ 的增加而增大，因此点积送到 softmax 之前进行缩放有助于缓解这个问题。
@@ -464,7 +490,7 @@ $$
 
 > Why $$\sqrt{k}$$? Imagine a vector in $${\mathbb R^k}$$ with values all $$c$$. Its Euclidean length is $$\sqrt{k}c$$. Therefore, we are dividing out the amount by which the increase in dimension increases the length of the average vectors
 
-### 3.4.3 引入 multi-head attention
+## 4.3 引入 multi-head attention
 
 最后，需要考虑到，同一个单词随着相邻单词们的不同表示的意思也可能不同。例如下面这个句子：
 
@@ -476,7 +502,7 @@ $$
 * "roses" 表示 "gave" 的是什么，
 * "susan" 表示接受者是谁。
 
-#### 需求：输出中嵌入更多信息
+### 4.3.1 需求：输出中嵌入更多信息
 
 在我们的**<mark>基本 self-attention 中，所有这些信息是混合在一起的</mark>**：
 输入 $\x_\bc{\text{mary}}$ 和 $\x_\bc{\text{susan}}$ 可以不同程度地影响输出 $\y_\bc{\text{gave}}$ ，这取决于它们与 $\x_\bc{\text{gave}}$ 的点积。
@@ -490,17 +516,17 @@ $$
 > also look at the order of the words, but we'll look at how to achieve that
 > later.
 
-#### 解决方式：引入多个 self-attention（multi-head）
+### 4.3.2 解决方式：引入多个 self-attention（multi-head）
 
 要实现这个目的，就需要让我们的模型有**<mark>更强的辨识力</mark>**，一种做法就是
 **<mark>组合多个 self-attention</mark>**（用 $$\bc{r}$$ 索引），
-每个对应不同的 query/key/value 参数矩阵 $$\W_q^\bc{r}$$, $$\W_k^\bc{r}$$,$$\W_v^\bc{r}$$，
+每个**<mark>对应不同的 query/key/value 参数矩阵</mark>** $$\W_q^\bc{r}$$, $$\W_k^\bc{r}$$,$$\W_v^\bc{r}$$，
 这些就称为 **<mark>attention heads</mark>**（注意力头）。
 
 对于 input $$\x_\rc{i}$$，每个 attention head 产生不同的 output vector $$\y_\rc{i}^\bc{r}$$（一部分输出）。
 最后再将这些部分输出连接起来，**<mark>通过线性变换来降维</mark>**回 $$k$$。
 
-#### 提升 multi-head self-attention 效率：query/key/value 降维
+### 4.3.3 提升 multi-head self-attention 效率：query/key/value 降维
 
 理解 multi-head self-attention 最简单的方法是把它看作**<mark>多个并行的 self-attention 机制</mark>**，
 每个都有自己的键、值和查询转换。
@@ -521,7 +547,7 @@ Multi-head self-attention 的缺点是慢，对于 $$R$$ 头，**<mark>慢</mark
 To compute multi-head attention efficiently, we combine the computation of the projections down to a lower dimensional representation and the computations of the keys, queries and values into three $k \times k$ matrices.
 </p>
 
-#### 完整工作流
+### 4.3.4 完整工作流
 
 下图展示了的整个 multi-head self-attention 过程：
 
@@ -539,21 +565,21 @@ To compute multi-head attention efficiently, we combine the computation of the p
 4. 计算得到多个降维之后的 output vector；
 5. 对低维度 output vectors 进行拼接，重新回到与 input vectors 一样的维度。
 
-## 3.5 multi-head vs. single-head 模型参数数量对比
+## 4.5 multi-head vs. single-head 模型参数数量对比
 
 参数指的是在将 input vector 变成 output vector 过程中用到的那些系数（权重矩阵）。
 
 我们假设输入的是 k-维 input vectors，接下来分别看下 multi-head 和 single-head
 的参数数量。
 
-### 3.5.1 single-head
+### 4.5.1 single-head
 
 * 权重矩阵 $$w_{\rc{i}\gc{j}}$$，其中 $$i,j \in [0,k]$$；
 * 3 个平面：query/key/value；
 
 因此**<mark>总参数数量</mark>**是 $3k^2$。
 
-### 3.5.2 multi-head
+### 4.5.2 multi-head
 
 假设有 4 个 head，即 $$h=4$$，
 
@@ -569,7 +595,7 @@ To compute multi-head attention efficiently, we combine the computation of the p
 > 在大多数 Transformer 中，每次 self-attention 之后会紧跟着一个前馈层（feed-forward layer），因此这可能不是绝对必要的。
 > 但我还未见过能否把 $W_o$ 去掉的严肃讨论。
 
-## 4.4 self-attention 主要代码实现
+# 5 self-attention 主要代码实现
 
 接下来将我们的 self-attention 实现为一个 python 模块，方便复用：
 
@@ -595,7 +621,7 @@ class SelfAttention(nn.Module):
     self.toqueries = nn.Linear(k, k, bias=False)
     self.tovalues  = nn.Linear(k, k, bias=False)
 
-	# This will be applied after the multi-head self-attention operation.
+    # This will be applied after the multi-head self-attention operation.
     self.unifyheads = nn.Linear(k, k)
 ```
 
@@ -672,9 +698,9 @@ keys, queries and values 可以看做是 batch，只是 batch size 稍大了一�
 
 > The implementation can be made more concise using <a href="https://rockt.github.io/2018/04/30/einsum">einsum notation</a> (see an example <a href="https://github.com/pbloem/former/issues/4">here</a>).
 
-# 4 基于 multi-head self-attention 实现 transformers
+# 6 基于 multi-head self-attention 实现 transformers
 
-## 4.1 Transformer 定义
+## 6.1 Transformer 定义
 
 transformer 不仅仅是一个 self-attention layer，还是一种**<mark>架构</mark>**（architecture）。
 如何精确地判断一个东西是或者不是 transformer 还不是很明确，本文采用如下的定义：
@@ -685,7 +711,7 @@ transformer 不仅仅是一个 self-attention layer，还是一种**<mark>架构
 与**<mark>其他机制（如卷积）</mark>**一样，可以基于 self-attention 层构建成更大的网络。但在此之前，
 我们需要将 self-attention 重构为一个可以复用的 block。
 
-## 4.2 Transformer block
+## 6.2 Transformer block
 
 构建基本的 transformer 有几种略微不同的方式，但大多数结构都大致如下：
 
@@ -735,7 +761,7 @@ class TransformerBlock(nn.Module):
 这里我们选择了让 feed forward 隐藏层比 input/output 大 4 倍，这个倍数的选择是随意的，
 更小的倍数可能也能工作，并且占用内存更少，但最小不能小于 input/output layer 大小。
 
-## 4.3 文本分类（text classification）transformer
+## 6.3 文本分类（text classification）transformer
 
 我们能构建的最简单 transformer 叫 **<mark>sequence classifier</mark>**（顺序分类器）。
 我们用 **<mark>IMDb</mark>**（Internet Movie Database）sentiment classification 数据集：
@@ -749,7 +775,7 @@ class TransformerBlock(nn.Module):
 * 如何将 input sequence feed 给这个长链，
 * 如何对最终 output sequence 进行变换，得到单个分类结果。
 
-### 4.3.1 输出：单个分类结果
+### 6.3.1 输出：单个分类结果
 
 从 sequence-to-sequence layers 构建 sequence classifier 的最常见方法是
 对最终输出序列做 global average pooling，并将结果映射到 softmaxed class vector。
@@ -759,7 +785,7 @@ class TransformerBlock(nn.Module):
 Overview of a simple sequence classification transformer. The output sequence is <span class="bc">averaged</span> to produce a single vector representing the whole sequence. This vector is projected down to a vector with one element per class and softmaxed to produce probabilities.
 </p>
 
-### 4.3.2 输入：词序敏感（using the positions）
+### 6.3.2 输入：词序敏感（using the positions）
 
 前面已经讨论了**<mark>嵌入层的原理</mark>**，接下来我们将用它来表示单词。
 
@@ -791,7 +817,7 @@ $$f: {\mathbb N} \to {\mathbb R}^k$$
 好处是，对于精心选择的函数，网络能够处理比训练期间看到的序列更长的序列（在它们上表现应该不会太好，但至少我们可以 check）。
 缺点是编码函数的选择是一个复杂的超参数（a complicated hyperparameter），实现起来有点复杂。
 
-### 4.3.3 基于 Pytorch 实现
+### 6.3.3 基于 Pytorch 实现
 
 简单起见，本文使用位置嵌入（position embeddings）来记录 input 顺序。
 
@@ -841,12 +867,12 @@ class Transformer(nn.Module):
 在深度为 6 ，最大序列长度为 512 时，这个 transformer 取得了 85% 的准确度，与 RNN（循环神经网络）模型的结果相当，但训练速度快得多。
 要看到这个 transformer 真正接近人类的性能，就需要在更多数据上训练更深的模型。后文将详细介绍怎么做。
 
-## 4.4 文本生成（text generation）transformer
+## 6.4 文本生成（text generation）transformer
 
 接下来尝试一下**<mark>自回归模型</mark>**（*autoregressive* model）：
 训练一个字符级别（*character* level）的 transformer 来预测序列中的下一个字符。
 
-### 4.4.1 自回归模型和掩码
+### 6.4.1 自回归模型和掩码
 
 训练方式很简单（并且在 transformer 出现之前就已经[存在](http://karpathy.github.io/2015/05/21/rnn-effectiveness/)很久了）。
 我们给 sequence-to-sequence 模型一个序列作为输入，然后要求它预测序列中下一个位置的字符。
@@ -881,7 +907,7 @@ dot = F.softmax(dot, dim=2)
 
 这样修改 self-attention 模块之后，模型就不能再 look forward input sequence 了。
 
-### 4.4.2 训练：基于维基百科数据集 `enwik8`
+### 6.4.2 训练：基于维基百科数据集 `enwik8`
 
 我们在标准 **<mark><code>enwik8</code></mark>** 数据集（取自 <a href="http://prize.hutter1.net/">Hutter prize</a>）
 上进行训练，该数据集包含 108 个维基百科文本中的字符。在训练期间，通过从数据中随机抽取子序列来生成批次。
@@ -905,7 +931,7 @@ dot = F.softmax(dot, dim=2)
 >  (1145-1148). The [[Roman Empire|Romans]] resigned in [[1148]] and [[1148]] began to
 >  collapse. The [[Saxony|Saxons]] of the [[Battle of Valasander]] reported the y
 
-### 4.4.3 文本生成结果分析
+### 6.4.3 文本生成结果分析
 
 对于上面的输出，应该注意到，
 
@@ -919,7 +945,7 @@ dot = F.softmax(dot, dim=2)
 另外，该模型在验证集上实现了 **<mark><code>1.343bit/byte</code></mark>** 的压缩，
 这与 GPT-2 模型（下文会展开介绍）实现的每字节 0.93 位的相差不远。
 
-## 4.5 设计考虑：Transformer 与 RNN/卷积 对比
+## 6.5 设计考虑：Transformer 与 RNN/卷积 对比
 
 在 **<mark>transformer 之前，最先进的架构是 RNN</mark>**（通常是 LSTM 或 GRU），但它们存在一些问题。
 
@@ -960,13 +986,13 @@ Transformer 的其余设计主要基于一个考虑因素 —— **<mark>深度<
 > nonlinearity that actually helps to keep the gradient stable as it propagates
 > back down the network.
 
-# 5 历史包袱
+# 7 历史包袱
 
 如果在网上看一些介绍 transformer 的文章，可能会经注意它们提到的一些概念和术语本文并没有介绍。
 这是因为我认为那些东西并不是理解现代 transformer 所必需的。
 话虽如此，有两个方面还是可以介绍一下，因为它们对于理解网上的那些关于现代 transformer 的文章还是有帮助的。
 
-## 5.1 为什么叫 self-attention？
+## 7.1 为什么叫 self-attention？
 
 重点在 **<mark>attention</mark>** 这个单词上。
 
@@ -995,7 +1021,7 @@ self-attention 的重大突破在于，attention 本身就是一种足够强大�
 * 他们关注自己（attend to themselves），因此叫 self-attention；
 * 这种 self-attention 经过多层堆叠之后，就能提供足够的非线性和表征能力（nonlinearity and representational power）来学习非常复杂的功能。
 
-## 5.2 最初的 transformer: encoders and decoders
+## 7.2 最初的 transformer: encoders and decoders
 
 当时的 sequence-to-sequence model 的标准结构是带
 <a href="https://blog.keras.io/a-ten-minute-introduction-to-sequence-to-sequence-learning-in-keras.html">teacher forcing</a>
@@ -1022,11 +1048,13 @@ Teacher forcing 指的是**<mark>允许 decoder 访问 input</mark>** 的技术 
 这种模型有时被称为 **<mark>decoder-only transformer</mark>**（对于自回归模型）
 或 **<mark>encoder-only transformer</mark>**（对于没有 masking 的模型）。
 
-# 6 现代 transformers
+# 8 现代 transformers
 
 来看几个有代表性的现代 transformers。
 
-## 6.1 Google `BERT`：`340M` 参数
+## 8.1 Google `BERT`：`340M` 参数
+
+* [(译/论文) <mark>BERT：预训练深度双向 Transformers 做语言理解</mark>（Google，2019）]({% link _posts/2024-03-10-bert-paper-zh.md %})
 
 [BERT](https://arxiv.org/abs/1810.04805) (Bidirectional Encoder Representations from Transformers)
 是首批证明 **<mark>transformer 可以在各种基于语言的任务上</mark>**
@@ -1052,7 +1080,7 @@ After pretraining, a single task-specific layer is placed after the body of tran
 
 The whole model is then re-trained to finetune the model for the specific task at hand.
 
-In an ablation experiment, 作者展示了与之前的模型相比，最大的改进来自 BERT 的双向特性（bidirectional nature）。
+作者展示了与之前的模型相比，最大的改进来自 BERT 的双向特性（bidirectional nature）。
 之前的模型，例如 GPT，使用的是 autoregressive mask，只允许 attention 使用前面的 token。
 在 BERT 中，all attention is over the whole sequence，这是性能提升的主要来源。
 
@@ -1061,7 +1089,7 @@ In an ablation experiment, 作者展示了与之前的模型相比，最大的�
 最大的 BERT model 使用了 24 transformer blocks，embedding dimension 1024，16 attention heads，
 **<mark>总参数数量为 3.4 亿</mark>**（340M）。
 
-## 6.2 OpenAI `GPT-2`：`1.5B` 参数
+## 8.2 OpenAI `GPT-2`：`1.5B` 参数
 
 They show state-of-the art performance on many tasks. On the wikipedia compression task that we tried above, they achieve 0.93 bits per byte.
 
@@ -1073,7 +1101,7 @@ transformer 模型，原因是 GPT-2 可以生成看起来足够可信的文本�
 
 GPT-2 第一个技巧是**<mark>构建一个新的高质量数据集</mark>**，
 
-* 虽然 BERT 使用了高质量的数据，但数据的来源（精心编写的书籍和维基百科文章）在写作风格上缺乏多样性；
+* 虽然 BERT 使用了高质量的数据，但数据的来源（精心编写的书籍和维基百科文章）在**<mark>写作风格上缺乏多样性</mark>**；
 * 为了在不牺牲质量的前提下收集更多不同的数据，作者使用社交媒体网站 Reddit 上的链接来收集大量文本。
 
 GPT2 本质上是一个语言**<mark>生成</mark>**模型（language *generation* model），
@@ -1082,11 +1110,11 @@ GPT2 本质上是一个语言**<mark>生成</mark>**模型（language *generatio
 这与 WordPiece encoding 一样**<mark>将单词拆分为比“比单词短、比单个字母长”的 tokens</mark>**。
 
 GPT2 与我们的 text generation transformer 非常相似，只有很小的层级顺序差异，以及增加了训练深度。
-最大的模型使用 48 个 transformer block，序列长度为 1024，嵌入维度为 1600，总共 **<mark>15 亿个（1.5B）参数</mark>**。
+最大的模型使用 48 个 transformer block，序列长度为 1024，嵌入维度为 1600，总共 **<mark>1.5B 参数</mark>**。
 
 GPT2 在很多任务上都表现出了最先进的性能。在上面提到的维基百科压缩任务中，它取得了每字节 0.93 位的压缩效率。
 
-## 6.3 <a href="https://arxiv.org/abs/1901.02860">Transformer-XL</a>
+## 8.3 <a href="https://arxiv.org/abs/1901.02860">Transformer-XL</a>
 
 While the transformer represents a massive leap forward in modeling long-range dependency, the models we have seen so far are still fundamentally limited by the size of the input. Since the size of the dot-product matrix grows quadratically in the sequence length, this quickly becomes the bottleneck as we try to extend the length of the input sequence. Transformer-XL is one of the first succesful transformer models to tackle this problem.
 
@@ -1098,7 +1126,7 @@ To make this work, the authors had to let go of the standard position encoding/e
 
 This requires moving the position encoding into the attention mechanism (which is detailed in the paper). One benefit is that the resulting transformer will likely generalize much better to sequences of unseen length.
 
-## 6.4 <a href="https://openai.com/blog/sparse-transformer/">Sparse transformers</a>
+## 8.4 <a href="https://openai.com/blog/sparse-transformer/">Sparse transformers</a>
 
 Sparse transformers tackle the problem of quadratic memory use head-on. Instead of computing a dense matrix of attention weights (which grows quadratically), they compute the self-attention only for particular pairs of input tokens, resulting in a *sparse* attention matrix, with only $$n\sqrt{n}$$ explicit elements.
 
@@ -1106,7 +1134,7 @@ This allows models with very large context sizes, for instance for generative mo
 
 Beyond the simple benefit of training transformers with very large sequence lengths, the sparse transformer also allows a very elegant way of designing an inductive bias. We take our input as a collection of units (words, characters, pixels in an image, nodes in a graph) and we specify, through the sparsity of the attention matrix, which units we believe to be related. The rest is just a matter of building the transformer up as deep as it will go and seeing if it trains.
 
-# 7 大型模型优化
+# 9 大型模型优化
 
 训练 transformer 的一大瓶颈是 self attention 中的点积矩阵，
 
@@ -1116,12 +1144,12 @@ Beyond the simple benefit of training transformers with very large sequence leng
 
 实际上我们能用到的层数更少，因为输入和输出也占用了大量显存（尽管点积占主导地位）。
 
-> 网上有些报道的模型包含[超过 12000 的序列长度，有 48 层](https://openai.com/blog/sparse-transformer/)，
+> 网上有些模型包含[超过 12000 的序列长度，有 48 层](https://openai.com/blog/sparse-transformer/)，
 > 使用密实的点积矩阵。这些模型是在集群上训练的，但是单个前向/后向 propagation 仍然只能由单个 GPU 来完成。
 
 如何将如此巨大的 transformer 放入 12Gb 内存中？主要有三个技巧。
 
-## 7.1 半精度（half precision）
+## 9.1 半精度（half precision）
 
 在现代 GPU 和 TPU 上，tensor 计算可以在 16 位浮点上高效完成。
 但并不是将 tensor 的 dtype 设置为 `torch.float16` 那么简单。对于某些部分，如 loss，仍然需要 32 位精度。
@@ -1129,7 +1157,7 @@ Beyond the simple benefit of training transformers with very large sequence leng
 
 半精度优化能使内存占用减半，或者说能使有效内存翻倍。
 
-## 7.2 梯度积累（gradient accumulation）
+## 9.2 梯度积累（gradient accumulation）
 
 对于大型模型，我们可能只能对单个实例执行前向/后向传递（forward/backward pass）。
 `batch size = 1` 不太可能产生稳定的学习。
@@ -1139,7 +1167,7 @@ Beyond the simple benefit of training transformers with very large sequence leng
 当我们到达 batch 的末尾时，执行单步梯度下降，并将梯度归零（zero out）。
 在 Pytorch 中这非常容易，**<mark><code>optimizer.zero_grad()</code></mark>** 就行了。
 
-## 7.3 梯度 checkpoint（gradient checkpointing）
+## 9.3 梯度 checkpoint（gradient checkpointing）
 
 如果模型太大以至于即使是单个 forward/backward 也无法放入内存，那就只能牺牲更多的计算来提高内存效率。
 
@@ -1149,7 +1177,7 @@ Pytorch [相关的函数](https://pytorch.org/docs/stable/checkpoint.html)直接
 更多信息可参考
 <a href="https://medium.com/huggingface/training-larger-batches-practical-tips-on-1-gpu-multi-gpu-distributed-setups-ec88c3e51255">这篇博客</a>。
 
-# 8 结束语
+# 10 结束语
 
 Transformer 很可能是未来几十年占主导地位的最简单机器学习架构。作为从业者，有充分的理由关注它们。
 

@@ -17,7 +17,8 @@ categories: ai gpt llama
 
 本文翻译了其中第一部分。
 作者之前还有一篇“如何训练一个乞丐级 GPT”：
-[GPT 是如何工作的：200 行 Python 代码实现一个极简 GPT（2023）]({% link _posts/2023-05-21-gpt-as-a-finite-state-markov-chain-zh.md %})
+[GPT 是如何工作的：200 行 Python 代码实现一个极简 GPT（2023）]({% link _posts/2023-05-21-gpt-as-a-finite-state-markov-chain-zh.md %})。
+另外，[InstructGPT：基于人类反馈训练语言模型遵从指令的能力（OpenAI，2022）]({% link _posts/2024-03-24-instructgpt-paper-zh.md %}) 有助于深入理解本文。
 
 **译者水平有限，不免存在遗漏或错误之处。如有疑问，敬请查阅原文。**
 

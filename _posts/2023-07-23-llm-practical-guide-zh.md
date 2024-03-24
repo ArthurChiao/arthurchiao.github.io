@@ -202,8 +202,7 @@ number of models from various companies and institutions.</p>
 
 ## 2.2 GPT 风格语言模型：decoder-only
 
-尽管语言模型通常在架构上是任务不可知的（**<mark>task-agnostic</mark>**），
-但都需要在特定下游任务的数据集上进行微调。
+尽管语言模型通常在架构上是任务无关的，但都需要在特定下游任务的数据集上进行微调。
 
 研究人员发现，扩展语言模型的参数规模（**<mark>scaling up</mark>**）
 能显著提高少样本（few-shot）甚至零样本（zero-shot）性能[16]。
@@ -271,6 +270,10 @@ number of models from various companies and institutions.</p>
 * 丰富（abundant）
 
 可以在部署之前先对大模型进行**<mark>配置调整或模型微调</mark>**。
+
+> 可参考 OpenAI 是**<mark>如何基于 GPT-3 微调出 InstructGPT</mark>** 的：
+> [InstructGPT：基于人类反馈训练语言模型遵从指令的能力（OpenAI，2022）]({% link _posts/2024-03-24-instructgpt-paper-zh.md %})。
+> 译注。
 
 ### 3.2.1 无标注数据：通用大模型 + zero-shot 配置
 

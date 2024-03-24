@@ -2,7 +2,7 @@
 layout    : post
 title     : "[译][论文] BERT：预训练深度双向 Transformers 做语言理解（Google，2019）"
 date      : 2024-03-10
-lastupdate: 2024-03-10
+lastupdate: 2024-03-24
 categories: bert ai llm
 ---
 
@@ -25,7 +25,7 @@ categories: bert ai llm
 现在仍然在很多场景中使用，
 
 <p align="center"><img src="/assets/img/llm-practical-guide/fig-1.png" width="90%" height="90%"></p>
-> 大模型进化树，可以看到 BERT 所处的年代和位置。图来自 [大语言模型（LLM）综述与实用指南（Amazon，2023）]({% link _posts/2023-07-23-llm-practical-guide-zh.md %})。
+大模型进化树，可以看到 BERT 所处的年代和位置。来自 [大语言模型（LLM）综述与实用指南（Amazon，2023）]({% link _posts/2023-07-23-llm-practical-guide-zh.md %})。
 
 根据 [Transformer 是如何工作的：600 行 Python 代码实现两个（文本分类+文本生成）Transformer（2019）]({% link _posts/2023-06-06-transformers-from-scratch-zh.md %})，
 BERT 是首批 **<mark>在各种自然语言任务上达到人类水平</mark>**的 transformer 模型之一。
@@ -425,13 +425,14 @@ BERT Transformer 使用双向 self-attention，而 GPT Transformer 使用受限�
 
 * 输入 embedding 表示为 **<mark>$E$</mark>**，
 
-    对于给定的 token ，它的输入表示是通过将相应的 token 、段落和位置 embedding 相加来构建的。
-    图 2 可视化了这个构建过程，
+    对于给定的 token ，它的输入表示是通过将 3 个 embeddings 相加来构建的，如图 2，
 
     <p align="center"><img src="/assets/img/bert-paper/fig-2.png" width="90%"/></p>
-    <p align="center">
-    Figure 2: <mark>BERT input representation</mark>. input embeddings 是 token embeddings, segmentation embeddings 和 position embeddings 之和。
-    </p>
+    <p align="center"> Figure 2: <mark>BERT input representation</mark>. </p>
+
+    1. token embedding：输入文本经过 tokenizer 之后得到的输出；
+    2. segment embedding：表示 token embedding 在这个位置的 token 是属于句子 A 还是句子 B；
+    3. position embedding：token 在 token embedding 中的位置，`0,1,2,3...,511`，因为 BERT 最长支持 512 token 输入（除非自己从头开始预训练，可以改参数）。
 
 * 第 $i$ 个输入 token 的在最后一层的表示（最终隐藏向量）为 **<mark>$T_i$</mark>**，$T_i \in \mathbb{R}^H$。
 * `[CLS]` token 在最后一层的表示（最终隐藏向量）为 **<mark>$C$</mark>**, $C \in \mathbb{R}^{H}$ ，

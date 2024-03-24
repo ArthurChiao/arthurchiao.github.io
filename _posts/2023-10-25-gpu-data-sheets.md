@@ -2,7 +2,7 @@
 layout    : post
 title     : "GPU Performance (Data Sheets) Quick Reference (2023)"
 date      : 2023-10-25
-lastupdate: 2024-02-15
+lastupdate: 2024-03-24
 categories: gpu
 ---
 
@@ -110,13 +110,13 @@ some differences. To clarify them,
 
 # 4 Comparison of `H20`/`L20`/`Ascend 910B`
 
-|      | <mark>Huawei Ascend 910B</mark>| L20  (PCIe)      | H20  (PCIe/SXM)  | H100 (PCIe/SXM) |
+|      | <mark>Huawei Ascend 910B</mark>| L20  (PCIe)      | H20              | H100 (PCIe/SXM) |
 |:-------------------|:-----------------|:-----------------|:-----------------|:--------|
 | Year               | 2023             | 2023             | 2023             | 2022 |
 | Manufacturing      | 7+nm             | 4nm              | 4nm              | 4nm |
 | Architecture       | HUAWEI Da Vinci  | Ada Lovelace     | Hopper           | Hopper |
-| Max Power          | 400 watt         | 275W             | 400W             | 350/700 watt |
-| GPU Mem            | 64G HBM2e        | 48G GDDR6        | 80G HBM3         | 80G HBM3 |
+| Max Power          | 400 watt         | 275W             | 500W             | 350/700 watt |
+| GPU Mem            | 64G HBM2e        | 48G GDDR6        | 96G HBM3         | 80G HBM3 |
 | GPU Mem BW         |                  | 864GB/s          | <mark>4.0TB/s</mark> | 2/3.35 TB/s|
 | L2 Cache           |                  | 96MB             | 60MB             |             |
 | GPU Interconnect (**<mark>one-to-one max bandwidth</mark>**)| HCCS 56GB/s  | PCIe Gen4 64GB/s | PCIe Gen5 128GB/s, **<mark><code>NVLINK 900GB/s</code></mark>** | PCIe Gen5 128GB/s, NVLINK 900GB/s |

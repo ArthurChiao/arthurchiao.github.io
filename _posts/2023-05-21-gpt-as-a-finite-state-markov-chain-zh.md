@@ -67,7 +67,7 @@ GPT 是一个神经网络，根据**<mark>输入的 token sequence</mark>**（�
 如果所有可能的 token 只有两个，分别是 `0` 和 `1`，那这就是一个 **<mark>binary GPT</mark>**，
 
 * **<mark>输入</mark>**：由 0 和 1 组成的一串 token，例如 `100011111`，
-* **<mark>输出</mark>**：“下一个 token 是 0 的概率”（`P(0)`）和“下一个 token 是 1 的概率”（`P(1)`）。
+* **<mark>输出</mark>**：“下一个 token 是 0 的概率” `P(0)` 和“下一个 token 是 1 的概率” `P(1)`。
 
 例如，如果已经输入的 token sequence 是 `010`（即 GPT 接受的输入是 `[0,1,0]`），
 那它可能根据自身当前的一些参数和状态，计算出“下一个 token 为 1 的可能性”是 80%，即
@@ -90,8 +90,7 @@ GPT 是一个神经网络，根据**<mark>输入的 token sequence</mark>**（�
 ## 1.3 状态空间
 
 状态空间就是 GPT 需要处理的**<mark>所有可能的状态</mark>**组成的集合。
-
-为了表示状态空间的大小，我们引入两个变量：
+为了表示状态空间的大小，引入两个变量：
 
 * **<mark><code>vocab_size</code></mark>**（vocabulary size，字典空间）：**<mark>单个 token 有多少种可能的值</mark>**，
   例如上面提到的 binary GPT 每个 token 只有 0 和 1 这两个可能的取值；
@@ -109,7 +108,7 @@ GPT 是一个神经网络，根据**<mark>输入的 token sequence</mark>**（�
 * `vocab_size     = 2`：token 可能的取值是 `0` 和 `1`，总共两个；
 * `context_length = 3 tokens`：上下文长度是 3 个 token；
 
-总的状态数量就是 <code>2<sup>3</sup> = 8</code>。这也很好理解，所有状态枚举就能出来：
+总的状态数量就是 <code>2<sup>3</sup> = 8</code>。这也很好理解，**<mark>所有状态</mark>**枚举就能出来：
 {`000`, `001`, `010`, `011`, `100`, `101`, `110`, `111`}。
 
 ### 1.3.2 真实版状态空间
@@ -239,7 +238,7 @@ class Block(nn.Module):
 class GPTConfig:
     # 以下是 GPT-2 的 hyperparameters，后面我们的 BabyGPT 初始化时，会用更小的值覆盖掉默认值
     block_size: int = 1024
-    vocab_size: int = 50304 # 字典：5 万多个唯一的 token，包括单词（3000 多个常用单词）、词根、标点等等
+    vocab_size: int = 50304 # 字典：5 万多个 token 组成的字典，包括单词（3000 多个常用单词）、词根、标点等等
     n_layer: int = 12       # 12 层神经网络
     n_head: int = 12        # 12 个 attention head
     n_embd: int = 768       # 嵌入向量（特征向量）的维度：每个 token 都用一个 768x1 数组表示
@@ -419,7 +418,6 @@ input [1, 1, 1] ---> [0.4520467519760132, 0.5479532480239868]
 接下来我们拿下面这段 token sequence 来训练上面已经初始化好的 GPT：
 
 ```shell
-Python 3.8.2 (default, Mar 13 2020, 10:14:16)
 >>> seq = list(map(int, "111101111011110"))
 >>> seq
 [1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0]
