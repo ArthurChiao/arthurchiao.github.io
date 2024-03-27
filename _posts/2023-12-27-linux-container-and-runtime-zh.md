@@ -59,7 +59,7 @@ categories: linux container cgroup gpu
 
 这里只是简单列下，方面后面理解代码。其实除了 UTS，其他 namespace 都能直接从名字看出用途，
 
-1. Mount：挂载空间，例如指定某个目录作为**<mark>进程看到的系统跟目录</mark>**、独立挂载 `/proc` `/sys` 等；
+1. Mount：挂载空间，例如指定某个目录作为**<mark>进程看到的系统根目录</mark>**、独立挂载 `/proc` `/sys` 等；
 1. PID：进程空间，例如最大进程数量是独立的；
 1. Network (netns)：网络空间，例如能看到的网络设备是独立的，部分网络参数是独立的；
 1. IPC (inter-process communication)
