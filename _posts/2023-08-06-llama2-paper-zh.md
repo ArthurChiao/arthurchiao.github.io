@@ -2,7 +2,7 @@
 layout    : post
 title     : "[译][论文] LLaMA 2：开放基础和微调聊天模型（Meta/Facebook，2023）"
 date      : 2023-08-06
-lastupdate: 2023-08-12
+lastupdate: 2024-04-06
 categories: llama ai gpt
 ---
 
@@ -264,6 +264,8 @@ LLM 通过聊天窗口与人类进行交互，简单方便，因此一经推出�
 * 更多的**<mark>训练 tokens</mark>**；
 * 更长的**<mark>上下文</mark>**；
 * 使用 **<mark>grouped-query attention</mark>**（GQA），通过组查询来提高**<mark>推理性能</mark>**。
+
+    > **<mark>GQA 优化推理的基本原理</mark>**：[大模型推理的极限：理论分析、数学建模与 CPU/GPU 实测（2024）]({% link _posts/2024-04-06-llm-inference-speed-zh.md %})。译注。
 
 表 1 比较了 LLaMA 2 与 LLaMA 1 的一些属性：
 

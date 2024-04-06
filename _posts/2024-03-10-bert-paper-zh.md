@@ -27,7 +27,7 @@ categories: bert ai llm
 <p align="center"><img src="/assets/img/llm-practical-guide/fig-1.png" width="90%" height="90%"></p>
 大模型进化树，可以看到 BERT 所处的年代和位置。来自 [大语言模型（LLM）综述与实用指南（Amazon，2023）]({% link _posts/2023-07-23-llm-practical-guide-zh.md %})。
 
-根据 [Transformer 是如何工作的：600 行 Python 代码实现两个（文本分类+文本生成）Transformer（2019）]({% link _posts/2023-06-06-transformers-from-scratch-zh.md %})，
+根据 [Transformer 是如何工作的：600 行 Python 代码实现 self-attention 和两类 Transformer（2019）]({% link _posts/2023-06-06-transformers-from-scratch-zh.md %})，
 BERT 是首批 **<mark>在各种自然语言任务上达到人类水平</mark>**的 transformer 模型之一。
 预训练和 fine-tuning **<mark>代码</mark>**：[github.com/google-research/bert](https://github.com/google-research/bert)。
 

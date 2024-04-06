@@ -52,7 +52,7 @@ categories: ai transformer
 架构的多模态大语言模型，能够完成机器翻译、文本生成、语义分析等任务，
 也迅速被视为最先进的语言建模方案（language modeling solutions）。
 
-> * [Transformer 是如何工作的：600 行 Python 代码实现两个（文本分类+文本生成）Transformer（2019）]({% link _posts/2023-06-06-transformers-from-scratch-zh.md %})
+> * [Transformer 是如何工作的：600 行 Python 代码实现 self-attention 和两类 Transformer（2019）]({% link _posts/2023-06-06-transformers-from-scratch-zh.md %})
 > * [GPT 是如何工作的：200 行 Python 代码实现一个极简 GPT（2023）]({% link _posts/2023-05-21-gpt-as-a-finite-state-markov-chain-zh.md %})
 
 ## 1.2 `DALL·E` (2021.01)：transformer 架构扩展到计算机视觉领域

@@ -2,11 +2,11 @@
 layout    : post
 title     : "GPU 进阶笔记（一）：高性能 GPU 服务器硬件拓扑与集群组网（2023）"
 date      : 2023-09-16
-lastupdate: 2023-12-03
+lastupdate: 2024-04-06
 categories: ai gpu
 ---
 
-记录一些平时接触到的 GPU 知识。由于是笔记而非教程，因此内容不会追求连贯，有基础的同学可作查漏补缺之用。
+记录一些平时接触到的 GPU 知识。由于是笔记而非教程，因此内容不求连贯，有基础的同学可作查漏补缺之用。
 
 <p align="center"><img src="/assets/img/gpu-notes/8x-a100-node-hw-topo.png" width="100%" height="100%"></p>
 
@@ -380,6 +380,117 @@ L40S 最大的特点之一是 **<mark>time-to-market 时间短</mark>**，也就
 
 如上，即便只测试单机 4 卡 L40S 机器，也需要搭配 200Gbps 交换机，否则卡间性能发挥不出来。
 
+# 5 典型 `8*H20` GPU 服务器（2024 更新）
+
+H20 是 2023 年发布，2024 年正式开始交付的 GPU。面向中国大陆市场，填补 A800/L40S 等等被禁之后的产品空缺。
+
+## 5.1 显存：**<mark><code>8*96GB</code></mark>**
+
+```shell
+$ nvidia-smi
++---------------------------------------------------------------------------------------+
+| NVIDIA-SMI 535.161.03             Driver Version: 535.161.03   CUDA Version: 12.2     |
+|-----------------------------------------+----------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id        Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |         Memory-Usage | GPU-Util  Compute M. |
+|                                         |                      |               MIG M. |
+|=========================================+======================+======================|
+|   0  NVIDIA H20                     On  | 00000000:04:00.0 Off |                    0 |
+| N/A   24C    P0              72W / 500W |      0MiB / 97871MiB |      0%      Default |
+|                                         |                      |             Disabled |
++-----------------------------------------+----------------------+----------------------+
+|   1  NVIDIA H20                     On  | 00000000:23:00.0 Off |                    0 |
+| N/A   24C    P0              71W / 500W |      0MiB / 97871MiB |      0%      Default |
+|                                         |                      |             Disabled |
++-----------------------------------------+----------------------+----------------------+
+...
++-----------------------------------------+----------------------+----------------------+
+|   7  NVIDIA H20                     On  | 00000000:E4:00.0 Off |                    0 |
+| N/A   24C    P0              72W / 500W |      0MiB / 97871MiB |      0%      Default |
+|                                         |                      |             Disabled |
++-----------------------------------------+----------------------+----------------------+
+```
+
+GPU 最大功耗 `8*500W`。
+
+## 5.2 卡间互联：NVLINK `x18 lanes = 900GB/s`
+
+```shell
+$ nvidia-smi topo -m
+        GPU0    GPU1    GPU2    GPU3    GPU4    GPU5    GPU6    GPU7    NIC0    NIC1    CPU Affinity    NUMA Affinity   GPU NUMA ID
+GPU0     X      NV18    NV18    NV18    NV18    NV18    NV18    NV18    SYS     SYS     0-95,192-287    0               N/A
+GPU1    NV18     X      NV18    NV18    NV18    NV18    NV18    NV18    SYS     SYS     0-95,192-287    0               N/A
+GPU2    NV18    NV18     X      NV18    NV18    NV18    NV18    NV18    SYS     SYS     0-95,192-287    0               N/A
+GPU3    NV18    NV18    NV18     X      NV18    NV18    NV18    NV18    SYS     SYS     0-95,192-287    0               N/A
+GPU4    NV18    NV18    NV18    NV18     X      NV18    NV18    NV18    NODE    NODE    96-191,288-383  1               N/A
+GPU5    NV18    NV18    NV18    NV18    NV18     X      NV18    NV18    NODE    NODE    96-191,288-383  1               N/A
+GPU6    NV18    NV18    NV18    NV18    NV18    NV18     X      NV18    PHB     PHB     96-191,288-383  1               N/A
+GPU7    NV18    NV18    NV18    NV18    NV18    NV18    NV18     X      NODE    NODE    96-191,288-383  1               N/A
+NIC0    SYS     SYS     SYS     SYS     NODE    NODE    PHB     NODE     X      PIX
+NIC1    SYS     SYS     SYS     SYS     NODE    NODE    PHB     NODE    PIX      X
+```
+
+可以看到双向 **<mark><code>18 lanes * 50GB/s/lane= 900GB/s</code></mark>**（单向 450GB/s）。
+作为对比，`8*A800` NVLINK 是 8 lanes，见前面章节。
+
+## 5.3 网络
+
+这个看各服务器厂商怎么配了。下面是国内某家的 PCIe 和网卡信息：
+
+```shell
+$ lspci
+00:00.0 Host bridge: Advanced Micro Devices, Inc. [AMD] Device 14a4 (rev 01)
+c0:00.2 IOMMU: Advanced Micro Devices, Inc. [AMD] Device 149e (rev 01)
+c0:01.1 PCI bridge: Advanced Micro Devices, Inc. [AMD] Device 14ab (rev 01)
+c1:00.0 PCI bridge: Broadcom / LSI PEX890xx PCIe Gen 5 Switch (rev b0)           # <-- PCIe Gen5
+c2:00.0 PCI bridge: Broadcom / LSI PEX890xx PCIe Gen 5 Switch (rev b0)
+c3:00.0 3D controller: NVIDIA Corporation Device 2329 (rev a1)
+c6:00.0 Ethernet controller: Mellanox Technologies MT2894 Family [ConnectX-6 Lx] # <-- Mellanox CX6
+c6:00.1 Ethernet controller: Mellanox Technologies MT2894 Family [ConnectX-6 Lx]
+...
+```
+
+RDMA：
+
+```shell
+$ ibstat
+CA 'mlx5_0'
+        CA type: MT4127
+        Number of ports: 1
+        Port 1:
+                State: Down
+                Physical state: Disabled
+                Rate: 40
+                Base lid: 0
+                LMC: 0
+                SM lid: 0
+                Capability mask: 0x00010000
+                Link layer: Ethernet
+CA 'mlx5_1'
+        CA type: MT4127
+        Number of ports: 1
+        Port 1:
+                State: Down
+                Physical state: Disabled
+                Rate: 40
+                Base lid: 0
+                LMC: 0
+                SM lid: 0
+                Capability mask: 0x00010000
+                Link layer: Ethernet
+```
+
+## 5.4 训练性能：`8*H20 vs 8*A800`
+
+单机 8 卡训练性能（实测数据，但大家用的模型、框架、数据集等可能各不相同，因此这里的结果仅供参考）：
+
+| GPU Node (NVLINK interconnect) | Throughput |
+|:----|:-----|
+| 8*A800-80GB | **<mark><code>~30</code></mark>** samples/sec |
+| **<mark><code>8*H20-96GB</code></mark>**  | **<mark><code>~21</code></mark>** samples/sec |
+
+相比 A800，H20 纸面算力阉割了一半左右 [6]，但在 NVLINK/cache 等地方补了一下，所以实际性能（只）下降了 1/3。
+
 # 参考资料
 
 1. [NVLink-Network Switch - NVIDIA’s Switch Chip for High Communication-Bandwidth SuperPODs](https://hc34.hotchips.org/), Hot Chips 2022
@@ -387,6 +498,7 @@ L40S 最大的特点之一是 **<mark>time-to-market 时间短</mark>**，也就
 3. [NVIDIA Hopper Architecture In-Depth](https://developer.nvidia.com/blog/nvidia-hopper-architecture-in-depth/), nvidia.com, 2022
 4. [DGX A100 review: Throughput and Hardware Summary](https://www.microway.com/hpc-tech-tips/dgx-a100-review-throughput-and-hardware-summary/), 2020
 5. [Understanding NVIDIA GPU Performance: Utilization vs. Saturation]({% link _posts/2023-08-27-understanding-gpu-performance.md %}), 2023
+6. [GPU Performance (Data Sheets) Quick Reference (2023)]({% link _posts/2023-10-25-gpu-data-sheets.md %})
 
 ----
 
