@@ -2,7 +2,7 @@
 layout    : post
 title     : "GPU 进阶笔记（一）：高性能 GPU 服务器硬件拓扑与集群组网（2023）"
 date      : 2023-09-16
-lastupdate: 2024-04-06
+lastupdate: 2024-04-25
 categories: ai gpu
 ---
 
@@ -109,9 +109,12 @@ NVSwitch 是 NVIDIA 的一款**<mark>交换芯片</mark>**，封装在 GPU modul
 传统上，GPU 显存和普通内存（DDR）一样插在主板上，通过 PCIe 连接到处理器（CPU、GPU），
 因此速度瓶颈在 PCIe，Gen4 是 64GB/s，Gen5 是 128GB/s。
 
-因此，一些 GPU 厂商（不是只有 NVIDIA 一家这么做）将**<mark>将多个 DDR 芯片堆叠之后与 GPU 封装到一起</mark>**
+因此，一些 GPU 厂商（不是只有 NVIDIA 一家这么做）将**<mark>将多个 DDR 芯片堆叠之后与 GPU 芯片封装到一起</mark>**
 （后文讲到 H100 时有图），这样每片 GPU 和它自己的显存交互时，就不用再去 PCIe 交换芯片绕一圈，速度最高可以提升一个量级。
 这种**<mark>“高带宽内存”</mark>**（High Bandwidth Memory）缩写就是 HBM。
+
+> 现在 CPU 也有用 HBM 的了，比如 [Intel Xeon CPU Max Series](https://www.intel.com/content/www/us/en/products/details/processors/xeon/max-series.html)
+> 就自带了 64GB HBM2e。
 
 HBM 的市场目前被 SK 海力士和三星等韩国公司垄断。
 
