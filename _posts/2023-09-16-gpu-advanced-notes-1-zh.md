@@ -197,7 +197,7 @@ full-mesh 里面的**<mark>每根线的带宽是 n * bw-per-nvlink-lane</mark>**
 
 * GPU 和 NIC 之间：
 
-    * 在同一片 CPU 上，且在同一个 PCIe Switch 芯片下面：**<mark><code>NODE</code></mark>**，表示**<mark>只需要跨 PCIe 交换芯片</mark>**；
+    * 在同一片 CPU 上，且在同一个 PCIe Switch 芯片下面：**<mark><code>PXB</code></mark>**，表示**<mark>只需要跨 PCIe 交换芯片</mark>**；
     * 在同一片 CPU 上，且不在同一个 PCIe Switch 芯片下面：**<mark><code>NODE</code></mark>**，表示**<mark>需要跨 PCIe 交换芯片和 PCIe Host Bridge</mark>**；
     * 不在同一片 CPU 上：**<mark><code>SYS</code></mark>**，表示**<mark>需要跨 NUMA、PCIe 交换芯片，距离最远</mark>**；
 
@@ -258,7 +258,7 @@ GPU Board Form Factor 分为两种类型：
 <p align="center">单片 H100 GPU 内部逻辑布局。Image source: [3]</p>
 
 * **<mark><code>4nm</code></mark>** 工艺；
-* 最下面一排是 18 根 Gen4 NVLink；双向总带宽 **<mark><code>18 lanes * 25GB/s/lane = 900GB/s</code></mark>**；
+* 最下面一排是 18 根 Gen4 NVLink；双向总带宽 **<mark><code>18 lanes * 50GB/s/lane = 900GB/s</code></mark>**；
 * 中间蓝色的是 L2 cache；
 * 左右两侧是 **<mark><code>HBM</code></mark>** 芯片，即显存；
 
