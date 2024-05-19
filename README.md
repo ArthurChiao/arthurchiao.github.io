@@ -1,4 +1,4 @@
-Repo for my [blog](https://arthurchiao.github.io). Why blogging? Some hints:
+Repo for my personal [blog](https://arthurchiao.github.io). Why blogging? Some hints:
 
 * [Writing Is Magic, 2022](https://brooker.co.za/blog/2022/11/08/writing.html),
   中文版 [长文写作的魔力](https://arthurchiao.art/blog/writing-is-magic-zh)

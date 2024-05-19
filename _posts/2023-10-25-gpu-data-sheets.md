@@ -2,7 +2,7 @@
 layout    : post
 title     : "GPU Performance (Data Sheets) Quick Reference (2023)"
 date      : 2023-10-25
-lastupdate: 2024-04-25
+lastupdate: 2024-05-19
 categories: gpu
 ---
 
@@ -18,7 +18,7 @@ models from NVIDIA and Huawei/HiSilicon, primarily intended for personal use.
 
 # 1 Introduction
 
-## Naming convention of NVIDIA GPUs
+## 1.1 Naming convention of NVIDIA GPUs
 
 The first letter in GPU model names denote their GPU architectures, with:
 
@@ -40,12 +40,12 @@ The first letter in GPU model names denote their GPU architectures, with:
 | GPU Mem            | 24GB GDDR6       | 24GB             | 16GB GDDR6       | 24GB GDDR6         | 24GB HBM2  | 16/32GB <mark>HBM2</mark> |
 | GPU Mem BW         | 300 GB/s         | 300 GB/s         | 400 GB/s         | 600 GB/s           | **<mark><code>933GB/s</code></mark>**  | **<mark><code>900 GB/s</code></mark>** |
 | Interconnect       | PCIe Gen4 64GB/s | PCIe Gen4 64GB/s | PCIe Gen3 32GB/s | PCIe Gen4 66 GB/s  | PCIe Gen4 64GB/s, NVLINK 200GB/s | PCIe Gen3 32GB/s, NVLINK **<mark><code>300GB/s</code></mark>** |
-| FP32                `TFLOPS` | 24.1    | 30.3            | 8.1              | 31.2               | 10.3       | 14/15.7      |
-| TF32                `TFLOPS` | 48.3    | `120*`          |                  |                    |            |              |
-| BFLOAT16 TensorCore `TFLOPS` | 95.6    | `242*`          |                  | 125                | 165        |  |
-| FP16 TensorCore     `TFLOPS` |         | `242*`          |                  | 125                | 165        |  |
-| INT8 TensorCore     `TFLOPS` | 193/193 | `485*`          |                  | 250                | 330        |  |
-| INT4 TensorCore     `TFLOPS` |         | NO              |                  |                    | 661        |  |
+| FP32      `TFLOPS` | 24.1             | 30.3            | 8.1              | 31.2               | 10.3       | 14/15.7      |
+| TF32      `TFLOPS` | 48.3             | `120*`          |                  |                    |            |              |
+| BF16      `TFLOPS` | 95.6             | `242*`          |                  | 125                | 165        | NOT support |
+| FP16      `TFLOPS` |                  | `242*`          |                  | 125                | 165        |  |
+| INT8      `TFLOPS` | 193/193          | `485*`          |                  | 250                | 330        |  |
+| INT4      `TFLOPS` |                  | NO              |                  |                    | 661        |  |
 
 Notes:
 
@@ -61,22 +61,22 @@ Datasheets:
 
 # 3 Comparison of `A100/A800/H100/H800/910B/H200`
 
-|                    | A800 (PCIe/SXM)  | A100 (PCIe/SXM)  | <mark>Huawei Ascend 910B</mark>| H800  (PCIe/SXM) | H100 (PCIe/SXM) | H200 (PCIe/SXM) |
-|:-------------------|:-----------------|:-----------------|:-----------------|:-----------------|:--------------|:--------|
-| Year               | 2022             | 2020             | 2023             | 2022             | 2022          | 2024 |
-| Manufacturing      | 7nm              | 7nm              | 7+nm             | 4nm              | 4nm           | 4nm  |
-| Architecture       | Ampere           | Ampere           | HUAWEI Da Vinci  | Hopper           | Hopper        | Hopper |
-| Max Power          | 300/400 W        | 300/400 W        | 400 W            |                  | 350/700 W     | 700W |
-| GPU Mem            | 80G HBM2e        | 80G HBM2e        | 64G HBM2e        | 80G HBM3         | 80G HBM3      | 141GB HBM3e |
-| GPU Mem BW         |                  | 1935/2039 GB/s   |                  |                  | 2/3.35 TB/s   | 4.8 TB/s |
+|                | A800 (PCIe/SXM)  | A100 (PCIe/SXM)  | <mark>Huawei Ascend 910B</mark>| H800  (PCIe/SXM) | H100 (PCIe/SXM) | H200 (PCIe/SXM) |
+|:---------------|:-----------------|:-----------------|:-----------------|:-----------------|:--------------|:--------|
+| Year           | 2022             | 2020             | 2023             | 2022             | 2022          | 2024 |
+| Manufacturing  | 7nm              | 7nm              | 7+nm             | 4nm              | 4nm           | 4nm  |
+| Architecture   | Ampere           | Ampere           | HUAWEI Da Vinci  | Hopper           | Hopper        | Hopper |
+| Max Power      | 300/400 W        | 300/400 W        | 400 W            |                  | 350/700 W     | 700W |
+| GPU Mem        | 80G HBM2e        | 80G HBM2e        | 64G HBM2e        | 80G HBM3         | 80G HBM3      | 141GB HBM3e |
+| GPU Mem BW     |                  | 1935/2039 GB/s   |                  |                  | 2/3.35 TB/s   | 4.8 TB/s |
 | GPU Interconnect (**<mark>one-to-one max bw</mark>**)    | NVLINK 400GB/s   | PCIe Gen4 64GB/s, NVLINK 600GB/s | HCCS **<mark><code>56GB/s</code></mark>** | NVLINK 400GB/s   | PCIe Gen5 128GB/s, NVLINK **<mark><code>900GB/s</code></mark>** | PCIe Gen5 128GB/s, NVLINK 900 GB/s |
 | GPU Interconnect (**<mark>one-to-many total bw</mark>**) | NVLINK 400GB/s   | PCIe Gen4 64GB/s, NVLINK 600GB/s | HCCS **<mark><code>392GB/s</code></mark>** | NVLINK 400GB/s   | PCIe Gen5 128GB/s, NVLINK **<mark><code>900GB/s</code></mark>** | PCIe Gen5 128GB/s, NVLINK 900 GB/s|
-| FP32            `TFLOPS` |              | `19.5`         |                  |                  | `51 | 67*`    | `67*`   |
-| TF32            `TFLOPS` |              | `156 | 312*`   |                  |                  | `756 | 989*`  | `989*`  |
-| BF16 TensorCore `TFLOPS` |              | `156 | 312*`   |                  |                  |               | `1979*` |
-| FP16 TensorCore `TFLOPS` |              | `312 | 624*`   | `320`            |                  | `1513 | 1979*`| `1979*` |
-| FP8 TensorCore  `TFLOPS` | NOT support  | NOT support    |                  |                  | `3026 | 3958*`| `3958*` |
-| INT8 TensorCore `TFLOPS` |              | `624 | 1248*`  | `640`            |                  | `3026 | 3958*`| `3958*` |
+| FP32  `TFLOPS` |              | `19.5`         |                  |                  | `51 | 67*`    | `67*`   |
+| TF32  `TFLOPS` |              | `156 | 312*`   |                  |                  | `756 | 989*`  | `989*`  |
+| BF16  `TFLOPS` |              | `156 | 312*`   |                  |                  | `1513 | 1979*`| `1979*` |
+| FP16  `TFLOPS` |              | `312 | 624*`   | `320`            |                  | `1513 | 1979*`| `1979*` |
+| FP8   `TFLOPS` | NOT support  | NOT support    |                  |                  | `3026 | 3958*`| `3958*` |
+| INT8  `TFLOPS` |              | `624 | 1248*`  | `640`            |                  | `3026 | 3958*`| `3958*` |
 
 Notes:
 
@@ -118,15 +118,19 @@ some differences. To clarify them,
 | Max Power          | 400 watt         | 275W             | 500W             | 350/700 watt |
 | GPU Mem            | 64G HBM2e        | 48G GDDR6        | 96G HBM3         | 80G HBM3 |
 | GPU Mem BW         |                  | 864GB/s          | <mark>4.0TB/s</mark> | 2/3.35 TB/s|
-| L2 Cache           |                  | 96MB             | 60MB             |             |
+| L2 Cache           |                  | **<mark><code>96MB</code></mark>** | 60MB             | 50MB        |
 | GPU Interconnect (**<mark>one-to-one max bandwidth</mark>**)| HCCS 56GB/s  | PCIe Gen4 64GB/s | PCIe Gen5 128GB/s, **<mark><code>NVLINK 900GB/s</code></mark>** | PCIe Gen5 128GB/s, NVLINK 900GB/s |
 | GPU Interconnect (**<mark>one-to-many total bw</mark>**)    | HCCS 392GB/s | PCIe Gen4 64GB/s | PCIe Gen5 128GB/s, **<mark><code>NVLINK 900GB/s</code></mark>** | PCIe Gen5 128GB/s, NVLINK 900GB/s |
-| FP32               |                  | 59.8 TFLOPS      | 44 TFLOPS        | 51/67 TFLOPS |
-| TF32 (TensorFloat) |                  | 59.8 TFLOPS      | 74 TFLOPS        | 756/989 TFLOPS |
-| BFLOAT16 TensorCore|                  | 119/119 TFLOPS   | 148/148 TFLOPS   |  |
-| FP16 TensorCore    | 320 TFLOPS       |                  |                  | 1513/1979 TFLOPS |
-| FP8 TensorCore     |                  |                  |                  | 3026/3958 TFLOPS |
-| INT8 TensorCore    | 640 TFLOPS       | 239/239 TFLOPS   | 296/296 TFLOPS   | 3026/3958 TFLOPS |
+| FP32 `TFLOPS`      |                  | 59.8             | 44               | 51/67        |
+| TF32 `TFLOPS`      |                  | 59.8             | 74               | 756/989 |
+| BF16 `TFLOPS`      |                  | **<mark><code>119 | 119</code></mark>**      | **<mark><code>148 | 148</code></mark>**  | `1513 | 1979*` |
+| FP16 `TFLOPS`      | 320              |                  |                  | `1513 | 1979*` |
+| FP8  `TFLOPS`      |                  |                  | `296 | 296`      | `3026 | 3958*` |
+| INT8 `TFLOPS`      | 640              | `239 | 239`      | `296 | 296`      | `3026 | 3958*` |
+
+Notes:
+
+* `*`: **<mark>with sparsity</mark>**; Specifications 1/2 lower without sparsity.
 
 # 5 Notes on US "Chip Export Controls" targeting China
 

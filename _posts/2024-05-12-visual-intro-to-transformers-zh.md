@@ -8,10 +8,10 @@ categories: llm gpt transformer
 
 ### 译者序
 
-本文翻译自 2024 年的一个视频（前半部分）：
-[But what is a GPT? Visual intro to transformers](https://www.youtube.com/watch?v=wjZofJX0v4M)。
-这是原作者 Deep Learning 系列的第 5 章，强烈推荐原视频。
-上不了油管的，B 站也有不少搬运。B站的3Blue1Brown官方账号 [官方双语】GPT是什么？直观解释Transformer | 深度学习第5章](https://www.bilibili.com/video/BV13z421U7cs)。
+本文翻译自 2024 年的一个视频（前半部分），这是原作者 Deep Learning 系列的第 5 章，强烈推荐原视频：
+
+* Youtube：[But what is a GPT? Visual intro to transformers](https://www.youtube.com/watch?v=wjZofJX0v4M)；
+* B 站：[官方搬运](https://www.bilibili.com/video/BV13z421U7cs)。
 
 <p align="center"><img src="/assets/img/visual-intro-to-transformers/transformer-modules.gif" width="100%" height="100%"></p>
 <p align="center">Transformer 预测下一个单词四部曲。MLP 也称为 feed-forward。</p>
