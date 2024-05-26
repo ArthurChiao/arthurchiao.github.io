@@ -2,7 +2,7 @@
 layout    : post
 title     : "[笔记] Google（英文）技术写作课（2020）"
 date      : 2020-05-11
-lastupdate: 2020-05-11
+lastupdate: 2024-05-26
 categories: writing
 ---
 
@@ -18,36 +18,10 @@ categories: writing
 
 课程中有一些带答案的随堂练习非常不错，建议做一下。
 
-本文内容仅供学习交流，如有侵权立即删除。
-
 ----
 
-## 目录
-
-### 课程 1
-
-1. [Intro](#ch_1)
-2. [语法](#ch_2)
-3. [单词（Words）](#ch_3)
-4. [主动时态（Active voice）](#ch_4)
-5. [Clear sentences](#ch_5)
-6. [Short sentences](#ch_6)
-7. [Lists and tables](#ch_7)
-8. [Paragraphs](#ch_8)
-9. [Audience](#ch_9)
-10. [Documents](#ch_10)
-11. [标点（Punctuation）](#ch_11)
-12. [Markdown](#ch_12)
-13. [Summary](#ch_13)
-
-### 课程 2
-
-1. [Intro](#course2_ch_1)
-2. [Self-editing](#course2_ch_2)
-3. [Organizing large documents](#course2_ch_3)
-4. [Illustrating](#course2_ch_4)
-5. [Creating sample code](#course2_ch_5)
-6. [Summary](#course2_ch_6)
+* TOC
+{:toc}
 
 ----
 
@@ -57,7 +31,8 @@ categories: writing
 
 # 1 Intro
 
-目标：编写**最清晰**的技术文档（how to write clearer technical documentation）。
+目标：编写更**<mark>清晰易懂</mark>**的技术文档（how to write clearer technical documentation），
+**<mark>减少沟通成本</mark>**。
 
 <a name="ch_2"></a>
 
@@ -109,7 +84,7 @@ categories: writing
 两种解决方式：
 
 1. 直接使用相应的名词，不要用代词
-2. 在代词后面加上相应的名词
+2. **<mark>在代词后面加上相应的名词</mark>**
 
 > **Overlapping functionality** is not optimal.
 >
@@ -124,7 +99,7 @@ categories: writing
 * 主动时态：`The cat sat on the mat.`
 * 被动时态：`The mat was sat on by the cat.`
 
-大部分技术文档都应该使用**主动时态**。
+大部分技术文档都应该使用**<mark>主动时态</mark>**。
 
 ## 4.2 更复杂的例子
 
@@ -134,9 +109,9 @@ categories: writing
 1. 部分被动
 1. 全主动
 
-<p align="center"><img src="/assets/img/google-tech-writing/passive-passive.svg" width="70%" height="70%"></p>
-<p align="center"><img src="/assets/img/google-tech-writing/active-passive.svg" width="70%" height="70%"></p>
-<p align="center"><img src="/assets/img/google-tech-writing/all-active.svg" width="70%" height="70%"></p>
+<p align="center"><img src="/assets/img/google-tech-writing/passive-passive.svg" width="60%" height="60%"></p>
+<p align="center"><img src="/assets/img/google-tech-writing/active-passive.svg" width="60%" height="60%"></p>
+<p align="center"><img src="/assets/img/google-tech-writing/all-active.svg" width="60%" height="60%"></p>
 
 ## 4.3 优先使用主动时态
 
@@ -151,7 +126,7 @@ categories: writing
 
 ## 5.1 使用辨识度高的动词（strong verbs）
 
-技术写作中，**动词（verb）是句子的最重要组成部分**。动词用的好，句子就无需额外解释。
+技术写作中，**<mark>动词（verb）是句子组成的最重要部分</mark>**。动词用的好，句子就无需额外解释。
 
 但很多技术作者的动词词汇太贫乏，翻来覆去就那么几个最普通的、已经被用烂的动词。
 花点时间来找几个准确且更有亮点的动词，效果会大不一样。
@@ -230,9 +205,9 @@ categories: writing
 >
 > 改进：An input value greater than 100 triggers logging.
 
-> This design document provides a detailed description of Project Frambus.
+> **<mark><code>This design document provides a detailed description of Project Frambus</code></mark>**.
 >
-> 改进：This design document details Project Frambus.
+> 改进：This design document **<mark><code>details</code></mark>** Project Frambus.
 
 ## 6.4 精简从句
 
@@ -240,14 +215,14 @@ categories: writing
 
 that 和 which 从句分别何时使用，有一个经验法则：
 
-* which 从句去掉后不影响主句的意思
+* which 从句去掉后**<mark>不影响主句的意思</mark>**
 * that 去掉后主句的意思不完整
 
 > Python is an interpreted language, **which** means the processor runs the program directly.
 >
 > FORTRAN is perfect for mathematical calculations **that** don't involve linear algebra.
 
-或者：尝试读句子，如果发现**读到从句时需要停顿，那适合使用 which**；否则使用 that。
+或者：尝试读句子，如果发现**<mark>读到从句时需要停顿，那适合使用 which</mark>**；否则使用 that。
 
 <a name="ch_7"></a>
 
@@ -324,8 +299,7 @@ that 和 which 从句分别何时使用，有一个经验法则：
 
 ## 8.1 Write a great opening sentence
 
-每一段的第一句非常重要，应该揭示出本段的中心内容。很多人粗看文章的时候，只看每段
-的第一句话。
+**<mark>每一段的第一句非常重要，应该揭示出本段的中心内容</mark>**。很多人粗看文章时，只看每段的第一句话。
 
 下面的例子：
 
@@ -393,8 +367,8 @@ Good paragraphs answer the following three questions:
 > Experts often suffer from the curse of knowledge, which means that their expert
 > understanding of a topic ruins their explanations to newcomers.
 
-**在专家的层面向普通开发者解释问题，结果非常失败。专家无意识地假设听众具备某些知
-识，而事实上他们并不具备**。
+**<mark>在专家的层面向普通开发者解释问题</mark>**，结果非常失败。
+专家无意识地假设听众具备某些知识，而事实上他们并不具备。
 
 <a name="ch_10"></a>
 
@@ -408,7 +382,7 @@ Good paragraphs answer the following three questions:
 
 > This document describes the overall design of Project Frambus.
 
-更好的文档会进一步说明本文档不包括哪些读者可能会寄希望的内容（non-scope），例如：
+更好的文档会进一步说明本文档不包括哪些读者可能会寄希望的内容（**<mark><code>non-scope</code></mark>**），例如：
 
 > This document does not describe the design for the related technology, Project Froobus.
 
@@ -428,8 +402,7 @@ Good paragraphs answer the following three questions:
 
 > Always write an executive summary (a TL;DR) for long engineering documents. 
 
-**长文档一定要写一个执行摘要**（TL; DR）；**TLDR 虽短，但一定要花时间精细打
-磨，否则还不如不写**。
+长文档一定要写一个摘要（TLDR, “太长不读”）；**<mark>TLDR 虽短，但一定要花时间精细打磨，否则还不如不写</mark>**。
 
 ## 10.4 目标读者与文档组织
 
@@ -469,7 +442,7 @@ Good paragraphs answer the following three questions:
 
 # 2 Self-editing
 
-* 文档都是一遍遍迭代出来的，从无到有的写出第一份草稿通常是最难的。
+* **<mark>文档都是一遍遍迭代出来的，从无到有的写出第一份草稿通常是最难的</mark>**。
 * 确保留出足够的时间对文档进行迭代。
 
 ## 2.1 Adopt a style guide
@@ -479,11 +452,11 @@ Guide](https://developers.google.com/style)。
 
 ## 2.2 Think like your audience
 
-尝试从读者的角度去阅读你的草稿。在此之前，得先确定你的目标读者是哪类人。
+**<mark>尝试从读者的角度去阅读你的草稿</mark>**。在此之前，得先确定你的目标读者是哪类人。
 
 ## 2.3 Read it out loud
 
-读出来，你可能会发现其中的一些问题：例如句子太长、用词太拗口等。
+**<mark>读出来</mark>**，你可能会发现其中的一些问题：例如句子太长、用词太拗口等。
 
 * getting started guide 强调快速上手，可以偏口语化；
 * 开发者文档追求严谨，准确。
@@ -505,7 +478,7 @@ Guide](https://developers.google.com/style)。
 * How-to guides, introductory overviews, and conceptual guides：适合短文
 * In-depth tutorials, best practice guides, and command-line reference pages：适合长文
 * 深入理解 xxx 系列：适合长文，但分解成系列短文可能更好
-* 某些长文并不是要求读者一次读完。例如，API 文档只是在用到的适合去搜索相关内容。
+* **<mark>某些长文并不是要求读者一次读完</mark>**。例如，API 文档只是在用到的适合去搜索相关内容。
 
 ## 3.2 Orginaze a document
 
@@ -550,9 +523,7 @@ Guide](https://developers.google.com/style)。
 
 <a name="course2_ch_4"></a>
 
-# 4 Illustrating
-
-**无图无真相。纯文字近乎自杀。**
+# 4 Illustrating：**<mark>无图无真相。纯文字近乎自杀</mark>**
 
 ## 4.1 Write the caption first（起个好标题）
 

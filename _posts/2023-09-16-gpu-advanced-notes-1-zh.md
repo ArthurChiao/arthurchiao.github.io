@@ -2,7 +2,7 @@
 layout    : post
 title     : "GPU 进阶笔记（一）：高性能 GPU 服务器硬件拓扑与集群组网（2023）"
 date      : 2023-09-16
-lastupdate: 2024-04-25
+lastupdate: 2024-05-27
 categories: ai gpu
 ---
 
@@ -271,6 +271,10 @@ GPU Board Form Factor 分为两种类型：
     <p align="center"><img src="/assets/img/gpu-notes/HGX_H100_board.jpg" width="60%" height="60%"></p>
 
 2. 与 CPU 的互联从 PCIe Gen4 x16 升级到 **<mark><code>PCIe Gen5 x16</code></mark>**，双向带宽 **<mark><code>128GB/s</code></mark>**；
+
+    <p align="center"><img src="/assets/img/gpu-notes/8xh100-topo.png" width="70%" height="70%"></p>
+    <p align="center">Image source: <a href="https://www.exxactcorp.com/blog/deep-learning/sxm-vs-pcie-gpus-best-for-training-llms-like-gpt-4">exxactcorp.com</a>
+    </p>
 
 ## 3.3 组网
 
