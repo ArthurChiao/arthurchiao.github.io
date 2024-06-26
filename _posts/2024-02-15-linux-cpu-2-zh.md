@@ -770,7 +770,7 @@ except KeyboardInterrupt:
 
 ## 6.1 经典方式：scheduler tick（固定 `HZ`）
 
-如果一个 CPU 上有多个 runnable task，从公平角度考虑 [12]，应该让它们轮流执行。
+如果一个 CPU 上有多个 runnable task，从公平角度考虑 [6]，应该让它们轮流执行。
 实现轮流的底层机制就是定时器。
 
 * scheduler tick 是一个定时器，定期触发，不管 CPU 上有没有任务执行；
@@ -831,7 +831,6 @@ timer interrupt。
 9. [CPU Performance Scaling](https://github.com/torvalds/linux/blob/v5.15/Documentation/admin-guide/pm/cpufreq.rst), cpufreq kernel doc, 5.15
 10. [Improvements in CPU frequency management](https://lwn.net/Articles/682391/), lwn.net, 2016
 11. [CPU idle power saving methods for real-time workloads](https://wiki.linuxfoundation.org/realtime/documentation/howto/applications/cpuidle), wiki.linuxfoundation.org
-12. [Linux CFS 调度器：原理、设计与内核实现（2023）]({% link _posts/2023-02-05-linux-cfs-design-and-implementation-zh.md %})
 
 ----
 

@@ -49,7 +49,7 @@ The first letter in GPU model names denote their GPU architectures, with:
 
 Notes:
 
-* `*`: **<mark>with sparsity</mark>**; Specifications 1/2 lower without sparsity.
+* `*`: **<mark>with sparsity</mark>**.
 
 Datasheets:
 
@@ -80,7 +80,7 @@ Datasheets:
 
 Notes:
 
-* `*`: **<mark>with sparsity</mark>**; Specifications 1/2 lower without sparsity.
+* `*`: **<mark>with sparsity</mark>**.
 
 H100 vs. A100 in one word: **<mark> 3x performance, 2x price</mark>**.
 
@@ -130,7 +130,7 @@ some differences. To clarify them,
 
 Notes:
 
-* `*`: **<mark>with sparsity</mark>**; Specifications 1/2 lower without sparsity.
+* `*`: **<mark>with sparsity</mark>**.
 
 # 5 Notes on US "Chip Export Controls" targeting China
 

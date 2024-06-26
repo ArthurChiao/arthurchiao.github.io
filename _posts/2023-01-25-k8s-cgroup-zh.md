@@ -2,7 +2,7 @@
 layout    : post
 title     : "k8s 基于 cgroup 的资源限额（capacity enforcement）：模型设计与代码实现（2023）"
 date      : 2023-01-25
-lastupdate: 2024-02-15
+lastupdate: 2024-06-26
 categories: k8s cgroup
 ---
 
@@ -634,7 +634,32 @@ Swap:            0B          0B          0B
 
 注意，这里用到 lxcfs，所以 free 看到的大小是对的。如果没有用 lxcfs，这个大小是不变的。
 
-## 4.3 其他
+## 4.3 设备（devices）
+
+```shell
+/sys/fs/cgroup/devices/kubepods/burstable/pod<podid> # ls
+cgroup.clone_children  cgroup.procs  devices.allow  devices.deny  devices.list  notify_on_release  tasks
+
+/sys/fs/cgroup/devices/kubepods/burstable/pod<podid>/<ctn_id> # cat devices.list
+c 1:5 rwm
+...
+c *:* m
+b *:* m
+..
+c 195:0 rw
+```
+
+更多信息：[Documentation/cgroup-v1/devices.txt](https://www.kernel.org/doc/Documentation/cgroup-v1/devices.txt)。
+
+举例：docker 支持 [--priviledged/--devices](https://docs.docker.com/engine/reference/run/) 参数，
+
+* 默认（没有加 `--priviledged`）：容器无法访问任何 device；
+* 加了 `--priviledged`：容器可以访问所有设备；这可能会有问题，例如一个 pod 只声明了 **<mark><code>GPU request=1</code></mark>**，但能看到 node 上所有 GPU 设备（例如 `nvidia-smi` 输出看到的）。
+* 限制容器能访问的设备列表：`--devices=[]`
+
+K8s pod 的 `priviledged` 配置，最终传到底层，对应的就是以上参数。
+
+## 4.4 其他
 
 略。
 

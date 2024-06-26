@@ -1,0 +1,170 @@
+#!/bin/bpftrace
+#
+# Usage: $0 <pid>, but not all methods can be filtered by application pid
+# Tailor at your own convenience.
+
+k:sock_map_link
+{
+	$sip = (((struct sock *)(arg0))->__sk_common).skc_rcv_saddr;
+	$dip = (((struct sock *)(arg0))->__sk_common).skc_daddr;
+	$sport = (((struct sock *)(arg0))->__sk_common).skc_num;
+	$dport = (((struct sock *)(arg0))->__sk_common).skc_dport;
+
+	$sip1 = ($sip >> 24) & 0xff;
+	$sip2 = ($sip >> 16) & 0xff;
+	$sip3 = ($sip >> 8) & 0xff;
+	$sip4 = $sip & 0xff;
+
+	$dip1 = ($dip >> 24) & 0xff;
+	$dip2 = ($dip >> 16) & 0xff;
+	$dip3 = ($dip >> 8) & 0xff;
+	$dip4 = $dip & 0xff;
+
+	$ldport = (($dport & 0xff00) >> 8) | (($dport & 0x00ff) << 8);
+
+    if ($sport == 8080 || $ldport == 8080) {
+	printf("sock_map_link: src %d.%d.%d.%d (%d), dst %d.%d.%d.%d(%d), %d\n",
+		$sip4, $sip3, $sip2, $sip1, $sport,
+		$dip4, $dip3, $dip2, $dip1, $ldport, pid);
+    }
+}
+
+kr:sock_map_link
+{
+	printf("sock_map_link: %d\n", retval);
+}
+
+k:tcp_bpf_get_proto
+{
+	$sip = (((struct sock *)(arg0))->__sk_common).skc_rcv_saddr;
+	$dip = (((struct sock *)(arg0))->__sk_common).skc_daddr;
+	$sport = (((struct sock *)(arg0))->__sk_common).skc_num;
+	$dport = (((struct sock *)(arg0))->__sk_common).skc_dport;
+
+	$sip1 = ($sip >> 24) & 0xff;
+	$sip2 = ($sip >> 16) & 0xff;
+	$sip3 = ($sip >> 8) & 0xff;
+	$sip4 = $sip & 0xff;
+
+	$dip1 = ($dip >> 24) & 0xff;
+	$dip2 = ($dip >> 16) & 0xff;
+	$dip3 = ($dip >> 8) & 0xff;
+	$dip4 = $dip & 0xff;
+
+	$ldport = (($dport & 0xff00) >> 8) | (($dport & 0x00ff) << 8);
+
+    if ($sport == 8080 || $ldport == 8080) {
+	printf("tcp_bpf_get_proto: src %d.%d.%d.%d (%d), dst %d.%d.%d.%d(%d), %d\n",
+		$sip4, $sip3, $sip2, $sip1, $sport,
+		$dip4, $dip3, $dip2, $dip1, $ldport, pid);
+    }
+}
+
+kr:tcp_bpf_get_proto
+{
+	printf("tcp_bpf_get_proto: %p\n", retval);
+}
+
+k:tcp_recvmsg
+{
+	$sip = (((struct sock *)(arg0))->__sk_common).skc_rcv_saddr;
+	$dip = (((struct sock *)(arg0))->__sk_common).skc_daddr;
+	$sport = (((struct sock *)(arg0))->__sk_common).skc_num;
+	$dport = (((struct sock *)(arg0))->__sk_common).skc_dport;
+	$proto = (((struct sock *)(arg0))->__sk_common).skc_prot;
+
+	$sip1 = ($sip >> 24) & 0xff;
+	$sip2 = ($sip >> 16) & 0xff;
+	$sip3 = ($sip >> 8) & 0xff;
+	$sip4 = $sip & 0xff;
+
+	$dip1 = ($dip >> 24) & 0xff;
+	$dip2 = ($dip >> 16) & 0xff;
+	$dip3 = ($dip >> 8) & 0xff;
+	$dip4 = $dip & 0xff;
+
+	$ldport = (($dport & 0xff00) >> 8) | (($dport & 0x00ff) << 8);
+
+    if ($sport == 8080 || $ldport == 8080) {
+	printf("tcp_recvmsg: src %d.%d.%d.%d (%d), dst %d.%d.%d.%d(%d) %p\n",
+		$sip4, $sip3, $sip2, $sip1, $sport,
+		$dip4, $dip3, $dip2, $dip1, $ldport, $proto);
+    }
+}
+
+k:tcp_bpf_recvmsg
+{
+	$sip = (((struct sock *)(arg0))->__sk_common).skc_rcv_saddr;
+	$dip = (((struct sock *)(arg0))->__sk_common).skc_daddr;
+	$sport = (((struct sock *)(arg0))->__sk_common).skc_num;
+	$dport = (((struct sock *)(arg0))->__sk_common).skc_dport;
+	$proto = (((struct sock *)(arg0))->__sk_common).skc_prot;
+
+	$sip1 = ($sip >> 24) & 0xff;
+	$sip2 = ($sip >> 16) & 0xff;
+	$sip3 = ($sip >> 8) & 0xff;
+	$sip4 = $sip & 0xff;
+
+	$dip1 = ($dip >> 24) & 0xff;
+	$dip2 = ($dip >> 16) & 0xff;
+	$dip3 = ($dip >> 8) & 0xff;
+	$dip4 = $dip & 0xff;
+
+	$ldport = (($dport & 0xff00) >> 8) | (($dport & 0x00ff) << 8);
+
+    if ($sport == 8080 || $ldport == 8080) {
+	printf("tcp_bpf_recvmsg: src %d.%d.%d.%d (%d), dst %d.%d.%d.%d(%d) %p\n",
+		$sip4, $sip3, $sip2, $sip1, $sport,
+		$dip4, $dip3, $dip2, $dip1, $ldport, $proto);
+    }
+}
+
+k:tcp_sendmsg
+/pid==$1/
+{
+	$sip = (((struct sock *)(arg0))->__sk_common).skc_rcv_saddr;
+	$dip = (((struct sock *)(arg0))->__sk_common).skc_daddr;
+	$sport = (((struct sock *)(arg0))->__sk_common).skc_num;
+	$dport = (((struct sock *)(arg0))->__sk_common).skc_dport;
+
+	$sip1 = ($sip >> 24) & 0xff;
+	$sip2 = ($sip >> 16) & 0xff;
+	$sip3 = ($sip >> 8) & 0xff;
+	$sip4 = $sip & 0xff;
+
+	$dip1 = ($dip >> 24) & 0xff;
+	$dip2 = ($dip >> 16) & 0xff;
+	$dip3 = ($dip >> 8) & 0xff;
+	$dip4 = $dip & 0xff;
+
+	$ldport = (($dport & 0xff00) >> 8) | (($dport & 0x00ff) << 8);
+
+	printf("tcp_sendmsg: src %d.%d.%d.%d (%d), dst %d.%d.%d.%d(%d)\n",
+		$sip4, $sip3, $sip2, $sip1, $sport,
+		$dip4, $dip3, $dip2, $dip1, $ldport);
+}
+
+k:tcp_bpf_sendmsg
+/pid==$1/
+{
+	$sip = (((struct sock *)(arg0))->__sk_common).skc_rcv_saddr;
+	$dip = (((struct sock *)(arg0))->__sk_common).skc_daddr;
+	$sport = (((struct sock *)(arg0))->__sk_common).skc_num;
+	$dport = (((struct sock *)(arg0))->__sk_common).skc_dport;
+
+	$sip1 = ($sip >> 24) & 0xff;
+	$sip2 = ($sip >> 16) & 0xff;
+	$sip3 = ($sip >> 8) & 0xff;
+	$sip4 = $sip & 0xff;
+
+	$dip1 = ($dip >> 24) & 0xff;
+	$dip2 = ($dip >> 16) & 0xff;
+	$dip3 = ($dip >> 8) & 0xff;
+	$dip4 = $dip & 0xff;
+
+	$ldport = (($dport & 0xff00) >> 8) | (($dport & 0x00ff) << 8);
+
+	printf("tcp_bpf_sendmsg: src %d.%d.%d.%d (%d), dst %d.%d.%d.%d(%d)\n",
+		$sip4, $sip3, $sip2, $sip1, $sport,
+		$dip4, $dip3, $dip2, $dip1, $ldport);
+}
