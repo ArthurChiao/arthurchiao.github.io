@@ -2,7 +2,7 @@
 layout    : post
 title     : "TCP Requests Stuck After Connection Established（2024）"
 date      : 2024-06-26
-lastupdate: 2024-06-26
+lastupdate: 2024-06-30
 categories: kernel bpf cilium
 ---
 
@@ -773,15 +773,18 @@ When hit a stale entry,
   **<mark><code>default message handler</code></mark>**, then **<mark><code>stucks</code></mark>**
   there as no payload goes to default handler.
 
-## 5.3 Root cause: TBD
+## 5.3 Root cause
 
-Reason for why kernel failed to delete those entries (or delete them failed) is still under investigation.
-We would like to thank Alibaba `cloud-kernel` team for their help.
+The Alibaba `cloud-kernel` team digged further into the issue, and thanks for their efforts, they finally found that
+[bpf, sockmap: Remove unhash handler for BPF sockmap usage](https://github.com/torvalds/linux/commit/b8b8315e39ffaca82e79d86dde26e9144addf66)
+was the root cause, which was introduced in Linux 5.10.58. The AliOS kernel we
+were using was 5.10.134 based, so it suffered from this.
 
-sockmap entries (kind of BPF objects) are deleted in a gabarge collection (GC) mechanism,
-which indicates that those stale entries may still be hold by some kernel objects, such as socket objects.
+Upstream patch
+[bpf, sockmap: Fix sk->sk_forward_alloc warn_on in sk_stream_kill_queues](https://github.com/torvalds/linux/commit/d8616ee2affcff37c5d315310da557a694a3303d)
+has already fixed it, but it was only backported to 6.x series.
 
-## 5.4 Restore/remediation methods
+## 5.4 Quick restoration/remediation
 
 If the issue already happened, you can use one of the following methods to restore:
 
