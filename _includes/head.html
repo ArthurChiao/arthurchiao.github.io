@@ -24,10 +24,10 @@
 
     <!-- Modernizr -->
     <script src="{{ "/assets/js/modernizr.custom.15390.js" }}" type="text/javascript"></script>
-
-    {% if jekyll.environment == 'production' %}
-      {% if site.google_analytics %}
-        {% include google_analytics.html %}
-      {% endif %}
-    {% endif %}
 </head>
+
+{% if jekyll.environment == 'production' %}
+  {% if site.google_analytics %}
+    {% include google_analytics.html %}
+  {% endif %}
+{% endif %}

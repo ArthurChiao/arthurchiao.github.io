@@ -1,31 +1,19 @@
 <!DOCTYPE html>
-<!--[if lt IE 7]><html class="no-js lt-ie9 lt-ie8 lt-ie7"><![endif]-->
-<!--[if IE 7]><html class="no-js lt-ie9 lt-ie8" <![endif]-->
-<!--[if IE 8]><html class="no-js lt-ie9" <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
-
 {% include head.html %}
 
 <body>
-  <!-- Google Tag Manager (noscript) -->
-  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-WP54B9K"
-    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-  <!-- End Google Tag Manager (noscript) -->
-
   {% include header.html %}
 
   <div class="content">
-      <!-- <div class="container"> -->
       <div class="markdown-body">
           {{ content }}
 
           {% include disqus.html %}
       </div>
-  </div><!-- end .content -->
+  </div>
 
   {% include footer.html %}
   {% include scripts.html %}
 
 </body>
-
 </html>
