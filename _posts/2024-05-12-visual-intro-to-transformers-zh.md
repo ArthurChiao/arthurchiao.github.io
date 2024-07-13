@@ -26,7 +26,7 @@ categories: llm gpt transformer
 * [大语言模型（LLM）综述与实用指南（Amazon，2023）]({% link _posts/2023-07-23-llm-practical-guide-zh.md %})
 * [如何训练一个企业级 GPT 助手（OpenAI，2023）]({% link _posts/2023-09-01-how-to-train-a-gpt-assistant-zh.md %})
 
-翻译不免存在遗漏或错误之处，如有疑问请查阅原视频。
+水平及维护精力所限，译文不免存在错误或过时之处，如有疑问，请查阅原视频。
 **<mark>传播知识，尊重劳动，年满十八周岁，转载请注明<a href="https://arthurchiao.art">出处</a></mark>**。
 
 以下是译文。

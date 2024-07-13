@@ -23,6 +23,10 @@ categories: k8s kubelet cni
 1. [源码解析：K8s 创建 pod 时，背后发生了什么（三）（2021）]({% link _posts/2021-06-01-what-happens-when-k8s-creates-pods-3-zh.md %})
 1. [源码解析：K8s 创建 pod 时，背后发生了什么（四）（2021）]({% link _posts/2021-06-01-what-happens-when-k8s-creates-pods-4-zh.md %})
 1. [源码解析：K8s 创建 pod 时，背后发生了什么（五）（2021）]({% link _posts/2021-06-01-what-happens-when-k8s-creates-pods-5-zh.md %})
+1. [图解 JuiceFS CSI 工作流：K8s 创建带 PV 的 Pod 时，背后发生了什么]({% link _posts/2024-07-13-k8s-juicefs-csi-workflow-zh.md %})
+
+水平及维护精力所限，文中不免存在错误或过时之处，请酌情参考。
+**<mark>传播知识，尊重劳动，年满十八周岁，转载请注明<a href="https://arthurchiao.art">出处</a></mark>**。
 
 ----
 

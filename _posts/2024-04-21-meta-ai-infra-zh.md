@@ -15,7 +15,8 @@ categories: facebook gpu ai
 
 <p align="center"><img src="/assets/img/meta-ai-infra/Meta-24K-GenAi-Clusters-hero.webp" width="100%" height="100%"></p>
 
-**由于译者水平有限，本文不免存在遗漏或错误之处。如有疑问，请查阅原文。**
+水平及维护精力所限，译文不免存在错误或过时之处，如有疑问，请查阅原文。
+**<mark>传播知识，尊重劳动，年满十八周岁，转载请注明<a href="https://arthurchiao.art">出处</a></mark>**。
 
 以下是译文。
 

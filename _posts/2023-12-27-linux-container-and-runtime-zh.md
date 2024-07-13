@@ -13,7 +13,8 @@ categories: linux container cgroup gpu
 
 本文所用的完整代码见[这里](https://github.com/ArthurChiao/arthurchiao.github.io/tree/master/assets/code/linux-container-and-runtime)。
 
-水平有限，文中不免有错误或过时之处，请酌情参考。
+水平及维护精力所限，文中不免存在错误或过时之处，请酌情参考。
+**<mark>传播知识，尊重劳动，年满十八周岁，转载请注明<a href="https://arthurchiao.art">出处</a></mark>**。
 
 ----
 
