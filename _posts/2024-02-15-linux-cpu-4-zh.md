@@ -2,7 +2,7 @@
 layout    : post
 title     : "Linux 服务器功耗与性能管理（四）：监控、配置、调优（2024）"
 date      : 2024-02-15
-lastupdate: 2024-06-26
+lastupdate: 2024-07-28
 categories: linux kernel
 ---
 
@@ -24,7 +24,24 @@ categories: linux kernel
 
 ----
 
-# 1 `sysfs` 相关目录
+# 0 BIOS 配置
+
+把一台 Linux node 调成高性能模型，其实涉及的是两方面问题：
+
+1. 运行频率：越高越好，可以在 BIOS 里面直接配置，也可以通过 grub 配置项拉高；
+2. 唤醒延迟：从低功耗状态（idle state, cstate）切回到 running 状态的延迟；
+
+2 切换完成后，会用 1 的频率执行任务。要达到最高性能，应该是同时调整 1 和 2，也就是
+
+1. 提高运行频率：比如通过 BIOS 或 grub 启动项，设置为 all-core turbo 或者 max turbo；
+2. 降低唤醒延迟：通过设置 max cstate，尽量避免陷入过深的睡眠状态；
+
+这两点中，运行频率的影响更大。所以，如果对性能没有极致要求（大部分场景），一种调优方式就是通过 BIOS 把主频拉高；
+然后再用 tuned-adm 之类的工具设置个 profile 就像了（例如 `latency-performance` 一般对应 max_cstate=c2）。
+
+如果想更精细地控制性能，就需要额外配置内核 grub 启动项了。
+
+# 1 内核 `sysfs` 相关目录
 
 ## 1.1 <code>/sys/devices/system/cpu/<mark>cpu{N}</mark>/</code> 目录
 

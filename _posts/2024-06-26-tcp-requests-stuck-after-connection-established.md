@@ -2,7 +2,7 @@
 layout    : post
 title     : "TCP Requests Stuck After Connection Established（2024）"
 date      : 2024-06-26
-lastupdate: 2024-06-30
+lastupdate: 2024-07-28
 categories: kernel bpf cilium
 ---
 
@@ -790,6 +790,28 @@ If the issue already happened, you can use one of the following methods to resto
 
 1. **<mark><code>Kernel restart</code></mark>**: drain the node then restart it, thish will refresh the kernel state;
 2. **<mark><code>Manual clean</code></mark>** with `bpftool`: with caution, avoid to remove valid entries.
+
+## 5.5 Another issue with similar phenomenon
+
+There is another issue with the similar phenomenon when sockops is enabled:
+
+1. Local pod runs nginx (of recent versions, e.g. `>= 1.18`);
+2. Sending http requests from node to the local pod, with a **<mark><code>large enough cookie length</code></mark>** (e.g. `> 1024 Byte`);
+
+TCP connection will be OK, but **<mark><code>requests will always stuck there</code></mark>**.
+
+Cilium issue:
+
+> [ioctl FIONREAD returning incorrect value when sockops is enabled](https://github.com/cilium/cilium/issues/19304)
+>
+> nginx is reading the headers from the traefik request with a default value of
+> 1024 (client_header_buffer_size 1k;) bytes and then (seemingly) asks via the
+> ioctl how much data is left. Since the return is 0 the request is never fully
+> read and does not proceed further.
+
+Community solution:
+
+* [deprecate --sockops-enable in v1.13, and remove the feature in v1.14](https://github.com/cilium/cilium/issues/23556)
 
 # Appendix
 

@@ -18,7 +18,12 @@ Studio，但非必须, 事实上如果你有 Linux 更好。
 **本文根据原文内容意译，而非逐词逐句翻译，如需了解更多，推荐阅读**[原文
 ](http://www.cs.virginia.edu/~evans/cs216/guides/x86.html).
 
----
+----
+
+* TOC
+{:toc}
+
+----
 
 内容：**寄存器, 内存和寻址, 指令, 函数调用约定（Calling Convention）**
 
