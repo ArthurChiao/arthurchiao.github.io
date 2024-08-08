@@ -2,7 +2,7 @@
 layout    : post
 title     : "大模型 RAG 基础：信息检索、文本向量化及 BGE-M3 embedding 实践（2024）"
 date      : 2024-08-04
-lastupdate: 2024-08-04
+lastupdate: 2024-08-08
 categories: ai llm
 ---
 
@@ -255,6 +255,10 @@ BGE-M3 通过更精细的方法来捕捉每个 token 的重要性，
 <p align="center"><img src="/assets/img/rag-basis-bge/bgem3-embedding-output.webp" width="75%"/></p>
 <p align="center">Fig. BGE-M3 <mark>learned sparse embedding</mark>.
 <a href="https://medium.com/@zilliz_learn/exploring-bge-m3-and-splade-two-machine-learning-models-for-generating-sparse-embeddings-0772de2c52a7">Image source</a></p>
+
+>  In M3-Embedding, the `[CLS]` embedding is used for dense retrieval, while
+>  embeddings from other tokens are used for sparse retrieval and multi-vector
+>  retrieval [3].
 
 # 4 BGE-M3 实战
 

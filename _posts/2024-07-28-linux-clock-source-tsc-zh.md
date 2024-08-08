@@ -2,7 +2,7 @@
 layout    : post
 title     : "Linux 时钟源之 TSC：软硬件原理、使用场景、已知问题（2024）"
 date      : 2024-07-28
-lastupdate: 2024-07-28
+lastupdate: 2024-08-08
 categories: linux kernel hardware
 ---
 
@@ -32,7 +32,7 @@ Image source <a href="https://www.youtube.com/watch?v=B7djs4zSbuU&t=150s">Youtub
 > * 1880 年由雅克·居里与皮埃尔·居里发现压电效应。
 > * 一战期间 保罗·朗之万首先探讨了石英谐振器在声纳上的应用。
 > * 1917 第一个由晶体控制的电子式振荡器。
-> * 1918 年贝尔实验室的 Alexander M. Nicholson 取得专利，虽然与同时申请专利的 Walter Guyton Cady 曾有争议。 
+> * 1918 年贝尔实验室的 Alexander M. Nicholson 取得专利，虽然与同时申请专利的 Walter Guyton Cady 曾有争议。
 > * 1921 年 Cady 制作了第一个石英晶体振荡器。
 >
 > Wikipedia [石英晶体谐振器](https://zh.wikipedia.org/zh-cn/%E7%9F%B3%E8%8B%B1%E6%99%B6%E4%BD%93%E8%B0%90%E6%8C%AF%E5%99%A8)
@@ -77,7 +77,7 @@ Image source <a href="https://www.youtube.com/watch?v=B7djs4zSbuU&t=150s">Youtub
 时钟信号连接到 CPU 的一个名为 **<mark><code>CLK</code></mark>** 的引脚。
 两个具体的 CLK 引脚实物图：
 
-* Intel 486 处理器（**<mark><code>1989</code></mark>**） 
+* Intel 486 处理器（**<mark><code>1989</code></mark>**）
 
     <p align="center"><img src="/assets/img/linux-clock-source/intel-486-pin-map.png" width="50%"/></p>
     <p align="center">Fig. Intel 486 pin map<a href="http://ps-2.kev009.com/eprmhtml/eprmx/12203.htm">Image Source</a></p>
@@ -132,7 +132,7 @@ Image source <a href="https://www.youtube.com/watch?v=B7djs4zSbuU&t=150s">Youtub
 * **<mark><code>CPUID</code></mark>** 指令：检查 CPU 是否支持某些特性。
 
 > RDMSR/WRMSR 指令使用方式：
-> 
+>
 > * 需要 priviledged 权限。
 > * Linux `msr` 内核模块创建了一个伪文件 **<mark><code>/dev/cpu/{id}/msr</code></mark>**，用户可以读写这个文件。还有一个 `msr-tools` 工具包。
 
@@ -275,7 +275,7 @@ tsc
 
 原理暂不展开，只说结论：相比 tsc，hpet 在很多场景会明显导致系统**<mark>负载升高</mark>**。所以能用 tsc 就不要用 hpet。
 
-## 4.2 `turbostat` 查看实际 TSC 计数
+## 4.2 `turbostat` 查看实际 TSC 计数（可能不准）
 
 前面提到用户空间程序写几行代码就能方便地获取 TSC 计数。所以对监控采集来说，还是很方便的。
 我们甚至不需要自己写代码获取 TSC，一些内核的内置工具已经实现了这个功能，简单地执行一条 shell 命令就行了。
@@ -297,13 +297,109 @@ CPU     TSC_MHz
 1       2445
 ```
 
-## 4.3 监控
+但 `turbostat` 显示的 TSC 可能不准，而且偏差很大。
+
+## 4.3 `rdtsc/rdtscp` 指令采集 TSC 计数
+
+### 4.3.1 C 代码
+
+完整代码：
+
+```c
+#include <stdio.h>
+#include <time.h>
+#include <unistd.h>
+
+// https://stackoverflow.com/questions/16862620/numa-get-current-node-core
+unsigned long rdtscp(int *chip, int *core) {
+    unsigned a, d, c;
+    __asm__ volatile("rdtscp" : "=a" (a), "=d" (d), "=c" (c));
+
+    *chip = (c & 0xFFF000)>>12;
+    *core = c & 0xFFF;
+    return ((unsigned long)a) | (((unsigned long)d) << 32);;
+}
+
+int main() {
+    int sleep_us = 100000;
+    unsigned long tsc_nominal_hz = 2795000000;
+    unsigned long expected_inc = (unsigned long)(1.0 * sleep_us / 1000000 * tsc_nominal_hz);
+    unsigned long low = (unsigned long)(expected_inc * 0.95);
+    unsigned long high = (unsigned long)(expected_inc * 1.05);
+    printf("Sleep interval: %d us, expected tsc increase range [%lu,%lu]\n", sleep_us, low, high);
+
+    unsigned long start, delta;
+    int start_chip=0, start_core=0, end_chip=0, end_core=0;
+
+    while (1) {
+        start = rdtscp(&start_chip, &start_core);
+        usleep(sleep_us);
+        delta = rdtscp(&end_chip, &end_core) - start;
+
+        if (delta > high || delta < low) {
+            time_t seconds = time(NULL); // seconds since Unix epoch (1970.1.1)
+            struct tm t = *localtime(&seconds);
+            printf("%02d-%02d %02d:%02d:%02d TSC jitter: %lu\n",
+                    t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec, delta);
+            fflush(stdout);
+        }
+    }
+
+    return 0;
+}
+```
+
+几点说明：
+
+1. 程序 hardcode 了预期的 TSC 频率是 **<mark><code>2795MHz</code></mark>**；
+2. 每 100ms 采集一次 TSC 计数，如果 TSC 计数的偏差超过 **<mark><code>+/- 5%</code></mark>**，就将这个异常值打印出来；
+3. 在哪个 chip/cpu 上执行的，这里没打印出来，有需要可以打印；
+4. 这个程序虽然采集很频繁，但开销很小，主要是因为 `rdtscp` 指令的开销很小。
+
+### 4.3.2 执行效果
+
+编译运行，
+
+```shell
+$ gcc tsc-checker.c -o tsc-checker
+
+# print to stdout and copy to a log file, using stream buffer instead of line buffers
+$ stdbuf --output=L ./tsc-checker | tee tsc.log
+Sleep interval: 100000 us, expected tsc increase range [265525000,293475000]
+08-05 19:46:31 303640792
+08-05 20:13:06 301869652
+08-05 20:38:27 300751948
+08-05 22:40:39 324424884
+...
+```
+
+可以看到这台机器（**<mark>真实服务器</mark>**）有偶发 TSC 抖动，
+能偏离正常范围 **<mark><code>324424884/2795000000 - 1 = 16%</code></mark>**，
+也就是说 `100ms` 的时间它能偏离 `16ms`，非常离谱。TSC 短时间连续抖动时，
+机器就会出现各种奇怪现象，比如 load 升高、网络超时、活跃线程数增加等等，因为内核系统因为时钟抖动乱了。
+
+## 4.4 监控
 
 用合适的采集工具把以上数据送到监控平台（例如 Prometheus/VictoriaMetrics），就能很直观地看到 TSC 的状态。
+
+### 4.4.1 基于 `turbostat`（不推荐）
+
 例如下面是 1 分钟采集一次，每次采集过去 1s 内的平均 TSC，得到的结果：
 
 <p align="center"><img src="/assets/img/linux-clock-source/monitoring-node-tsc.png" width="100%"/></p>
 <p align="center">Fig. TSC runnning average of an AMD EPYC 7543 node</p>
+
+由于 `turbostat` 采集的数据可能不准，因此不推荐这种方式。
+
+### 4.4.2 基于 `rdtscp`
+
+基于上面的 rdtscp 自己写代码采集，就非常准确了，例如，下面是 1 分钟采集一次得到的结果展示：
+
+<p align="center"><img src="/assets/img/linux-clock-source/tsc-collect-with-rdtscp.jpg" width="100%"/></p>
+<p align="center">Fig. TSC jitter of an AMD EPYC 7543 node</p>
+
+不过，要抓一些偶发抖动导致的问题，1 分钟采集一次粒度太粗了。比如我们上一小节的 C 程序是 100ms 采集一次，
+相当于 1 分钟采集 600 次，一小时采集 3.6w 次。我们 3 个小时总共 10 万多次跑下来，也才能抓到几次抖动，这已经算很幸运了。
 
 # 5 TSC 若干坑
 
