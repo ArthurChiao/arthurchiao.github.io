@@ -2,7 +2,7 @@
 layout    : post
 title     : "大模型 RAG 基础：信息检索、文本向量化及 BGE-M3 embedding 实践（2024）"
 date      : 2024-08-04
-lastupdate: 2024-08-08
+lastupdate: 2024-08-19
 categories: ai llm
 ---
 
@@ -401,7 +401,69 @@ torchrun --nproc_per_node $num_gpus \
 
 但 BGE-M3 官方没有转 onnx 文档，根据[第三方的库](https://huggingface.co/aapot/bge-m3-onnx/tree/main)能成功（稍微改点代码，从本地加载模型），效果待验证。
 
-# 5 总结
+# 5 `rerank` 增强：对 BGE-M3 的检索结果进行重排序
+
+## 5.1 `rerank/reranker` 是什么？
+
+rerank 的意思是“重新排序” —— 对 embedding model 检索得到的多个结果（对应多个分数），
+重新计算它们的相似性分数，给出一个排名。这是一个**<mark>可选模块</mark>**，
+用于对检索结果进行增强，把相似度最高的结果返回给用户。
+
+### 5.1.1 另一种相似度模型
+
+reranker 也是**<mark>一类</mark>**计算相似度的模型，例如[这个列表](https://github.com/FlagOpen/FlagEmbedding/tree/master/FlagEmbedding/llm_reranker)
+里的都是 rerank/reranker 模型，
+
+1. bge-reranker-v2-m3：与 bge-m3 配套的 reranker
+2. bge-reranker-v2-gemma：与 google gemma-2b 配套的 reranker
+
+但它们的原理与 BGE-M3 这种 **<mark><code>embedding model</code></mark>** 有差异。
+
+### 5.1.2 与 BGE-M3 等模型的差异：`cross-encoder vs. bi-encoder`
+
+以两个句子的相似度检测为例，
+
+<p align="center"><img src="/assets/img/rag-basis-bge/cross-encoder-vs-bi-encoder.webp" width="50%"/></p>
+<p align="center">Fig. bi-encoder embedding model vs. cross-encoder model. <a href="https://medium.com/@bhawana.prs/cross-encoders-and-bi-encoders-23373414f6fd">Image source</a></p>
+
+* BGE-M3 属于左边那种，所谓的 **<mark><code>bi-encoder embedding model</code></mark>**，
+  简单说就是两个句子分别输入模型，得到各自的 **<mark><code>embedding</code></mark>**，
+  然后根据 embedding vector 计算相似度；
+* reranker 属于右边那种，所谓的 **<mark><code>cross-encoder model</code></mark>**，直接得到结果；
+  如果对 BERT 的工作原理比较熟悉（见 BERT paper），就会明白这其实就是 BERT 判别两个句子
+  （next sentense prediction, NSP）任务的延伸。
+
+## 5.2 embedding 和 reranker 工作流
+
+1. 用户输入 `query` 和 doc 列表 `doc1/doc2/doc3/...`，
+2. BGE-M3 计算相似分，返回 topN，例如 `[{doc1, score1}, {doc2, score2}, {doc3, score3}]`，其中 `score1 >= score2 >= score3`，
+3. reranker 接受 `query` 和 BGE-M3 的结果，**<mark>用自己的模型</mark>**重新计算 `query` 和 `doc1/doc2/doc3` 的相似度分数。
+
+## 5.3 BGE-M3 得到相似分之后，为什么要通过 reranker 再计算一遍？
+
+这里可能有个疑问：step 2 不是已经检索出最相关的 N 个 doc 了吗？
+为什么又要进入 step3，**<mark>用另外一个完全不同的模型（reranker）再计算一种相似分</mark>**呢？
+
+简单来说，embdding 和 rerank 都是 NLP 中理解给定的两个句子（或文本片段）的关系的编码技术。
+再参考刚才的图，
+
+<p align="center"><img src="/assets/img/rag-basis-bge/cross-encoder-vs-bi-encoder.webp" width="50%"/></p>
+<p align="center">Fig. bi-encoder embedding model vs. cross-encoder model. <a href="https://medium.com/@bhawana.prs/cross-encoders-and-bi-encoders-23373414f6fd">Image source</a></p>
+
+* bi-encoder
+    * 分别对两个句子进行编码，得到两个独立的 embedding，再计算相似度。
+    * 速度快，准确性相对低。
+
+* cross-encoder
+
+    * 同时对两个句子编码，输出一个相似度分数；也可以换句话说，**<mark>把两个句子合成一个句子编码</mark>**，所以**<mark>两个句子是彼此依赖的</mark>**；
+    * **<mark>速度慢，准确性高</mark>**。
+
+总结起来：embedding model 计算的相似度是粗粒度的，只能算**<mark>粗排</mark>**；
+reranker 对 embedding model 得到的若干结果再进行**<mark>细排</mark>**；
+要体会和理解这种差异，还是要看基础 paper [<mark>BERT：预训练深度双向 Transformers 做语言理解</mark>（Google，2019）]({% link _posts/2024-03-10-bert-paper-zh.md %})。
+
+# 6 总结
 
 本文整理了一些 BGE-M3 相关的 RAG 知识。前两篇参考资料非常好，本文很多内容都来自它们，感谢作者。
 
@@ -410,6 +472,7 @@ torchrun --nproc_per_node $num_gpus \
 1. [Enhancing Information Retrieval with Sparse Embeddings](https://zilliz.com/learn/enhancing-information-retrieval-learned-sparse-embeddings), zilliz.com/learn, 2024
 2. [Exploring BGE-M3 and Splade: Two Machine Learning Models for Generating Sparse Embeddings](https://medium.com/@zilliz_learn/exploring-bge-m3-and-splade-two-machine-learning-models-for-generating-sparse-embeddings-0772de2c52a7), medium.com/@zilliz_learn, 2024
 3. [BGE-M3 paper](https://arxiv.org/html/2402.03216v4)
+4. [Cross encoders and bi-encoders](https://medium.com/@bhawana.prs/cross-encoders-and-bi-encoders-23373414f6fd), medium.com, 2024
 
 ----
 
