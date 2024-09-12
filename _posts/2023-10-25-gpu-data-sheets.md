@@ -115,7 +115,7 @@ some differences. To clarify them,
 | Year               | 2023             | 2023             | 2023             | 2022 |
 | Manufacturing      | 7+nm             | 4nm              | 4nm              | 4nm |
 | Architecture       | HUAWEI Da Vinci  | Ada Lovelace     | Hopper           | Hopper |
-| Max Power          | 400 watt         | 275W             | 500W             | 350/700 watt |
+| Max Power          | 400 watt         | 350W             | 500W             | 350/700 watt |
 | GPU Mem            | 64G HBM2e        | 48G GDDR6        | 96G HBM3         | 80G HBM3 |
 | GPU Mem BW         |                  | 864GB/s          | <mark>4.0TB/s</mark> | 2/3.35 TB/s|
 | L2 Cache           |                  | **<mark><code>96MB</code></mark>** | 60MB             | 50MB        |
@@ -130,7 +130,8 @@ some differences. To clarify them,
 
 Notes:
 
-* `*`: **<mark>with sparsity</mark>**.
+* `*`: **<mark>with sparsity</mark>**;
+* L20 max power 350W: collected with dcgm-exporter.
 
 # 5 Notes on US "Chip Export Controls" targeting China
 
