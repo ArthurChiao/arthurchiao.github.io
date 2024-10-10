@@ -13,6 +13,7 @@ categories: storage juicefs
 * [JuiceFS 元数据引擎再探：开箱解读 TiKV 中的 JuiceFS 元数据（2024）]({% link _posts/2024-09-12-juicefs-metadata-deep-dive-2-zh.md %})
 * [JuiceFS 元数据引擎三探：从实践中学习 TiKV 的 MVCC 和 GC（2024）]({% link _posts/2024-09-12-juicefs-metadata-deep-dive-3-zh.md %})
 * [JuiceFS 元数据引擎四探：元数据大小评估、限流与限速的设计思考（2024）]({% link _posts/2024-09-12-juicefs-metadata-deep-dive-4-zh.md %})
+* [JuiceFS 元数据引擎五探：元数据备份与恢复（2024）]({% link _posts/2024-09-12-juicefs-metadata-deep-dive-5-zh.md %})
 
 水平及维护精力所限，文中不免存在错误或过时之处，请酌情参考。
 **<mark>传播知识，尊重劳动，年满十八周岁，转载请注明<a href="https://arthurchiao.art">出处</a></mark>**。

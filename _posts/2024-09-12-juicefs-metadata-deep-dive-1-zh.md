@@ -2,7 +2,7 @@
 layout    : post
 title     : "JuiceFS 元数据引擎初探：高层架构、引擎选型、读写工作流（2024）"
 date      : 2024-09-12
-lastupdate: 2024-09-12
+lastupdate: 2024-10-10
 categories: storage juicefs
 ---
 
@@ -13,6 +13,7 @@ categories: storage juicefs
 * [JuiceFS 元数据引擎再探：开箱解读 TiKV 中的 JuiceFS 元数据（2024）]({% link _posts/2024-09-12-juicefs-metadata-deep-dive-2-zh.md %})
 * [JuiceFS 元数据引擎三探：从实践中学习 TiKV 的 MVCC 和 GC（2024）]({% link _posts/2024-09-12-juicefs-metadata-deep-dive-3-zh.md %})
 * [JuiceFS 元数据引擎四探：元数据大小评估、限流与限速的设计思考（2024）]({% link _posts/2024-09-12-juicefs-metadata-deep-dive-4-zh.md %})
+* [JuiceFS 元数据引擎五探：元数据备份与恢复（2024）]({% link _posts/2024-09-12-juicefs-metadata-deep-dive-5-zh.md %})
 
 水平及维护精力所限，文中不免存在错误或过时之处，请酌情参考。
 **<mark>传播知识，尊重劳动，年满十八周岁，转载请注明<a href="https://arthurchiao.art">出处</a></mark>**。
@@ -142,6 +143,8 @@ status-addr = "192.168.1.1:20180" # prometheus
    正常流程是 JuiceFS client 先访问 PD，拿到 region 和 tikv-server 信息，
    然后再到 tikv-server 来读写数据（对应 JuiceFS 的元数据）；
 3. TiKV **<mark>不会配置其他 TiKV 节点的地址</mark>**，也就是说 TiKV 节点之间不会 peer-to-peer 互连。
+  属于同一个 raft group 的多个 region 通信，也是先通过 PD 协调的，最后 region leader 才发送数据给 region follower。
+  详见 [1]。
 
 ### 3.2.2 服务启动
 
@@ -258,6 +261,10 @@ $ ./tikv-ctl.sh --to-escaped '7B0A22...'
 # 5 总结
 
 本文介绍了一些 JuiceFS 元数据引擎相关的内容。
+
+# 参考资料
+
+1. [A Deep Dive into TiKV](https://www.pingcap.com/blog/deep-dive-into-tikv/), 2016, pincap.com
 
 ----
 

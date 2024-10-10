@@ -2,7 +2,7 @@
 layout    : post
 title     : "Linux 服务器功耗与性能管理（四）：监控、配置、调优（2024）"
 date      : 2024-02-15
-lastupdate: 2024-07-28
+lastupdate: 2024-10-10
 categories: linux kernel
 ---
 
@@ -648,11 +648,42 @@ C6 (DISABLED) :                        |                                        
   例如不要 enable 唤醒时间过大的 cstate；这个跟 BIOS 配置相关；
 4. 如果要**<mark>避免厂商 BIOS 差异导致的 cstate 问题</mark>**，可以在 grub 里面配置 max cstate 等内核参数。
 
+## 5.3 BIOS 设置问题导致 CPU TSC 不稳、load 偶发飙升
+
+Case 描述见 [Linux 时钟源之 TSC：软硬件原理、使用场景、已知问题（2024）]({% link _posts/2024-07-28-linux-clock-source-tsc-zh.md %})。
+
+BIOS (UEFI) 改动：
+
+| No. | Option | Before | After |
+|:--- |:--- |:--- |:--- |
+| 1 | OperatingModes.ChooseOperatingMode | Maximum Efficiency | **<mark><code>Custom Mode</code></mark>** |
+| 2 | Processors.DeterminismSlider | Performance | **<mark><code>Power</code></mark>** |
+| 3 | Processors.CorePerformanceBoost | Enable | Enable |
+| 4 | Processors.cTDP | Auto | **<mark><code>Maximum</code></mark>** |
+| 5 | Processors.PackagePowerLimit | Auto | **<mark><code>Maximum</code></mark>** |
+| 6 | Processors.GlobalC-stateControl | Enable | Enable |
+| 7 | Processors.SOCP-states | Auto | **<mark><code>P0</code></mark>** |
+| 8 | Processors.DFC-States | Enable | **<mark><code>Disable</code></mark>** |
+| 9 | Processors.P-state1 | Enable | **<mark><code>Disable</code></mark>** |
+| 10 | Processors.SMTMode | Enable | Enable |
+| 11 | Processors.CPPC | Enable | Enable |
+| 12 | Processors.BoostFmax | Auto | **<mark><code>Manual</code></mark>** |
+| 13 | Processors.BoostFmaxManual | | **<mark><code>0</code></mark>** |
+| 14 | Power EfficiencyMode | Enable | **<mark><code>Disable</code></mark>** |
+| 15 | Memory.NUMANodesperSocket | NPS1 | **<mark><code>NPS0</code></mark>** |
+
+Note:
+
+* `Processors.BoostFmaxManual` option only exists when `BoostFmax=Manual`;
+* See [Tuning UEFI Settings for Performance and Energy Efficiency on 4th Gen AMD EPYC Processor-Based ThinkSystem Servers](https://lenovopress.lenovo.com/lp1977-tuning-uefi-settings-4th-gen-amd-epyc-processor-servers)
+  for more details of each option.
+
 # 参考资料
 
 1. [Controlling Processor C-State Usage in Linux](https://wiki.bu.ost.ch/infoportal/_media/embedded_systems/ethercat/controlling_processor_c-state_usage_in_linux_v1.1_nov2013.pdf), A Dell technical white paper describing the use of C-states with Linux operating systems, 2013
 2. [Linux 网络栈接收数据（RX）：配置调优]({% link _posts/2022-07-02-linux-net-stack-tuning-rx-zh.md %})
 3. [C-state tuning guide](https://doc.opensuse.org/documentation/leap/archive/42.2/tuning/html/book.sle.tuning/cha.tuning.power.html) opensuse.org
+4. [Linux 时钟源之 TSC：软硬件原理、使用场景、已知问题（2024）]({% link _posts/2024-07-28-linux-clock-source-tsc-zh.md %})
 
 ----
 

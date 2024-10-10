@@ -2,7 +2,7 @@
 layout    : post
 title     : "JuiceFS 元数据引擎三探：从实践中学习 TiKV 的 MVCC 和 GC（2024）"
 date      : 2024-09-22
-lastupdate: 2024-09-22
+lastupdate: 2024-10-10
 categories: storage juicefs
 ---
 
@@ -13,6 +13,7 @@ categories: storage juicefs
 * [JuiceFS 元数据引擎再探：开箱解读 TiKV 中的 JuiceFS 元数据（2024）]({% link _posts/2024-09-12-juicefs-metadata-deep-dive-2-zh.md %})
 * [JuiceFS 元数据引擎三探：从实践中学习 TiKV 的 MVCC 和 GC（2024）]({% link _posts/2024-09-12-juicefs-metadata-deep-dive-3-zh.md %})
 * [JuiceFS 元数据引擎四探：元数据大小评估、限流与限速的设计思考（2024）]({% link _posts/2024-09-12-juicefs-metadata-deep-dive-4-zh.md %})
+* [JuiceFS 元数据引擎五探：元数据备份与恢复（2024）]({% link _posts/2024-09-12-juicefs-metadata-deep-dive-5-zh.md %})
 
 水平及维护精力所限，文中不免存在错误或过时之处，请酌情参考。
 **<mark>传播知识，尊重劳动，年满十八周岁，转载请注明<a href="https://arthurchiao.art">出处</a></mark>**。
@@ -100,6 +101,12 @@ key: zfoo-dev\375\377L\000\000\000\000f\356\221\377\234\000\000\000\000\000\000\
 key: zfoo-dev\375\377L\000\000\000\000f\356\221\377\271\000\000\000\000\000\000\003\377\362\000\000\000\000\000\000\000\370
 ```
 
+> TiKV supports MVCC, which means that there can be multiple versions for the
+> same row stored in RocksDB. **<mark><code>All versions of the same row share the same prefix</code></mark>**
+> (the row key) but have **<mark><code>different timestamps as a suffix</code></mark>**. 
+>
+> https://tikv.org/deep-dive/key-value-engine/rocksdb/
+
 下面我们再看看执行以上文件更新操作期间，juicefs 客户端的日志。
 
 ### 1.1.2 JuiceFS client 日志
@@ -131,6 +138,10 @@ $ juicefs mount ...
 
 那如何判断哪些版本可以**<mark>安全</mark>**地清掉呢？TiKV 引入了一个时间戳概念：
 **<mark><code>safepoint</code></mark>**。
+
+> GC is a process to clean up garbage versions (versions older than the configured lifetime) of each row.
+>
+> https://tikv.org/deep-dive/key-value-engine/rocksdb/
 
 ## 1.3 Safepoint（可安全删除这个时间戳之前的版本）
 
@@ -215,7 +226,7 @@ TiDB 有 GC 相关的配置和 worker，会按照配置去触发底层的 TiKV G
 <p align="center">Fig. TiDB SQL layer overview. <mark>GC worker is outside of TiKV</mark>.
 <a href="https://www.pingcap.com/blog/percona-live-17/">Image Source: pingcap.com</a></p>
 
-更多信息可以参考 [3]。
+更多信息可以参考 [3,4]。
 
 ## 2.4 JuiceFS 触发 TiKV GC 的方式
 
@@ -399,6 +410,7 @@ Cleaned detached nodes: 0                      0.0/s
 1. [MVCC in TiKV](https://www.pingcap.com/blog/multi-version-concurrency-control-in-tikv/), pingcap.com, 2016
 2. [JuiceFS 元数据引擎最佳实践：TiKV](https://juicefs.com/docs/zh/community/tikv_best_practices/), juicefs.com
 3. [Deep Dive into Distributed Transactions in TiKV and TiDB](https://dataturbo.medium.com/deep-dive-into-distributed-transactions-in-tikv-and-tidb-80337b4104cb), medium.com, 2024
+4. [MVCC garbage collection](https://pingcap.github.io/tidb-dev-guide/understand-tidb/mvcc-garbage-collection.html), TiDB doc, 2024
 
 ----
 

@@ -2,7 +2,7 @@
 layout    : post
 title     : "Linux 时钟源之 TSC：软硬件原理、使用场景、已知问题（2024）"
 date      : 2024-07-28
-lastupdate: 2024-08-08
+lastupdate: 2024-10-10
 categories: linux kernel hardware
 ---
 
@@ -297,7 +297,8 @@ CPU     TSC_MHz
 1       2445
 ```
 
-但 `turbostat` 显示的 TSC 可能不准，而且偏差很大。
+但 `turbostat` 如果执行的时间非常短，比如 `1s`，统计到数据就不太准，偏差比较大；
+持续运行一段时间后，得到的数据才比较准。
 
 ## 4.3 `rdtsc/rdtscp` 指令采集 TSC 计数
 
@@ -389,7 +390,9 @@ Sleep interval: 100000 us, expected tsc increase range [265525000,293475000]
 <p align="center"><img src="/assets/img/linux-clock-source/monitoring-node-tsc.png" width="100%"/></p>
 <p align="center">Fig. TSC runnning average of an AMD EPYC 7543 node</p>
 
-由于 `turbostat` 采集的数据可能不准，因此不推荐这种方式。
+但前面提到，
+`turbostat` 如果执行的时间非常短，统计到数据就不太准，偏差比较大；
+持续运行一段时间后，得到的数据才比较准。但作为采集程序，可能不方便执行太长时间。
 
 ### 4.4.2 基于 `rdtscp`
 
@@ -401,11 +404,17 @@ Sleep interval: 100000 us, expected tsc increase range [265525000,293475000]
 不过，要抓一些偶发抖动导致的问题，1 分钟采集一次粒度太粗了。比如我们上一小节的 C 程序是 100ms 采集一次，
 相当于 1 分钟采集 600 次，一小时采集 3.6w 次。我们 3 个小时总共 10 万多次跑下来，也才能抓到几次抖动，这已经算很幸运了。
 
+### 4.4.3 基于 `rdtscp` + 内核模块
+
+还是 `rdtscp`，但作为内核模块 + 定时器运行，应该会比用户空间程序更准，可以避免 Linux 内核调度器的调度偏差。
+
 # 5 TSC 若干坑
 
 ## 5.1 `constant_tsc`: a feature, not a runtime guarantee
 
-AMD EPYC 7543 CPU 信息：
+### 5.1.1 Lenovo SR645 (AMD EPYC 7543 CPU) TSC 不稳定
+
+CPU 信息：
 
 ```shell
 $ cat /proc/cpuinfo
@@ -432,7 +441,37 @@ flags 里面显式支持 `constant_tsc` 和 `nonstop_tsc`，所以按照文档�
 
 这个波动可能有几方面原因，比如各厂商的 BIOS 逻辑，或者 SMI 中断风暴。
 
+### 5.1.2 原因及解决方式
+
+最后定位到是厂商 BIOS (UEFI) 设置导致的，做如下修改之后稳定多了，
+
+| No. | Option | Before | After |
+|:--- |:--- |:--- |:--- |
+| 1 | OperatingModes.ChooseOperatingMode | Maximum Efficiency | **<mark><code>Custom Mode</code></mark>** |
+| 2 | Processors.DeterminismSlider | Performance | **<mark><code>Power</code></mark>** |
+| 3 | Processors.CorePerformanceBoost | Enable | Enable |
+| 4 | Processors.cTDP | Auto | **<mark><code>Maximum</code></mark>** |
+| 5 | Processors.PackagePowerLimit | Auto | **<mark><code>Maximum</code></mark>** |
+| 6 | Processors.GlobalC-stateControl | Enable | Enable |
+| 7 | Processors.SOCP-states | Auto | **<mark><code>P0</code></mark>** |
+| 8 | Processors.DFC-States | Enable | **<mark><code>Disable</code></mark>** |
+| 9 | Processors.P-state1 | Enable | **<mark><code>Disable</code></mark>** |
+| 10 | Processors.SMTMode | Enable | Enable |
+| 11 | Processors.CPPC | Enable | Enable |
+| 12 | Processors.BoostFmax | Auto | **<mark><code>Manual</code></mark>** |
+| 13 | Processors.BoostFmaxManual | | **<mark><code>0</code></mark>** |
+| 14 | Power EfficiencyMode | Enable | **<mark><code>Disable</code></mark>** |
+| 15 | Memory.NUMANodesperSocket | NPS1 | **<mark><code>NPS0</code></mark>** |
+
+Note:
+
+* `Processors.BoostFmaxManual` option only exists when `BoostFmax=Manual`;
+* See [Tuning UEFI Settings for Performance and Energy Efficiency on 4th Gen AMD EPYC Processor-Based ThinkSystem Servers](https://lenovopress.lenovo.com/lp1977-tuning-uefi-settings-4th-gen-amd-epyc-processor-servers)
+  for more details of each option.
+
 ## 5.2 BIOS 设置致使 TSC 不恒定
+
+除了以上具体配置，还有一些可能会导致 TSC 不稳的场景。
 
 ### 5.2.1 TSC 寄存器是**<mark>可写</mark>**的！
 
