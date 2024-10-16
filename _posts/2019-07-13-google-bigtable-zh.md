@@ -1,33 +1,35 @@
 ---
 layout    : post
-title     : "[译] [论文] Bigtable: A Distributed Storage System for Structured Data (OSDI 2006)"
+title     : "[译] [论文] Bigtable: A Distributed Storage System for Structured Data (OSDI, 2006)"
 date      : 2019-07-13
-lastupdate: 2019-07-13
-categories: bigtable file-system paper
+lastupdate: 2024-10-16
+categories: storage file-system
 ---
 
-### 译者序
+## 译者序
 
-本文翻译自 2006 年 Google 的分布式存储经典论文：**Bigtable: A Distributed
-Storage System for Structured Data**
-([PDF](https://research.google.com/archive/bigtable-osdi06.pdf))。
+本文翻译自 2006 年 Google 的分布式存储经典论文：
+[Bigtable: A Distributed Storage System for Structured Data](https://research.google.com/archive/bigtable-osdi06.pdf)。
 
-标题直译为：**《Bigtable： 适用于结构化数据的分布式存储系统》**。
+标题直译为：**<mark>《大表：适用于结构化数据的分布式存储系统》</mark>**。
 
 本文对排版做了一些调整，以更适合网页阅读。
 
-**翻译仅供个人学习交流。由于译者水平有限，本文不免存在遗漏或错误之处。如有疑问，
-请查阅原文。**
+**翻译仅供个人学习交流。由于译者水平有限，本文不免存在遗漏或错误之处。如有疑问，请查阅原文。**
 
 以下是译文。
 
 ----
 
-## 摘要
+* TOC
+{:toc}
 
-Bigtable 是一个用于管理**结构化数据**（structured data）的**分布式存储系统**，设
-计可以扩展到非常大的规模：由几千个通用服务器（commodity servers）组成的 PB 级存
-储。
+----
+
+# 摘要
+
+Bigtable 是一个用于管理**结构化数据**（structured data）的**分布式存储系统**，
+设计可以扩展到非常大的规模：由几千个通用服务器（commodity servers）组成的 PB 级存储。
 
 很多 Google 产品，包括 web index、Google Earth 和 Google Finance，都将数据存储在
 Bigtable 中。不过，这些应用对 Bigtable 的要求有很大差异，不管是从数据大小（从
@@ -37,12 +39,12 @@ Bigtable 仍然给这些产品提供了一个灵活、高性能的解决方案�
 
 本文介绍 Bigtable 的设计与实现。
 
-## 1 引言
+# 1 引言
 
 在过去的两年半中，我们设计、实现并部署了一个称为 Bigtable 的分布式存储
 系统，用于管理 Google 的结构化数据。
-设计中 Bigtable 能可靠地扩展到 **PB 级数据，上千个节点**。现在已经实现了广
-泛的应用场景支持、可扩展性、高性能，以及高可用性等设计目标。
+设计中 Bigtable 能可靠地扩展到 **PB 级数据，上千个节点**。
+现在已经实现了广泛的应用场景支持、可扩展性、高性能，以及高可用性等设计目标。
 
 目前 Bigtable 已经被超过 60 个 Google 产品和项目所使用，其中包括 Google
 Analytics、Google Finance、Orkut、Personalized Search、Writely、以及 Google
@@ -50,32 +52,34 @@ Earth。这些产品的使用场景差异很大，从面向吞吐的批处理任
 数据服务。不同产品使用的 Bigtable 集群配置差异也很大，有的集群只有几台节点，有的
 有几千台，存储几百 TB 的数据。
 
-**从某些方面看，Bigtable 像是一个数据库**：它的很多实现策略（implementation
-strategies）确实和数据库类似。**并行数据库** [14]（Parallel databases）和**主存
-数据库** [13]（main-memory databases）已经在可扩展性和高性能方面取得了很大成功，
-（Bigtable 也关注这两方面，但除此之外，）Bigtable 提供的接口与它们不同。
+从某些方面看，Bigtable **<mark>像是一个数据库</mark>**：
 
-Bigtable 不支持完整的关系型数据模型（full relational data model）；它提供给客户
-端的是一个**简单数据模型**（simple data model），支持**动态控制数据的布局和
-格式**（layout and format），并允许客户端推测**数据在底层存储中的 locality（本地性）
-特性**。数据使用**行名和列名**（row and column names）进行索引，这些名字可以是任
-意字符串（strings）。
+* 它的很多实现策略（implementation strategies）确实和数据库类似。
+* **并行数据库** [14]（Parallel databases）和**主存数据库** [13]（main-memory databases）已经在可扩展性和高性能方面取得了很大成功，
+  （Bigtable 也关注这两方面，但除此之外，）Bigtable 提供的接口与它们不同。
 
-Bigtable **不理解数据的内容**（将数据视为 uninterpreted strings），虽然很多字符
-串都是客户端将各种结构化和半结构化数据（structured and semi-structured data）序
-列化而来的。客户端可以通过精心**选择 schema 来控制数据的 locality**。schema 参数
-还可以让客户端动态控制数据是从内存还是磁盘读取（serve）。
+Bigtable 不支持完整的关系型数据模型（full relational data model）；
 
-## 2 数据模型
+* 它提供给客户端的是一个**简单数据模型**（simple data model），
+* 支持**动态控制数据的布局和格式**（layout and format），并允许客户端推测**数据在底层存储中的 locality（本地性）特性**。
+* 数据使用**行名和列名**（row and column names）进行索引，这些名字可以是任意字符串（strings）。
 
-一个 Bigtable 就是一个**稀疏、分布式、持久**的**多维有序**映射表（map），数据通
-过**行键、列键和一个时间戳**进行索引，表中的每个数据项都是**不作理解的字节数组**。
+Bigtable **不理解数据的内容**（将数据视为 uninterpreted strings），
+虽然很多字符串都是客户端将各种结构化和半结构化数据（structured and semi-structured data）
+序列化而来的。客户端可以通过精心**选择 schema 来控制数据的 locality**。schema
+参数还可以让客户端动态控制数据是从内存还是磁盘读取（serve）。
+
+# 2 数据模型
+
+一个 Bigtable 就是一个**<mark>稀疏、分布式、持久</mark>**的**<mark>多维有序</mark>**映射表（map），
+
+* 数据通过**行键、列键和一个时间戳**进行索引，
+* 表中的每个数据项都是**不作理解的字节数组**，
+* 映射：**<mark><code>(row:string, column:string, time:int64) -> string</code></mark>**
 
 > A Bigtable is a sparse, distributed, persistent multidimensional sorted map.
 > The map is indexed by a row key, column key, and a timestamp; each value in
 > the map is an uninterpreted array of bytes.
-
-**映射**：`(row:string, column:string, time:int64) -> string`
 
 我们首先评估了类似 Bigtable 这样的系统有哪些潜在的使用场景，然后才确定了数据模型。
 举个具体例子，这个例子也影响了 Bigtable 的一些设计：我们想保存大量的网页
@@ -96,7 +100,7 @@ Bigtable **不理解数据的内容**（将数据视为 uninterpreted strings）
 `my.look.ca`）引用了，因此会有 `anchor:cnnsi.com` 和 `anchor:my.look.ca` 两列，其
 中每列一个版本；`contents:` 列有三个版本，时间戳分别为 `t3`、`t5` 和 `t6`。
 
-### 2.1 行（Row）
+## 2.1 行（Row）
 
 行键（row key）可以是**任意字符串**（目前最大支持 64KB，大部分用户使用的
 key 都在 10-100 字节之间）。
@@ -117,47 +121,58 @@ ranges）是很高效的**，通常情况下只需要和很少的几台机器通
 键就是 `com.google.maps/index.html`。**来自相同域的页面存储到连续的行**，会使那
 些针对主机和域的分析（host and domain analyses）非常高效。
 
-### 2.2 Column Families（列族）
+## 2.2 Column Families（列族）
 
-多个**列键**（column keys）可以组织成 **column families**（列族）。
-**column family 是访问控制（access control）的基本单位**。
+多个 column keys 可以组织成 **<mark><code>column families</code></mark>**（列族）。
+column family 是**<mark>访问控制（access control）的基本单位</mark>**。
 
-一般来说，存储在**同一 column family 内
-的数据，其类型都是相同的**（我们会将同一 column family 内的数据压缩到一起）。
+### 2.2.1 设计
 
-必须**先创建一个 column family**，才能向这个 column family 内的列写入数据；创建
-完成后，就可以在这个 family 内使用任何的列键。
-我们有意使得**每个 table 内的 column family 数量尽量少**（最多几百个），并且在随后
-的过程中 family 很少有变化。
+一般来说，存储在**<mark>同一 column family 内的数据，类型都是相同的</mark>**，
+（我们会将同一 column family 内的数据压缩到一起），
 
-但另一方面，每个 table 的**列数量并没有限制**。
+* **先创建一个 column family**，才能向这个 column family 内的列写入数据；创建完成后，就可以在这个 family 内使用任何的列键；
+* 我们有意使得每个 table 内的 **<mark>column family 数量尽量少</mark>**（最多几百个），并且在随后的过程中 family 很少有变化。
+* 另一方面，每个 table 的 **<mark>column 数量并没有限制</mark>**。
 
-**列键的格式**：`family:qualifier`，其中 `family` 必须为可打印的（printable）字
-符串，但 `qualifier`（修饰符）可以为任意字符串。例如，Webtable 中有一个 colum
-family 是**语言（language）**，用来标记每个网页分别是用什么语言写的。在这个
-column family 中我们只用了一个列键，其中存储的是每种语言的 ID。
-Webtable 中的另一个 column family 是 anchor，在这个 family 中每一个列键都表示一
-个独立的 anchor，如图 1 所示，其中的修饰符（qualifier）是引用这个网页的 anchor
-名字，对应的数据项内容是链接的文本（link text）。
+### 2.2.2 column key 的格式：`family:qualifier`
 
-**访问控制（access control）和磁盘及内存记账（accounting）都是在 column
-family 层做的**。还是以 Webtable 为例，这种级别的控制可以使我们管理几种不同类型的
-应用：有的只添加新的基础数据进来，有的读取基础数据后创建衍生的 column family，有
-的只允许查看当前的数据（甚至可以根据保密程度只允许查看一部分 column family）。
+其中，
 
-### 2.3 时间戳
+* `family` 必须为可打印的（printable）字符串，
+* `qualifier`（修饰符）可以为任意字符串。
+
+<p align="center"><img src="/assets/img/google-bigtable/1.png" width="90%" height="90%"></p>
+<p align="center">图 1 存储网页的 bigtable 的一个切片（slice）</p>
+
+例如，
+
+1. Webtable 中有一个 column family 是**语言（language）**，用来标记每个网页分别是用什么语言写的。
+  在这个 column family 中我们只用了一个列键，其中存储的是每种语言的 ID。
+2. Webtable 中的另一个 column family 是 anchor，在这个 family 中每一个列键都表示一
+  个独立的 anchor，如图 1 所示，其中的修饰符（qualifier）是引用这个网页的 anchor
+  名字，对应的数据项内容是链接的文本（link text）。
+
+### 2.2.3 访问控制和磁盘/内存记账（accounting）都是在 column family 层做的
+
+还是以 Webtable 为例，这种级别的控制可以使我们管理几种不同类型的应用：
+有的只添加新的基础数据进来，有的读取基础数据后创建衍生的 column family，
+有的只允许查看当前的数据（甚至可以根据保密程度只允许查看一部分 column family）。
+
+## 2.3 时间戳
 
 Bigtable 中的**每个数据都可以存储多个版本**，不同版本用时间戳索引。
 
-时间戳是 64 位整数，可以由 Bigtable 指定，这种情况下就是毫秒（ms）级的真实时间戳
-；也可以由客户端应用指定。如果是应用指定，那为了避免冲突，应用必须保证时间戳的唯
-一性。
+时间戳是 64 位整数，
+
+* **<mark>可以由 Bigtable 指定</mark>**，这种情况下就是毫秒（ms）级的真实时间戳；
+* **<mark>也可以由客户端应用指定</mark>**，为了避免冲突，应用必须保证时间戳的唯一性。
 
 同一数据的不同版本以时间戳**降序**（decreasing timestamp order）的方式存储，这样
 首先读到的都是最新的版本。
 
-为避免版本化数据的管理过于繁琐，我们提供了两个配置参数可以让 Bigtable 自动进行垃
-圾回收（GC）。客户端可以指定：
+为避免版本化数据的管理过于繁琐，我们提供了两个配置参数可以让 Bigtable 自动进行垃圾回收（GC）。
+客户端可以指定：
 
 * 保留最后的 N 个版本
 * 保留最近的某段时间内的版本（例如，只保留过去 7 天写入的版本）
@@ -165,7 +180,7 @@ Bigtable 中的**每个数据都可以存储多个版本**，不同版本用时�
 在 Webtable 中，每个页面的时间戳是该页面被爬取时的时间，我们设置只保留最后的 3
 个版本。
 
-## 3 API
+# 3 API
 
 Bigtable API 提供了创建、删除 table 和 column family 的功能。另外，它还提供了更
 改集群、table 和 column family 元数据的能力，例如访问控制权限。
@@ -208,7 +223,7 @@ Bigtable 还提供其他的一些特性，使得用户可以对数据进行更�
 Bigtable 可以和 MapReduce [12] 一起使用，后者是 Google 开发的一个大规模并行计算框架。
 我们写了一些封装函数，将 Bigtable 用作 MapReduce job 的输入源和输出目标。
 
-## 4 外部系统依赖（Building Blocks）
+# 4 外部系统依赖（Building Blocks）
 
 Bigtable 构建在其他几个 Google 的基础设施之上。
 
@@ -216,7 +231,7 @@ Bigtable 构建在其他几个 Google 的基础设施之上。
 * SSTable
 * Chubby
 
-### GFS
+## 4.1 GFS
 
 Bigtable 使用分布式文件系统 GFS（Google File System）[17] 存储日志和数据文件。
 
@@ -226,12 +241,14 @@ machines），而且 **Bigtable 进程经常和其他应用混跑在同一台机
 Bigtable 依赖一个集群管理系统来调度任务、管理共享的机器上的资源、处理机器故障，
 以及监控机器状态。
 
-### SSTable
+## 4.2 SSTable
 
-Bigtable **内部使用 Google 的 SSTable 格式存储数据**。
+Bigtable **<mark>内部使用 Google 的 SSTable 格式存储数据</mark>**。
 
-SSTable 是一个**持久化的、有序的、不可变的**映射表（map），其中的**键和值都可以
-是任意字节字符串**。它提供了按 key 查询和对指定的 key range 进行遍历的操作。
+SSTable 是一个持久化的、**<mark>有序的、不可变的</mark>**映射表（map），
+
+* 键和值都可以是**<mark>任意字节字符串</mark>**。
+* 提供了按 key 查询和对指定的 key range 进行遍历的操作。
 
 > An SSTable provides a persistent, ordered immutable map from keys to values,
 > where both keys and values are arbitrary byte strings.
@@ -247,7 +264,7 @@ binary search）找到 block index，然后定位到 block 在**磁盘**中的�
 读取相应的数据。另外，也可以**将整个 SSTable 映射到内存**，这样查询就完全不需要
 磁盘操作了。
 
-### Chuby
+## 4.3 Chuby
 
 Bigtable 依赖 Chubby —— 一个高可用、持久的分布式锁服务（a highly-available and
 persistent distributed lock service） [8]。
@@ -280,41 +297,39 @@ Bigtable 集群（总共依赖 11 个 Chubby 集群）的测量显示，由于 C
 或 Chubby 本身问题引起的） 导致的 Bigtable 不可用时间（数据在 Bigtable 中但无法访
 问）百分比平均为 `0.0047%`，受影响最大的那个集群为 `0.0326%`。
 
-## 5 实现
+# 5 实现
+
+## 5.0 组件
 
 Bigtable 主要由三个组件构成：
 
 1. 一个客户端库，会链接到每个客户端
-1. 一个 master server
+1. 一个 master server。master 负责：
+
+    1. 将 tablet 分配给 tablet server
+    1. 检测 tablet server 的过期（expiration）及新加（addition）事件
+    1. 平衡 tablet server 负载
+    1. 垃圾回收（GC）
+    1. 处理 schema 变动，例如 table 和 column family 的创建
+
 1. 多个 tablet server
 
-可以根据系统负载动态地向集群添加或删除 tablet server。
+    1. 每个 tablet server **<mark>管理一组 tablets</mark>**（一般 10～1000 个）。
+    1. tablet server 管理这些 tablet 的读写请求，并且当 tablet 太大时，**还负责对它们进行切分**（split）。
+    1. 可以根据系统负载动态地向集群添加或删除 tablet server。
 
-master 负责：
-
-1. 将 tablet 分配给 tablet server
-1. 检测 tablet server 的过期（expiration）及新加（addition）事件
-1. 平衡 tablet server 负载
-1. 垃圾回收（GC）
-1. 处理 schema 变动，例如 table 和 column family 的创建
-
-**每个 tablet server 管理一组 tablets**（一般 10～1000 个）。tablet server 管理
-这些 tablet 的读写请求，并且当 tablet 太大时，**还负责对它们进行切分**（split）
-。
-
-和很多单 master（single master）分布式存储系统一样 [17, 21]，**客户端数据不经过
-master 节点**：**读写请求直接到 tablet server**。
-由于**客户端不依赖 master 就能确定 tablet 位置信息**，因此大部分客户端从来不和
-master 通信。因此，实际中 master 节点的负载很低。
+和很多单 master（single master）分布式存储系统一样 [17, 21]，
+**<mark>客户端数据不经过 master 节点</mark>**：**读写请求直接到 tablet server**。
+由于**客户端不依赖 master 就能确定 tablet 位置信息**，因此大部分客户端从来不和 master 通信。因此，实际中 master 节点的负载很低。
 
 每个 Bigtable 集群会有很多张 table，每张 table 会有很多 tablets，每个 tablets 包
 含一个 row range（行键范围）内的全部数据。
 初始时每个 table 只包含一个 tablet。当 table 逐渐变大时，它会自动分裂成多个
 tablets，**默认情况下每个 tablet 大约 100-200MB**。
 
-### 5.1 Tablet 位置
+## 5.1 Tablet 位置
 
-#### 服务端
+### 服务端
 
 我们使用一个和 B+ 树 [10] 类似的**三级结构**（three level hierarchy）来存储
 tablet 位置信息，如图 4 所示。
@@ -355,7 +370,7 @@ user table 同样是 `128MB` 的话，就有 `2^17 * 2^17 = 2^34` 个 tablets，
 > With a modest limit of 128 MB METADATA tablets, our three-level location
 > scheme is sufficient to address 234 tablets (or 2^61 bytes in 128 MB tablets).
 
-#### 客户端
+### 客户端
 
 **客户端库会缓存 tablet 位置信息**。
 如果客户端不知道 tablet 的位置，或者发现缓存的位置信息不对，它就会去访问 table
@@ -374,7 +389,7 @@ prefetch）的方式继续减少这里的开销：**每次从 `METADATA` table �
 的日志（例如使用这个 tablet 的服务是何时启动的），这些信息对 debug 和性能分析很
 有用。
 
-### 5.2 Tablet 分配
+## 5.2 Tablet 分配
 
 **每个 tablet 每次只会分配给一个 tablet server**。
 
@@ -414,7 +429,7 @@ Chubby 是活着的，那 master 就可以确定：要么是 tablet server 挂�
 Chubby session 过期时自杀。**但如前面所描述的，**master 挂掉不会影响 tablets 的
 分配**。
 
-#### master 启动流程
+### master 启动流程
 
 当一个 master 被集群管理系统启动后，它必须先查看当前的 tablet 分配情况，然后才能
 去修改。
@@ -429,7 +444,7 @@ master 启动后所做的事情如下：
    过程中发现的还未被分配出去的 tablets，会添加到一个未分配 tables 集合，后面就
    可以被重新分配出去
 
-#### 难点
+### 难点
 
 以上过程的一个难点是：**在扫描 `METADATA` table 之前，必须保证 `METADATA`
 tablets 自己已经被分配出去了**。
@@ -441,7 +456,7 @@ tablets 自己已经被分配出去了**。
 未分配 tablets 集合，然后去执行步骤 4。
 这样就保证了 root tablet 将会被分配出去。
 
-#### tablet 分裂和分裂后的新 tablet 发现
+### tablet 分裂和分裂后的新 tablet 发现
 
 因为 root tablet 包含了所有 `METADATA` tablet 的名字，因此 master 扫描 root tablet
 之后就知道了当前有哪些 tablets。
@@ -460,7 +475,7 @@ tablet server 将新的 tablet 信息记录到 `METADATA` table，然后提交�
 次分裂信息通知给 master，因为它在 `METADATA` table 中发现的 tablets 项只覆盖
 master 要求它加载的 tablets 的了一部分。
 
-### 5.3 为 tablet 提供服务（Tablet Serving）
+## 5.3 为 tablet 提供服务（Tablet Serving）
 
 **tablet 的持久状态存储在 GFS 中**，如图 5 所示。
 
@@ -471,7 +486,7 @@ master 要求它加载的 tablets 的了一部分。
 最近的几次更新会存储在**内存中**一个称为 `sstable` 的有序缓冲区（
 sorted buffer）中；其他老一些的更新存储在 SSTable 中。
 
-#### tablet 恢复
+### tablet 恢复
 
 恢复一个 tablet 时，tablet server 需要从 `METADATA` table 读取它的元数据。
 
@@ -483,7 +498,7 @@ sorted buffer）中；其他老一些的更新存储在 SSTable 中。
 tablet server **将 SSTable 索引读到内存，然后应用 redo 点之后提交的所有更新**，
 就可以重建 memtable。
 
-#### 写操作
+### 写操作
 
 当一个写操作到达 tablet server 时，它会检查写操作是否格式正确（well-formed），以
 及发送者是否有权限执行这次操作。
@@ -495,7 +510,7 @@ tablet server **将 SSTable 索引读到内存，然后应用 redo 点之后提�
 提交**（group commit）技术 [13, 16]。**写操作被提交后，它的内容（数据）就会/才会
 插入到 memtable**。
 
-#### 读操作
+### 读操作
 
 一次读操作到达 tablet server 时，也会执行类似的格式检查和鉴权。
 
@@ -505,7 +520,7 @@ view of the sequence of SSTables and the memtable）。
 
 **在 tablet 分裂或合并时，读或写操作仍然是可以进行的**。
 
-### 5.4 压缩（Compactions）
+## 5.4 压缩（Compactions）
 
 * minor compaction
 * major compaction
@@ -538,13 +553,13 @@ Bigtable 定期地遍历所有 tablets，执行 major compaction 操作。这使
 以**及时回收已（被标记为）删除的数据占用的资源**，而且可以**保证已（被标记为）删除
 的数据及时从系统中消失**，这对于存储敏感数据的服务来说是很重要的。
 
-## 6 改进（Refinements）
+# 6 改进（Refinements）
 
 以上描述的实现需要一些改进才能满足我们的用户所需的高性能、可用性和可靠性。
 
 本节将更深入地介绍几个实现部分，以此来展示这些需求。
 
-### 6.1 Locality groups
+## 6.1 Locality groups
 
 客户端可以将多个 column family 组织到一个 locality group。
 每个 tablet 会**为每个 locality group 生成一个单独的 SSTable**。
@@ -560,25 +575,25 @@ SSTable 会被惰性加载到 tablet server 的内存。 一旦加载，这类 c
 操作就不再需要访问磁盘。这个特性对访问频繁的小文件非常有用：`METADATA` table 的
 `location` column family 内部用的就是这种类型。
 
-### 6.2 压缩（Compression）
+## 6.2 压缩（Compression）
 
 客户端可以控制 SSTable 是否需要压缩，以及用什么格式压缩。
 
-#### 压缩的粒度和算法
+### 6.2.1 压缩的粒度和算法
 
 压缩的**基本单位是 SSTable block**（大小可以由 locality group 的参数控制）。
 虽然 block 级别的压缩（相对于更大的数据级别）损失了一些压缩效率，但在只需读取
 部分内容时，我们不需要解压整个文件，从而**提高了读效率**。
 
-我们的很多客户端都使用一种自定义的双通（two-pass）压缩算法：
+我们的很多客户端都使用一种自定义的 two-pass（两遍）压缩算法：
 
 1. 先使用 Bentley-McIlroy 算法 [6] 压缩大窗口内的长公共前缀（long common strings across a large window）
 1. 再使用一个快速算法压缩 16KB 窗口内的重复字符串
 
-在现代计算机上，这两个算法都非常快，**压缩速度可以达到 100~200 MB/s，解压可以达到
-400~1000 MB/s**。
+在现代计算机上，这两个算法都非常快，压缩速度可以达到 100~200 MB/s，解压可以达到
+400~1000 MB/s。
 
-#### 压缩的速度和效率
+### 6.2.2 压缩的速度和效率
 
 虽然相比于压缩效率我们更看重压缩速度，但令人惊奇的是，我们的双通压缩算法效率非常
 好。
@@ -593,7 +608,7 @@ SSTable 会被惰性加载到 tablet server 的内存。 一旦加载，这类 c
 ，因此可以取得非常好的压缩比。如果数据是存储了多个版本而不是一个版本，那压缩比会
 更高。
 
-### 6.3 读缓存
+## 6.3 读缓存
 
 为了提高读性能，tablet server 使用了两级缓存：
 
@@ -607,23 +622,21 @@ SSTable 会被惰性加载到 tablet server 的内存。 一旦加载，这类 c
     * 适用于**连续访问相邻（相近）数据**的应用。例如顺序读，或者在热点行（hot
       row）中相同 locality group 内不同列的随机读
 
-### 6.4 Bloom 过滤器
+## 6.4 Bloom 过滤器
 
-5.3 介绍过，一次读操作必须要对组成一个 tablet 状态的所有 SSTable 都进行读取。如
-果这些 SSTable 没有在内存，我们就要进行多次磁盘访问。我们允许客户端在一个特殊的
-locality group 内指定要**对 SSTable 创建 Bloom 过滤器** [7]，通过这种方式就可以
-减少这种磁盘访问。
+5.3 介绍过，一次读操作必须要对组成一个 tablet 状态的所有 SSTable 都进行读取。
+如果这些 SSTable 没有在内存，我们就要进行多次磁盘访问。我们允许客户端在一个特殊的
+locality group 内指定要**<mark>对 SSTable 创建 Bloom 过滤器</mark>** [7]，
 
-**Bloom 过滤器可以判断一个 SSTable 是否包含指定行/列对（row/column pair）对应的
-数据**。对于特定的应用来说，给 tablet server 增加少量内存用于存储 Bloom 过滤器，就
-可以**极大地减少读操作的磁盘访问**。
+* Bloom 过滤器可以判断一个 **<mark>SSTable 是否包含指定行/列对</mark>**（row/column pair）对应的数据。
+* 对于特定的应用来说，给 tablet server **<mark>增加少量内存用于存储 Bloom 过滤器</mark>**，就可以**<mark>极大地减少读操作的磁盘访问</mark>**。
 
 我们的实际使用也显示，大部分对不存在的行或列的访问都无需涉及磁盘操作（在 Bloom
 过滤器这一层就判断不存在了，无需再查找磁盘）。
 
-### 6.5 Commit-log 实现
+## 6.5 Commit-log 实现
 
-#### 每个 tablet 还是每个 tablet server 一个 log 文件
+### 每个 tablet 还是每个 tablet server 一个 log 文件
 
 如果为每个 tablet 维护一个单独的 log 文件，那会导致底层 GFS 大量文件的并发写。考
 虑到 GFS 的具体实现，这些并发写进而会导致大量的磁盘访问，以完成不同物理文件的并
@@ -633,7 +646,7 @@ locality group 内指定要**对 SSTable 创建 Bloom 过滤器** [7]，通过�
 因此，为了克服以上问题，我们为**每个 tablet server 维护一个 commit log**，将属于
 这个 tablet server 的不同的 tablet 操作都写入这同一个物理上的 log 文件 [18, 20]。
 
-#### 恢复过程变复杂
+### 恢复过程变复杂
 
 这种方式使得常规操作（normal operations）的性能得到了很大提升，但是，它使 tablet
 恢复过程变得复杂。
@@ -647,7 +660,7 @@ tablet 的状态时，新的 tablet server 需要从原 tablet server 的 commit
 一种方式是每个新的 tablet server 都去读完整的 commit log，将自己需要的部分过滤出
 来。但是，如果有 100 个机器分到了 tablet 的话，这个 log 文件就要被读 100 次。
 
-#### 优化：两个写线程和两份 commit log
+### 优化：两个写线程和两份 commit log
 
 为了避免这种重复读，我们**将 commit log 内容**以 `(table; row name; log sequence
 number)` 为键（key）**进行排序**。**在排序后的 commit log 中，每个 tablet 的所有
@@ -668,7 +681,7 @@ GFS 导致的延迟抖动，**每个 tablet server 为 commit log 使用了两�
 log 中的记录（entry）都有序列号，恢复的时候可以根据序列号过滤由于 log 切换导致
 的重复数据。
 
-### 6.6 加速 tablet 恢复过程
+## 6.6 加速 tablet 恢复过程
 
 如果 master 将一个 tablet 从一个 tablet server 移动到另一个，源
 tablet server 会先对这个 tablet 进行一次 minor compaction。
@@ -680,7 +693,7 @@ tablet server 会先对这个 tablet 进行一次 minor compaction。
 压缩。这次压缩做完之后，这个 tablet 就可以被其他的 tablet server 加载（load），
 而无需恢复任何 log 记录。
 
-### 6.7 利用不可变性（Exploiting immutability）
+## 6.7 利用不可变性（Exploiting immutability）
 
 除了 SSTable 缓存之外，Bigtable 系统其他一些部分也因 SSTable 的不可变性而得到简
 化。例如，从 SSTable 读取数据时，对文件系统的访问不需要任何同步。因此，对行的并
@@ -701,7 +714,9 @@ SSTable 的对应的 tablet 的 root。
 最后，**SSTable 的不可变性使得 tablet 分裂过程更快**。我们直接让子 tablet 共享
 父 tablet 的 SSTable ，而不是为每个子 tablet 分别创建一个新的 SSTable。
 
-## 7 性能评估
+# 7 性能评估
+
+## 7.0 准备
 
 ### 测试环境
 
@@ -761,7 +776,7 @@ in-memory），因此会从 tablet server 的内存而不是 GFS 读取。在这
 <p align="center"><img src="/assets/img/google-bigtable/6.png" width="100%" height="100%"></p>
 <p align="center">图 6 读/写 1000 字节的值到 Bigtable 时的性能</p>
 
-### 7.1 单 tablet-server 性能
+## 7.1 单 tablet-server 性能
 
 首先看单个 tablet server 的性能。
 
@@ -788,7 +803,7 @@ block 都存储到了 blcok 缓存，下一次 64 读请求就会用到。
 扫描的性能更好，因为客户端的一次 RPC 请求就可以从 tablet server 拿到大量的值，因
 此 RPC 开销被平摊了。
 
-### 7.2 扩展性（scaling）
+## 7.2 扩展性（scaling）
 
 当我们将系统中 tablet server 的数量从 1 增加到 500 时，
 聚合吞吐量（aggregate throughput）的增长非常明显，超过了 100 倍。
@@ -811,7 +826,7 @@ block 都存储到了 blcok 缓存，下一次 64 读请求就会用到。
 个 64KB 的 block。这个数据量使得我们与其他进程共享的 1Gbps 网络带宽达到饱和，因
 此随着机器数量的增加，每节点平均吞吐量（per-server throughput）下降非常明显。
 
-## 8 真实应用
+# 8 真实应用
 
 截至 2006 年 8 月，Google 总共运行着 388 个非测试的 Bigtable 集群，分布在不同的
 数据中心，加起来有 24,500 个 tablet server。
@@ -841,7 +856,7 @@ block 都存储到了 blcok 缓存，下一次 64 读请求就会用到。
 的复杂度等等差异都很大。在本节接下来的内容中，我们将简要介绍产品团队是如何使用
 Bigtable 的。
 
-### 8.1 Google Analytics
+## 8.1 Google Analytics
 
 Google Analytics (analytics.google.com) 是一个帮助网站管理员分析网站流量的服务。
 
@@ -866,7 +881,7 @@ session 按照时间顺序（chronologically）是连续的。这个 table 压�
 表中提取最近的 session 数据，系统整体的吞吐受限于 GFS 的吞吐。这个表压缩到了原始
 大小的 29%。
 
-### 8.2 Google Earth
+## 8.2 Google Earth
 
 Google 提供了地球高精度卫星图服务给用户，可以通过基于网页的 Google Maps 接口（
 maps.google.com）或客户端软件 Google Earth（earth.google.com）访问。这些产品允许
@@ -890,7 +905,7 @@ job 进行时，系统整体可以达到每个 tablet server 1MB/s 以上的数�
 表同时分散到了几百个 tablet server 上进行处理，并且还包含了驻留内存的 column
 family。
 
-### 8.3 Personalized Search
+## 8.3 Personalized Search
 
 Personalized Search（个性化搜索）(www.google.com/psearch)是一个自选的服务，它会
 记录用户的搜索关键词和在各种 Google 服务上的点击，例如网页搜索、图像和新闻等等。
@@ -918,12 +933,12 @@ family。
 在一个共享表中所占的存储大小。对于那些多个产品团队使用 Bigtable 存储用户级别信息
 的场景，这种机制提供了一定的隔离性。
 
-## 9 从中所学（Lessons）
+# 9 从中所学（Lessons）
 
 在设计、实现、维护和支持 Bigtable 的过程中，我们得到了很多有用的经验，也学习到了
 很多有趣的教训。
 
-### 故障源远比你想象中多
+## 9.1 故障源远比你想象中多
 
 首先我们认识到，大型分布式系统在很多方面的故障面前都很脆弱，不仅仅是很多分布式协
 议所假设的网络分裂和出错后停止服务（fail-stop failures）。例如，我们就遇到过如下
@@ -943,7 +958,7 @@ RPC 机制添加了校验和。
 另外，我们还去掉了系统的一个部分对另一部分的假设。例如，我们不再假设一次 Chubby
 操作只会返回固定的几种错误。
 
-### 避免过早添加使用场景不明确的新特性
+## 9.2 避免过早添加使用场景不明确的新特性
 
 我们得到的另一重要经验是：如果还不是非常清楚一个新特性将被如何使用，那就不要着急
 添加到系统中。
@@ -958,7 +973,7 @@ secondary indices），因此我们计划通过添加一个特殊的机制来满
 没有分布式事务通用，但性能会更好（尤其是跨上百行以上的更新），而且对于乐观跨数据
 中心复制（optimistic cross-data-center replication）来说，和我们系统的集成会更好。
 
-### 系统级监控非常重要
+## 9.3 系统级监控非常重要
 
 在日常支持 Bigtable 中学到的实际一课是：合理的系统级监控（例如监控 Bigtable 本身
 ，以及使用 Bigtable 的客户端）非常重要。
@@ -974,7 +989,7 @@ secondary indices），因此我们计划通过添加一个特殊的机制来满
 群，看到集群有多大，各自运行的是什么版本，接收到的流量有多大，是否有异常的大延迟
 等等。
 
-### 保持设计的简洁
+## 9.4 保持设计的简洁
 
 **我们学到的最重要经验是：简单设计带来的价值**（the value of simple designs）。
 
@@ -997,7 +1012,7 @@ master 定期向 tablet server 提供租约，如果一个 tablet server 的租�
 最终，我们放弃了这个版本，重新回到了一个新的更简单的协议，只依赖使用广泛的 Chubby
 特性。
 
-## 10 相关工作
+# 10 相关工作
 
 The Boxwood project [24] has components that overlap
 in some ways with Chubby, GFS, and Bigtable, since it
@@ -1089,7 +1104,7 @@ what data belongs in memory and what data should stay
 on disk, rather than trying to determine this dynamically;
 (3) we have no complex queries to execute or optimize.
 
-## 11 总结
+# 11 总结
 
 我们在 Google 设计了 Bigtable，一个存储**结构化数据**的分布式系统。
 
@@ -1115,7 +1130,7 @@ Bigtable 还是说明了，我们的设计在实际使用中还是非常不错�
 及 Bigtable 所依赖的其他 Google 基础设施有足够的控制权**，因此任何一个地方有瓶颈
 了，我们都可以及时解决。
 
-## Acknowledgements
+# Acknowledgements
 
 We thank the anonymous reviewers, David Nagle, and
 our shepherd Brad Calder, for their feedback on this paper.
@@ -1129,7 +1144,7 @@ Joanna Kulik, Alberto Lerner, Sherry Listgarten, Mike
 Maloney, Eduardo Pinheiro, Kathy Polizzi, Frank Yellin,
 and Arthur Zwiegincew.
 
-## 参考文献
+# 参考文献
 
 1. ABADI, et al. Integrating compression and execution in columnoriented database systems. SIGMOD 2006
 2. AILAMAKI, et al. Weaving relations for cache performance. In The VLDB Journal 2001

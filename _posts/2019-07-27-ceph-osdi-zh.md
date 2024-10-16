@@ -1,9 +1,9 @@
 ---
 layout    : post
-title     : "[译] [论文] Ceph: A Scalable, High-Performance Distributed File System (OSDI 2006)"
+title     : "[译] [论文] Ceph: A Scalable, High-Performance Distributed File System (OSDI, 2006)"
 date      : 2019-07-27
 lastupdate: 2019-07-27
-categories: ceph file-system paper
+categories: ceph file-system storage
 ---
 
 ### 译者序

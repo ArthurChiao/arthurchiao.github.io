@@ -2,7 +2,7 @@
 layout    : post
 title     : "JuiceFS 元数据引擎初探：高层架构、引擎选型、读写工作流（2024）"
 date      : 2024-09-12
-lastupdate: 2024-10-10
+lastupdate: 2024-10-16
 categories: storage juicefs
 ---
 
@@ -226,6 +226,10 @@ $ ./tikv-ctl.sh mvcc -k 'zfoo-dev\375\377A\001\000\000\000\000\000\000\377\000Df
 key: zfoo-dev\375\377A\001\000\000\000\000\000\000\377\000Dfile1.\377txt\000\000\000\000\000\372
          write cf value: start_ts: 452330816414416901 commit_ts: 452330816414416903 short_value: 010000000000000002
 ```
+
+CF 是 **<mark><code>column family</code></mark>** 的缩写，进一步了解，可参考
+Google bigtable 中关于 CF 的定义
+[ 译 | Bigtable: A Distributed Storage System for Structured Data (OSDI, 2006)]({% link _posts/2019-07-13-google-bigtable-zh.md %})。
 
 ## 4.4 `tikv-ctl --decode <key>` 解除字符转义
 

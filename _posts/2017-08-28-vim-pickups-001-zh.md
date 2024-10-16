@@ -1,6 +1,6 @@
 ---
 layout    : post
-title     : "Vim Pickups 001"
+title     : "Vim Pickups 001（2017）"
 date      : 2017-08-28
 lastupdate: 2024-06-30
 ---
