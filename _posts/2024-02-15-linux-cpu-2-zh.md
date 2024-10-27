@@ -2,7 +2,7 @@
 layout    : post
 title     : "Linux 服务器功耗与性能管理（二）：几个内核子系统的设计（2024）"
 date      : 2024-02-15
-lastupdate: 2024-02-15
+lastupdate: 2024-10-27
 categories: linux kernel
 ---
 
@@ -40,7 +40,7 @@ categories: linux kernel
 
 更多信息：[<mark>Linux CFS 调度器：原理、设计与内核实现</mark>（2023）]({% link _posts/2023-02-05-linux-cfs-design-and-implementation-zh.md %})
 
-## 1.3 有任务：用哪个频率执行任务？—— `cpufreq`
+## 1.2 有任务：用哪个频率执行任务？—— `cpufreq`
 
 CPU 有任务需要执行时，该以哪个频率/电压来执行呢？
 这里就需要一个管理组件，它的主要功能就是**<mark>管理 CPU 执行任务时所用的频率/电压</mark>**，
@@ -48,7 +48,23 @@ CPU 有任务需要执行时，该以哪个频率/电压来执行呢？
 
 Linux 内核中，对应的就是 cpufreq 子系统。
 
-## 1.4 无任务：执行轻量级占坑程序 —— `idle task`
+```shell
+$ cpupower frequency-info
+analyzing CPU 0:
+  driver: intel_pstate
+  CPUs which run at the same hardware frequency: 0
+  CPUs which need to have their frequency coordinated by software: 0
+  maximum transition latency:  Cannot determine or is not supported.
+  hardware limits: 1000 MHz - 3.90 GHz
+  available cpufreq governors: performance powersave
+  current policy: frequency should be within 1000 MHz and 3.90 GHz. # <-- 运行频率范围
+  current CPU frequency: 2.80 GHz (asserted by call to kernel)
+  boost state support:
+    Supported: yes
+    Active: yes
+```
+
+## 1.3 无任务：执行轻量级占坑程序 —— `idle task`
 
 > 事实证明，**<mark>什么都不做，比大家想象中要复杂地多</mark>**
 > （Doing nothing, it turns out, is more complicated than one might think） [5].
@@ -82,21 +98,21 @@ Linux 内核中，对应的就是 cpufreq 子系统。
 > 在 Linux 中，如果**<mark>除了 "idle task"</mark>** 已经没有其他任务可运行时，
 > 这个 CPU 就是空闲的，即 **<mark><code>idle CPU</code></mark>**。
 
-### 1.4.1 直接降低电压和频率，节能
+### 1.3.1 直接降低电压和频率，节能
 
 这是主流行为，idle task 里面实现某种降低功耗的逻辑，避免 CPU 空转，节能。
 典型配置如 Linux 内核启动项 **<mark><code>idle=halt</code></mark>**。
 
 这种方式的缺点是从较低功耗（某种程度的睡眠状态）唤醒时有一定的延迟。
 
-### 1.4.2 仍然全速运行，保持最低唤醒延迟
+### 1.3.2 仍然全速运行，保持最低唤醒延迟
 
 这类场景比较特殊，比如追求极低延迟的高频交易场景。
 没有任务时仍然**<mark>让 CPU 保持电压和频率空转</mark>**，不要降压降频，
 这样有任务变成 runnable 时可以立即切换执行，延迟最低。
 在 Linux 启动项中，对应 **<mark><code>idle=poll</code></mark>** 配置，后面几篇我们还会多次看到（尤其是这种配置的潜在风险）。
 
-### 1.4.3 动态降低电压和频率，节能 —— `cpuidle` 和 `c-states`
+### 1.3.3 动态降低电压和频率，节能 —— `cpuidle` 和 `c-states`
 
 通过一个单独的子系统（`cpuidle`）来实现不同级别的节能（`c-states`）。
 
@@ -106,7 +122,7 @@ Linux 内核中，对应的就是 cpufreq 子系统。
   目的是提高这几个有任务在运行的 CORE 的性能；
 * cpuidle/c-states 是当前 CORE/CPU **<mark>没有任务要运行</mark>**（空闲 CPU），通过**<mark>动态降频</mark>**来节能。
 
-## 1.5 `idle loop` 模式之三：空闲时间管理 —— `cpuidle`
+## 1.4 `idle loop` 模式之三：空闲时间管理 —— `cpuidle`
 
 再稍微展开介绍下上面第三种：
 队列中如果没有 runnable task，比如所有任务都在等待 IO 事件。
@@ -115,7 +131,7 @@ Linux 内核中，对应的就是 cpufreq 子系统。
 空闲状态的下 CPU 该怎么管理，也是一门学问，因此内核又引入了另外一个子系统：
 cpu 空闲时间管理子系统 `cpudile`。具体工作内容后面介绍。
 
-## 1.6 `cpuidle` + 响应延迟保证：电源管理服务等级 —— `PM QoS`
+## 1.5 `cpuidle` + 响应延迟保证：电源管理服务等级 —— `PM QoS`
 
 如果没有任务时 cpuidle 选择进入某种低电压/低频率的节能模式，当有任务到来时，
 它的唤醒时间可能无法满足要求。针对这种情况，内核又引入了功耗管理或称**<mark>电源管理 服务等级</mark>**
@@ -125,7 +141,7 @@ PM QoS 允许应用注册一个最大 latency，内核确保唤醒时间不会�
 在尽量节能的同时实现快速响应。
 具体原理也在后面单独章节介绍。
 
-## 1.7 小结：各子系统的关系图
+## 1.6 小结：各子系统的关系图
 
 最后用一张图梳理一下前面涉及到的各内核子系统：
 
