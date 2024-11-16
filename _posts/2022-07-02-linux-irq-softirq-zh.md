@@ -2,8 +2,7 @@
 layout    : post
 title     : "Linux 中断（IRQ/softirq）基础：原理及内核实现（2022）"
 date      : 2022-07-02
-lastupdate: 2022-07-18
-author: ArthurChiao
+lastupdate: 2024-11-16
 categories: network kernel
 ---
 
@@ -15,7 +14,7 @@ categories: network kernel
 ----
 
 中断（IRQ），尤其是软中断（softirq）的重要使用场景之一是网络收发包，
-但并未唯一场景。本文整理 IRQ/softirq 的通用基础，这些东西和网络收发包没有直接关系，
+但并非唯一场景。本文整理 IRQ/softirq 的通用基础，这些东西和网络收发包没有直接关系，
 虽然整理本文的直接目的是为了更好地理解网络收发包。
 
 # 1 什么是中断？
@@ -271,7 +270,7 @@ Linux 中的**<mark>三种推迟中断</mark>**（deferred interrupts）：
 其中，
 
 1. softirq 和 tasklet 依赖软中断子系统，**<mark>运行在软中断上下文中</mark>**；
-2. workqueue 不依赖软中断子系统，**<mark>运行在进程上下文中</mark>**。
+2. workqueue 不依赖软中断子系统，**<mark>运行在内核进程上下文中</mark>**。
 
 ## 4.1 `softirq`：静态机制，内核编译时确定
 
@@ -424,7 +423,7 @@ static void tasklet_action(struct softirq_action *a)
 tasklet 在内核中的使用非常广泛。
 不过，后面又出现了第三种方式：workqueue。
 
-## 4.3 `workqueue`：动态机制，运行在进程上下文
+## 4.3 `workqueue`：动态机制，运行在内核进程上下文
 
 这也是一种推迟执行机制，与 tasklet 有点类似，但也有很大不同。
 
@@ -525,6 +524,14 @@ idle 如何实现视具体处理器和操作系统而定，但**<mark>目的都�
 有的 CPU 还会在 idle 期间降低处理器频率，以实现节能目标。
 
 Linux 中 x86 的[实现](https://github.com/torvalds/linux/blob/v5.10/arch/x86/kernel/process.c#L678)。
+
+关于 idle process 的更多信息：
+
+* [Linux 服务器功耗与性能管理（一）：CPU 硬件基础（2024）]({% link _posts/2024-02-15-linux-cpu-1-zh.md %})
+* [Linux 服务器功耗与性能管理（二）：几个内核子系统的设计（2024）]({% link _posts/2024-02-15-linux-cpu-2-zh.md %})
+* [Linux 服务器功耗与性能管理（三）：cpuidle 子系统的实现（2024）]({% link _posts/2024-02-15-linux-cpu-3-zh.md %})
+* [Linux 服务器功耗与性能管理（四）：监控、配置、调优（2024）]({% link _posts/2024-02-15-linux-cpu-4-zh.md %})
+* [Linux 服务器功耗与性能管理（五）：问题讨论（2024）]({% link _posts/2024-02-15-linux-cpu-5-zh.md %})
 
 # 参考资料
 

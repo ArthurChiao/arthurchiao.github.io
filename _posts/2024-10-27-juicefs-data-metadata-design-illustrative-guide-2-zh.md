@@ -36,7 +36,7 @@ categories: storage juicefs
 本篇以 MinIO 为例，来看 JuiceFS 写入到对象存储中的文件是怎样组织的。
 其他云厂商的对象存储（AWS S3、阿里云 OSS 等）也都是类似的。
 
-## 1.1 Bucket 内：每个 volume 一个“目录”
+## 2.1 Bucket 内：每个 volume 一个“目录”
 
 可以用上一篇介绍的 `juicefs format` 命令再创建两个 volume，方便观察它们在 bucket 中的组织关系，
 
@@ -293,7 +293,7 @@ JuiceFS 支持不同类型的元数据引擎，例如 Redis、MySQL、TiKV/etcd 
 
 更具体地，我们将拿 TiKV 作为元数据引擎来研究。
 
-## 4.1.1 TKV 类型 key 列表
+## 4.1 TKV 类型 key 列表
 
 这里的 key 是 JuiceFS 定义元数据 key，**<mark>key/value 写入元数据引擎</mark>**；
 请注意跟前面提到的对象存储 key 区别开，那个 **<mark>key/value 是写入对象存储的</mark>**。
