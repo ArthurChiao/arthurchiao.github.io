@@ -9,7 +9,8 @@ categories: storage hardware
 ### 译者序
 
 本文翻译自 2022 年 Branch Education 的一个科普视频 [How do Hard Disk Drives Work?](https://www.youtube.com/watch?v=wtdnatmVdIg) (Youtube)，
-强烈推荐观看原视频（上不了油管的，B 站也有搬运）。本文整理个图文版方便查阅与思考。
+强烈推荐观看原视频（上不了油管的，B 站也有搬运）。本文整理个图文版方便查阅与思考，
+另外增加了点相关的 Linux 软件知识，方便与日常工作衔接起来，
 
 <p align="center"><img src="/assets/img/how-hdd-works/write-head-1.png" width="60%" height="60%"></p>
 
@@ -21,7 +22,7 @@ categories: storage hardware
 
 2. [How a Hard Drive Works](https://cs.stanford.edu/people/nick/how-hard-drive-works/), cs.stanford.edu, 2012
 
-    斯坦福的一个老师实物教学，**<mark>开盖展示读写数据时，硬盘的工作过程</mark>**（然后这个盘就报废了）。
+    斯坦福的一个老师实物教学，**<mark>开盖展示读写数据时，硬盘的工作过程</mark>**（然后这个盘就废了）。
 
 3. [HDD from Inside: Hard Drive Main Parts](https://hddscan.com/doc/HDD_from_inside.html), https://hddscan.com/
 
@@ -352,6 +353,32 @@ $ cat /proc/diskstats
 # 5 致谢
 
 原作者 Branch Education 感谢所有个人赞助者和会员赞助商，让他们制作了如此精良的科普视频。
+
+# 6 Linux 存储相关的子系统和软件栈（译注）
+
+## 6.1 从进程 read/write 请求到 HDD 读写数据
+
+来自 [Linux Storage Stack Diagram](https://www.thomas-krenn.com/en/wiki/Linux_Storage_Stack_Diagram)，
+涵盖了 3.x ~ 6.x 多个内核版本，这里先贴一个 **<mark><code>3.x</code></mark>** 的，因为简单，
+方便看出从用户进程发出 read/write 请求到 HDD 读写数据的内核模块链路：
+
+<p align="center"><img src="/assets/img/how-hdd-works/Linux-io-stack-diagram_v0.1.svg" width="100%" height="100%"></p>
+
+虚拟文件系统（VFS）里面分为几类：
+
+1. **<mark>常规文件系统</mark>**（ext4, xfs, btrfs, ...）；
+2. **<mark>网络文件系统</mark>**（NFS, CIFS, ...）；
+3. **<mark>伪文件系统</mark>**（procfs, sysfs, ...）；
+4. **<mark>特殊文件系统</mark>**（tmpfs, devtmpfs, ...）。
+
+再贴一个 **<mark><code>kernel v6.9</code></mark>** 的，
+
+<p align="center"><img src="/assets/img/how-hdd-works/Linux-storage-stack-diagram_v6.9.png" width="100%" height="100%"></p>
+
+## 6.2 内核 block layer 深入解读
+
+1. [A block layer introduction part 1: the bio layer](https://lwn.net/Articles/736534/), LWN.net, 2017
+1. [A block layer introduction part 2: the request layer](https://lwn.net/Articles/738449/), LWN.net, 2017
 
 ----
 
