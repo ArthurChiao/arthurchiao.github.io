@@ -72,14 +72,22 @@ mount
  |-txnkv.NewClient(url)                                          // github.com/juicedata/juicefs: pkg/meta/tkv_tikv.go
  |  |-NewClient                                                  // github.com/tikv/client-go:    txnkv/client.go
  |     |-pd.NewClient                                            // github.com/tikv/client-go:    tikv/kv.go
- |          |-NewClient                                          // github.com/tikv/pd:           client/client.go
- |             |-NewClientWithContext                            // github.com/tikv/pd:           client/client.go
- |                |-createClientWithKeyspace                     // github.com/tikv/pd:           client/client.go
- |                   |-c.pdSvcDiscovery = newPDServiceDiscovery  // github.com/tikv/pd:           client/pd_xx.go
- |                   |-c.setup()                                 // github.com/tikv/pd:           client/pd_xx.go
- |                       |-c.pdSvcDiscovery.Init()
- |                       |-c.pdSvcDiscovery.AddServingURLSwitchedCallback
- |                       |-c.createTokenDispatcher()
+ |     |    |-NewClient                                          // github.com/tikv/pd:           client/client.go
+ |     |       |-NewClientWithContext                            // github.com/tikv/pd:           client/client.go
+ |     |          |-createClientWithKeyspace                     // github.com/tikv/pd:           client/client.go
+ |     |             |-c.pdSvcDiscovery = newPDServiceDiscovery  // github.com/tikv/pd:           client/pd_xx.go
+ |     |             |-c.setup()                                 // github.com/tikv/pd:           client/pd_xx.go
+ |     |                 |-c.pdSvcDiscovery.Init()
+ |     |                 |-c.pdSvcDiscovery.AddServingURLSwitchedCallback
+ |     |                 |-c.createTokenDispatcher()
+ |     |-spkv, err := tikv.NewEtcdSafePointKV
+ |     |-tikv.NewRPCClient
+ |     |-tikv.NewKVStore(uuid, pdClient, spkv, rpcClient)        // github.com/tikv/client-go:    tikv/kv.go
+ |         |-oracles.NewPdOracle
+ |         |-store := &KVStore{}
+ |         |-go store.runSafePointChecker()
+ |         |     |-check key "/tidb/store/gcworker/saved_safe_point" from etcd every 10s
+ |         |-go store.safeTSUpdater()
  |-metaCli.NewSession
     |-doNewSession
        |-m.setValue(m.sessionKey(m.sid), m.expireTime())  // SE

@@ -1,8 +1,8 @@
 ---
 layout    : post
-title     : "[译] 硬盘（HDD）内部结构与工作原理的动画展示（2022）"
+title     : "[译] HDD 是如何工作的：旋转硬盘内部结构与工作原理的动画展示（2022）"
 date      : 2024-11-16
-lastupdate: 2024-11-16
+lastupdate: 2024-12-01
 categories: storage hardware
 ---
 
@@ -10,23 +10,11 @@ categories: storage hardware
 
 本文翻译自 2022 年 Branch Education 的一个科普视频 [How do Hard Disk Drives Work?](https://www.youtube.com/watch?v=wtdnatmVdIg) (Youtube)，
 强烈推荐观看原视频（上不了油管的，B 站也有搬运）。本文整理个图文版方便查阅与思考，
-另外增加了点相关的 Linux 软件知识，方便与日常工作衔接起来，
 
 <p align="center"><img src="/assets/img/how-hdd-works/write-head-1.png" width="60%" height="60%"></p>
 
-其他优质文章：
-
-1. [How does a hard drive work](https://www.explainthatstuff.com/harddrive.html), https://www.explainthatstuff.com/, 2024
-
-    除了硬件拆解和介绍工作原理，还对比了 HDD 和 SDD，并且更重要的，介绍了 **<mark>IBM 发明硬盘的历史</mark>**。
-
-2. [How a Hard Drive Works](https://cs.stanford.edu/people/nick/how-hard-drive-works/), cs.stanford.edu, 2012
-
-    斯坦福的一个老师实物教学，**<mark>开盖展示读写数据时，硬盘的工作过程</mark>**（然后这个盘就废了）。
-
-3. [HDD from Inside: Hard Drive Main Parts](https://hddscan.com/doc/HDD_from_inside.html), https://hddscan.com/
-
-    硬件拆解部分比本文更详细，想了解更多硬件细节的，可作为补充。
+* [HDD 是如何工作的：旋转硬盘内部结构与工作原理的动画展示（2022）]({% link _posts/2024-11-16-how-hdd-works-zh.md %})
+* [SSD 是如何工作的：固态硬盘内部结构与工作原理的动画展示（2020）]({% link _posts/2024-11-16-how-hdd-works-zh.md %})
 
 水平及维护精力所限，译文不免存在错误或过时之处，如有疑问，请查阅原视频。
 **<mark>传播知识，尊重劳动，年满十八周岁，转载请注明<a href="https://arthurchiao.art">出处</a></mark>**。
@@ -239,6 +227,17 @@ $ cat /proc/diskstats
 
 这个数量乘以 sector 大小，就是已经读写的字节数，**<mark>iostat 等工具显示的磁盘读写带宽</mark>**，就是根据这个来计算（估算）的。
 
+#### 一个扇区只会属于一个文件（译注）
+
+根据 wikipedia [Disk sector](https://en.wikipedia.org/wiki/Disk_sector)，
+对于绝大部分文件系统来说，任何一个文件都是占用整数个扇区的 —— 也就是说一个扇区只会属于一个文件，
+如果没用满，后面的就空着。所以在调整扇区大小时，这是一个需要考虑的因素。
+
+#### 扇区与 block 的关系（译注）
+
+这里说的 block 是文件系统的概念，比如常见的一个 block 是 4KB，如果磁盘格式化的时候，扇区大小选择的 512B，那一个 block 就对应 8 个扇区。
+对操作系统屏蔽了底层的硬件细节。
+
 ### 2.3.4 纠错码（ECC）区
 
 <p align="center"><img src="/assets/img/how-hdd-works/sector-internals.png" width="60%" height="60%"></p>
@@ -379,6 +378,20 @@ $ cat /proc/diskstats
 
 1. [A block layer introduction part 1: the bio layer](https://lwn.net/Articles/736534/), LWN.net, 2017
 1. [A block layer introduction part 2: the request layer](https://lwn.net/Articles/738449/), LWN.net, 2017
+
+## 6.3 其他优质文章
+
+1. [How does a hard drive work](https://www.explainthatstuff.com/harddrive.html), https://www.explainthatstuff.com/, 2024
+
+    除了硬件拆解和介绍工作原理，还对比了 HDD 和 SDD，并且更重要的，介绍了 **<mark>IBM 发明硬盘的历史</mark>**。
+
+2. [How a Hard Drive Works](https://cs.stanford.edu/people/nick/how-hard-drive-works/), cs.stanford.edu, 2012
+
+    斯坦福的一个老师实物教学，**<mark>开盖展示读写数据时，硬盘的工作过程</mark>**（然后这个盘就报废了）。
+
+3. [HDD from Inside: Hard Drive Main Parts](https://hddscan.com/doc/HDD_from_inside.html), https://hddscan.com/
+
+    硬件拆解部分比本文更详细，想了解更多硬件细节的，可作为补充。
 
 ----
 

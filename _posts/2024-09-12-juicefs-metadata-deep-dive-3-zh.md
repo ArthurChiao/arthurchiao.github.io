@@ -254,6 +254,27 @@ func (c *tikvClient) gc() {
 }
 ```
 
+接下来的调用栈：
+
+```
+gc                                          // github.com/juicedata/juicefs  pkg/meta/tkv_tikv.go
+ |-c.client.GC                              // github.com/tikv/client-go     tikv/gc.go
+     |-s.pdClient.UpdateGCSafePoint         // github.com/tikv/pd            client/client.go
+        |-ctx = grpcutil.BuildForwardContext(ctx, c.GetLeaderAddr())
+        |-c.getClient().UpdateGCSafePoint(ctx, req)
+                        /
+               gRPC    /
+          /----<--<----/
+         /
+UpdateGCSafePoint                           // github.com/tikv/pd  server/grpc_service.go
+  |-rc := s.GetRaftCluster()
+  |-oldSafePoint := s.storage.LoadGCSafePoint()
+  |-s.storage.SaveGCSafePoint(newSafePoint)
+              |-key := path.Join(gcPath, "safe_point")  // gcPath = "gc"
+              |-value := strconv.FormatUint(safePoint, 16)
+              |-return s.Save(key, value)
+```
+
 ### 2.4.2 配置：META URL `\?gc-interval=1h`
 
 这个 gc-interval 可在 juicefs 挂载卷时加到 **<mark><code>TiKV URL</code></mark>** 中，
