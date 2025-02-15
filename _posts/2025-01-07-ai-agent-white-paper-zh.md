@@ -1,6 +1,6 @@
 ---
 layout    : post
-title     : "AI Agent（智能体）技术白皮书（Google，2024）"
+title     : "[译] AI Agent（智能体）技术白皮书（Google，2024）"
 date      : 2025-01-07
 lastupdate: 2025-01-07
 categories: ai llm

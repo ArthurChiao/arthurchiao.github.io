@@ -2,7 +2,7 @@
 layout    : post
 title     : "[译][论文] LLaMA 2：开放基础和微调聊天模型（Meta/Facebook，2023）"
 date      : 2023-08-06
-lastupdate: 2024-04-06
+lastupdate: 2025-02-15
 categories: llama ai gpt
 ---
 
@@ -670,34 +670,33 @@ evaluating a generative model is an open research question, the ranking task of 
 Therefore, everything else being equal, an improvement of the reward model can be directly translated into
 an improvement for LLaMA2-Chat.
 
-### 3.2.3 Iterative Fine-Tuning
+### 3.2.3 迭代式微调（Iterative Fine-Tuning）
 
 As we received more batches of human preference data annotation, we were able to train better reward
 models and collect more prompts. We therefore trained successive versions for RLHF models, referred to
 here as RLHF-V1, . . . , RLHF-V5.
 We explored RLHF fine-tuning with two main algorithms:
 
-* Proximal Policy Optimization (PPO) (Schulman et al., 2017), the standard in RLHF literature.
-* Rejection Sampling fine-tuning. We sample K outputs from the model and select the best candidate
-with our reward, consistent with Bai et al. (2022b). The same re-ranking strategy for LLMs was also
-proposed in Deng et al. (2019), where the reward is seen as an energy function. Here, we go one step
-further, and use the selected outputs for a gradient update. For each prompt, the sample obtaining
-the highest reward score is considered the new gold standard. Similar to Scialom et al. (2020a), we
-then fine-tune our model on the new set of ranked samples, reinforcing the reward.
+* **<mark><code>Proximal Policy Optimization (PPO)</code></mark>** (Schulman et al., 2017), the standard in RLHF literature.
+* **<mark><code>Rejection Sampling fine-tuning</code></mark>**.
+    * 与 Bai 等（2022b）保持一致，**<mark>从模型的 K 个输出中采样</mark>**，基于我们的奖励算法**<mark>选出最佳的几个输出</mark>**。
+    * Deng 等（2019）提出了类似的 re-ranking 策略，其中将奖励视为一个能量函数（energy function）。
+    * 这里我们更进一步，**<mark>用选出的输出进行梯度更新</mark>**。对于每个 prompt，得分最高的输出作为新的黄金标准。与 Scialom 等（2020a）类似，
+      我们用这些新的样本对模型进行微调，强化奖励（reinforcing the reward）。
 
-The two RL algorithms mainly differ in:
+这**<mark>两个 RL algorithm 的主要区别</mark>**：
 
-* Breadth — in Rejection Sampling, the model explores K samples for a given prompt, while only one generation is done for PPO.
-* Depth — in PPO, during training at step t the sample is a function of the updated model policy from
-t − 1 after the gradient update of the previous step. In Rejection Sampling fine-tuning, we sample
-all the outputs given the initial policy of our model to collect a new dataset, before applying the
-fine-tuning similar to SFT. However, since we applied iterative model updates, the fundamental
-differences between the two RL algorithms are less pronounced.
+* 广度：在 Rejection Sampling 中，模型为给定的提示生成 K 个样本，而在 PPO 中只生成一个。
+* 深度：
+    * in PPO, during training at step t the sample is a function of the updated model policy from t − 1 after the gradient update of the previous step.
+    * In Rejection Sampling fine-tuning, we sample all the outputs given the initial policy of our model to collect a new dataset, before applying the fine-tuning similar to SFT.
+
+不过，由于我们使用了迭代式模型更新，两种 RL 算法之间的基本差异不那么明显。
 
 Until RLHF (V4), we used only Rejection Sampling fine-tuning, and after that, we combined the two
 sequentially, applying PPO on top of the resulted Rejection Sampling checkpoint before sampling again.
 
-#### Rejection Sampling
+#### Rejection Sampling（拒绝采样）
 
 We perform rejection sampling only with our largest 70B LLaMA2-Chat. All smaller
 models are fine-tuned on rejection sampled data from the larger model, thus distilling the large-model
@@ -908,16 +907,14 @@ on human evaluations, it is important to note that human evaluations have severa
 
 # 5 讨论
 
-## 5.1 新发现与评论（Learnings and Observations）
+## 5.1 新发现与点评
 
 我们的调优过程揭示了一些有趣的结果，比如 LLaMA2-Chat 在时间维度上组织知识的能力，以及调用外部工具 API 的能力。
 
 ### 超越人类监督：从 SFT 到 RLHF
 
-在项目开始时，我们中的许多人都倾向于使用**<mark>有监督标注</mark>**（supervised annotation），
-attracted by its denser signal。
-同时，**<mark>强化学习</mark>**（reinforcement learning）的不稳定性已经众所周知，
-因此自然语言处理领域对其还是抱有一种怀疑态度。
+在项目开始时，我们中的许多人都倾向于使用**<mark>有监督标注</mark>**（supervised annotation），attracted by its denser signal。
+同时，**<mark>强化学习的不稳定性已经众所周知</mark>**，因此自然语言处理领域对其还是抱有一种怀疑态度。
 但事实证明强化学习非常有效，尤其是考虑到其**<mark>成本和时间效率</mark>**。
 我们的研究结果认为，
 
