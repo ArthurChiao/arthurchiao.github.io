@@ -115,7 +115,9 @@ Transformer 是一类**<mark>神经网络</mark>**/机器学习模型，作为�
 
 ## 2.1 Attention Is All You Need, Google, 2017，机器翻译
 
-Transformer 是 Google 2017 年在 [Attention Is All You Need](https://arxiv.org/abs/1706.03762) paper 中提出的，
+Transformer 是 Google 2017 年在 
+[<mark>Attention is all you need</mark>]({% link _posts/2025-02-23-attention-is-all-you-need-zh.md %})
+paper 中提出的，
 当时主要用于**<mark>文本翻译</mark>**：
 
 <p align="center"><img src="/assets/img/visual-intro-to-transformers/machine-translation.gif" width="85%" height="85%"></p>

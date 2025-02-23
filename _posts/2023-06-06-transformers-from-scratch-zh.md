@@ -3,7 +3,7 @@ layout    : post
 title     : "[译] Transformer 是如何工作的：600 行 Python 代码实现 self-attention 和两类 Transformer（2019）"
 date      : 2023-06-06
 lastupdate: 2024-04-23
-categories: gpt ai llm
+categories: gpt ai llm transformer
 ---
 
 ### 译者序
@@ -20,7 +20,8 @@ categories: gpt ai llm
 原文代码见[这里](https://github.com/pbloem/former)，不过 AI 相关的库更新非常快，
 因此现在让跑起来可能有点困难。有兴趣有时间的可以考虑基于较新版本的库重构一下其代码。
 
-**译者水平有限，不免存在遗漏或错误之处。如有疑问，敬请查阅原文。**
+水平及维护精力所限，译文不免存在错误或过时之处，如有疑问，请查阅原文。
+**<mark>传播知识，尊重劳动，年满十八周岁，转载请注明<a href="https://arthurchiao.art">出处</a></mark>**。
 
 以下是译文。
 
@@ -1015,7 +1016,7 @@ Attention（注意力）模型是 key-value store 模型的宽松版：
 * 另外，query 返回的也不是单个 value，而是所有 value，我们**<mark>根据每个 key 与 query 匹配的程度对相应 value 取一个加权和</mark>**。
 
 self-attention 的重大突破在于，attention 本身就是一种足够强大的机制，能完成所有学习。
-正如作者所说，<a href="https://arxiv.org/abs/1706.03762">Attention is all you need</a>。
+正如作者所说，[Attention is all you need]({% link _posts/2025-02-23-attention-is-all-you-need-zh.md %})。
 
 * Key/value/query 都来自同一个 input vector（只是各自经过了略微不同的线性变换）；
 * 他们关注自己（attend to themselves），因此叫 self-attention；

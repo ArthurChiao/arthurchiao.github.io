@@ -1,6 +1,6 @@
 ---
 layout    : post
-title     : "[译] DeepSeek-R1：通过强化学习激励大模型的推理能力（DeepSeek，2024）"
+title     : "[译][论文] DeepSeek-R1：通过强化学习激励大模型的推理能力（DeepSeek，2024）"
 date      : 2025-02-15
 lastupdate: 2025-02-15
 categories: ai llm
