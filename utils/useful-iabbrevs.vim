@@ -15,3 +15,4 @@ iabbrev xlink []({% link _posts/ %})
 
 " image source
 iabbrev ximgsrc <p align="center"><img src="/assets/img/" width="90%"/></p><cr><p align="center"><a href="">Image Source</a></p>
+iabbrev ximgsrc2 <p align="center"><img src="/assets/img/" width="90%"/></p><cr><p align="center">Image Source: <a href="">TODO</a></p>

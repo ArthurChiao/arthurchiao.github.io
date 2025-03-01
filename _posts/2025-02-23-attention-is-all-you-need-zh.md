@@ -1,6 +1,6 @@
 ---
 layout    : post
-title     : "[译][论文] Transformer paper: Attention Is All You Need（Google，2017）"
+title     : "[译][论文] Transformer paper | Attention Is All You Need（Google，2017）"
 date      : 2025-02-23
 lastupdate: 2025-02-23
 categories: gpt ai llm transformer
@@ -51,6 +51,9 @@ categories: gpt ai llm transformer
 > 2. 前馈层中的 ReLU。
 >
 > 模型的其余部分完全由线性变换组成，**<mark>完美地保留了梯度</mark>**。
+
+**<mark>提出 attention 机制</mark>**的 paper：
+[神经机器翻译：联合学习对齐和翻译（Align & Translate）（2014）]({% link _posts/2025-03-01-attention-paper-zh.md %})。
 
 **<mark>相关阅读</mark>**：
 
