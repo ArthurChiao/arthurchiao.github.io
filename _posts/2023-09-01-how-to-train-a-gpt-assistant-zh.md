@@ -302,9 +302,9 @@ GPT-2 之后，我们看到了一个完整的基础模型的进化树。
 
 <p align="center"><img src="/assets/img/how-to-train-a-gpt-assistant/sft-dataset.png" width="100%" height="100%"></p>
 
-* 通常是通过供应商的形式收集，格式是**<mark>“提示 + 理想回答”</mark>**。
+* 通常是通过供应商的形式收集，格式是**<mark>“提示 + 优质回答”</mark>**。
 
-    这里面包括了一些随机的提示，例如“Can you write a short introduction about the relevance of the term monopsony”，然后承包商（人类标注员）会写出一个理想的回答。
+    这里面包括了一些随机的提示，例如“Can you write a short introduction about the relevance of the term monopsony”，然后承包商（人类标注员）会写出一个优质的回答。
     写出这些回答时，需要遵循详细的规范（上图右边。你可能看不懂，我也看不懂），并要求回答是有帮助的、真实的和无害的。
 
 * 通常收集**<mark>数万条</mark>**这样的数据。
@@ -398,8 +398,8 @@ RLHF 包括奖励建模和强化学习。
 
 <p align="center"><img src="/assets/img/how-to-train-a-gpt-assistant/rl-training.png" width="80%" height="80%"></p>
 
-* 第一行：奖励模型判断这是个**<mark>高质量</mark>**的补全。这一行中的所有 token 都将得到加强，在未来将获得更高的出现概率。
-* 第二行：奖励模型判断这是个**<mark>不符合要求</mark>**的补全，给负分。这一行中的每个 token 在未来只能获得稍高的出现概率。
+* 第一行：奖励模型判断这是个**<mark>高质量</mark>**的补全。**<mark>这一行中的所有 token</mark>** 都将得到加强，在未来将获得**<mark>更高的出现概率</mark>**。
+* 第二行：奖励模型判断这是个**<mark>不符合要求</mark>**的补全，给负分。这一行中的**<mark>每个 token 在未来获得的出现概率会降低</mark>**。
 
 在许多提示和批次上反复进行这个过程，符合人类偏好的 SFT 补全（黄色 token）就会得到高分。
 

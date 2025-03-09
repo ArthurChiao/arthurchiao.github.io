@@ -2,7 +2,7 @@
 layout    : post
 title     : "[译][论文] DeepSeek-R1：通过强化学习激励大模型的推理能力（DeepSeek，2024）"
 date      : 2025-02-15
-lastupdate: 2025-02-15
+lastupdate: 2025-03-09
 categories: ai llm
 ---
 
@@ -22,9 +22,16 @@ categories: ai llm
 <p align="center">OpenAI：训练一个 GPT 助手的流程</p>
 
 * **<mark><code>DeepSeek-R1-Zero</code></mark>** 的创新之处在于完全**<mark>跳过了 SFT 步骤</mark>**，
-  直接在基座模型上进行大规模 RM+RL 训练，性能达到了 **<mark><code>OpenAI-o1-0912</code></mark>** 的水平。
-  [LLaMA 2：开放基础和微调聊天模型（Meta/Facebook，2023）]({% link _posts/2023-08-06-llama2-paper-zh.md %})
-  对基于人类反馈的强化学习（HFRL）有较详细的介绍，DeepSeek 这里用的 RL 没有 HF，离 AGI 更进了一步。
+  直接在基座模型上进行大规模 `RM+`**<mark><code>RL</code></mark>** 训练，性能达到了 **<mark><code>OpenAI-o1-0912</code></mark>** 的水平。
+    * [LLaMA 2：开放基础和微调聊天模型（Meta/Facebook，2023）]({% link _posts/2023-08-06-llama2-paper-zh.md %})
+      对基于人类反馈的强化学习（HFRL）有较详细的介绍，DeepSeek 这里用的 RL 没有 HF，离 AGI 更进了一步。
+    * 更详细的 HFRL 可介绍可以参考 [InstructGPT：基于人类反馈训练语言模型遵从指令的能力（OpenAI，2022）]({% link _posts/2024-03-24-instructgpt-paper-zh.md %})，
+
+    <p align="center"><img src="/assets/img/instructgpt-paper/fig-2.png" width="80%"/></p>
+    <p align="center"> <mark>InstructGPT 三部曲</mark>：(1) <mark>SFT</mark>, (2)
+    <mark>RM training</mark>, (3) <mark>RLHF via proximal policy optimization (PPO)</mark> on RM.<br/>
+    蓝色箭头表示相应的数据用于训练模型。Step 2 中 A-D 是模型输出的采样，然后标注员对它们进行排序。</p>
+
 * 为了解决 DeepSeek-R1-Zero 存在的一些问题（可读性差，语言混用），又引入了少量的 SFT 数据作为冷启动，
   再参考 R1-Zero 的过程，训练了 **<mark><code>DeepSeek-R1</code></mark>**，
   在推理任务上的表现与 **<mark><code>OpenAI-o1-1217</code></mark>** 不相上下。

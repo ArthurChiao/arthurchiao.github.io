@@ -64,6 +64,9 @@ RAG (Retrieval-Augmented Generation，检索增强生成)，是一种利用信�
 * [TF-IDF](https://en.wikipedia.org/wiki/Tf%E2%80%93idf) (term frequency - inverse document frequency), 1970s
 * [BM25](https://en.wikipedia.org/wiki/Okapi_BM25) (Best Matching), 1980s
 
+    * based on the **<mark><code>probabilistic retrieval framework</code></mark>** developed in the 1970s and 1980s.
+    * BM25 is a **<mark><code>bag-of-words</code></mark>** retrieval function that ranks a set of documents based on the query terms appearing in each document.
+
 ### 1.1.2 原理
 
 分析**<mark>语料库的词频和分布</mark>**（term frequency and distribution），

@@ -36,8 +36,10 @@ categories: gpt ai llm transformer
 > </p>
 >
 > 在这个模型中，所有输出向量都可以并行计算，因此速度非常快。但缺点是它们
-> 在 long range dependencies 建模方面非常弱。在一个卷积层中，只有距离比 kernel size
+> 在 long range dependencies 建模方面非常弱
+> 在一个卷积层中，只有距离比 kernel size
 > 小的单词之间才能彼此交互。对于更长的依赖，就需要堆叠许多卷积。
+> （为什么？可参考 [<mark>以图像识别为例，关于卷积神经网络（CNN）的直观解释</mark>（2016）]({% link _posts/2023-06-11-cnn-intuitive-explanation-zh.md %})）。
 >
 > **<mark>Transformer 试图兼顾二者的优点</mark>**：
 >

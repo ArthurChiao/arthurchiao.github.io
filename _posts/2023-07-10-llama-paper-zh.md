@@ -183,7 +183,7 @@ Guillaume Lample。
 这些 **<mark>few-shot</mark>** 属性首先出现在**<mark>将模型扩展到足够大的规模时</mark>**（Kaplan 等，2020），
 在此之后，出现了很多进一步扩展这些模型的工作（Chowdhery 等，2022；Rae 等，2021），
 它们都遵循了这样一个假设：**<mark>更多的参数将产生更好的性能</mark>**。
-然而，Hoffmann 等（2022）的最新工作表明，对于给定的计算预算（compute budget），
+然而，Hoffmann 等（2022）的最新工作表明，对于给定的**<mark>算力预算</mark>**（compute budget），
 最佳性能并非来自那些最大的模型，而是来自那些**<mark>在更多数据上训练出来的较小模型</mark>**。
 
 > "few-shot" 指一个模型有能力根据给定的**少量**示例去执行其他的类似任务的能力。译注。
@@ -191,8 +191,7 @@ Guillaume Lample。
 ## 1.1 大模型训练：更多参数 vs 更大的数据集
 
 Hoffmann 等（2022）提出 scaling laws，目标是针对给定的**<mark>训练</mark>**（training）
-计算预算（compute budget），如何最佳地扩展（scale）**<mark>数据集和模型大小</mark>**。
-但是，
+算力预算，如何最佳地扩展（scale）**<mark>数据集和模型大小</mark>**。但是，
 
 * 这个模型没有考虑**<mark>推理</mark>**（inference）预算，在提供大规模推理时，这一点尤其重要：
   在这种情况下，给定一个性能目标，我们更想要的是一个**<mark>推理速度最快</mark>**而非训练速度最快的模型。
