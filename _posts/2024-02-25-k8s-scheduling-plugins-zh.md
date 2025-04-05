@@ -6,6 +6,8 @@ lastupdate: 2024-02-25
 categories: k8s kubevirt
 ---
 
+本文代码见 [github](https://github.com/ArthurChiao/arthurchiao.github.io/tree/master/assets/code/k8s-scheduling-plugins)。
+
 ----
 
 * TOC
