@@ -227,18 +227,22 @@ MCP servers offer two main capabilities: tools and resources. Tools are availabe
 
 # 问题总结
 
+## MCP vs. A2A
+
+TLDR; Agentic applications needs both A2A and MCP. We recommend MCP for tools and A2A for agents.
+
+https://google.github.io/A2A/#/topics/a2a_and_mcp.md
+
+![](https://google.github.io/A2A/images/a2a_mcp.png)
+
+SSE: Server-Sent Events
+https://medium.com/deliveryherotechhub/what-is-server-sent-events-sse-and-how-to-implement-it-904938bffd73
+
+Websocket is a very popular technology that provides bi-directional data transfer for client and server communication on real-time applications. Websocket is not based on HTTP protocol, so it requires additional installation and integrations to use it.
+
+![](https://miro.medium.com/v2/resize:fit:828/format:webp/1*ZOvd7h41rtYPVvxUcyP5Kw.png)
+
 ## 1. MCP 客户端问题/对接不同大模型的工作量
-
-官方的 MCP 客户端是绑定 Anthropic 的大模型的（Claude），这意味着使用 OpenAI、
-Google Gemini 等其他模型的用户需要自己实现 MCP 客户端，目前还没有看到 OpenAI
-官方的 MCP 客户端。
-
-* function 的描述格式
-* API 的请求格式、参数格式、返回格式
-
-https://github.com/anthropics/anthropic-sdk-python/issues/384
-
-官方没明确支持 OpenAI compatible API 的计划，另外，相同的 prompt 在不同模型上的表现会有差异，这也是他们不想支持的一个原因。
 
 ## 1. function 数量的问题
 
@@ -253,22 +257,7 @@ https://github.com/anthropics/anthropic-sdk-python/issues/384
 
 ## 3. 强依赖提示词 + 大模型的 planning 能力
 
-不同的大模型，planning 能力不同。
-在判断使用哪个 function 时，判断能力也不同。
-
-模型依赖：仍然以 anthropic claude 大模型为主
-
-MCP 官方的 SDK https://github.com/modelcontextprotocol/python-sdk/ 是只针对 claude API 设计开发的，这意味着如果用户使用的是 OpenAI、Google 等大模型时，无法直接基于 MCP SDK 快速创建 client/server。
-
-社区有人提了 issue，希望能支持 OpenAI compatible API，但官方表示暂无支持计划 https://github.com/anthropics/anthropic-sdk-python/issues/384 。
-
-目前有一些个人开发的针对 OpenAI compatible API 的类似 MCP SDK 项目，但还没有 star 特别多的，能否持续投入时间迭代待观察。
-
-1. https://github.com/bartolli/mcp-llm-bridge
-1. https://github.com/S1M0N38/mcp-openai
-1. https://github.com/chrishayuk/mcp-cli
-
-更新：llamaindex 之类的框架，已经封装好了 mcp client 的能力，能避免这个问题。
+llamaindex 之类的框架，已经封装好了 mcp client 的能力，能避免这个问题。
 https://docs.llamaindex.ai/en/stable/api_reference/tools/mcp/
 
 ----
