@@ -243,15 +243,14 @@ LLM-based 生成式推荐，则可以利用 LLM
 
 ### 2.3.1 将 LLM 对齐到推荐任务
 
-这里介绍两个方案，P5 和 InstructRec。
+这里介绍两个方案，[P5]({% link _posts/2025-12-20-p5-paper-zh.md %}) 和 InstructRec。
 
 P5 如下图所示，**<mark>5 类推荐任务</mark>**及对应的训练样本，
 
 <p align="center"><img src="/assets/img/large-generative-recommendation-tokenization-perspective/p5.png" width="100%" height="100%"></p>
-<p align="center">
-P5 Multi-task Cross-task generalization.<br />
-Geng et al. Recommendation as Language Processing (RLP): A Unified Pretrain, Personalized Prompt & Predict Paradigm (P5). RecSys 2022
-</p>
+<p align="center"> P5 Multi-task Cross-task generalization.</p>
+
+> P5 paper：[用语言模型做推荐：一种统一的预训练、个性化提示和预测范式]({% link _posts/2025-12-20-p5-paper-zh.md %})
 
 InstructRec 的**<mark>训练样本</mark>**：
 
