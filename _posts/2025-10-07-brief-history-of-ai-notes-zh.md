@@ -70,9 +70,9 @@ categories: ai
 
 > **<mark><code>What is past is prologue</code></mark>**. - William Shakespeare
 >
-> 翻过往皆为序章。
+> 凡过往皆为序章。
 
-### 1.1 经典读物
+## 1.1 经典读物
 
 1. "Man viewed as a Machine" 介绍了图灵机和冯诺依曼的细胞自动机。
 

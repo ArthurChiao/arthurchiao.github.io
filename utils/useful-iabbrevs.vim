@@ -1,6 +1,6 @@
 " highlight text
-iabbrev xm **<mark>
-iabbrev xmc </mark>**
+iabbrev xm <strong><mark>
+iabbrev xmc </mark></strong>
 
 " code block
 iabbrev xc <code>

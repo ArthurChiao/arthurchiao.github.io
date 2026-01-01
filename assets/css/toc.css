@@ -1,0 +1,100 @@
+/* 1. Toggle button at top-left corner */
+#toc-toggle-btn {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 9999; /* Ensure it's on top */
+  background-color: #444;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  opacity: 0.8;
+  transition: opacity 0.3s;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+#toc-toggle-btn:hover {
+  opacity: 1;
+  background-color: #000;
+}
+
+/* 2. Sidebar container */
+#toc-sidebar {
+  position: fixed;
+  top: 0;
+  left: -300px; /* Hidden outside left side of screen by default */
+  width: 280px;
+  height: 100%;
+  background-color: #f8f9fa;
+  border-right: 1px solid #e9ecef;
+  overflow-y: auto; 
+  z-index: 9998;
+  padding: 70px 20px 20px 20px; /* Top padding for button */
+  transition: left 0.3s ease-in-out; 
+  box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+  font-size: 0.8em;
+}
+
+/* Show sidebar when body has .toc-open class */
+body.toc-open #toc-sidebar {
+  left: 0;
+  text-wrap-mode: nowrap;
+}
+
+/* 3. Adjust main content area - shift content right when sidebar opens */
+/* If your blog main content container is .container or .wrapper, add it here */
+body.toc-open .container, 
+body.toc-open .wrapper,
+body.toc-open article {
+  margin-left: 280px; 
+  transition: margin-left 0.3s ease-in-out;
+}
+
+/* 4. TOC content styles */
+#toc-sidebar h3 {
+  margin-top: 0;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #ddd;
+  font-size: 1em; /* Same as sidebar base font size */
+}
+
+#toc-sidebar ul {
+  list-style: none;
+  margin: 0;
+}
+
+#toc-sidebar ul li {
+  margin-bottom: 8px;
+}
+
+/* Top-level ul has no indentation */
+#toc-sidebar > ul {
+  padding-left: 0;
+}
+
+/* All nested ul use same relative indentation, 20px per level */
+#toc-sidebar ul ul {
+  padding-left: 20px;
+  margin-top: 5px;
+}
+
+#toc-sidebar a {
+  text-decoration: none;
+  color: #666;
+  display: block;
+  line-height: 1.4;
+  transition: color 0.2s;
+}
+
+#toc-sidebar a:hover {
+  color: #007bff;
+}
+
+#toc-sidebar a.active {
+  color: #007bff;
+  font-weight: bold;
+  border-right: 3px solid #007bff;
+}
