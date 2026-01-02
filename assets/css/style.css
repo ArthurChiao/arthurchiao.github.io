@@ -800,7 +800,7 @@ dd {
         transform-origin:bottom left
     }
     .container {
-        max-width:900px;
+        max-width:1000px;
         margin-left:auto;
         margin-right:auto;
         padding:0
@@ -811,7 +811,7 @@ dd {
         clear:both
     }
     #home .posts,#home .pageTitle,#home .pagination {
-        width:80%;
+        width:90%;
         float:left;
         margin-right:2.12766%;
         float:none;
@@ -831,7 +831,7 @@ dd {
         -webkit-transform:translateY(-50%);
         -ms-transform:translateY(-50%);
         transform:translateY(-50%);
-        max-width:900px;
+        max-width:1000px;
         margin-left:auto;
         margin-right:auto
     }
@@ -941,7 +941,7 @@ dd {
     }
     .footer .container {
         padding:1rem 0;
-        max-width:900px;
+        max-width:1000px;
         margin-left:auto;
         margin-right:auto
     }

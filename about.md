@@ -5,11 +5,12 @@ title: About ArthurChiao
 
 ## Focus & Interests
 
+* AI applications
 * AI infra
+* Low level techniques
 * Distributed storage
 * Networking, BPF
 * Cloud, container, virtualization
-* Low level techniques
 
 ## Selected talks
 

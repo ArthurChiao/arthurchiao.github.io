@@ -1,7 +1,7 @@
 title: ArthurChiao's Blog
 description: ArthurChiao's Blog
 
-url: https://arthurchiao.github.io
+url: https://arthurchiao.art
 paginate_path: "blog/page:num/"
 permalink: blog/:title/
 
@@ -23,6 +23,8 @@ navigation:
    url: /about
  - title: Donate
    url: /donate
+ - title: RSS
+   url: /feed.xml
 
 social:
    github: ArthurChiao

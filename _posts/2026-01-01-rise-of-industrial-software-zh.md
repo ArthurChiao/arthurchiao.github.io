@@ -19,7 +19,7 @@ categories: ai software
 LLM 的出现是软件领域的蒸汽机时刻，软件开发正在经历一次属于它的“工业革命”，
 
 * 软件开发正在从<strong><mark>传统手工业</mark></strong>变成<strong><mark>制造业</mark></strong>
-* 一旦生产成本足够低，<strong><mark>垃圾</mark></strong>就是能<strong><mark>最大化产量、利润和市场覆盖度</mark></strong>的东西
+* 一旦生产成本足够低，<strong><mark>垃圾</mark></strong>就是能<strong><mark>最大化产量、利润和市场触达</mark></strong>的东西
 * 最终市场上流通的<strong><mark>不是丰富的好东西，而是过量的最易消费的东西</mark></strong> —— 我们确实正在消费它们（AI 垃圾）
 * 人类程序员未来还有多少市场？未来的创新将是什么？
 
