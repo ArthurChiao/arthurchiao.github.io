@@ -442,7 +442,7 @@ Chen et al. All Roads Lead to Rome: Unveiling the Trajectory of Recommender Syst
 
 如果每个 vocabulary **<mark><code>256 tokens</code></mark>**，那
 
-* 用四个 token 索引一个商品时，大致能索引的商品量级为 **<mark><code>256^4≈4.3×10^9</code></mark>**，也就是 **<mark>4.3 亿个商品</mark>**；
+* 用四个 token 索引一个商品时，大致能索引的商品量级为 **<mark><code>256^4≈4.3×10^9</code></mark>**，也就是 **<mark>43 亿个商品</mark>**；
 * 总的 vocabulary 空间为 256x4=1024 tokens，也就是**<mark>只需要引入 1024 个独立 token</mark>**；
 
 <p align="center"><img src="/assets/img/large-generative-recommendation-tokenization-perspective/sid-3.png" width="70%" height="70%"></p>
