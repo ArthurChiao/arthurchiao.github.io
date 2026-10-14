@@ -1,0 +1,25 @@
+_posts/2026-03-24-openclaw-technical-notes-zh.md
+  s_2fe2953002d141::t_3094bb284ad9ff 181
+  s_2fe2953002d141::t_4ccc7510103f2a 366
+_posts/2029-09-16-ai-advanced-notes-1-zh.md
+  s_2fe2953002d141::t_6c53c8d9e3ded4 286
+  s_2fe2953002d141::t_0765d1fee8c9f5 271
+_posts/2029-01-01-react-paper-zh.md
+  s_2fe2953002d141::t_44f3de54c78707 260
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.49-trip",
+  "base_commit_sha": "c90ea956cb937aa1d517418091b6d89b7d54543b",
+  "prompts": {},
+  "sessions": {
+    "s_2fe2953002d141": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eecc6f7b-0e77-4083-9f65-abea0a43a269",
+        "model": "deepseek-v4-1-flash-260910"
+      },
+      "human_author": "ArthurChiao <ArthurChiao@users.noreply.github.com>"
+    }
+  }
+}
