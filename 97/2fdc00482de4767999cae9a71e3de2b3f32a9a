@@ -1,0 +1,24 @@
+_posts/2026-10-14-math-dilemma-in-enterprise-when-ai-becomes-upstream.md
+  s_2fe2953002d141::t_02deff85d10159 3
+  s_2fe2953002d141::t_bde60e1dce01b8 124-134
+  s_2fe2953002d141::t_5a1d96832bf649 13-14
+  s_2fe2953002d141::t_553a06f7d0ffae 11,15-17,38-41,45-46,48,56-59,61-63,66-73,75-76,81-96,101-117,119-122,137-215,217-229,231-247,251-273,275-276,279-366
+_posts/2026-10-14-ai-zh.md
+  s_2fe2953002d141::t_e2c120c1f0f936 56-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.49-trip",
+  "base_commit_sha": "972fdc00482de4767999cae9a71e3de2b3f32a9a",
+  "prompts": {},
+  "sessions": {
+    "s_2fe2953002d141": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eecc6f7b-0e77-4083-9f65-abea0a43a269",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "ArthurChiao <ArthurChiao@users.noreply.github.com>"
+    }
+  }
+}
