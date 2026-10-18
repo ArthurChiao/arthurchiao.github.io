@@ -1,0 +1,19 @@
+_posts/2026-10-18-math-dilemma-in-enterprise-when-ai-becomes-upstream.md
+  s_8cd52aed1d4a5a::t_46fd9fafdf7c67 15-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.50-trip",
+  "base_commit_sha": "70a66586f1e3aecde21bee300877327d2aaf24a5",
+  "prompts": {},
+  "sessions": {
+    "s_8cd52aed1d4a5a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7242a6b9-ca5a-437d-932b-423cd7c1e364",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "ArthurChiao <ArthurChiao@users.noreply.github.com>"
+    }
+  }
+}
