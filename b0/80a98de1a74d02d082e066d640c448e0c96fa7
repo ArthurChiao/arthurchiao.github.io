@@ -1,0 +1,20 @@
+_posts/2026-10-18-when-ai-amplifies-the-upstream.md
+  s_8cd52aed1d4a5a::t_8b9f1909c836e0 6,286
+  s_8cd52aed1d4a5a::t_68da65911eb578 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.50-trip",
+  "base_commit_sha": "b080a98de1a74d02d082e066d640c448e0c96fa7",
+  "prompts": {},
+  "sessions": {
+    "s_8cd52aed1d4a5a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7242a6b9-ca5a-437d-932b-423cd7c1e364",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "ArthurChiao <ArthurChiao@users.noreply.github.com>"
+    }
+  }
+}
